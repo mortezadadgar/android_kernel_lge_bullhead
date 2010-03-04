@@ -12,6 +12,7 @@ struct proc_dir_entry;
 #ifdef CONFIG_PROC_FS
 
 extern void proc_root_init(void);
+extern void proc_breakme_init(void);
 extern void proc_flush_task(struct task_struct *);
 
 extern struct proc_dir_entry *proc_symlink(const char *,

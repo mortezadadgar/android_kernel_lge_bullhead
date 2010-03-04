@@ -166,6 +166,7 @@ void __init proc_root_init(void)
 	proc_self_init();
 	proc_symlink("mounts", NULL, "self/mounts");
 
+	proc_breakme_init();
 	proc_net_init();
 
 #ifdef CONFIG_SYSVIPC
