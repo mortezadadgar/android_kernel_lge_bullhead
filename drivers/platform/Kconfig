@@ -22,7 +22,7 @@ config CHROMEOS
 
 config CHROMEOS_RAMOOPS_RAM_START
         hex "Physical address of preserved RAM"
-	depends on RAMOOPS && CHROMEOS
+	depends on PSTORE_RAM && CHROMEOS
         default "0"
 
         ---help---
@@ -34,7 +34,7 @@ config CHROMEOS_RAMOOPS_RAM_START
 
 config CHROMEOS_RAMOOPS_RAM_SIZE
         hex "Size of preserved RAM"
-	depends on RAMOOPS && CHROMEOS
+	depends on PSTORE_RAM && CHROMEOS
         default "0"
 
         ---help---
@@ -46,7 +46,7 @@ config CHROMEOS_RAMOOPS_RAM_SIZE
 
 config CHROMEOS_RAMOOPS_RECORD_SIZE
         hex "Size of a single dump logged in RAM"
-	depends on RAMOOPS && CHROMEOS
+	depends on PSTORE_RAM && CHROMEOS
         default "0x00001000"
 
         ---help---
@@ -58,7 +58,7 @@ config CHROMEOS_RAMOOPS_RECORD_SIZE
 
 config CHROMEOS_RAMOOPS_DUMP_OOPS
         hex "Flag to dump oopses and panics or only panics"
-	depends on RAMOOPS && CHROMEOS
+	depends on PSTORE_RAM && CHROMEOS
         default "1"
 
         ---help---
