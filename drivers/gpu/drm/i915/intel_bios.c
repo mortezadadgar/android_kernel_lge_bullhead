@@ -769,6 +769,17 @@ parse_device_mapping(struct drm_i915_private *dev_priv,
 	return;
 }
 
+static const struct dmi_system_id lvds_do_not_use_alternate_frequency[] = {
+	{
+		.callback = NULL,
+		.ident = "Lumpy",
+		.matches = {
+			DMI_MATCH(DMI_PRODUCT_NAME, "Lumpy"),
+		}
+	},
+	{ }
+};
+
 static void
 init_vbt_defaults(struct drm_i915_private *dev_priv)
 {
@@ -790,7 +801,10 @@ init_vbt_defaults(struct drm_i915_private *dev_priv)
 
 	/* Default to using SSC */
 	dev_priv->vbt.lvds_use_ssc = 1;
-	dev_priv->vbt.lvds_ssc_freq = intel_bios_ssc_frequency(dev, 1);
+	if (dmi_check_system(lvds_do_not_use_alternate_frequency))
+		dev_priv->vbt.lvds_ssc_freq = intel_bios_ssc_frequency(dev, 0);
+	else
+		dev_priv->vbt.lvds_ssc_freq = intel_bios_ssc_frequency(dev, 1);
 	DRM_DEBUG_KMS("Set default to SSC at %dMHz\n", dev_priv->vbt.lvds_ssc_freq);
 
 	for (port = PORT_A; port < I915_MAX_PORTS; port++) {
