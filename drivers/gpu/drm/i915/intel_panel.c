@@ -35,6 +35,12 @@
 
 #define PCI_LBPC 0xf4 /* legacy/combination backlight modes */
 
+/* These are used to calculate a reasonable default when firmware has not
+ * configured a maximum PWM frequency, with 200Hz as the current default target.
+ */
+#define DEFAULT_BACKLIGHT_PWM_FREQ   200
+#define BACKLIGHT_REFCLK_DIVISOR     128
+
 void
 intel_fixed_panel_mode(const struct drm_display_mode *fixed_mode,
 		       struct drm_display_mode *adjusted_mode)
@@ -338,6 +344,28 @@ static int is_backlight_combination_mode(struct drm_device *dev)
 	return 0;
 }
 
+static void i915_set_default_max_backlight(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	u32 refclk_freq_mhz = 0;
+	u32 max_pwm;
+
+	if (HAS_PCH_SPLIT(dev_priv->dev))
+		refclk_freq_mhz = I915_READ(PCH_RAWCLK_FREQ) & RAWCLK_FREQ_MASK;
+	else if (dev_priv->vbt.lvds_use_ssc)
+		refclk_freq_mhz = dev_priv->vbt.lvds_ssc_freq;
+
+	max_pwm = refclk_freq_mhz * 1000000 /
+			(BACKLIGHT_REFCLK_DIVISOR * DEFAULT_BACKLIGHT_PWM_FREQ);
+
+	if (HAS_PCH_SPLIT(dev_priv->dev))
+		dev_priv->regfile.saveBLC_PWM_CTL2 = max_pwm << 16;
+	else if (IS_PINEVIEW(dev_priv->dev))
+		dev_priv->regfile.saveBLC_PWM_CTL = max_pwm << 17;
+	else
+		dev_priv->regfile.saveBLC_PWM_CTL = max_pwm << 16;
+}
+
 /* XXX: query mode clock or hardware clock and program max PWM appropriately
  * when it's 0.
  */
@@ -347,9 +375,7 @@ static u32 i915_read_blc_pwm_ctl(struct drm_device *dev)
 	u32 val;
 
 	WARN_ON_SMP(!spin_is_locked(&dev_priv->backlight.lock));
-
-	/* Restore the CTL value if it lost, e.g. GPU reset */
-
+	/* Restore the CTL value if it was lost, e.g. GPU reset */
 	if (HAS_PCH_SPLIT(dev_priv->dev)) {
 		val = I915_READ(BLC_PWM_PCH_CTL2);
 		if (dev_priv->regfile.saveBLC_PWM_CTL2 == 0) {
@@ -380,7 +406,7 @@ static u32 i915_read_blc_pwm_ctl(struct drm_device *dev)
 	return val;
 }
 
-static u32 intel_panel_get_max_backlight(struct drm_device *dev)
+static u32 _intel_panel_get_max_backlight(struct drm_device *dev)
 {
 	u32 max;
 
@@ -396,6 +422,22 @@ static u32 intel_panel_get_max_backlight(struct drm_device *dev)
 
 		if (is_backlight_combination_mode(dev))
 			max *= 0xff;
+	}
+
+	return max;
+}
+
+u32 intel_panel_get_max_backlight(struct drm_device *dev)
+{
+	u32 max;
+
+	max = _intel_panel_get_max_backlight(dev);
+	if (max == 0) {
+		/* If backlight PWM registers have not been set, set them to
+		 * default backlight PWM settings.
+		 */
+		i915_set_default_max_backlight(dev);
+		max = i915_read_blc_pwm_ctl(dev);
 	}
 
 	DRM_DEBUG_DRIVER("max backlight PWM = %d\n", max);
