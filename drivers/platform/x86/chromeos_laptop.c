@@ -27,6 +27,7 @@
 #include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
+#include <linux/platform_device.h>
 
 #define ATMEL_TP_I2C_ADDR	0x4b
 #define ATMEL_TP_I2C_BL_ADDR	0x25
@@ -301,6 +302,20 @@ static int __init setup_tsl2563_als(const struct dmi_system_id *id)
 	return 0;
 }
 
+static struct platform_device *kb_backlight_device;
+
+static int __init setup_keyboard_backlight(const struct dmi_system_id *id)
+{
+	kb_backlight_device =
+		platform_device_register_simple("chromeos-keyboard-leds",
+						-1, NULL, 0);
+	if (IS_ERR(kb_backlight_device)) {
+		pr_warn("Error registering Chrome OS keyboard LEDs.\n");
+		kb_backlight_device = NULL;
+	}
+	return 0;
+}
+
 static struct dmi_system_id __initdata chromeos_laptop_dmi_table[] = {
 	{
 		.ident = "Samsung Series 5 550 - Touchpad",
@@ -377,6 +392,14 @@ static struct dmi_system_id __initdata chromeos_laptop_dmi_table[] = {
 		},
 		.callback = setup_tsl2563_als,
 	},
+	{
+		.ident = "Chromebook Pixel - Keyboard backlight",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "GOOGLE"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Link"),
+		},
+		.callback = setup_keyboard_backlight,
+	},
 	{ }
 };
 MODULE_DEVICE_TABLE(dmi, chromeos_laptop_dmi_table);
@@ -398,6 +421,8 @@ static void __exit chromeos_laptop_exit(void)
 		i2c_unregister_device(tp);
 	if (ts)
 		i2c_unregister_device(ts);
+	if (kb_backlight_device)
+		platform_device_unregister(kb_backlight_device);
 }
 
 module_init(chromeos_laptop_init);
