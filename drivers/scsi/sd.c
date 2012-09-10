@@ -107,7 +107,7 @@ static int  sd_probe(struct device *);
 static int  sd_remove(struct device *);
 static void sd_shutdown(struct device *);
 static int sd_suspend(struct device *);
-static int __sd_resume(struct work_struct *work);
+static void __sd_resume(struct work_struct *work);
 static int sd_resume(struct device *);
 static void sd_rescan(struct device *);
 static int sd_done(struct scsi_cmnd *);
@@ -3107,7 +3107,7 @@ done:
 	return ret;
 }
 
-static int __sd_resume(struct work_struct *work)
+static void __sd_resume(struct work_struct *work)
 {
 	struct scsi_disk *sdkp = container_of(work, struct scsi_disk,
 		resume_work);
@@ -3118,10 +3118,11 @@ static int __sd_resume(struct work_struct *work)
 
 	sd_printk(KERN_NOTICE, sdkp, "Starting disk\n");
 	ret = sd_start_stop_device(sdkp, 1);
+	WARN_ON(ret);
 
 done:
 	scsi_disk_put(sdkp);
-	return ret;
+	return;
 }
 
 static int sd_resume(struct device *dev)
