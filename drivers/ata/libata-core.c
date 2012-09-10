@@ -97,7 +97,7 @@ static unsigned int ata_dev_init_params(struct ata_device *dev,
 static unsigned int ata_dev_set_xfermode(struct ata_device *dev);
 static void ata_dev_xfermask(struct ata_device *dev);
 static unsigned long ata_dev_blacklisted(const struct ata_device *dev);
-static int __ata_port_resume(struct work_struct *work);
+static void __ata_port_resume(struct work_struct *work);
 
 atomic_t ata_print_id = ATOMIC_INIT(0);
 
@@ -5414,7 +5414,7 @@ static int ata_port_resume_common(struct device *dev, pm_message_t mesg)
 	return __ata_port_resume_common(ap, mesg, NULL);
 }
 
-static int __ata_port_resume(struct work_struct *work)
+static void __ata_port_resume(struct work_struct *work)
 {
 	struct ata_port *ap = container_of(work, struct ata_port, resume_work);
 	struct device *dev = &ap->tdev;
@@ -5428,7 +5428,9 @@ static int __ata_port_resume(struct work_struct *work)
 	}
 	put_device(dev);
 
-	return rc;
+	WARN_ON(rc);
+
+	return;
 }
 
 static int ata_port_resume(struct device *dev)
