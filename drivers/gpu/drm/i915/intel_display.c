@@ -771,6 +771,9 @@ void intel_wait_for_vblank(struct drm_device *dev, int pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int pipestat_reg = PIPESTAT(pipe);
+	struct drm_crtc *crtc = dev_priv->pipe_to_crtc_mapping[pipe];
+	int timeout = crtc->hwmode.vrefresh ?
+		DIV_ROUND_UP(1000, crtc->hwmode.vrefresh) : 50;
 
 	if (INTEL_INFO(dev)->gen >= 5) {
 		ironlake_wait_for_vblank(dev, pipe);
@@ -796,7 +799,7 @@ void intel_wait_for_vblank(struct drm_device *dev, int pipe)
 	/* Wait for vblank interrupt bit to set */
 	if (wait_for(I915_READ(pipestat_reg) &
 		     PIPE_VBLANK_INTERRUPT_STATUS,
-		     50))
+		     timeout))
 		DRM_DEBUG_KMS("vblank wait timed out\n");
 }
 
