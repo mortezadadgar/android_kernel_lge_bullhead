@@ -1297,6 +1297,7 @@ typedef struct drm_i915_private {
 		int level;
 		bool enabled;
 		spinlock_t lock; /* bl registers and the above bl fields */
+		bool level_has_been_set;
 		struct backlight_device *device;
 	} backlight;
 
