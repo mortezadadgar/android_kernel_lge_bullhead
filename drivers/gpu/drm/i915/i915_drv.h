@@ -1301,6 +1301,37 @@ typedef struct drm_i915_private {
 	} backlight;
 
 	/* LVDS info */
+	struct drm_display_mode *lfp_lvds_vbt_mode; /* if any */
+	struct drm_display_mode *sdvo_lvds_vbt_mode; /* if any */
+
+	/* Backlight driver */
+	u32 (*get_backlight)(struct drm_device *dev);
+	u32 (*get_max_backlight)(struct drm_device *dev);
+	void (*set_backlight)(struct drm_device *dev, u32 level, u32 max);
+	void (*disable_backlight)(struct drm_device *dev);
+	void (*enable_backlight)(struct drm_device *dev, enum pipe pipe);
+
+	/* Feature bits from the VBIOS */
+	unsigned int int_tv_support:1;
+	unsigned int lvds_dither:1;
+	unsigned int lvds_vbt:1;
+	unsigned int int_crt_support:1;
+	unsigned int lvds_use_ssc:1;
+	unsigned int display_clock_mode:1;
+	unsigned int fdi_rx_polarity_inverted:1;
+	int lvds_ssc_freq;
+	unsigned int bios_lvds_val; /* initial [PCH_]LVDS reg val in VBIOS */
+	struct {
+		int rate;
+		int lanes;
+		int preemphasis;
+		int vswing;
+
+		bool initialized;
+		bool support;
+		int bpp;
+		struct edp_power_seq pps;
+	} edp;
 	bool no_aux_handshake;
 
 	struct drm_i915_fence_reg fence_regs[I915_MAX_NUM_FENCES]; /* assume 965 */
@@ -1390,7 +1421,6 @@ typedef struct drm_i915_private {
 
 	struct drm_property *broadcast_rgb_property;
 	struct drm_property *force_audio_property;
-
 	bool hw_contexts_disabled;
 	uint32_t hw_context_size;
 	struct list_head context_list;
