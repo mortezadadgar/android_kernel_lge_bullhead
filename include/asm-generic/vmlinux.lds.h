@@ -570,6 +570,11 @@
 		*(.dynbss)						\
 		*(.bss)							\
 		*(COMMON)						\
+		. = ALIGN(8192);					\
+		VMLINUX_SYMBOL(__start_suspend_volatile_bss) = .;	\
+		*(.bss.suspend_volatile)				\
+		. = ALIGN(8192);					\
+		VMLINUX_SYMBOL(__stop_suspend_volatile_bss) = .;	\
 	}
 
 /*
