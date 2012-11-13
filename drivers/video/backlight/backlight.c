@@ -177,6 +177,43 @@ static ssize_t backlight_store_brightness(struct device *dev,
 	return rc;
 }
 
+static ssize_t backlight_show_resume_brightness(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct backlight_device *bd = to_backlight_device(dev);
+
+	return sprintf(buf, "%d\n", bd->props.resume_brightness);
+}
+
+static ssize_t backlight_store_resume_brightness(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int rc;
+	struct backlight_device *bd = to_backlight_device(dev);
+	long resume_brightness;
+
+	rc = kstrtol(buf, 0, &resume_brightness);
+	if (rc)
+		return rc;
+
+	rc = -ENXIO;
+
+	mutex_lock(&bd->ops_lock);
+	if (bd->ops) {
+		if (resume_brightness > bd->props.max_brightness)
+			rc = -EINVAL;
+		else {
+			pr_debug("backlight: set resume_brightness to %ld\n",
+				 resume_brightness);
+			bd->props.resume_brightness = resume_brightness;
+			rc = count;
+		}
+	}
+	mutex_unlock(&bd->ops_lock);
+
+	return rc;
+}
+
 static ssize_t backlight_show_type(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -233,8 +270,11 @@ static int backlight_resume(struct device *dev)
 	}
 
 	mutex_lock(&bd->ops_lock);
-	if (bd->ops && bd->ops->options & BL_CORE_SUSPENDRESUME) {
+	if ((bd->ops && bd->ops->options & BL_CORE_SUSPENDRESUME) ||
+		bd->props.resume_brightness != -1) {
 		bd->props.state &= ~BL_CORE_SUSPENDED;
+		if (bd->props.resume_brightness != -1)
+			bd->props.brightness = bd->props.resume_brightness;
 		backlight_update_status(bd);
 	}
 	mutex_unlock(&bd->ops_lock);
@@ -252,6 +292,8 @@ static struct device_attribute bl_device_attributes[] = {
 	__ATTR(bl_power, 0644, backlight_show_power, backlight_store_power),
 	__ATTR(brightness, 0644, backlight_show_brightness,
 		     backlight_store_brightness),
+	__ATTR(resume_brightness, 0644, backlight_show_resume_brightness,
+		     backlight_store_resume_brightness),
 	__ATTR(actual_brightness, 0444, backlight_show_actual_brightness,
 		     NULL),
 	__ATTR(max_brightness, 0444, backlight_show_max_brightness, NULL),
@@ -324,6 +366,7 @@ struct backlight_device *backlight_device_register(const char *name,
 	} else {
 		new_bd->props.type = BACKLIGHT_RAW;
 	}
+	new_bd->props.resume_brightness = -1;
 
 	rc = device_register(&new_bd->dev);
 	if (rc) {
