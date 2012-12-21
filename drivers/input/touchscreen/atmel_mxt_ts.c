@@ -335,6 +335,12 @@ static void mxt_dump_message(struct device *dev,
 		message->reportid, 7, message->message);
 }
 
+static bool mxt_in_bootloader(struct mxt_data *data)
+{
+	struct i2c_client *client = data->client;
+	return (client->addr == MXT_BOOT_LOW || client->addr == MXT_BOOT_HIGH);
+}
+
 static int mxt_i2c_recv(struct i2c_client *client, u8 *buf, size_t count)
 {
 	int ret;
@@ -609,6 +615,9 @@ static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 	struct device *dev = &data->client->dev;
 	u8 reportid;
 	bool update_input = false;
+
+	if (mxt_in_bootloader(data))
+		goto end;
 
 	do {
 		if (mxt_read_message(data, &message)) {
@@ -1007,6 +1016,9 @@ static int mxt_load_fw(struct device *dev, const char *fn)
 		return ret;
 	}
 
+	if (mxt_in_bootloader(data))
+		goto bootloader_ready;
+
 	/* Change to the bootloader mode */
 	mxt_write_object(data, MXT_GEN_COMMAND_T6,
 			MXT_COMMAND_RESET, MXT_BOOT_VALUE);
@@ -1018,6 +1030,7 @@ static int mxt_load_fw(struct device *dev, const char *fn)
 	else
 		client->addr = MXT_BOOT_HIGH;
 
+bootloader_ready:
 	ret = mxt_check_bootloader(client, MXT_WAITING_BOOTLOAD_CMD);
 	if (ret)
 		goto out;
@@ -1255,25 +1268,34 @@ static int __devinit mxt_probe(struct i2c_client *client,
 
 	mxt_calc_resolution(data);
 
-	error = mxt_initialize(data);
-	if (error)
-		goto err_free_mem;
+	if (mxt_in_bootloader(data)) {
+		dev_info(&client->dev, "Device in bootloader at probe\n");
+	} else {
+		error = mxt_initialize(data);
+		if (error)
+			goto err_free_mem;
 
-	error = mxt_input_dev_create(data);
-	if (error)
-		goto err_free_object;
+		error = mxt_input_dev_create(data);
+		if (error)
+			goto err_free_object;
+	}
 
 	error = request_threaded_irq(client->irq, NULL, mxt_interrupt,
 				     pdata->irqflags | IRQF_ONESHOT,
 				     client->name, data);
 	if (error) {
 		dev_err(&client->dev, "Failed to register interrupt\n");
-		goto err_unregister_device;
+		if (mxt_in_bootloader(data))
+			goto err_free_mem;
+		else
+			goto err_unregister_device;
 	}
 
-	error = mxt_make_highchg(data);
-	if (error)
-		goto err_free_irq;
+	if (!mxt_in_bootloader(data)) {
+		error = mxt_make_highchg(data);
+		if (error)
+			goto err_free_irq;
+	}
 
 	error = sysfs_create_group(&client->dev.kobj, &mxt_attr_group);
 	if (error)
@@ -1298,7 +1320,8 @@ static int mxt_remove(struct i2c_client *client)
 
 	sysfs_remove_group(&client->dev.kobj, &mxt_attr_group);
 	free_irq(data->irq, data);
-	input_unregister_device(data->input_dev);
+	if (data->input_dev)
+		input_unregister_device(data->input_dev);
 	kfree(data->object_table);
 	kfree(data);
 
@@ -1311,6 +1334,9 @@ static int mxt_suspend(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mxt_data *data = i2c_get_clientdata(client);
 	struct input_dev *input_dev = data->input_dev;
+
+	if (mxt_in_bootloader(data))
+		return 0;
 
 	mutex_lock(&input_dev->mutex);
 
@@ -1327,6 +1353,9 @@ static int mxt_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mxt_data *data = i2c_get_clientdata(client);
 	struct input_dev *input_dev = data->input_dev;
+
+	if (mxt_in_bootloader(data))
+		return 0;
 
 	/* Soft reset */
 	mxt_write_object(data, MXT_GEN_COMMAND_T6,
