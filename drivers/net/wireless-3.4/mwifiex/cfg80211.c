@@ -111,7 +111,7 @@ mwifiex_cfg80211_del_key(struct wiphy *wiphy, struct net_device *netdev,
 {
 	struct mwifiex_private *priv = mwifiex_netdev_get_priv(netdev);
 
-	if (mwifiex_set_encode(priv, NULL, 0, key_index, 1)) {
+	if (mwifiex_set_encode(priv, NULL, NULL, 0, key_index, 1)) {
 		wiphy_err(wiphy, "deleting the crypto keys\n");
 		return -EFAULT;
 	}
@@ -287,7 +287,7 @@ mwifiex_cfg80211_set_default_key(struct wiphy *wiphy, struct net_device *netdev,
 	if (!priv->sec_info.wep_enabled)
 		return 0;
 
-	if (mwifiex_set_encode(priv, NULL, 0, key_index, 0)) {
+	if (mwifiex_set_encode(priv, NULL, NULL, 0, key_index, 0)) {
 		wiphy_err(wiphy, "set default Tx key index\n");
 		return -EFAULT;
 	}
@@ -305,7 +305,7 @@ mwifiex_cfg80211_add_key(struct wiphy *wiphy, struct net_device *netdev,
 {
 	struct mwifiex_private *priv = mwifiex_netdev_get_priv(netdev);
 
-	if (mwifiex_set_encode(priv, params->key, params->key_len,
+	if (mwifiex_set_encode(priv, params, params->key, params->key_len,
 			       key_index, 0)) {
 		wiphy_err(wiphy, "crypto keys added\n");
 		return -EFAULT;
@@ -884,6 +884,7 @@ static const u32 mwifiex_cipher_suites[] = {
 	WLAN_CIPHER_SUITE_WEP104,
 	WLAN_CIPHER_SUITE_TKIP,
 	WLAN_CIPHER_SUITE_CCMP,
+	WLAN_CIPHER_SUITE_AES_CMAC,
 };
 
 /* Supported mgmt frame types to be advertised to cfg80211 */
@@ -1117,7 +1118,7 @@ mwifiex_cfg80211_assoc(struct mwifiex_private *priv, size_t ssid_len, u8 *ssid,
 	priv->wep_key_curr_index = 0;
 	priv->sec_info.encryption_mode = 0;
 	priv->sec_info.is_authtype_auto = 0;
-	ret = mwifiex_set_encode(priv, NULL, 0, 0, 1);
+	ret = mwifiex_set_encode(priv, NULL, NULL, 0, 0, 1);
 
 	if (mode == NL80211_IFTYPE_ADHOC) {
 		/* "privacy" is set only for ad-hoc mode */
@@ -1164,8 +1165,8 @@ mwifiex_cfg80211_assoc(struct mwifiex_private *priv, size_t ssid_len, u8 *ssid,
 				"info: setting wep encryption"
 				" with key len %d\n", sme->key_len);
 			priv->wep_key_curr_index = sme->key_idx;
-			ret = mwifiex_set_encode(priv, sme->key, sme->key_len,
-							sme->key_idx, 0);
+			ret = mwifiex_set_encode(priv, NULL, sme->key,
+						 sme->key_len, sme->key_idx, 0);
 		}
 	}
 done:
