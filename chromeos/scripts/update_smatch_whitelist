@@ -3,7 +3,7 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Distributed under the terms of the GNU General Public License v2
 
-# Print help if no args provided.
+# Print help if no args provided, or if the user is requesting help.
 if [[ $# -eq 0 || $1 == "--help" || $1 == "-h" ]]; then
 	name=$(basename $0)
 	cat <<-EOF
