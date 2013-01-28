@@ -56,7 +56,9 @@ for board in "${BOARDS[@]}"; do
 	fi
 
 	grep "Non-whitelisted error found:" "${LOG_FILE}" | \
-		grep -o "kernel/files.*" | sort > "${LOG_FILE}.new_errors"
+		grep -o "kernel/files.*" | \
+		sed -e 's:kernel/files/::' -e 's/"$//g' | \
+		sort > "${LOG_FILE}.new_errors"
 	LOG_FILES+=( "${LOG_FILE}.new_errors" )
 done
 
