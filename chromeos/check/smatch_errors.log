@@ -37,6 +37,8 @@ arch/x86/include/asm/stacktrace.h:112 caller_frame_pointer() error: potentially 
 arch/x86/include/asm/stacktrace.h:112 caller_frame_pointer() error: potentially derefencing uninitialized 'frame'.
 arch/x86/include/asm/stacktrace.h:112 caller_frame_pointer() error: potentially derefencing uninitialized 'frame'.
 arch/x86/include/asm/stacktrace.h:112 caller_frame_pointer() error: potentially derefencing uninitialized 'frame'.
+arch/x86/kernel/amd_gart_64.c:429 gart_map_sg() error: potential NULL dereference 'ps'.
+arch/x86/kernel/cpu/common.c:1229 cpu_init() error: potentially derefencing uninitialized 'ti'.
 arch/x86/kernel/cpu/mcheck/mce.c:1178 mce_notify_process() error: we previously assumed 'mi' could be null (see line 1176)
 arch/x86/kernel/smpboot.c:716 do_boot_cpu() error: we previously assumed 'c_idle.idle' could be null (see line 685)
 block/blk-core.c:1419 blk_queue_bio() error: double lock 'irq:'
@@ -150,6 +152,33 @@ drivers/gpu/drm/drm_drv.c:97:9: error: bad integer constant expression
 drivers/gpu/drm/drm_drv.c:99:9: error: bad integer constant expression
 drivers/gpu/drm/drm_fb_helper.c:1282 drm_setup_crtcs() error: potential null dereference 'modes'.  (kcalloc returns null)
 drivers/gpu/drm/drm_fb_helper.c:1283 drm_setup_crtcs() error: potential null dereference 'crtcs'.  (kcalloc returns null)
+drivers/gpu/drm/drm_ioc32.c:1020:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1021:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1022:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1023:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1024:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1025:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1026:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1027:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1028:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1029:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1030:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1031:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1032:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1033:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1034:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1035:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1036:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1038:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1039:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1040:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1041:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1042:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1043:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1045:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1046:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1048:10: error: bad integer constant expression
+drivers/gpu/drm/drm_ioc32.c:1050:10: error: bad integer constant expression
 drivers/gpu/drm/i915/intel_display.c:5789 ironlake_crtc_mode_set() error: potential NULL dereference 'has_edp_encoder'.
 drivers/gpu/drm/i915/intel_sdvo.c:444:27: error: bad constant expression
 drivers/gpu/drm/i915/intel_sdvo.c:444:27: error: bad constant expression
@@ -319,9 +348,14 @@ drivers/net/ethernet/broadcom/tg3.c:9883:38: error: bad constant expression
 drivers/net/ethernet/broadcom/tg3.c:9883:38: error: bad constant expression
 drivers/net/ethernet/broadcom/tg3.c:9883:38: error: bad constant expression
 drivers/net/ethernet/broadcom/tg3.c:9883:38: error: bad constant expression
+drivers/net/ethernet/intel/e100.c:2706 e100_get_strings() error: memcpy() '*e100_gstrings_test' too small (32 vs 160)
+drivers/net/ethernet/intel/e100.c:2709 e100_get_strings() error: memcpy() '*e100_gstrings_stats' too small (32 vs 992)
 drivers/net/ethernet/intel/e1000/e1000_ethtool.c:1801 e1000_get_ethtool_stats() error: potential NULL dereference 'p'.
+drivers/net/ethernet/intel/e1000/e1000_ethtool.c:1814 e1000_get_strings() error: memcpy() '*e1000_gstrings_test' too small (32 vs 160)
 drivers/net/ethernet/intel/e1000/e1000_main.c:3022 e1000_tx_queue() error: potential NULL dereference 'tx_desc'.
 drivers/net/ethernet/intel/igbvf/netdev.c:2167 igbvf_tx_queue_adv() error: potential NULL dereference 'tx_desc'.
+drivers/net/ethernet/realtek/r8169.c:1863 rtl8169_get_strings() error: memcpy() '*rtl8169_gstrings' too small (32 vs 416)
+drivers/net/usb/hso.c:2864 hso_get_config_data() error: doing dma on the stack (config_data)
 drivers/net/usb/pegasus.c:1253 setup_pegasus_II() error: doing dma on the stack ((null))
 drivers/net/usb/pegasus.c:337 read_mii_word() error: doing dma on the stack (data)
 drivers/net/usb/pegasus.c:340 read_mii_word() error: doing dma on the stack (data)
@@ -362,7 +396,25 @@ drivers/net/wireless/ath/ath9k/btcoex.c:93 ath9k_hw_init_btcoex_hw() error: buff
 drivers/net/wireless/ath/ath9k_btcoex/btcoex.c:93 ath9k_btcoex_ath9k_hw_init_btcoex_hw() error: buffer overflow 'ah->hw_gen_timers.gen_timer_index' 32 <= 2009813776
 drivers/net/wireless/hostap/hostap_ioctl.c:189 prism2_ioctl_siwencode() error: we previously assumed '(*crypt)->ops' could be null (see line 151)
 drivers/net/wireless/hostap/hostap_main.c:394 hostap_set_encryption() error: testing array offset 'idx' after use.
+drivers/net/wireless/iwlegacy/4965-rs.c:1978 il4965_rs_rate_scale_perform() error: testing array offset 'high' after use.
+drivers/net/wireless/iwlegacy/4965-rs.c:1980 il4965_rs_rate_scale_perform() error: testing array offset 'low' after use.
+drivers/net/wireless/iwlegacy/4965-rs.c:2015 il4965_rs_rate_scale_perform() error: testing array offset 'low' after use.
+drivers/net/wireless/iwlegacy/4965-rs.c:2022 il4965_rs_rate_scale_perform() error: testing array offset 'low' after use.
+drivers/net/wireless/iwlegacy/4965-rs.c:2030 il4965_rs_rate_scale_perform() error: testing array offset 'high' after use.
+drivers/net/wireless/iwlegacy/4965-rs.c:2485 il4965_rs_fill_link_cmd() error: buffer overflow 'lq_cmd->rs_table' 16 <= 16
+drivers/net/wireless/iwlwifi/iwl-agn-rs.c:2475 rs_rate_scale_perform() error: testing array offset 'high' after use.
+drivers/net/wireless/iwlwifi/iwl-agn-rs.c:2477 rs_rate_scale_perform() error: testing array offset 'low' after use.
+drivers/net/wireless/iwlwifi/iwl-agn-rs.c:2517 rs_rate_scale_perform() error: testing array offset 'low' after use.
+drivers/net/wireless/iwlwifi/iwl-agn-rs.c:2551 rs_rate_scale_perform() error: testing array offset 'low' after use.
+drivers/net/wireless/iwlwifi/iwl-agn-rs.c:2559 rs_rate_scale_perform() error: testing array offset 'high' after use.
+drivers/net/wireless/iwlwifi/iwl-agn-rs.c:2768 rs_get_rate() error: we previously assumed 'lq_sta' could be null (see line 2759)
+drivers/net/wireless/iwlwifi/iwl-agn-rs.c:3042 rs_fill_link_cmd() error: buffer overflow 'lq_cmd->rs_table' 16 <= 16
+drivers/net/wireless/iwlwifi/iwl-agn-tx.c:443 iwlagn_tx_skb() error: buffer overflow 'priv->tid_data[sta_id]' 8 <= 8
+drivers/net/wireless/iwlwifi/iwl-scan.c:680 iwlagn_request_scan() error: we previously assumed 'vif' could be null (see line 646)
+drivers/net/wireless/iwlwifi/iwl-scan.c:844 iwlagn_request_scan() error: we previously assumed 'priv->scan_request' could be null (see line 743)
+drivers/net/wireless/libertas_tf/main.c:282 lbtf_tx_work() error: memcpy() 'txpd->tx_dest_addr_high' too small (2 vs 6)
 drivers/net/wireless/rt2x00/rt2x00firmware.c:115 rt2x00lib_load_firmware() error: we previously assumed 'rt2x00dev->fw' could be null (see line 105)
+drivers/net/wireless/rt2x00/rt2x00mac.c:534 rt2x00mac_set_key() error: memcpy() 'crypto.key' too small (16 vs 32)
 drivers/net/wireless/rtlwifi/cam.c:331 rtl_cam_del_entry() error: we previously assumed 'sta_addr' could be null (see line 327)
 drivers/net/wireless/rtlwifi/efuse.c:358 read_efuse() error: potential null dereference 'efuse_word'.  (kmalloc returns null)
 drivers/net/wireless/rtlwifi/efuse.c:358 read_efuse() error: we previously assumed 'efuse_word' could be null (see line 266)
@@ -373,10 +425,15 @@ drivers/scsi/scsi_sysfs.c:251 check_reset_type() error: strncmp() '"adapter"' to
 drivers/scsi/scsi_sysfs.c:253 check_reset_type() error: strncmp() '"firmware"' too small (9 vs 10)
 drivers/scsi/scsi_sysfs.c:86 check_set() error: strncmp() '"-"' too small (2 vs 20)
 drivers/spi/spi.c:1433 spi_write_then_read() error: double unlock 'mutex:&lock'
+drivers/staging/gdm72xx/usb_boot.c:120 download_image() error: doing dma on the stack ((null))
+drivers/staging/gdm72xx/usb_boot.c:273 em_wait_ack() error: doing dma on the stack ((null))
 drivers/staging/iio/industrialio-core.c:598 iio_device_add_channel_sysfs() error: buffer overflow 'iio_chan_info_postfix' 10 <= 15
+drivers/staging/iio/industrialio-core.c:598 iio_device_add_channel_sysfs() error: buffer overflow 'iio_chan_info_postfix' 10 <= 31
 drivers/staging/iio/industrialio-event.c:271 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_type_text' 5 <= 7
+drivers/staging/iio/industrialio-event.c:271 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_type_text' 5 <= 15
 drivers/staging/iio/industrialio-event.c:272 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_dir_text' 3 <= 3
 drivers/staging/iio/industrialio-event.c:309 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_type_text' 5 <= 7
+drivers/staging/iio/industrialio-event.c:309 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_type_text' 5 <= 15
 drivers/staging/iio/industrialio-event.c:310 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_dir_text' 3 <= 3
 drivers/staging/iio/inkern.c:217 iio_st_channel_get_all() error: double unlock 'mutex:&iio_map_list_lock'
 drivers/staging/zsmalloc/zsmalloc-main.c:386 alloc_zspage() error: potential NULL dereference 'first_page'.
@@ -396,6 +453,8 @@ drivers/usb/host/xhci-mem.c:827 xhci_free_tt_info() error: potentially derefenci
 drivers/usb/serial/usb-serial.c:111 get_free_serial() error: buffer overflow 'serial_table' 254 <= 254
 drivers/video/fbmem.c:1640 do_register_framebuffer() error: buffer overflow 'registered_fb' 32 <= 32
 drivers/video/fbmon.c:973 fb_edid_to_monspecs() error: potential null dereference 'specs->modedb'.  (fb_create_modedb returns null)
+fs/compat.c:678 do_ncp_super_data_conv() error: memmove() 'c_n->mounted_vol' too small (17 vs 29)
+fs/compat.c:678 do_ncp_super_data_conv() error: memmove() 'n->mounted_vol' too small (17 vs 29)
 fs/ecryptfs/keystore.c:1904 ecryptfs_parse_packet_set() error: potentially derefencing uninitialized 'candidate_auth_tok'.
 fs/ecryptfs/keystore.c:1905 ecryptfs_parse_packet_set() error: potentially derefencing uninitialized 'matching_auth_tok'.
 fs/ecryptfs/keystore.c:1908 ecryptfs_parse_packet_set() error: potential NULL dereference 'auth_tok_key'.
@@ -437,6 +496,7 @@ fs/notify/fsnotify.c:266 fsnotify() error: potential NULL dereference 'mnt'.
 fs/notify/fsnotify.c:282 fsnotify() error: potential NULL dereference 'vfsmount_node'.
 fs/pnode.c:248 propagate_mnt() error: 'child' dereferencing possible ERR_PTR()
 fs/pnode.c:254 propagate_mnt() error: 'child' dereferencing possible ERR_PTR()
+fs/proc/base.c:255 proc_pid_auxv() error: memcpy() 'mm->saved_auxv' too small (352 vs 4096)
 fs/proc/root.c:134 proc_mount() error: we previously assumed 'sb->s_root' could be null (see line 123)
 fs/pstore/platform.c:154 pstore_dump() error: double unlock 'spin_lock:&psinfo->buf_lock'
 fs/udf/namei.c:208 udf_find_entry() error: potential NULL dereference 'fibh->ebh'.
@@ -476,6 +536,8 @@ kernel/trace/trace_entries.h:292 ____ftrace_check_branch() error: potential NULL
 kernel/trace/trace_entries.h:58 ____ftrace_check_function() error: potential NULL dereference '__entry'.
 kernel/trace/trace_entries.h:75 ____ftrace_check_funcgraph_entry() error: potential NULL dereference '__entry'.
 kernel/trace/trace_entries.h:91 ____ftrace_check_funcgraph_exit() error: potential NULL dereference '__entry'.
+kernel/trace/trace_functions_graph.c:1256 print_graph_function_flags() error: potentially derefencing uninitialized 'field'.
+kernel/trace/trace_functions_graph.c:1262 print_graph_function_flags() error: potentially derefencing uninitialized 'field'.
 kernel/trace/trace_output.c:1017 trace_ctxwake_raw() error: potentially derefencing uninitialized 'field'.
 kernel/trace/trace_output.c:1054 trace_ctxwake_hex() error: potentially derefencing uninitialized 'field'.
 kernel/trace/trace_output.c:1088 trace_ctxwake_bin() error: potentially derefencing uninitialized 'field'.
@@ -546,8 +608,11 @@ net/netfilter/nfnetlink_log.c:467 __build_packet_message() error: we previously 
 net/netlink/genetlink.c:990 genlmsg_mcast() error: potential NULL dereference 'prev'.
 net/socket.c:1968 __sys_sendmsg() error: copy_from_user() 'ctl_buf' too small (32 vs 2147483647)
 net/socket.c:1968 __sys_sendmsg() error: copy_from_user() 'ctl_buf' too small (32 vs 2147483647)
+net/socket.c:1968 __sys_sendmsg() error: copy_from_user() 'ctl_buf' too small (36 vs 2147483647)
 net/socket.c:2005 __sys_sendmsg() error: sock_kfree_s() 'ctl_buf' too small (32 vs 2147483647)
+net/socket.c:2005 __sys_sendmsg() error: sock_kfree_s() 'ctl_buf' too small (36 vs 2147483647)
 net/unix/af_unix.c:908 unix_bind() error: potential NULL dereference 'dentry'.
+net/wireless/lib80211_crypt_ccmp.c:158 ccmp_init_blocks() error: memcpy() 'hdr->addr1' too small (6 vs 18)
 net/wireless/nl80211.c:3838 nl80211_trigger_scan() error: we previously assumed 'request->ssids' could be null (see line 3776)
 net/wireless/nl80211.c:4064 nl80211_start_sched_scan() error: we previously assumed 'request->ssids' could be null (see line 3989)
 net/wireless/reg.c:2192 __set_regdom() error: we previously assumed 'request_wiphy' could be null (see line 2141)
@@ -571,6 +636,7 @@ sound/pci/hda/hda_proc.c:445:18: error: bad integer constant expression
 sound/pci/hda/hda_proc.c:446:18: error: bad integer constant expression
 sound/pci/hda/hda_proc.c:447:18: error: bad integer constant expression
 sound/pci/hda/hda_proc.c:448:18: error: bad integer constant expression
+sound/pci/hda/patch_cmedia.c:653 patch_cmi9880() error: memcpy() 'cmi9880_dac_nids' too small (8 vs 10)
 sound/pci/hda/patch_hdmi.c:908 hdmi_pcm_open() error: potential NULL dereference 'per_cvt'.
 sound/pci/hda/patch_realtek.c:2440 alc_build_pcms() error: we previously assumed 'spec->adc_nids' could be null (see line 2355)
 sound/usb/midi.c:2135 snd_usbmidi_create() error: we previously assumed 'quirk' could be null (see line 2124)
