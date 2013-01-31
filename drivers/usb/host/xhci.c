@@ -911,6 +911,13 @@ int xhci_suspend(struct xhci_hcd *xhci)
 	}
 	xhci_clear_command_ring(xhci);
 
+	if (xhci->quirks & XHCI_RESET_ON_RESUME) {
+		xhci_info(xhci, "Will reset on resume, not saving xHC regs.\n");
+		spin_unlock_irq(&xhci->lock);
+		xhci_msix_sync_irqs(xhci);
+		return rc;
+	}
+
 	/* step 3: save registers */
 	xhci_save_registers(xhci);
 

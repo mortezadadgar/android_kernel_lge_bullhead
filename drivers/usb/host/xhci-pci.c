@@ -20,6 +20,7 @@
  * Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <linux/dmi.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
 #include <linux/module.h>
@@ -56,6 +57,18 @@ static int xhci_pci_reinit(struct xhci_hcd *xhci, struct pci_dev *pdev)
 static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 {
 	struct pci_dev		*pdev = to_pci_dev(dev);
+
+	/* TODO(jwerner): fix real problem and remove this */
+	static struct dmi_system_id dmi_stout[] = {
+		{
+			.ident = "ChromeOS Stout",
+			.matches = {DMI_MATCH(DMI_PRODUCT_NAME, "Stout")}
+		}, { }
+	};
+	if (dmi_check_system(dmi_stout)) {
+		xhci_warn(xhci, "Stout detected, using reset-on-resume hack\n");
+		xhci->quirks |= XHCI_RESET_ON_RESUME;
+	}
 
 	/* Look for vendor-specific quirks */
 	if (pdev->vendor == PCI_VENDOR_ID_FRESCO_LOGIC &&
