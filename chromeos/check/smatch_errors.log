@@ -179,6 +179,8 @@ drivers/gpu/drm/drm_ioc32.c:1045:10: error: bad integer constant expression
 drivers/gpu/drm/drm_ioc32.c:1046:10: error: bad integer constant expression
 drivers/gpu/drm/drm_ioc32.c:1048:10: error: bad integer constant expression
 drivers/gpu/drm/drm_ioc32.c:1050:10: error: bad integer constant expression
+drivers/gpu/drm/gma500/psb_intel_sdvo.c:432:27: error: bad constant expression
+drivers/gpu/drm/gma500/psb_intel_sdvo.c:433:38: error: bad constant expression
 drivers/gpu/drm/i915/intel_display.c:5789 ironlake_crtc_mode_set() error: potential NULL dereference 'has_edp_encoder'.
 drivers/gpu/drm/i915/intel_sdvo.c:444:27: error: bad constant expression
 drivers/gpu/drm/i915/intel_sdvo.c:444:27: error: bad constant expression
@@ -202,6 +204,37 @@ drivers/gpu/drm/i915/intel_sdvo.c:445:38: error: bad constant expression
 drivers/gpu/drm/i915/intel_sdvo.c:445:38: error: bad constant expression
 drivers/gpu/drm/i915/intel_sdvo.c:445:38: error: bad constant expression
 drivers/gpu/drm/i915/intel_sdvo.c:445:38: error: bad constant expression
+drivers/gpu/drm/nouveau/nouveau_connector.c:361 nouveau_connector_detect_lvds() error: potential null dereference 'nv_connector->edid'.  (kmalloc returns null)
+drivers/gpu/drm/nouveau/nouveau_display.c:293 nouveau_display_create() error: potential null dereference 'disp->vibrant_hue_property'.  (drm_property_create returns null)
+drivers/gpu/drm/nouveau/nouveau_display.c:299 nouveau_display_create() error: potential null dereference 'disp->color_vibrance_property'.  (drm_property_create returns null)
+drivers/gpu/drm/nouveau/nv50_display.c:864 nv50_display_unk20_handler() error: we previously assumed 'dcb' could be null (see line 776)
+drivers/gpu/drm/nouveau/nvc0_graph.c:286 nvc0_graph_context_new() error: we previously assumed 'priv->grctx_vals' could be null (see line 279)
+drivers/gpu/drm/radeon/atom.c:1242 atom_index_iio() error: potential null dereference 'ctx->iio'.  (kzalloc returns null)
+drivers/gpu/drm/radeon/atombios_crtc.c:661 atombios_adjust_pll() error: potential NULL dereference 'radeon_encoder'.
+drivers/gpu/drm/radeon/evergreen.c:1396:1: error: directive in argument list
+drivers/gpu/drm/radeon/evergreen.c:1398:1: error: directive in argument list
+drivers/gpu/drm/radeon/r200.c:271 r200_packet0_check() error: buffer overflow 'track->textures[i]->cube_info' 5 <= 34
+drivers/gpu/drm/radeon/r200.c:273 r200_packet0_check() error: buffer overflow 'track->textures[i]->cube_info' 5 <= 34
+drivers/gpu/drm/radeon/r600.c:2115:1: error: directive in argument list
+drivers/gpu/drm/radeon/r600.c:2117:1: error: directive in argument list
+drivers/gpu/drm/radeon/r600_cp.c:401:1: error: directive in argument list
+drivers/gpu/drm/radeon/r600_cp.c:403:1: error: directive in argument list
+drivers/gpu/drm/radeon/r600_cp.c:494:1: error: directive in argument list
+drivers/gpu/drm/radeon/r600_cp.c:496:1: error: directive in argument list
+drivers/gpu/drm/radeon/r600_cp.c:562:1: error: directive in argument list
+drivers/gpu/drm/radeon/r600_cp.c:564:1: error: directive in argument list
+drivers/gpu/drm/radeon/r600_cp.c:591:1: error: directive in argument list
+drivers/gpu/drm/radeon/r600_cp.c:593:1: error: directive in argument list
+drivers/gpu/drm/radeon/radeon_device.c:565 radeon_atombios_init() error: potential null dereference 'rdev->mode_info.atom_context'.  (atom_parse returns null)
+drivers/gpu/drm/radeon/radeon_legacy_tv.c:652 radeon_legacy_tv_mode_set() error: buffer overflow 'SLOPE_value' 5 <= 5
+drivers/gpu/drm/radeon/radeon_legacy_tv.c:653 radeon_legacy_tv_mode_set() error: buffer overflow 'SLOPE_value' 5 <= 5
+drivers/gpu/drm/radeon/radeon_legacy_tv.c:656 radeon_legacy_tv_mode_set() error: buffer overflow 'YCOEF_EN_value' 5 <= 5
+drivers/gpu/drm/radeon/radeon_legacy_tv.c:656 radeon_legacy_tv_mode_set() error: buffer overflow 'YCOEF_value' 5 <= 5
+drivers/gpu/drm/radeon/radeon_legacy_tv.c:657 radeon_legacy_tv_mode_set() error: buffer overflow 'SLOPE_value' 5 <= 5
+drivers/gpu/drm/radeon/radeon_legacy_tv.c:660 radeon_legacy_tv_mode_set() error: buffer overflow 'SLOPE_value' 5 <= 5
+drivers/gpu/drm/radeon/rv770.c:329:1: error: directive in argument list
+drivers/gpu/drm/radeon/rv770.c:331:1: error: directive in argument list
+drivers/gpu/drm/ttm/ttm_page_alloc.c:799 ttm_page_alloc_init() error: potential null dereference '_manager'.  (kzalloc returns null)
 drivers/input/misc/uinput.c:645 uinput_ioctl_handler() error: we previously assumed 'udev->dev' could be null (see line 629)
 drivers/input/touchscreen/atmel_mxt_ts.c:1181:26: error: bad constant expression
 drivers/input/touchscreen/atmel_mxt_ts.c:1181:26: error: bad constant expression
@@ -396,6 +429,11 @@ drivers/net/wireless/ath/ath9k/btcoex.c:93 ath9k_hw_init_btcoex_hw() error: buff
 drivers/net/wireless/ath/ath9k_btcoex/btcoex.c:93 ath9k_btcoex_ath9k_hw_init_btcoex_hw() error: buffer overflow 'ah->hw_gen_timers.gen_timer_index' 32 <= 2009813776
 drivers/net/wireless/hostap/hostap_ioctl.c:189 prism2_ioctl_siwencode() error: we previously assumed '(*crypt)->ops' could be null (see line 151)
 drivers/net/wireless/hostap/hostap_main.c:394 hostap_set_encryption() error: testing array offset 'idx' after use.
+drivers/net/wireless/ipw2x00/ipw2200.c:7704 ipw_associate() error: potential NULL dereference 'oldest'.
+drivers/net/wireless/ipw2x00/ipw2200.c:8280 is_duplicate_packet() error: potential NULL dereference 'entry'.
+drivers/net/wireless/ipw2x00/libipw_rx.c:1625 libipw_process_probe_response() error: potential NULL dereference 'oldest'.
+drivers/net/wireless/ipw2x00/libipw_tx.c:401 libipw_xmit() error: we previously assumed 'crypt->ops' could be null (see line 352)
+drivers/net/wireless/ipw2x00/libipw_wx.c:425 libipw_wx_set_encode() error: we previously assumed '(*crypt)->ops' could be null (see line 378)
 drivers/net/wireless/iwlegacy/4965-rs.c:1978 il4965_rs_rate_scale_perform() error: testing array offset 'high' after use.
 drivers/net/wireless/iwlegacy/4965-rs.c:1980 il4965_rs_rate_scale_perform() error: testing array offset 'low' after use.
 drivers/net/wireless/iwlegacy/4965-rs.c:2015 il4965_rs_rate_scale_perform() error: testing array offset 'low' after use.
@@ -412,6 +450,7 @@ drivers/net/wireless/iwlwifi/iwl-agn-rs.c:3042 rs_fill_link_cmd() error: buffer 
 drivers/net/wireless/iwlwifi/iwl-agn-tx.c:443 iwlagn_tx_skb() error: buffer overflow 'priv->tid_data[sta_id]' 8 <= 8
 drivers/net/wireless/iwlwifi/iwl-scan.c:680 iwlagn_request_scan() error: we previously assumed 'vif' could be null (see line 646)
 drivers/net/wireless/iwlwifi/iwl-scan.c:844 iwlagn_request_scan() error: we previously assumed 'priv->scan_request' could be null (see line 743)
+drivers/net/wireless/libertas/cfg.c:1098 lbs_associate() error: potential null dereference 'cmd'.  (kzalloc returns null)
 drivers/net/wireless/libertas_tf/main.c:282 lbtf_tx_work() error: memcpy() 'txpd->tx_dest_addr_high' too small (2 vs 6)
 drivers/net/wireless/rt2x00/rt2x00firmware.c:115 rt2x00lib_load_firmware() error: we previously assumed 'rt2x00dev->fw' could be null (see line 105)
 drivers/net/wireless/rt2x00/rt2x00mac.c:534 rt2x00mac_set_key() error: memcpy() 'crypto.key' too small (16 vs 32)
@@ -419,6 +458,8 @@ drivers/net/wireless/rtlwifi/cam.c:331 rtl_cam_del_entry() error: we previously 
 drivers/net/wireless/rtlwifi/efuse.c:358 read_efuse() error: potential null dereference 'efuse_word'.  (kmalloc returns null)
 drivers/net/wireless/rtlwifi/efuse.c:358 read_efuse() error: we previously assumed 'efuse_word' could be null (see line 266)
 drivers/net/wireless/rtlwifi/rtl8192c/phy_common.c:804 _rtl92c_phy_sw_chnl_step_by_step() error: potential NULL dereference 'currentcmd'.
+drivers/net/wireless/rtlwifi/rtl8192de/phy.c:2914 _rtl92d_phy_sw_chnl_step_by_step() error: potential NULL dereference 'currentcmd'.
+drivers/net/wireless/rtlwifi/rtl8192se/phy.c:403 _rtl92s_phy_sw_chnl_step_by_step() error: potential NULL dereference 'currentcmd'.
 drivers/pci/hotplug/pci_hotplug_core.c:467 __pci_hp_register() error: potential null dereference 'pci_slot'.  (pci_create_slot returns null)
 drivers/scsi/scsi_lib.c:2040 scsi_test_unit_ready() error: potential null dereference 'sshdr'.  (kzalloc returns null)
 drivers/scsi/scsi_sysfs.c:251 check_reset_type() error: strncmp() '"adapter"' too small (8 vs 10)

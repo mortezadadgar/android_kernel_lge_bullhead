@@ -54,10 +54,8 @@ for board in "${BOARDS[@]}"; do
 		echo "Error building kernel for ${board}" >&2
 		exit 1
 	fi
-
-	grep "Non-whitelisted error found:" "${LOG_FILE}" | \
-		grep -o "kernel/files.*" | \
-		sed -e 's:kernel/files/::' -e 's/"$//g' | \
+	grep "Non-whitelisted error found:" "${LOG_FILE}" | cut -f 2- -d: | \
+		sed -e 's/"$//g' | cut -f 2- -d '"' | \
 		sort > "${LOG_FILE}.new_errors"
 	LOG_FILES+=( "${LOG_FILE}.new_errors" )
 done
