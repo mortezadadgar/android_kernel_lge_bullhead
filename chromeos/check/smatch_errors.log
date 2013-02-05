@@ -470,13 +470,21 @@ drivers/staging/gdm72xx/usb_boot.c:120 download_image() error: doing dma on the 
 drivers/staging/gdm72xx/usb_boot.c:273 em_wait_ack() error: doing dma on the stack ((null))
 drivers/staging/iio/industrialio-core.c:598 iio_device_add_channel_sysfs() error: buffer overflow 'iio_chan_info_postfix' 10 <= 15
 drivers/staging/iio/industrialio-core.c:598 iio_device_add_channel_sysfs() error: buffer overflow 'iio_chan_info_postfix' 10 <= 31
-drivers/staging/iio/industrialio-event.c:271 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_type_text' 5 <= 7
 drivers/staging/iio/industrialio-event.c:271 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_type_text' 5 <= 15
+drivers/staging/iio/industrialio-event.c:271 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_type_text' 5 <= 7
 drivers/staging/iio/industrialio-event.c:272 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_dir_text' 3 <= 3
-drivers/staging/iio/industrialio-event.c:309 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_type_text' 5 <= 7
 drivers/staging/iio/industrialio-event.c:309 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_type_text' 5 <= 15
+drivers/staging/iio/industrialio-event.c:309 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_type_text' 5 <= 7
 drivers/staging/iio/industrialio-event.c:310 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_dir_text' 3 <= 3
 drivers/staging/iio/inkern.c:217 iio_st_channel_get_all() error: double unlock 'mutex:&iio_map_list_lock'
+drivers/staging/rts_pstor/ms.c:2248 ms_build_l2p_tbl() error: we previously assumed 'ms_card->segment' could be null (see line 2241)
+drivers/staging/rts_pstor/rtsx.c:607 rtsx_polling_thread() error: double lock 'mutex:&(dev->dev_mutex)'
+drivers/staging/rts_pstor/rtsx.c:612 rtsx_polling_thread() error: double unlock 'mutex:&dev->dev_mutex'
+drivers/staging/rts_pstor/sd.c:1152 sd_check_switch_mode() error: doing dma on the stack (buf)
+drivers/staging/rts_pstor/sd.c:2257 sd_check_wp_state() error: doing dma on the stack (buf)
+drivers/staging/rts_pstor/sd.c:992 sd_check_spec() error: doing dma on the stack (buf)
+drivers/staging/rts_pstor/xd.c:1267 xd_build_l2p_tbl() error: we previously assumed 'xd_card->zone' could be null (see line 1261)
+drivers/staging/rts_pstor/xd.c:850 xd_set_unused_block() error: we previously assumed 'zone->free_table' could be null (see line 836)
 drivers/staging/zsmalloc/zsmalloc-main.c:386 alloc_zspage() error: potential NULL dereference 'first_page'.
 drivers/staging/zsmalloc/zsmalloc-main.c:390 alloc_zspage() error: potentially derefencing uninitialized 'prev_page'.
 drivers/thermal/thermal_sys.c:580 thermal_add_hwmon_sysfs() error: snprintf() 'temp->temp_input.name' too small (16 vs 20)
