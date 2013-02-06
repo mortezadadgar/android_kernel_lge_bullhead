@@ -1355,13 +1355,9 @@ static void ironlake_edp_pll_off(struct intel_dp *intel_dp)
 }
 
 /* If the sink supports it, try to set the power state appropriately */
-void intel_dp_sink_dpms(struct intel_dp *intel_dp, int mode)
+static void intel_dp_do_sink_dpms(struct intel_dp *intel_dp, int mode)
 {
 	int ret, i;
-
-	/* Should have a valid DPCD by this point */
-	if (intel_dp->dpcd[DP_DPCD_REV] < 0x11)
-		return;
 
 	if (mode != DRM_MODE_DPMS_ON) {
 		ret = intel_dp_aux_native_write_1(intel_dp, DP_SET_POWER,
@@ -1382,6 +1378,16 @@ void intel_dp_sink_dpms(struct intel_dp *intel_dp, int mode)
 			msleep(1);
 		}
 	}
+}
+
+/* If we have a valid DPCD, set the power state. */
+void intel_dp_sink_dpms(struct intel_dp *intel_dp, int mode)
+{
+	/* Should have a valid DPCD by this point */
+	if (intel_dp->dpcd[DP_DPCD_REV] < 0x11)
+		return;
+
+	intel_dp_do_sink_dpms(intel_dp, mode);
 }
 
 static bool intel_dp_get_hw_state(struct intel_encoder *encoder,
@@ -3020,13 +3026,22 @@ intel_dp_detect(struct drm_connector *connector, bool force)
 
 	intel_dp->has_audio = false;
 
+	/* Ensure the sink is awake for DPCD/EDID reads. */
+	if (connector->dpms != DRM_MODE_DPMS_ON) {
+		/* Bypass DPCD check, since we obtain it during detection. */
+		intel_dp_do_sink_dpms(intel_dp, DRM_MODE_DPMS_ON);
+	}
+
 	if (HAS_PCH_SPLIT(dev))
 		status = ironlake_dp_detect(intel_dp);
 	else
 		status = g4x_dp_detect(intel_dp);
 
-	if (status != connector_status_connected)
+	if (status != connector_status_connected) {
+		if (connector->dpms != DRM_MODE_DPMS_ON)
+			intel_dp_do_sink_dpms(intel_dp, connector->dpms);
 		return status;
+	}
 
 	intel_dp_probe_oui(intel_dp);
 
@@ -3042,6 +3057,11 @@ intel_dp_detect(struct drm_connector *connector, bool force)
 
 	if (intel_encoder->type != INTEL_OUTPUT_EDP)
 		intel_encoder->type = INTEL_OUTPUT_DISPLAYPORT;
+
+	/* Restore the sink state */
+	if (connector->dpms != DRM_MODE_DPMS_ON)
+		intel_dp_do_sink_dpms(intel_dp, connector->dpms);
+
 	return connector_status_connected;
 }
 
