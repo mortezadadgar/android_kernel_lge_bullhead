@@ -80,4 +80,11 @@ static inline int tegra_cpuquiet_init(void)
 
 u32 tegra_fuse_readl(unsigned long offset);
 
+struct gpu_info {
+	int num_pixel_pipes;
+	int num_alus_per_pixel_pipe;
+};
+
+void tegra_gpu_get_info(struct gpu_info *pinfo);
+
 #endif /* __LINUX_TEGRA_SOC_H_ */

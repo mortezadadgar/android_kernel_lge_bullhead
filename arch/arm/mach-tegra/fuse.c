@@ -229,3 +229,15 @@ unsigned long long tegra_chip_uid(void)
 	return (hi << 32ull) | lo;
 }
 EXPORT_SYMBOL(tegra_chip_uid);
+
+void tegra_gpu_get_info(struct gpu_info *pinfo)
+{
+	if (tegra_chip_id == TEGRA114) {
+		pinfo->num_pixel_pipes = 4;
+		pinfo->num_alus_per_pixel_pipe = 3;
+	} else {
+		pinfo->num_pixel_pipes = 1;
+		pinfo->num_alus_per_pixel_pipe = 1;
+	}
+}
+EXPORT_SYMBOL(tegra_gpu_get_info);
