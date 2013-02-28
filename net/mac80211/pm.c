@@ -79,7 +79,7 @@ int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 			return err;
 		} else if (err > 0) {
 			WARN_ON(err != 1);
-			local->wowlan = false;
+			return err;
 		} else {
 			goto suspend;
 		}
