@@ -214,6 +214,9 @@ static void sdhci_tegra_parse_dt(struct device *dev)
 
 	tegra_host->power_gpio = of_get_named_gpio(np, "power-gpios", 0);
 	mmc_of_parse(host->mmc);
+
+	if (of_get_property(np, "no-1-8-v", NULL))
+		host->quirks2 |= SDHCI_QUIRK2_NO_1_8_V;
 }
 
 static int sdhci_tegra_probe(struct platform_device *pdev)
