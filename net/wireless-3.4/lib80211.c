@@ -54,9 +54,7 @@ const char *print_ssid(char *buf, const char *ssid, u8 ssid_len)
 	ssid_len = min_t(u8, ssid_len, IEEE80211_MAX_SSID_LEN);
 	while (ssid_len--) {
 		if (isprint(*s)) {
-			if (*s != '[' && *s != ']')
-				*d++ = *s;
-			s++;
+			*d++ = *s++;
 			continue;
 		}
 

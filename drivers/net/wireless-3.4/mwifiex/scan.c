@@ -1700,13 +1700,6 @@ int mwifiex_ret_802_11_scan(struct mwifiex_private *priv,
 			chan = ieee80211_get_channel(priv->wdev->wiphy, freq);
 
 			if (chan && !(chan->flags & IEEE80211_CHAN_DISABLED)) {
-				DECLARE_SSID_BUF(ssid_buf);
-
-				wiphy_info(priv->wdev->wiphy,
-					   "inform bss: %pM [SSID=%s]\n", bssid,
-					   print_ssid(ssid_buf, ie_buf + 2,
-						      *(ie_buf + 1)));
-
 				bss = cfg80211_inform_bss(priv->wdev->wiphy,
 					      chan, bssid, timestamp,
 					      cap_info_bitmap, beacon_period,
