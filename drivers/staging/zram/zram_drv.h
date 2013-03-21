@@ -17,6 +17,7 @@
 
 #include <linux/spinlock.h>
 #include <linux/mutex.h>
+#include <linux/atomic.h>
 
 #include "../zsmalloc/zsmalloc.h"
 
@@ -106,6 +107,7 @@ struct zram {
 	 */
 	u64 disksize;	/* bytes */
 
+	atomic_t nr_opens;	/* number of active file handles */
 	struct zram_stats stats;
 };
 
