@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google, Inc.
+ * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -30,5 +31,22 @@ struct tegra_emc_pdata {
 	int num_tables;
 	struct tegra_emc_table *tables;
 };
+
+
+#ifdef CONFIG_TEGRA114_EMC
+long tegra114_emc_round_rate(unsigned long rate);
+int tegra114_emc_set_rate(unsigned long rate);
+unsigned long tegra114_emc_get_rate(void);
+struct clk *tegra114_emc_predict_parent(unsigned long rate);
+void tegra114_emc_timing_invalidate(void);
+#else
+static inline long tegra114_emc_round_rate(unsigned long rate)
+{ return -ENODEV; }
+static inline int tegra114_emc_set_rate(unsigned long rate) { return -ENODEV; }
+static inline unsigned long tegra114_emc_get_rate(void) { return -ENODEV; }
+static inline struct clk *tegra114_emc_predict_parent(unsigned long rate)
+{ return ERR_PTR(-ENODEV); }
+static inline void tegra114_emc_timing_invalidate(void) { return; };
+#endif
 
 #endif

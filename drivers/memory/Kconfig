@@ -48,4 +48,12 @@ config TEGRA114_MC
 	  This driver is for the Memory Controller(MC) module available
 	  in Tegra114 SoCs.
 
+config TEGRA114_EMC
+	bool "Tegra114 External Memory Controller(EMC) driver"
+	default y
+	depends on TEGRA114_MC
+	help
+	  This driver is for the External Memory Controller(EMC) module
+	  available in Tegra114 SoCs.
+
 endif
