@@ -717,6 +717,10 @@
 		status = "okay";
 	};
 
+	pwm {
+		status = "okay";
+	};
+
 	i2c@7000c000 {
 		status = "okay";
 		clock-frequency = <100000>;
@@ -1048,6 +1052,14 @@
 		};
 	};
 
+	backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm 1 5000000>;
+		brightness-levels = <0 4 8 16 32 64 128 255>;
+		default-brightness-level = <6>;
+		enable-supply = <&lcd_bl_en_reg>;
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 
@@ -1108,6 +1120,7 @@
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
 			enable-active-high;
+			regulator-boot-on;
 			gpio = <&gpio 58 0>; /* GPIO PH2 */
 		};
 
