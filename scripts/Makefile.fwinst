@@ -36,14 +36,6 @@ $(INSTALL_FW_PATH)/$$(%): install-all-dirs
 install-all-dirs: $(installed-fw-dirs)
 	@true
 
-
-# hack for make-3.82 support; without this (admittedly daft) rule,
-# firmware installation fails since it can't find a matching
-# rule for $(INSTALL_FW_PATH/..
-# leave the hack in place till the root cause is fully found, without
-# it make-3.82 cannot be used.
-$(INSTALL_FW_PATH)/./: $(INSTALL_FW_PATH)
-
 quiet_cmd_install = INSTALL $(subst $(srctree)/,,$@)
       cmd_install = $(INSTALL) -m0644 $< $@
 
