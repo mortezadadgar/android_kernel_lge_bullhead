@@ -2351,6 +2351,8 @@ void tegra114_clock_deassert_dfll_dvco_reset(void)
 EXPORT_SYMBOL(tegra114_clock_deassert_dfll_dvco_reset);
 
 static struct tegra_clk_duplicate tegra_clk_duplicates[] = {
+	TEGRA_CLK_DUPLICATE(hdmi, "tegradc.0", "hdmi"),
+	TEGRA_CLK_DUPLICATE(hdmi, "tegradc.1", "hdmi"),
 	TEGRA_CLK_DUPLICATE(usbd, "utmip-pad", NULL),
 	TEGRA_CLK_DUPLICATE(usbd, "tegra-ehci.0", NULL),
 	TEGRA_CLK_DUPLICATE(usbd, "tegra-otg", NULL),
