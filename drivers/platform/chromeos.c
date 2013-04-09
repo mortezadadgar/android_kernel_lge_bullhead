@@ -127,6 +127,8 @@ static struct ramoops_platform_data chromeos_ramoops_data = {
 	.mem_size		= CONFIG_CHROMEOS_RAMOOPS_RAM_SIZE,
 	.mem_address		= CONFIG_CHROMEOS_RAMOOPS_RAM_START,
 	.record_size		= CONFIG_CHROMEOS_RAMOOPS_RECORD_SIZE,
+	.console_size		= CONFIG_CHROMEOS_RAMOOPS_RECORD_SIZE,
+	.ftrace_size		= CONFIG_CHROMEOS_RAMOOPS_RECORD_SIZE,
 	.dump_oops		= CONFIG_CHROMEOS_RAMOOPS_DUMP_OOPS,
 };
 
