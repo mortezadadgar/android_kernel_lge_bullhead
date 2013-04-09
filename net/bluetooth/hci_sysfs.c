@@ -7,6 +7,7 @@
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
 
+static int acl_conn_index;
 static struct class *bt_class;
 
 struct dentry *bt_debugfs;
@@ -118,7 +119,9 @@ void hci_conn_add_sysfs(struct hci_conn *conn)
 
 	BT_DBG("conn %p", conn);
 
-	dev_set_name(&conn->dev, "%s:%d", hdev->name, conn->handle);
+	acl_conn_index++;
+	dev_set_name(&conn->dev, "%s:%d:%d", hdev->name, conn->handle,
+		     acl_conn_index);
 
 	if (device_add(&conn->dev) < 0) {
 		BT_ERR("Failed to register connection device");
