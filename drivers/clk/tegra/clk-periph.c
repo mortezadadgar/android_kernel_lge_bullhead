@@ -128,6 +128,14 @@ void tegra_periph_reset_deassert(struct clk *c)
 	struct tegra_clk_periph *periph = to_clk_periph(hw);
 	struct tegra_clk_periph_gate *gate;
 
+	if (periph->magic == TEGRA_CLK_SHARED_MAGIC) {
+		struct tegra_clk_cbus_shared *shared = to_clk_cbus_shared(hw);
+		struct clk *client_clk = shared->u.shared_bus_user.client;
+
+		tegra_periph_reset_deassert(client_clk);
+		return;
+	}
+
 	if (periph->magic != TEGRA_CLK_PERIPH_MAGIC) {
 		gate = to_clk_periph_gate(hw);
 		if (gate->magic != TEGRA_CLK_PERIPH_GATE_MAGIC) {
@@ -147,6 +155,14 @@ void tegra_periph_reset_assert(struct clk *c)
 	struct clk_hw *hw = __clk_get_hw(c);
 	struct tegra_clk_periph *periph = to_clk_periph(hw);
 	struct tegra_clk_periph_gate *gate;
+
+	if (periph->magic == TEGRA_CLK_SHARED_MAGIC) {
+		struct tegra_clk_cbus_shared *shared = to_clk_cbus_shared(hw);
+		struct clk *client_clk = shared->u.shared_bus_user.client;
+
+		tegra_periph_reset_assert(client_clk);
+		return;
+	}
 
 	if (periph->magic != TEGRA_CLK_PERIPH_MAGIC) {
 		gate = to_clk_periph_gate(hw);
