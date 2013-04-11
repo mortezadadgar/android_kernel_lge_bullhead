@@ -1338,7 +1338,6 @@ nearly_same_freq(unsigned int cur_freq, unsigned int freq_required)
 
 	if (freq_required > cur_freq)
 		return delta < sysctl_sched_freq_inc_notify;
-
 	delta = -delta;
 
 	return delta < sysctl_sched_freq_dec_notify;
@@ -3126,6 +3125,8 @@ static int ttwu_remote(struct task_struct *p, int wake_flags)
 
 	rq = __task_rq_lock(p);
 	if (p->on_rq) {
+                /* check_preempt_curr() may use rq clock */
+                update_rq_clock(rq);
 		ttwu_do_wakeup(rq, p, wake_flags);
 		ret = 1;
 	}
