@@ -1,4 +1,13 @@
 #
+# This is our hook to build with another wifi stack version. For example
+# set WIFIVERSION="-3.4" in the environment to build with the 3.4 stack.
+#
+
+config WIFIVERSION
+	string
+	option env="WIFIVERSION"
+
+#
 # Network device configuration
 #
 
@@ -299,7 +308,7 @@ source "drivers/s390/net/Kconfig"
 
 source "drivers/net/usb/Kconfig"
 
-source "drivers/net/wireless/Kconfig"
+source "drivers/net/wireless$WIFIVERSION/Kconfig"
 
 source "drivers/net/wimax/Kconfig"
 

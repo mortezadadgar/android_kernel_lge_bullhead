@@ -269,4 +269,12 @@ extern int rndis_rx_fixup(struct usbnet *dev, struct sk_buff *skb);
 extern struct sk_buff *
 rndis_tx_fixup(struct usbnet *dev, struct sk_buff *skb, gfp_t flags);
 
+
+/* These are needed for 3.4 building on 3.8 kernel, since the shared
+ * USB_NET_RNDIS_HOST driver has changed, and include files with it.
+ */
+#define RNDIS_OID_802_3_PERMANENT_ADDRESS	0x01010101
+#define RNDIS_OID_GEN_PHYSICAL_MEDIUM		0x00010202
+#define RNDIS_OID_GEN_CURRENT_PACKET_FILTER	0x0001010E
+
 #endif	/* __LINUX_USB_RNDIS_HOST_H */

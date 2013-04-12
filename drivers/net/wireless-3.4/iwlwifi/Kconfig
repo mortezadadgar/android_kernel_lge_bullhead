@@ -63,7 +63,7 @@ config IWLWIFI_DEBUG
 		  % echo 0x43fff > /sys/module/iwlwifi/parameters/debug
 
 	  You can find the list of debug mask values in:
-		  drivers/net/wireless/iwlwifi/iwl-debug.h
+		  drivers/net/wireless-3.4/iwlwifi/iwl-debug.h
 
 	  If this is your first time using this driver, you should say Y here
 	  as the debug information can assist others in helping you resolve
