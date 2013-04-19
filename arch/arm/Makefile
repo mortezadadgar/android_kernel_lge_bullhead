@@ -40,7 +40,7 @@ KBUILD_CFLAGS	+=-fno-omit-frame-pointer -mapcs -mno-sched-prolog
 endif
 
 ifeq ($(CONFIG_CC_STACKPROTECTOR),y)
-KBUILD_CFLAGS	+=-fstack-protector
+KBUILD_CFLAGS	+=-fstack-protector-strong
 endif
 
 ifeq ($(CONFIG_CPU_BIG_ENDIAN),y)
