@@ -6,11 +6,12 @@
 #include "core.h"
 #include "trace.h"
 
-static inline int rdev_suspend(struct cfg80211_registered_device *rdev)
+static inline int rdev_suspend(struct cfg80211_registered_device *rdev,
+			       struct cfg80211_wowlan *wowlan)
 {
 	int ret;
-	trace_rdev_suspend(&rdev->wiphy, rdev->wowlan);
-	ret = rdev->ops->suspend(&rdev->wiphy, rdev->wowlan);
+	trace_rdev_suspend(&rdev->wiphy, wowlan);
+	ret = rdev->ops->suspend(&rdev->wiphy, wowlan);
 	trace_rdev_return_int(&rdev->wiphy, ret);
 	return ret;
 }
@@ -515,11 +516,12 @@ static inline void rdev_rfkill_poll(struct cfg80211_registered_device *rdev)
 
 #ifdef CONFIG_NL80211_TESTMODE
 static inline int rdev_testmode_cmd(struct cfg80211_registered_device *rdev,
+				    struct wireless_dev *wdev,
 				    void *data, int len)
 {
 	int ret;
-	trace_rdev_testmode_cmd(&rdev->wiphy);
-	ret = rdev->ops->testmode_cmd(&rdev->wiphy, data, len);
+	trace_rdev_testmode_cmd(&rdev->wiphy, wdev);
+	ret = rdev->ops->testmode_cmd(&rdev->wiphy, wdev, data, len);
 	trace_rdev_return_int(&rdev->wiphy, ret);
 	return ret;
 }

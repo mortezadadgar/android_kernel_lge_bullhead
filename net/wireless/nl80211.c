@@ -1265,6 +1265,15 @@ static int nl80211_send_wiphy(struct sk_buff *msg, u32 portid, u32 seq, int flag
 		    dev->wiphy.ht_capa_mod_mask))
 		goto nla_put_failure;
 
+	if (dev->wiphy.extended_capabilities &&
+	    (nla_put(msg, NL80211_ATTR_EXT_CAPA,
+		     dev->wiphy.extended_capabilities_len,
+		     dev->wiphy.extended_capabilities) ||
+	     nla_put(msg, NL80211_ATTR_EXT_CAPA_MASK,
+		     dev->wiphy.extended_capabilities_len,
+		     dev->wiphy.extended_capabilities_mask)))
+		goto nla_put_failure;
+
 	return genlmsg_end(msg, hdr);
 
  nla_put_failure:
@@ -1274,7 +1283,7 @@ static int nl80211_send_wiphy(struct sk_buff *msg, u32 portid, u32 seq, int flag
 
 static int nl80211_dump_wiphy(struct sk_buff *skb, struct netlink_callback *cb)
 {
-	int idx = 0;
+	int idx = 0, ret;
 	int start = cb->args[0];
 	struct cfg80211_registered_device *dev;
 
@@ -1284,9 +1293,29 @@ static int nl80211_dump_wiphy(struct sk_buff *skb, struct netlink_callback *cb)
 			continue;
 		if (++idx <= start)
 			continue;
-		if (nl80211_send_wiphy(skb, NETLINK_CB(cb->skb).portid,
-				       cb->nlh->nlmsg_seq, NLM_F_MULTI,
-				       dev) < 0) {
+		ret = nl80211_send_wiphy(skb, NETLINK_CB(cb->skb).portid,
+					 cb->nlh->nlmsg_seq, NLM_F_MULTI,
+					 dev);
+		if (ret < 0) {
+			/*
+			 * If sending the wiphy data didn't fit (ENOBUFS or
+			 * EMSGSIZE returned), this SKB is still empty (so
+			 * it's not too big because another wiphy dataset is
+			 * already in the skb) and we've not tried to adjust
+			 * the dump allocation yet ... then adjust the alloc
+			 * size to be bigger, and return 1 but with the empty
+			 * skb. This results in an empty message being RX'ed
+			 * in userspace, but that is ignored.
+			 *
+			 * We can then retry with the larger buffer.
+			 */
+			if ((ret == -ENOBUFS || ret == -EMSGSIZE) &&
+			    !skb->len &&
+			    cb->min_dump_alloc < 4096) {
+				cb->min_dump_alloc = 4096;
+				mutex_unlock(&cfg80211_mutex);
+				return 1;
+			}
 			idx--;
 			break;
 		}
@@ -1303,7 +1332,7 @@ static int nl80211_get_wiphy(struct sk_buff *skb, struct genl_info *info)
 	struct sk_buff *msg;
 	struct cfg80211_registered_device *dev = info->user_ptr[0];
 
-	msg = nlmsg_new(NLMSG_DEFAULT_SIZE, GFP_KERNEL);
+	msg = nlmsg_new(4096, GFP_KERNEL);
 	if (!msg)
 		return -ENOMEM;
 
@@ -4811,6 +4840,7 @@ static int nl80211_send_bss(struct sk_buff *msg, struct netlink_callback *cb,
 	const struct cfg80211_bss_ies *ies;
 	void *hdr;
 	struct nlattr *bss;
+	bool tsf = false;
 
 	ASSERT_WDEV_LOCK(wdev);
 
@@ -4834,22 +4864,24 @@ static int nl80211_send_bss(struct sk_buff *msg, struct netlink_callback *cb,
 
 	rcu_read_lock();
 	ies = rcu_dereference(res->ies);
-	if (ies && ies->len && nla_put(msg, NL80211_BSS_INFORMATION_ELEMENTS,
-				       ies->len, ies->data)) {
-		rcu_read_unlock();
-		goto nla_put_failure;
+	if (ies) {
+		if (nla_put_u64(msg, NL80211_BSS_TSF, ies->tsf))
+			goto fail_unlock_rcu;
+		tsf = true;
+		if (ies->len && nla_put(msg, NL80211_BSS_INFORMATION_ELEMENTS,
+					ies->len, ies->data))
+			goto fail_unlock_rcu;
 	}
 	ies = rcu_dereference(res->beacon_ies);
-	if (ies && ies->len && nla_put(msg, NL80211_BSS_BEACON_IES,
-				       ies->len, ies->data)) {
-		rcu_read_unlock();
-		goto nla_put_failure;
+	if (ies) {
+		if (!tsf && nla_put_u64(msg, NL80211_BSS_TSF, ies->tsf))
+			goto fail_unlock_rcu;
+		if (ies->len && nla_put(msg, NL80211_BSS_BEACON_IES,
+					ies->len, ies->data))
+			goto fail_unlock_rcu;
 	}
 	rcu_read_unlock();
 
-	if (res->tsf &&
-	    nla_put_u64(msg, NL80211_BSS_TSF, res->tsf))
-		goto nla_put_failure;
 	if (res->beacon_interval &&
 	    nla_put_u16(msg, NL80211_BSS_BEACON_INTERVAL, res->beacon_interval))
 		goto nla_put_failure;
@@ -4894,6 +4926,8 @@ static int nl80211_send_bss(struct sk_buff *msg, struct netlink_callback *cb,
 
 	return genlmsg_end(msg, hdr);
 
+ fail_unlock_rcu:
+	rcu_read_unlock();
  nla_put_failure:
 	genlmsg_cancel(msg, hdr);
 	return -EMSGSIZE;
@@ -5612,19 +5646,30 @@ static struct genl_multicast_group nl80211_testmode_mcgrp = {
 static int nl80211_testmode_do(struct sk_buff *skb, struct genl_info *info)
 {
 	struct cfg80211_registered_device *rdev = info->user_ptr[0];
+	struct wireless_dev *wdev =
+		__cfg80211_wdev_from_attrs(genl_info_net(info), info->attrs);
 	int err;
+
+	if (!rdev->ops->testmode_cmd)
+		return -EOPNOTSUPP;
+
+	if (IS_ERR(wdev)) {
+		err = PTR_ERR(wdev);
+		if (err != -EINVAL)
+			return err;
+		wdev = NULL;
+	} else if (wdev->wiphy != &rdev->wiphy) {
+		return -EINVAL;
+	}
 
 	if (!info->attrs[NL80211_ATTR_TESTDATA])
 		return -EINVAL;
 
-	err = -EOPNOTSUPP;
-	if (rdev->ops->testmode_cmd) {
-		rdev->testmode_info = info;
-		err = rdev_testmode_cmd(rdev,
+	rdev->testmode_info = info;
+	err = rdev_testmode_cmd(rdev, wdev,
 				nla_data(info->attrs[NL80211_ATTR_TESTDATA]),
 				nla_len(info->attrs[NL80211_ATTR_TESTDATA]));
-		rdev->testmode_info = NULL;
-	}
+	rdev->testmode_info = NULL;
 
 	return err;
 }

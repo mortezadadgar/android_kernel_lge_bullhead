@@ -8,7 +8,6 @@
 #include <linux/mutex.h>
 #include <linux/list.h>
 #include <linux/netdevice.h>
-#include <linux/kref.h>
 #include <linux/rbtree.h>
 #include <linux/debugfs.h>
 #include <linux/rfkill.h>
@@ -134,9 +133,10 @@ static inline void assert_cfg80211_lock(void)
 
 struct cfg80211_internal_bss {
 	struct list_head list;
+	struct list_head hidden_list;
 	struct rb_node rbn;
 	unsigned long ts;
-	struct kref ref;
+	unsigned long refcount;
 	atomic_t hold;
 
 	/* must be last because of priv member */
@@ -480,6 +480,9 @@ int cfg80211_validate_beacon_int(struct cfg80211_registered_device *rdev,
 
 void cfg80211_update_iface_num(struct cfg80211_registered_device *rdev,
 			       enum nl80211_iftype iftype, int num);
+
+void cfg80211_leave(struct cfg80211_registered_device *rdev,
+		    struct wireless_dev *wdev);
 
 #define CFG80211_MAX_NUM_DIFFERENT_CHANNELS 10
 

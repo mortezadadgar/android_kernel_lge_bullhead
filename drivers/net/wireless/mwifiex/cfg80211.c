@@ -1327,6 +1327,7 @@ static int mwifiex_cfg80211_start_ap(struct wiphy *wiphy,
 	}
 
 	mwifiex_set_ht_params(priv, bss_cfg, params);
+	mwifiex_set_wmm_params(priv, bss_cfg, params);
 
 	if (params->inactivity_timeout > 0) {
 		/* sta_ao_timer/ps_sta_ao_timer is in unit of 100ms */
@@ -1431,7 +1432,7 @@ static int mwifiex_cfg80211_inform_ibss_bss(struct mwifiex_private *priv)
 	bss = cfg80211_inform_bss(priv->wdev->wiphy, chan,
 				  bss_info.bssid, 0, WLAN_CAPABILITY_IBSS,
 				  0, ie_buf, ie_len, 0, GFP_KERNEL);
-	cfg80211_put_bss(bss);
+	cfg80211_put_bss(priv->wdev->wiphy, bss);
 	memcpy(priv->cfg_bssid, bss_info.bssid, ETH_ALEN);
 
 	return 0;
@@ -1606,17 +1607,13 @@ mwifiex_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 			 struct cfg80211_connect_params *sme)
 {
 	struct mwifiex_private *priv = mwifiex_netdev_get_priv(dev);
-	int ret = 0;
+	int ret;
 
-	if (priv->bss_mode == NL80211_IFTYPE_ADHOC) {
-		wiphy_err(wiphy, "received infra assoc request "
-				"when station is in ibss mode\n");
-		goto done;
-	}
-
-	if (priv->bss_mode == NL80211_IFTYPE_AP) {
-		wiphy_err(wiphy, "skip association request for AP interface\n");
-		goto done;
+	if (priv->bss_mode != NL80211_IFTYPE_STATION) {
+		wiphy_err(wiphy,
+			  "%s: reject infra assoc request in non-STA mode\n",
+			  dev->name);
+		return -EINVAL;
 	}
 
 	wiphy_dbg(wiphy, "info: Trying to associate to %s and bssid %pM\n",
@@ -1624,7 +1621,6 @@ mwifiex_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 
 	ret = mwifiex_cfg80211_assoc(priv, sme->ssid_len, sme->ssid, sme->bssid,
 				     priv->bss_mode, sme->channel, sme, 0);
-done:
 	if (!ret) {
 		cfg80211_connect_result(priv->netdev, priv->cfg_bssid, NULL, 0,
 					NULL, 0, WLAN_STATUS_SUCCESS,
@@ -1821,10 +1817,8 @@ mwifiex_cfg80211_scan(struct wiphy *wiphy,
 
 	priv->user_scan_cfg = kzalloc(sizeof(struct mwifiex_user_scan_cfg),
 				      GFP_KERNEL);
-	if (!priv->user_scan_cfg) {
-		dev_err(priv->adapter->dev, "failed to alloc scan_req\n");
+	if (!priv->user_scan_cfg)
 		return -ENOMEM;
-	}
 
 	priv->scan_request = request;
 
@@ -2061,10 +2055,9 @@ struct wireless_dev *mwifiex_add_virtual_intf(struct wiphy *wiphy,
 
 		/* At start-up, wpa_supplicant tries to change the interface
 		 * to NL80211_IFTYPE_STATION if it is not managed mode.
-		 * So, we initialize it to STA mode.
 		 */
-		wdev->iftype = NL80211_IFTYPE_STATION;
-		priv->bss_mode = NL80211_IFTYPE_STATION;
+		wdev->iftype = NL80211_IFTYPE_P2P_CLIENT;
+		priv->bss_mode = NL80211_IFTYPE_P2P_CLIENT;
 
 		/* Setting bss_type to P2P tells firmware that this interface
 		 * is receiving P2P peers found during find phase and doing
@@ -2077,6 +2070,9 @@ struct wireless_dev *mwifiex_add_virtual_intf(struct wiphy *wiphy,
 		priv->bss_role = MWIFIEX_BSS_ROLE_STA;
 		priv->bss_started = 0;
 		priv->bss_num = 0;
+
+		if (mwifiex_cfg80211_init_p2p_client(priv))
+			return ERR_PTR(-EFAULT);
 
 		break;
 	default:
@@ -2154,9 +2150,6 @@ int mwifiex_del_virtual_intf(struct wiphy *wiphy, struct wireless_dev *wdev)
 
 	if (wdev->netdev->reg_state == NETREG_REGISTERED)
 		unregister_netdevice(wdev->netdev);
-
-	if (wdev->netdev->reg_state == NETREG_UNREGISTERED)
-		free_netdev(wdev->netdev);
 
 	/* Clear the priv in adapter */
 	priv->netdev = NULL;
@@ -2249,6 +2242,7 @@ int mwifiex_register_cfg80211(struct mwifiex_adapter *adapter)
 	wiphy->signal_type = CFG80211_SIGNAL_TYPE_MBM;
 	wiphy->flags |= WIPHY_FLAG_HAVE_AP_SME |
 			WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD |
+			WIPHY_FLAG_AP_UAPSD |
 			WIPHY_FLAG_CUSTOM_REGULATORY |
 			WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL;
 

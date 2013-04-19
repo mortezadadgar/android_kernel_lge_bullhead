@@ -76,6 +76,10 @@ bool cfg80211_chandef_valid(const struct cfg80211_chan_def *chandef)
 			return false;
 		if (!chandef->center_freq2)
 			return false;
+		/* adjacent is not allowed -- that's a 160 MHz channel */
+		if (chandef->center_freq1 - chandef->center_freq2 == 80 ||
+		    chandef->center_freq2 - chandef->center_freq1 == 80)
+			return false;
 		break;
 	case NL80211_CHAN_WIDTH_80:
 		if (chandef->center_freq1 != control_freq + 30 &&
@@ -249,6 +253,7 @@ bool cfg80211_chandef_usable(struct wiphy *wiphy,
 	case NL80211_CHAN_WIDTH_80:
 		if (!vht_cap->vht_supported)
 			return false;
+		prohibited_flags |= IEEE80211_CHAN_NO_80MHZ;
 		width = 80;
 		break;
 	case NL80211_CHAN_WIDTH_160:
@@ -256,6 +261,7 @@ bool cfg80211_chandef_usable(struct wiphy *wiphy,
 			return false;
 		if (!(vht_cap->cap & IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160MHZ))
 			return false;
+		prohibited_flags |= IEEE80211_CHAN_NO_160MHZ;
 		width = 160;
 		break;
 	default:
@@ -263,7 +269,16 @@ bool cfg80211_chandef_usable(struct wiphy *wiphy,
 		return false;
 	}
 
-	/* TODO: missing regulatory check on 80/160 bandwidth */
+	/*
+	 * TODO: What if there are only certain 80/160/80+80 MHz channels
+	 *	 allowed by the driver, or only certain combinations?
+	 *	 For 40 MHz the driver can set the NO_HT40 flags, but for
+	 *	 80/160 MHz and in particular 80+80 MHz this isn't really
+	 *	 feasible and we only have NO_80MHZ/NO_160MHZ so far but
+	 *	 no way to cover 80+80 MHz or more complex restrictions.
+	 *	 Note that such restrictions also need to be advertised to
+	 *	 userspace, for example for P2P channel selection.
+	 */
 
 	if (width > 20)
 		prohibited_flags |= IEEE80211_CHAN_NO_OFDM;

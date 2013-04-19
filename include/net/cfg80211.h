@@ -99,6 +99,16 @@ enum ieee80211_band {
  * @IEEE80211_CHAN_NO_HT40MINUS: extension channel below this channel
  * 	is not permitted.
  * @IEEE80211_CHAN_NO_OFDM: OFDM is not allowed on this channel.
+ * @IEEE80211_CHAN_NO_80MHZ: If the driver supports 80 MHz on the band,
+ *	this flag indicates that an 80 MHz channel cannot use this
+ *	channel as the control or any of the secondary channels.
+ *	This may be due to the driver or due to regulatory bandwidth
+ *	restrictions.
+ * @IEEE80211_CHAN_NO_160MHZ: If the driver supports 160 MHz on the band,
+ *	this flag indicates that an 160 MHz channel cannot use this
+ *	channel as the control or any of the secondary channels.
+ *	This may be due to the driver or due to regulatory bandwidth
+ *	restrictions.
  */
 enum ieee80211_channel_flags {
 	IEEE80211_CHAN_DISABLED		= 1<<0,
@@ -108,6 +118,8 @@ enum ieee80211_channel_flags {
 	IEEE80211_CHAN_NO_HT40PLUS	= 1<<4,
 	IEEE80211_CHAN_NO_HT40MINUS	= 1<<5,
 	IEEE80211_CHAN_NO_OFDM		= 1<<6,
+	IEEE80211_CHAN_NO_80MHZ		= 1<<7,
+	IEEE80211_CHAN_NO_160MHZ	= 1<<8,
 };
 
 #define IEEE80211_CHAN_NO_HT40 \
@@ -1207,11 +1219,13 @@ enum cfg80211_signal_type {
 
 /**
  * struct cfg80211_bss_ie_data - BSS entry IE data
+ * @tsf: TSF contained in the frame that carried these IEs
  * @rcu_head: internal use, for freeing
  * @len: length of the IEs
  * @data: IE data
  */
 struct cfg80211_bss_ies {
+	u64 tsf;
 	struct rcu_head rcu_head;
 	int len;
 	u8 data[];
@@ -1225,7 +1239,6 @@ struct cfg80211_bss_ies {
  *
  * @channel: channel this BSS is on
  * @bssid: BSSID of the BSS
- * @tsf: timestamp of last received update
  * @beacon_interval: the beacon interval as from the frame
  * @capability: the capability field in host byte order
  * @ies: the information elements (Note that there
@@ -1233,21 +1246,25 @@ struct cfg80211_bss_ies {
  *	either the beacon_ies or proberesp_ies depending on whether Probe
  *	Response frame has been received
  * @beacon_ies: the information elements from the last Beacon frame
+ *	(implementation note: if @hidden_beacon_bss is set this struct doesn't
+ *	own the beacon_ies, but they're just pointers to the ones from the
+ *	@hidden_beacon_bss struct)
  * @proberesp_ies: the information elements from the last Probe Response frame
+ * @hidden_beacon_bss: in case this BSS struct represents a probe response from
+ *	a BSS that hides the SSID in its beacon, this points to the BSS struct
+ *	that holds the beacon data. @beacon_ies is still valid, of course, and
+ *	points to the same data as hidden_beacon_bss->beacon_ies in that case.
  * @signal: signal strength value (type depends on the wiphy's signal_type)
- * @free_priv: function pointer to free private data
  * @priv: private area for driver use, has at least wiphy->bss_priv_size bytes
  */
 struct cfg80211_bss {
-	u64 tsf;
-
 	struct ieee80211_channel *channel;
 
 	const struct cfg80211_bss_ies __rcu *ies;
 	const struct cfg80211_bss_ies __rcu *beacon_ies;
 	const struct cfg80211_bss_ies __rcu *proberesp_ies;
 
-	void (*free_priv)(struct cfg80211_bss *bss);
+	struct cfg80211_bss *hidden_beacon_bss;
 
 	s32 signal;
 
@@ -1624,7 +1641,9 @@ struct cfg80211_gtk_rekey_data {
  * @get_mpath: get a mesh path for the given parameters
  * @dump_mpath: dump mesh path callback -- resume dump at index @idx
  * @join_mesh: join the mesh network with the specified parameters
+ *	(invoked with the wireless_dev mutex held)
  * @leave_mesh: leave the current mesh network
+ *	(invoked with the wireless_dev mutex held)
  *
  * @get_mesh_config: Get the current mesh configuration
  *
@@ -1651,20 +1670,28 @@ struct cfg80211_gtk_rekey_data {
  *	the scan/scan_done bracket too.
  *
  * @auth: Request to authenticate with the specified peer
+ *	(invoked with the wireless_dev mutex held)
  * @assoc: Request to (re)associate with the specified peer
+ *	(invoked with the wireless_dev mutex held)
  * @deauth: Request to deauthenticate from the specified peer
+ *	(invoked with the wireless_dev mutex held)
  * @disassoc: Request to disassociate from the specified peer
+ *	(invoked with the wireless_dev mutex held)
  *
  * @connect: Connect to the ESS with the specified parameters. When connected,
  *	call cfg80211_connect_result() with status code %WLAN_STATUS_SUCCESS.
  *	If the connection fails for some reason, call cfg80211_connect_result()
  *	with the status from the AP.
+ *	(invoked with the wireless_dev mutex held)
  * @disconnect: Disconnect from the BSS/ESS.
+ *	(invoked with the wireless_dev mutex held)
  *
  * @join_ibss: Join the specified IBSS (or create if necessary). Once done, call
  *	cfg80211_ibss_joined(), also call that function when changing BSSID due
  *	to a merge.
+ *	(invoked with the wireless_dev mutex held)
  * @leave_ibss: Leave the IBSS.
+ *	(invoked with the wireless_dev mutex held)
  *
  * @set_mcast_rate: Set the specified multicast rate (only if vif is in ADHOC or
  *	MESH mode)
@@ -1701,7 +1728,7 @@ struct cfg80211_gtk_rekey_data {
  * @mgmt_tx_cancel_wait: Cancel the wait time from transmitting a management
  *	frame on another channel
  *
- * @testmode_cmd: run a test mode command
+ * @testmode_cmd: run a test mode command; @wdev may be %NULL
  * @testmode_dump: Implement a test mode dump. The cb->args[2] and up may be
  *	used by the function, but 0 and 1 must not be touched. Additionally,
  *	return error codes other than -ENOBUFS and -ENOENT will terminate the
@@ -1888,7 +1915,8 @@ struct cfg80211_ops {
 	void	(*rfkill_poll)(struct wiphy *wiphy);
 
 #ifdef CONFIG_NL80211_TESTMODE
-	int	(*testmode_cmd)(struct wiphy *wiphy, void *data, int len);
+	int	(*testmode_cmd)(struct wiphy *wiphy, struct wireless_dev *wdev,
+				void *data, int len);
 	int	(*testmode_dump)(struct wiphy *wiphy, struct sk_buff *skb,
 				 struct netlink_callback *cb,
 				 void *data, int len);
@@ -2290,6 +2318,14 @@ struct wiphy_wowlan_support {
  * @ap_sme_capa: AP SME capabilities, flags from &enum nl80211_ap_sme_features.
  * @ht_capa_mod_mask:  Specify what ht_cap values can be over-ridden.
  *	If null, then none can be over-ridden.
+ *
+ * @extended_capabilities: extended capabilities supported by the driver,
+ *	additional capabilities might be supported by userspace; these are
+ *	the 802.11 extended capabilities ("Extended Capabilities element")
+ *	and are in the same format as in the information element. See
+ *	802.11-2012 8.4.2.29 for the defined fields.
+ * @extended_capabilities_mask: mask of the valid values
+ * @extended_capabilities_len: length of the extended capabilities
  */
 struct wiphy {
 	/* assign these fields before you register the wiphy */
@@ -2353,6 +2389,9 @@ struct wiphy {
 	 * when the wiphy flag @WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD is set.
 	 */
 	u32 probe_resp_offload;
+
+	const u8 *extended_capabilities, *extended_capabilities_mask;
+	u8 extended_capabilities_len;
 
 	/* If multiple wiphys are registered and you're handed e.g.
 	 * a regular netdev with assigned ieee80211_ptr, you won't
@@ -2542,7 +2581,8 @@ struct cfg80211_cached_keys;
  *	by cfg80211 on change_interface
  * @mgmt_registrations: list of registrations for management frames
  * @mgmt_registrations_lock: lock for the list
- * @mtx: mutex used to lock data in this struct
+ * @mtx: mutex used to lock data in this struct, may be used by drivers
+ *	and some API functions require it held
  * @cleanup_work: work struct used for cleanup that can't be done directly
  * @beacon_interval: beacon interval used on this device for transmitting
  *	beacons, 0 when not valid
@@ -3054,25 +3094,23 @@ cfg80211_get_ibss(struct wiphy *wiphy,
 				WLAN_CAPABILITY_IBSS, WLAN_CAPABILITY_IBSS);
 }
 
-struct cfg80211_bss *cfg80211_get_mesh(struct wiphy *wiphy,
-				       struct ieee80211_channel *channel,
-				       const u8 *meshid, size_t meshidlen,
-				       const u8 *meshcfg);
 /**
  * cfg80211_ref_bss - reference BSS struct
+ * @wiphy: the wiphy this BSS struct belongs to
  * @bss: the BSS struct to reference
  *
  * Increments the refcount of the given BSS struct.
  */
-void cfg80211_ref_bss(struct cfg80211_bss *bss);
+void cfg80211_ref_bss(struct wiphy *wiphy, struct cfg80211_bss *bss);
 
 /**
  * cfg80211_put_bss - unref BSS struct
+ * @wiphy: the wiphy this BSS struct belongs to
  * @bss: the BSS struct
  *
  * Decrements the refcount of the given BSS struct.
  */
-void cfg80211_put_bss(struct cfg80211_bss *bss);
+void cfg80211_put_bss(struct wiphy *wiphy, struct cfg80211_bss *bss);
 
 /**
  * cfg80211_unlink_bss - unlink BSS from internal data structures
@@ -3095,7 +3133,8 @@ void cfg80211_unlink_bss(struct wiphy *wiphy, struct cfg80211_bss *bss);
  * This function is called whenever an authentication has been processed in
  * station mode. The driver is required to call either this function or
  * cfg80211_send_auth_timeout() to indicate the result of cfg80211_ops::auth()
- * call. This function may sleep.
+ * call. This function may sleep. The caller must hold the corresponding wdev's
+ * mutex.
  */
 void cfg80211_send_rx_auth(struct net_device *dev, const u8 *buf, size_t len);
 
@@ -3104,7 +3143,8 @@ void cfg80211_send_rx_auth(struct net_device *dev, const u8 *buf, size_t len);
  * @dev: network device
  * @addr: The MAC address of the device with which the authentication timed out
  *
- * This function may sleep.
+ * This function may sleep. The caller must hold the corresponding wdev's
+ * mutex.
  */
 void cfg80211_send_auth_timeout(struct net_device *dev, const u8 *addr);
 
@@ -3119,7 +3159,8 @@ void cfg80211_send_auth_timeout(struct net_device *dev, const u8 *addr);
  * This function is called whenever a (re)association response has been
  * processed in station mode. The driver is required to call either this
  * function or cfg80211_send_assoc_timeout() to indicate the result of
- * cfg80211_ops::assoc() call. This function may sleep.
+ * cfg80211_ops::assoc() call. This function may sleep. The caller must hold
+ * the corresponding wdev's mutex.
  */
 void cfg80211_send_rx_assoc(struct net_device *dev, struct cfg80211_bss *bss,
 			    const u8 *buf, size_t len);
@@ -3129,7 +3170,7 @@ void cfg80211_send_rx_assoc(struct net_device *dev, struct cfg80211_bss *bss,
  * @dev: network device
  * @addr: The MAC address of the device with which the association timed out
  *
- * This function may sleep.
+ * This function may sleep. The caller must hold the corresponding wdev's mutex.
  */
 void cfg80211_send_assoc_timeout(struct net_device *dev, const u8 *addr);
 
@@ -3141,19 +3182,10 @@ void cfg80211_send_assoc_timeout(struct net_device *dev, const u8 *addr);
  *
  * This function is called whenever deauthentication has been processed in
  * station mode. This includes both received deauthentication frames and
- * locally generated ones. This function may sleep.
+ * locally generated ones. This function may sleep. The caller must hold the
+ * corresponding wdev's mutex.
  */
 void cfg80211_send_deauth(struct net_device *dev, const u8 *buf, size_t len);
-
-/**
- * __cfg80211_send_deauth - notification of processed deauthentication
- * @dev: network device
- * @buf: deauthentication frame (header + body)
- * @len: length of the frame data
- *
- * Like cfg80211_send_deauth(), but doesn't take the wdev lock.
- */
-void __cfg80211_send_deauth(struct net_device *dev, const u8 *buf, size_t len);
 
 /**
  * cfg80211_send_disassoc - notification of processed disassociation
@@ -3163,20 +3195,10 @@ void __cfg80211_send_deauth(struct net_device *dev, const u8 *buf, size_t len);
  *
  * This function is called whenever disassociation has been processed in
  * station mode. This includes both received disassociation frames and locally
- * generated ones. This function may sleep.
+ * generated ones. This function may sleep. The caller must hold the
+ * corresponding wdev's mutex.
  */
 void cfg80211_send_disassoc(struct net_device *dev, const u8 *buf, size_t len);
-
-/**
- * __cfg80211_send_disassoc - notification of processed disassociation
- * @dev: network device
- * @buf: disassociation response frame (header + body)
- * @len: length of the frame data
- *
- * Like cfg80211_send_disassoc(), but doesn't take the wdev lock.
- */
-void __cfg80211_send_disassoc(struct net_device *dev, const u8 *buf,
-	size_t len);
 
 /**
  * cfg80211_send_unprot_deauth - notification of unprotected deauthentication

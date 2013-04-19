@@ -29,20 +29,13 @@
 #define IEEE80211_CHANNEL_TIME (HZ / 33)
 #define IEEE80211_PASSIVE_CHANNEL_TIME (HZ / 8)
 
-static void ieee80211_rx_bss_free(struct cfg80211_bss *cbss)
-{
-	struct ieee80211_bss *bss = (void *)cbss->priv;
-
-	kfree(bss_mesh_id(bss));
-	kfree(bss_mesh_cfg(bss));
-}
-
 void ieee80211_rx_bss_put(struct ieee80211_local *local,
 			  struct ieee80211_bss *bss)
 {
 	if (!bss)
 		return;
-	cfg80211_put_bss(container_of((void *)bss, struct cfg80211_bss, priv));
+	cfg80211_put_bss(local->hw.wiphy,
+			 container_of((void *)bss, struct cfg80211_bss, priv));
 }
 
 static bool is_uapsd_supported(struct ieee802_11_elems *elems)
@@ -86,7 +79,6 @@ ieee80211_bss_info_update(struct ieee80211_local *local,
 	if (!cbss)
 		return NULL;
 
-	cbss->free_priv = ieee80211_rx_bss_free;
 	bss = (void *)cbss->priv;
 
 	bss->device_ts = rx_status->device_timestamp;

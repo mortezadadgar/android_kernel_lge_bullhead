@@ -94,7 +94,7 @@ mwifiex_process_cmdresp_error(struct mwifiex_private *priv,
 		break;
 	}
 	/* Handling errors here */
-	mwifiex_insert_cmd_to_free_q(adapter, adapter->curr_cmd);
+	mwifiex_recycle_cmd_node(adapter, adapter->curr_cmd);
 
 	spin_lock_irqsave(&adapter->mwifiex_cmd_lock, flags);
 	adapter->curr_cmd = NULL;
@@ -935,9 +935,8 @@ int mwifiex_process_sta_cmdresp(struct mwifiex_private *priv, u16 cmdresp_no,
 					/ MWIFIEX_SDIO_BLOCK_SIZE)
 				       * MWIFIEX_SDIO_BLOCK_SIZE;
 		adapter->curr_tx_buf_size = adapter->tx_buf_size;
-		dev_dbg(adapter->dev,
-			"cmd: max_tx_buf_size=%d, tx_buf_size=%d\n",
-			adapter->max_tx_buf_size, adapter->tx_buf_size);
+		dev_dbg(adapter->dev, "cmd: curr_tx_buf_size=%d\n",
+			adapter->curr_tx_buf_size);
 
 		if (adapter->if_ops.update_mp_end_port)
 			adapter->if_ops.update_mp_end_port(adapter,

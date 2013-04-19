@@ -2123,7 +2123,7 @@ static s32 brcmf_inform_single_bss(struct brcmf_cfg80211_info *cfg,
 	if (!bss)
 		return -ENOMEM;
 
-	cfg80211_put_bss(bss);
+	cfg80211_put_bss(wiphy, bss);
 
 	return err;
 }
@@ -2229,7 +2229,7 @@ static s32 wl_inform_ibss(struct brcmf_cfg80211_info *cfg,
 		goto CleanUp;
 	}
 
-	cfg80211_put_bss(bss);
+	cfg80211_put_bss(wiphy, bss);
 
 CleanUp:
 
@@ -3005,7 +3005,9 @@ static int brcmf_cfg80211_sched_scan_stop(struct wiphy *wiphy,
 }
 
 #ifdef CONFIG_NL80211_TESTMODE
-static int brcmf_cfg80211_testmode(struct wiphy *wiphy, void *data, int len)
+static int brcmf_cfg80211_testmode(struct wiphy *wiphy,
+				   struct wireless_dev *wdev,
+				   void *data, int len)
 {
 	struct brcmf_cfg80211_info *cfg = wiphy_to_cfg(wiphy);
 	struct net_device *ndev = cfg_to_ndev(cfg);

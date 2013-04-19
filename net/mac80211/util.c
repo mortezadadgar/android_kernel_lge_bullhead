@@ -1531,9 +1531,9 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 			changed |= BSS_CHANGED_ASSOC |
 				   BSS_CHANGED_ARP_FILTER |
 				   BSS_CHANGED_PS;
-			mutex_lock(&sdata->u.mgd.mtx);
+			sdata_lock(sdata);
 			ieee80211_bss_info_change_notify(sdata, changed);
-			mutex_unlock(&sdata->u.mgd.mtx);
+			sdata_unlock(sdata);
 			break;
 		case NL80211_IFTYPE_ADHOC:
 			changed |= BSS_CHANGED_IBSS;

@@ -97,12 +97,6 @@ struct ieee80211_bss {
 
 	unsigned long last_probe_resp;
 
-#ifdef CONFIG_MAC80211_MESH
-	u8 *mesh_id;
-	size_t mesh_id_len;
-	u8 *mesh_cfg;
-#endif
-
 #define IEEE80211_MAX_SUPP_RATES 32
 	u8 supp_rates[IEEE80211_MAX_SUPP_RATES];
 	size_t supp_rates_len;
@@ -152,31 +146,6 @@ enum ieee80211_bss_valid_data_flags {
 	IEEE80211_BSS_VALID_RATES		= BIT(2),
 	IEEE80211_BSS_VALID_ERP			= BIT(3)
 };
-
-static inline u8 *bss_mesh_cfg(struct ieee80211_bss *bss)
-{
-#ifdef CONFIG_MAC80211_MESH
-	return bss->mesh_cfg;
-#endif
-	return NULL;
-}
-
-static inline u8 *bss_mesh_id(struct ieee80211_bss *bss)
-{
-#ifdef CONFIG_MAC80211_MESH
-	return bss->mesh_id;
-#endif
-	return NULL;
-}
-
-static inline u8 bss_mesh_id_len(struct ieee80211_bss *bss)
-{
-#ifdef CONFIG_MAC80211_MESH
-	return bss->mesh_id_len;
-#endif
-	return 0;
-}
-
 
 typedef unsigned __bitwise__ ieee80211_tx_result;
 #define TX_CONTINUE	((__force ieee80211_tx_result) 0u)
@@ -425,7 +394,6 @@ struct ieee80211_if_managed {
 	int probe_send_count;
 	bool nullfunc_failed;
 
-	struct mutex mtx;
 	struct cfg80211_bss *associated;
 	struct ieee80211_mgd_auth_data *auth_data;
 	struct ieee80211_mgd_assoc_data *assoc_data;
@@ -513,8 +481,6 @@ struct ieee80211_if_managed {
 
 struct ieee80211_if_ibss {
 	struct timer_list timer;
-
-	struct mutex mtx;
 
 	unsigned long last_scan_completed;
 
@@ -794,6 +760,26 @@ struct ieee80211_sub_if_data *vif_to_sdata(struct ieee80211_vif *p)
 	return container_of(p, struct ieee80211_sub_if_data, vif);
 }
 
+static inline void sdata_lock(struct ieee80211_sub_if_data *sdata)
+	__acquires(&sdata->wdev.mtx)
+{
+	mutex_lock(&sdata->wdev.mtx);
+	__acquire(&sdata->wdev.mtx);
+}
+
+static inline void sdata_unlock(struct ieee80211_sub_if_data *sdata)
+	__releases(&sdata->wdev.mtx)
+{
+	mutex_unlock(&sdata->wdev.mtx);
+	__release(&sdata->wdev.mtx);
+}
+
+static inline void
+sdata_assert_lock(struct ieee80211_sub_if_data *sdata)
+{
+	lockdep_assert_held(&sdata->wdev.mtx);
+}
+
 static inline enum ieee80211_band
 ieee80211_get_sdata_band(struct ieee80211_sub_if_data *sdata)
 {
@@ -978,14 +964,7 @@ struct ieee80211_local {
 	struct sk_buff_head skb_queue;
 	struct sk_buff_head skb_queue_unreliable;
 
-	/*
-	 * Internal FIFO queue which is shared between multiple rx path
-	 * stages. Its main task is to provide a serialization mechanism,
-	 * so all rx handlers can enjoy having exclusive access to their
-	 * private data structures.
-	 */
-	struct sk_buff_head rx_skb_queue;
-	bool running_rx_handler;	/* protected by rx_skb_queue.lock */
+	spinlock_t rx_path_lock;
 
 	/* Station data */
 	/*
