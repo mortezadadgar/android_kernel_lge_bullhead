@@ -415,6 +415,13 @@ struct rq {
 #endif
 	int skip_clock_update;
 
+#ifdef CONFIG_CPU_QUIET
+	/* time-based average load */
+	u64 nr_last_stamp;
+	u64 nr_running_integral;
+	seqcount_t ave_seqcnt;
+#endif
+
 	/* capture load from *all* tasks on this cpu: */
 	struct load_weight load;
 	unsigned long nr_load_updates;
@@ -1073,7 +1080,7 @@ static inline u64 steal_ticks(u64 steal)
 }
 #endif
 
-static inline void inc_nr_running(struct rq *rq)
+static inline void __inc_nr_running(struct rq *rq)
 {
 	rq->nr_running++;
 
@@ -1088,10 +1095,47 @@ static inline void inc_nr_running(struct rq *rq)
 #endif
 }
 
-static inline void dec_nr_running(struct rq *rq)
+static inline void __dec_nr_running(struct rq *rq)
 {
 	rq->nr_running--;
 }
+
+#ifdef CONFIG_CPU_QUIET
+#define NR_AVE_SCALE(x)		((x) << FSHIFT)
+static inline u64 do_nr_running_integral(struct rq *rq)
+{
+	s64 nr, deltax;
+	u64 nr_running_integral = rq->nr_running_integral;
+
+	deltax = rq->clock_task - rq->nr_last_stamp;
+	nr = NR_AVE_SCALE(rq->nr_running);
+
+	nr_running_integral += nr * deltax;
+
+	return nr_running_integral;
+}
+
+static inline void inc_nr_running(struct rq *rq)
+{
+	write_seqcount_begin(&rq->ave_seqcnt);
+	rq->nr_running_integral = do_nr_running_integral(rq);
+	rq->nr_last_stamp = rq->clock_task;
+	__inc_nr_running(rq);
+	write_seqcount_end(&rq->ave_seqcnt);
+}
+
+static inline void dec_nr_running(struct rq *rq)
+{
+	write_seqcount_begin(&rq->ave_seqcnt);
+	rq->nr_running_integral = do_nr_running_integral(rq);
+	rq->nr_last_stamp = rq->clock_task;
+	__dec_nr_running(rq);
+	write_seqcount_end(&rq->ave_seqcnt);
+}
+#else
+#define inc_nr_running __inc_nr_running
+#define dec_nr_running __dec_nr_running
+#endif
 
 static inline void rq_last_tick_reset(struct rq *rq)
 {
