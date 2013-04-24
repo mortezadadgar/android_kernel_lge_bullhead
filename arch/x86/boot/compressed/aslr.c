@@ -1,6 +1,72 @@
 #include "misc.h"
 
 #ifdef CONFIG_RANDOMIZE_BASE
+#include <asm/msr.h>
+
+#include <asm/archrandom.h>
+static inline int rdrand(unsigned long *v)
+{
+	int ok;
+	asm volatile("1: " RDRAND_LONG "\n\t"
+		     "jc 2f\n\t"
+		     "decl %0\n\t"
+		     "jnz 1b\n\t"
+		     "2:"
+		     : "=r" (ok), "=a" (*v)
+		     : "0" (RDRAND_RETRY_LOOPS));
+	return ok;
+}
+
+#define I8254_PORT_CONTROL	0x43
+#define I8254_PORT_COUNTER0	0x40
+#define I8254_CMD_READBACK	0xC0
+#define I8254_SELECT_COUNTER0	0x02
+#define I8254_STATUS_NOTREADY	0x40
+static inline u16 i8254(void)
+{
+	u16 status, timer;
+
+	do {
+		outb(I8254_PORT_CONTROL,
+		     I8254_CMD_READBACK | I8254_SELECT_COUNTER0);
+		status = inb(I8254_PORT_COUNTER0);
+		timer  = inb(I8254_PORT_COUNTER0);
+		timer |= inb(I8254_PORT_COUNTER0) << 8;
+	} while (status & I8254_STATUS_NOTREADY);
+
+	return timer;
+}
+
+static unsigned long get_random_long(void)
+{
+	unsigned long random;
+
+	if (has_cpuflag(X86_FEATURE_RDRAND)) {
+		debug_putstr("KASLR using RDRAND...\n");
+		if (rdrand(&random))
+			return random;
+	}
+
+	if (has_cpuflag(X86_FEATURE_TSC)) {
+		uint32_t raw;
+
+		debug_putstr("KASLR using RDTSC...\n");
+		rdtscl(raw);
+
+		/* Only use the low bits of rdtsc. */
+		random = raw & 0xffff;
+	} else {
+		debug_putstr("KASLR using i8254...\n");
+		random = i8254();
+	}
+
+	/* Extend timer bits poorly... */
+	random |= (random << 16);
+#ifdef CONFIG_X86_64
+	random |= (random << 32) | (random << 48);
+#endif
+	return random;
+}
 
 static unsigned long find_minimum_location(unsigned long input,
 					   unsigned long input_size,
@@ -55,6 +121,7 @@ unsigned char *choose_kernel_location(unsigned char *input,
 				      unsigned long output_size)
 {
 	unsigned long choice = (unsigned long)output;
+	unsigned long random;
 
 	if (cmdline_find_option_bool("nokaslr")) {
 		debug_putstr("KASLR disabled...\n");
@@ -64,8 +131,22 @@ unsigned char *choose_kernel_location(unsigned char *input,
 	choice = find_minimum_location((unsigned long)input, input_size,
 				       (unsigned long)output, output_size);
 
-	/* XXX: choose random location. */
+	/* XXX: Find an appropriate E820 hole, instead of adding offset. */
+	random = get_random_long();
 
+	/* Clip off top of the range. */
+	random &= (CONFIG_RANDOMIZE_BASE_MAX_OFFSET - 1);
+	while (random + output_size > CONFIG_RANDOMIZE_BASE_MAX_OFFSET)
+		random >>= 1;
+
+	/* Clip off bottom of range. */
+	random &= ~(choice - 1);
+
+	/* Always enforce the minimum. */
+	if (random < choice)
+		goto out;
+
+	choice = random;
 out:
 	return (unsigned char *)choice;
 }
