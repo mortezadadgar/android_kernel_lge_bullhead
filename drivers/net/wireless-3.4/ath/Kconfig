@@ -22,6 +22,12 @@ config ATH_DEBUG
 	  Say Y, if you want to debug atheros wireless drivers.
 	  Right now only ath9k makes use of this.
 
+config ATH_DEFER_EEPROM_REGULATORY
+	bool "Atheros defer EEPROM regulatory"
+	---help---
+	  Say Y, if you want to disable the internal regulatory mask
+	  sourced from EEPROM data.
+
 source "drivers/net/wireless-3.4/ath/ath5k/Kconfig"
 source "drivers/net/wireless-3.4/ath/ath9k/Kconfig"
 source "drivers/net/wireless-3.4/ath/ath9k_btcoex/Kconfig"
