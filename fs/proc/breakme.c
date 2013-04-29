@@ -33,6 +33,9 @@ static ssize_t write_breakme(struct file *file, const char __user *buf,
 		/* BUG() */
 		else if (!strcmp(kbuf, "bug"))
 			BUG();
+		/* Warning, normally not a crash */
+		else if (!strcmp(kbuf, "warning"))
+			WARN_ON(1);
 		/* hung_task stuck in unkillable D state */
 		else if (!strcmp(kbuf, "hungtask"))
 			schedule_timeout_uninterruptible(MAX_SCHEDULE_TIMEOUT);
