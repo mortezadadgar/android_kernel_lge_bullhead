@@ -659,7 +659,7 @@
 				vin-ldo9-10-supply = <&floating>;
 				vin-ldo11-supply = <&floating>;
 
-				sd0 {
+				vdd_cpu: sd0 {
 					regulator-name = "vdd_cpu";
 					regulator-min-microvolt = <700000>;
 					regulator-max-microvolt = <1350000>;
@@ -1860,6 +1860,11 @@
 		bus-width = <8>;
 		no-1-8-v;
 		non-removable;
+		status = "okay";
+	};
+
+	dfll@70110000 {
+		vdd-supply = <&vdd_cpu>;
 		status = "okay";
 	};
 
