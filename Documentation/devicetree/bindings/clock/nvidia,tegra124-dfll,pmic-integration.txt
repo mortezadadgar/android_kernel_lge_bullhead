@@ -1,0 +1,34 @@
+DFLL PMIC integration node in the board DTS file
+
+Required properties:
+- pmic-i2c-interface : selects the I2C interface to communicate with
+                       the PMIC.  Future driver changes should add
+                       support for the PWM interface, at which point
+                       this should no longer be mandatory
+- pmic-i2c-address : cell containing the PMIC I2C address
+- pmic-i2c-voltage-register : cell containing the I2C register address of the
+                              PMIC's set-output-voltage register, for the
+                              rail that supplies the DFLL
+- i2c-fs-rate : cell containing the I2C bus rate in Hz, in FS mode
+- dfll-min-microvolt : minimum voltage in microvolts that the DFLL will
+                       attempt to program the PMIC to supply
+- dfll-max-microvolt : maximum voltage in microvolts that the DFLL will
+                       attempt to program the PMIC to supply
+
+Optional properties:
+- i2c-10-bit-addresses : PMIC requires a 10-bit I2C address
+- i2c-hs-rate : use high-speed I2C to communicate with the PMIC, at this
+                rate (in Hz)
+- i2c-hs-master-code : I2C master code to use - only applies in HS mode;
+                       i2c-hs-rate must be set
+
+Example:
+
+cpu_dfll_pmic_integration {
+        pmic-i2c-interface;
+        pmic-i2c-address = <0x86>;
+        pmic-i2c-voltage-register = <0x00>;
+        i2c-fs-rate = <400000>;
+        dfll-min-microvolt = <600000>;
+        dfll-max-microvolt = <1400000>;
+};

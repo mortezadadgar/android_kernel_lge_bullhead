@@ -1,0 +1,66 @@
+NVIDIA Tegra124 DFLL clocksource data in the SoC DTS file:
+
+Required properties:
+- compatible : "nvidia,tegra124-dfll"
+- reg : Must contain the starting physical address and length for the
+        DFLL's MMIO register space, including the DFLL-to-I2C
+        controller interface and the DFLL's I2C controller.
+- clocks : Must contain an array of two-cell arrays, one per clock.
+           DFLL source clocks.  At minimum this should include the
+           reference clock source and the IP block's main clock
+           source.  Also it should contain the DFLL's I2C controller
+           clock source.  The format is <&clock-provider-phandle
+           clock-id>.
+- clock-names : Must contain an array of strings, one per 'clocks'
+                two-cell array.  The position in the array of these
+                strings must correspond to the position in the 'clocks'
+                array (see above).  The DFLL driver currently requires
+                the "soc", "ref", and "i2c" clock names to be populated.
+
+Optional properties:
+- status : device availability -- managed by the DT integration code, not
+           the DFLL driver.  Should be set to "disabled" in the SoC
+           DTS file.
+
+Example:
+
+dfll@70110000 {
+        compatible = "nvidia,tegra124-dfll";
+        reg = <0x70110000 0x400>;
+        clocks = <&tegra_car 265>, <&tegra_car 264>, <&tegra_car 47>;
+        clock-names = "soc", "ref", "i2c";
+        status = "disabled";
+};
+
+
+...
+
+NVIDIA Tegra124 DFLL clocksource data in the board DTS file
+
+Required properties:
+- vdd-supply : phandle pointing to the DFLL's voltage regulator
+- pmic-integration : phandle pointing to the PMIC integration data
+                     for this DFLL instance
+- board-params : phandle pointing to the board-specific tuning data
+                 for this DFLL instance
+- cvb-table : phandle pointing to the DFLL-specific CVB table for
+              this DFLL instance
+
+Optional properties:
+- i2c-quiet-output-workaround : If the DFLL IP block version
+                                implemented on this SoC requires the
+                                I2C output to the PMIC to be quiesced
+                                before disabling it, this property
+                                should be set.
+- status : device availability -- managed by the DT integration code, not
+           the DFLL driver.  Should be set to "okay" if the DFLL is to be
+           used on this board type.
+
+Example:
+
+dfll@70110000 {
+        vdd-supply = <&vdd_cpu_reg>;
+        board-params = <&{/cpu_dfll_board_params}>;
+        pmic-integration = <&{/cpu_dfll_pmic_integration}>;
+        status = "okay";
+};

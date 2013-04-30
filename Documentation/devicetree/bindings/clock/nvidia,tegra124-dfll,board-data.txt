@@ -1,0 +1,33 @@
+DFLL board params node in the board DTS file
+
+Required properties:
+- sample-rate : control loop sample rate (in Hz)
+- cf : I2C: duration to force the PMIC voltage after frequency change
+- cg : loop gain (signed) - determined during board characterization
+- ci : loop integral gain selector
+- droop-cut-value : control output clock scaler at minimum ring osc freq
+- droop-restore-ramp : clock recovery rate after a voltage droop event
+- scale-out-ramp : voltage output ramp rate
+
+Optional properties:
+- no-output-forcing : don't force PMIC voltage output during request change
+- fixed-output-forcing : force PMIC voltage during req change for a fixed time
+- auto-output-forcing : force PMIC voltage during req change for a dynamic time
+- cg-scale : if present, divide loop gain by 8 (see 'cg' above)
+
+Note that one of 'no-output-forcing', 'fixed-output-forcing', or
+'auto-output-forcing' must be specified.
+
+Example:
+
+cpu_dfll_board_params {
+        sample-rate = <12500>;
+        fixed-output-forcing;
+        cf = <10>;
+        ci = <0>;
+        cg = <2>;
+        droop-cut-value = <0xf>;
+        droop-restore-ramp = <0x0>;
+        scale-out-ramp = <0x0>;
+};
+

@@ -1,0 +1,82 @@
+DFLL silicon tuning characterization data in the DFLL DTS file
+
+Required properties:
+- speedo-id : Note that the properties in this node are applicable for chips
+              with this Speedo ID set in the chip's fuses.  See also
+              the 'process-id' property below.
+
+- tune0-low-voltage-range: value to program into the DFLL_TUNE0
+                           register when the DFLL's voltage rail is in
+                           the low-voltage range. XXX This should be
+                           broken up into the individual DFLL fields -
+                           DT data shouldn't contain a raw register
+                           value.
+
+- tune0-high-voltage-range: value to program into the DFLL_TUNE0
+                            register when the DFLL's voltage rail is in
+                            the high-voltage range.  XXX This should be
+                            broken up into the individual DFLL fields -
+                            DT data shouldn't contain a raw register
+                            value.
+
+- tune1 : value to program into the DFLL_TUNE1 register. XXX This
+          should be broken up into the individual DFLL fields - DT
+          data shouldn't contain a raw register value.
+
+- droop-rate-min : enable voltage droop control when the DVCO
+                   frequency falls below this rate
+
+- tune-high-min-millivolts : starting voltage of the DFLL's high-voltage range
+                             (in millivolts).  The range between min-millivolts
+                             and (tune-high-min-millivolts - 1) is the
+                             low-voltage range.
+
+- min-millivolts : starting voltage of the DFLL's low-voltage range (in
+                   millivolts)
+
+Optional properties:
+- process-id : If present, indicates that the properties in this node only
+               apply to chips with the matching process ID set in the chip's
+               fuses.  'speedo-id' must also match the chip fuses.
+
+The "address" of the characterization node is arbitrary and ignored.
+
+Example:
+
+cpu_dfll_tuning {
+         ...
+
+         characterization@1 {
+                 speedo-id = <1>;
+                 process-id = <0>;
+
+                 tune0-low-voltage-range = <0x00b0039d>;
+                 tune0-high-voltage-range = <0x00b0009d>;
+                 tune1 = <0x0000001f>;
+                 droop-rate-min = <1000000>;
+                 tune-high-min-millivolts = <1000>;
+                 min-millivolts = <900>;
+         };
+};
+
+
+...
+
+DFLL silicon tuning data in the DFLL DTS file:
+
+Required properties:
+- #address-cells : Set to 1
+- #size-cells : Set to 0
+
+The "address" of the characterization node is arbitrary and ignored.
+
+Example:
+
+cpu_dfll_tuning {
+         #address-cells = <1>;
+         #size-cells = <0>;
+
+         characterization@1 {
+                 ...
+         };
+};

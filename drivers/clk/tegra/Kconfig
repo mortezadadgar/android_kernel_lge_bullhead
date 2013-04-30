@@ -1,0 +1,7 @@
+config CLK_TEGRA_T124_DFLL
+       tristate "Tegra T124 DFLL clocksource control"
+       depends on COMMON_CLK && ARCH_TEGRA_124_SOC
+       help
+	Select this if building a kernel for an NVIDIA Tegra chip that
+	contains at least one T124 DFLL clock source that is
+	controllable from Linux.

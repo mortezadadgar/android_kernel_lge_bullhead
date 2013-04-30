@@ -1,0 +1,79 @@
+DFLL CVB table characterization data in the DFLL DTS file
+
+Required properties:
+- speedo-id : Note that the properties in this node are applicable for chips
+              with this Speedo ID set in the chip's fuses.  See also
+              the 'process-id' property below.
+- therm-floors : list of two-cell arrays representing the minimum
+                 voltage required on the DFLL voltage rail when the
+                 temperature is at or below the given trip point.  The
+                 first of the two cells is the trip point temperature
+                 in degrees Celsius.  The second cell is the minimum
+                 voltage in millivolts.
+- cvb-max-millivolts : limit CVB starting voltages to this voltage.
+- cvb-speedo-scale : silicon characterization multiplier, from e-fuses
+- cvb-voltage-scale : CVB voltage scale factor (to microvolts)
+- cvb-voltage-curves : list of four-cell arrays mapping the first cell
+                       (the DFLL target frequency) to three
+                       coefficients (the remaining three cells) used
+                       to compute the starting voltage to program the
+                       PMIC to.  The DFLL should automatically adjust
+                       the PMIC voltage below this point.
+
+Optional properties:
+- process-id : If present, indicates that the properties in this node only
+               apply to chips with the matching process ID set in the chip's
+               fuses.  'speedo-id' must also match the chip fuses.
+
+The address of the characterization nodes is arbitrary and ignored.
+
+Example:
+
+cpu_dfll_cvb_table {
+        ...
+        characterization@1 {
+                speedo-id = <1>;
+                process-id = <0>;
+
+                therm-floors = < 20 1000>;
+                cvb-max-millivolts = <1350>;
+                cvb-speedo-scale = <100>;
+                cvb-voltage-scale = <1000>;
+                cvb-voltage-curves = < 306000000 2190643 0xfffdd5e5 3576>,
+                                     < 408000000 2250968 0xfffdcc35 3576>,
+                                     < 510000000 2313333 0xfffdc285 3576>,
+                                     < 612000000 2377738 0xfffdb8d5 3576>,
+                                     < 714000000 2444183 0xfffdaf25 3576>,
+                                     < 816000000 2512669 0xfffda575 3576>,
+                                     < 918000000 2583194 0xfffd9bc5 3576>,
+                                     <1020000000 2655759 0xfffd9215 3576>,
+                                     <1122000000 2730365 0xfffd8865 3576>,
+                                     <1224000000 2807010 0xfffd7eb5 3576>,
+                                     <1326000000 2885696 0xfffd7505 3576>,
+                                     <1428000000 2966422 0xfffd6b55 3576>,
+                                     <1530000000 3049183 0xfffd61af 3576>,
+                                     <1606500000 3112179 0xfffd5a75 3576>,
+                                     <1708500000 3198504 0xfffd50c5 3576>,
+                                     <1810500000 3304747 0xfffd444a 3576>;
+        };
+};
+
+
+...
+
+DFLL CVB table data in the DFLL DTS file
+
+Required properties:
+- #address-cells : Set to 1
+- #size-cells : Set to 0
+
+Example:
+
+cpu_dfll_cvb_table {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        characterization@1 {
+                ...
+        };
+};
