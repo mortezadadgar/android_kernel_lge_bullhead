@@ -443,6 +443,14 @@
 		status = "disabled";
 	};
 
+	dfll@70110000 {
+		compatible = "nvidia,tegra124-dfll";
+		reg = <0x70110000 0x400>;
+		clocks = <&tegra_car 265>, <&tegra_car 264>, <&tegra_car 47>;
+		clock-names = "soc", "ref", "i2c";
+		status = "disabled";
+	};
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
