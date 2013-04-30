@@ -1,4 +1,5 @@
 /include/ "skeleton.dtsi"
+/include/ "tegra124-cvb.dtsi"
 /include/ "tegra124-dfll.dtsi"
 
 / {
@@ -450,6 +451,7 @@
 		clocks = <&tegra_car 265>, <&tegra_car 264>, <&tegra_car 47>;
 		clock-names = "soc", "ref", "i2c";
 		tuning = <&{/cpu_dfll_tuning}>;
+		cvb-table = <&{/cpu_dfll_cvb_table}>;
 		status = "disabled";
 	};
 
