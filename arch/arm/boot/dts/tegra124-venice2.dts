@@ -1866,6 +1866,7 @@
 	dfll@70110000 {
 		vdd-supply = <&vdd_cpu>;
 		board-params = <&{/cpu_dfll_board_params}>;
+		pmic-integration = <&{/cpu_dfll_pmic_integration}>;
 		status = "okay";
 	};
 
@@ -2042,5 +2043,14 @@
 		droop-cut-value = <0xf>;
 		droop-restore-ramp = <0x0>;
 		scale-out-ramp = <0x0>;
+	};
+
+	cpu_dfll_pmic_integration {
+		pmic-i2c-interface;
+		pmic-i2c-address = <0x80>;
+		pmic-i2c-voltage-register = <0x00>;
+		i2c-fs-rate = <400000>;
+		dfll-min-microvolt = <700000>;
+		dfll-max-microvolt = <1350000>;
 	};
 };
