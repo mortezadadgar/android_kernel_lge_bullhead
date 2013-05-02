@@ -47,6 +47,10 @@ void tegra_secondary_startup(void);
 	(IO_ADDRESS(TEGRA_IRAM_BASE + TEGRA_IRAM_RESET_HANDLER_OFFSET + \
 	((u32)&__tegra_cpu_reset_handler_data[TEGRA_RESET_MASK_LP2] - \
 	 (u32)__tegra_cpu_reset_handler_start)))
+#define tegra_cpu_reset_handler_data_iram_ptr \
+	((u32 *)(IO_ADDRESS(TEGRA_IRAM_BASE + TEGRA_IRAM_RESET_HANDLER_OFFSET +\
+	((u32)__tegra_cpu_reset_handler_data - \
+	 (u32)__tegra_cpu_reset_handler_start))))
 #endif
 
 #define tegra_cpu_reset_handler_offset \
@@ -57,6 +61,10 @@ void tegra_secondary_startup(void);
 		(__tegra_cpu_reset_handler_end - \
 		 __tegra_cpu_reset_handler_start)
 
+#ifdef CONFIG_PM_SLEEP
+void tegra_cpu_reset_handler_save(void);
+void tegra_cpu_reset_handler_restore(void);
+#endif
 void __init tegra_cpu_reset_handler_init(void);
 
 #endif
