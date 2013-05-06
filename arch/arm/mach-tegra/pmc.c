@@ -39,6 +39,8 @@
 
 #define PMC_CTRL			0x0
 #define PMC_CTRL_INTR_LOW		(1 << 17)
+#define PMC_DPD_ENABLE			0x24
+#define PMC_DPD_ENABLE_TSC_MULT_ENABLE	(1 << 1)
 #define PMC_PWRGATE_TOGGLE		0x30
 #define PMC_PWRGATE_TOGGLE_START	(1 << 8)
 #define PMC_REMOVE_CLAMPING		0x34
@@ -187,6 +189,26 @@ void tegra_pmc_restart(char mode, const char *cmd)
 }
 
 #ifdef CONFIG_PM_SLEEP
+void tegra_tsc_suspend(void)
+{
+	if (IS_ENABLED(CONFIG_ARM_ARCH_TIMER)) {
+		u32 reg;
+		reg = tegra_pmc_readl(PMC_DPD_ENABLE);
+		reg |= PMC_DPD_ENABLE_TSC_MULT_ENABLE;
+		tegra_pmc_writel(reg, PMC_DPD_ENABLE);
+	}
+}
+
+void tegra_tsc_resume(void)
+{
+	if (IS_ENABLED(CONFIG_ARM_ARCH_TIMER)) {
+		u32 reg;
+		reg = tegra_pmc_readl(PMC_DPD_ENABLE);
+		reg &= ~PMC_DPD_ENABLE_TSC_MULT_ENABLE;
+		tegra_pmc_writel(reg, PMC_DPD_ENABLE);
+	}
+}
+
 static void set_power_timers(u32 us_on, u32 us_off, unsigned long rate)
 {
 	unsigned long long ticks;
