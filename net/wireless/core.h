@@ -5,7 +5,6 @@
  */
 #ifndef __NET_WIRELESS_CORE_H
 #define __NET_WIRELESS_CORE_H
-#include <linux/mutex.h>
 #include <linux/list.h>
 #include <linux/netdevice.h>
 #include <linux/rbtree.h>
@@ -23,11 +22,6 @@
 struct cfg80211_registered_device {
 	const struct cfg80211_ops *ops;
 	struct list_head list;
-	/* we hold this mutex during any call so that
-	 * we cannot do multiple calls at once, and also
-	 * to avoid the deregister call to proceed while
-	 * any call is in progress */
-	struct mutex mtx;
 
 	/* rfkill support */
 	struct rfkill_ops rfkill_ops;
@@ -49,9 +43,7 @@ struct cfg80211_registered_device {
 	/* wiphy index, internal only */
 	int wiphy_idx;
 
-	/* associated wireless interfaces */
-	struct mutex devlist_mtx;
-	/* protected by devlist_mtx or RCU */
+	/* associated wireless interfaces, protected by rtnl or RCU */
 	struct list_head wdev_list;
 	int devlist_generation, wdev_id;
 	int opencount; /* also protected by devlist_mtx */
@@ -75,8 +67,6 @@ struct cfg80211_registered_device {
 	unsigned long suspend_at;
 	struct work_struct scan_done_wk;
 	struct work_struct sched_scan_results_wk;
-
-	struct mutex sched_scan_mtx;
 
 	struct genl_info *cur_cmd_info;
 
@@ -119,14 +109,8 @@ cfg80211_rdev_free_wowlan(struct cfg80211_registered_device *rdev)
 }
 
 extern struct workqueue_struct *cfg80211_wq;
-extern struct mutex cfg80211_mutex;
 extern struct list_head cfg80211_rdev_list;
 extern int cfg80211_rdev_list_generation;
-
-static inline void assert_cfg80211_lock(void)
-{
-	lockdep_assert_held(&cfg80211_mutex);
-}
 
 struct cfg80211_internal_bss {
 	struct list_head list;
@@ -160,22 +144,10 @@ static inline void cfg80211_unhold_bss(struct cfg80211_internal_bss *bss)
 struct cfg80211_registered_device *cfg80211_rdev_by_wiphy_idx(int wiphy_idx);
 int get_wiphy_idx(struct wiphy *wiphy);
 
-/* requires cfg80211_rdev_mutex to be held! */
 struct wiphy *wiphy_idx_to_wiphy(int wiphy_idx);
 
 int cfg80211_switch_netns(struct cfg80211_registered_device *rdev,
 			  struct net *net);
-
-static inline void cfg80211_lock_rdev(struct cfg80211_registered_device *rdev)
-{
-	mutex_lock(&rdev->mtx);
-}
-
-static inline void cfg80211_unlock_rdev(struct cfg80211_registered_device *rdev)
-{
-	BUG_ON(IS_ERR(rdev) || !rdev);
-	mutex_unlock(&rdev->mtx);
-}
 
 static inline void wdev_lock(struct wireless_dev *wdev)
 	__acquires(wdev)
@@ -191,7 +163,7 @@ static inline void wdev_unlock(struct wireless_dev *wdev)
 	mutex_unlock(&wdev->mtx);
 }
 
-#define ASSERT_RDEV_LOCK(rdev) lockdep_assert_held(&(rdev)->mtx)
+#define ASSERT_RDEV_LOCK(rdev) ASSERT_RTNL()
 #define ASSERT_WDEV_LOCK(wdev) lockdep_assert_held(&(wdev)->mtx)
 
 static inline bool cfg80211_has_monitors_only(struct cfg80211_registered_device *rdev)
