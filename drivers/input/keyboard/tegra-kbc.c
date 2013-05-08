@@ -322,12 +322,20 @@ static void tegra_kbc_setup_wakekeys(struct tegra_kbc *kbc, bool filter)
 {
 	int i;
 	unsigned int rst_val;
+	u32 val, addr;
 
 	/* Either mask all keys or none. */
-	rst_val = (filter && !kbc->wakeup) ? ~0 : 0;
+	rst_val = ~0;
 
 	for (i = 0; i < kbc->hw_support->max_rows; i++)
 		writel(rst_val, kbc->mmio + KBC_ROW0_MASK_0 + i * 4);
+
+	if (filter && kbc->wakeup) {
+		addr = KBC_ROW0_MASK_0;
+		val = readl(kbc->mmio + addr);
+		val &= ~1;
+		writel(val, kbc->mmio + addr);
+	}
 }
 
 static void tegra_kbc_config_pins(struct tegra_kbc *kbc)
