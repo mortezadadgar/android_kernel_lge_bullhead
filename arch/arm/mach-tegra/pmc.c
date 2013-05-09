@@ -22,6 +22,7 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/irq.h>
+#include <linux/memblock.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_gpio.h>
@@ -39,6 +40,8 @@
 #include "pmc.h"
 #include "sleep.h"
 
+#define TEGRA_POWER_PWRREQ_POLARITY	(1 << 8)   /* core power req polarity */
+#define TEGRA_POWER_PWRREQ_OE		(1 << 9)   /* core power req enable */
 #define TEGRA_POWER_SYSCLK_POLARITY	(1 << 10)  /* sys clk polarity */
 #define TEGRA_POWER_SYSCLK_OE		(1 << 11)  /* system clock enable */
 #define TEGRA_POWER_EFFECT_LP0		(1 << 14)  /* LP0 when CPU pwr gated */
@@ -52,6 +55,7 @@
 #define PMC_WAKE_LEVEL			0x10
 #define PMC_WAKE_STATUS			0x14
 #define PMC_SW_WAKE_STATUS		0x18
+#define PMC_DPD_SAMPLE			0x20
 #define PMC_DPD_ENABLE			0x24
 #define PMC_DPD_ENABLE_ON		0x1
 #define PMC_DPD_ENABLE_TSC_MULT_ENABLE	(1 << 1)
@@ -59,13 +63,54 @@
 #define PMC_PWRGATE_TOGGLE_START	(1 << 8)
 #define PMC_REMOVE_CLAMPING		0x34
 #define PMC_PWRGATE_STATUS		0x38
-
+#define PMC_COREPWRGOOD_TIMER		0x3c
+#define PMC_SCRATCH0			0x50
+#define PMC_SCRATCH1			0x54
 #define PMC_CPUPWRGOOD_TIMER		0xc8
 #define PMC_CPUPWROFF_TIMER		0xcc
+#define PMC_WAKE_DELAY			0xe0
+#define PMC_COREPWROFF_TIMER		PMC_WAKE_DELAY
 #define PMC_WAKE2_MASK			0x160
 #define PMC_WAKE2_LEVEL			0x164
 #define PMC_WAKE2_STATUS		0x168
 #define PMC_SW_WAKE2_STATUS		0x16C
+#define PMC_IO_DPD_REQ			0x1B8
+#define IO_DPD_CSIA			(1 << 0)
+#define IO_DPD_CSIB			(1 << 1)
+#define IO_DPD_DSI			(1 << 2)
+#define IO_DPD_MIPI_BIAS		(1 << 3)
+#define IO_DPD_PEX_BIAS			(1 << 4)
+#define IO_DPD_PEX_CLK1			(1 << 5)
+#define IO_DPD_PEX_CLK2			(1 << 6)
+#define IO_DPD_PEX_CLK3			(1 << 7)
+#define IO_DPD_DAC			(1 << 8)
+#define IO_DPD_USB0			(1 << 9)
+#define IO_DPD_USB1			(1 << 10)
+#define IO_DPD_USB2			(1 << 11)
+#define IO_DPD_USB_BIAS			(1 << 12)
+#define IO_DPD_NAND			(1 << 13)
+#define IO_DPD_UART			(1 << 14)
+#define IO_DPD_BB			(1 << 15)
+#define IO_DPD_VI			(1 << 16)
+#define IO_DPD_AUDIO			(1 << 17)
+#define IO_DPD_LCD			(1 << 18)
+#define IO_DPD_HSIC			(1 << 19)
+#define IO_DPD_ON			(2 << 30)
+#define IO_DPD_OFF			(1 << 30)
+#define PMC_IO_DPD2_REQ			0x1C0
+#define IO_DPD2_PEX_CNTRL		(1 << 0)
+#define IO_DPD2_SDMMC1			(1 << 1)
+#define IO_DPD2_SDMMC3			(1 << 2)
+#define IO_DPD2_SDMMC4			(1 << 3)
+#define IO_DPD2_CAM			(1 << 4)
+#define IO_DPD2_RES_RAIL		(1 << 5)
+#define IO_DPD2_HV			(1 << 6)
+#define IO_DPD2_DSIB			(1 << 7)
+#define IO_DPD2_DSIC			(1 << 8)
+#define IO_DPD2_DSID			(1 << 9)
+#define IO_DPD2_CSIC			(1 << 10)
+#define IO_DPD2_CSID			(1 << 11)
+#define IO_DPD2_CSIE			(1 << 12)
 
 static u8 tegra_cpu_domains[] = {
 	0xFF,			/* not available for CPU0 */
@@ -118,6 +163,7 @@ struct pmc_lp0_wakeup {
 	struct list_head wake_list;
 };
 static struct pmc_lp0_wakeup tegra_lp0_wakeup;
+static u32 io_dpd_reg, io_dpd2_reg;
 #endif
 
 static inline u32 tegra_pmc_readl(u32 reg)
@@ -555,6 +601,19 @@ static void tegra_pmc_wake_syscore_init(void)
 	register_syscore_ops(&tegra_pmc_wake_syscore_ops);
 }
 
+static void set_core_power_timers(void)
+{
+	unsigned long osc, pmu, off;
+
+	osc = DIV_ROUND_UP_ULL(pmc_pm_data.core_osc_time * 32768, 1000000);
+	pmu = DIV_ROUND_UP_ULL(pmc_pm_data.core_pmu_time * 32768, 1000000);
+	off = DIV_ROUND_UP_ULL(pmc_pm_data.core_off_time * 32768, 1000000);
+
+	tegra_pmc_writel(((osc << 8) & 0xff00) | (pmu & 0xff),
+			 PMC_COREPWRGOOD_TIMER);
+	tegra_pmc_writel(off, PMC_COREPWROFF_TIMER);
+}
+
 static void set_power_timers(u32 us_on, u32 us_off, unsigned long rate)
 {
 	unsigned long long ticks;
@@ -599,16 +658,31 @@ void tegra_pmc_suspend(void)
 
 void tegra_pmc_resume(void)
 {
+	/* Clear DPD Enable */
+	if (tegra_chip_id == TEGRA124)
+		tegra_pmc_writel(0x0, PMC_DPD_ENABLE);
+
+	/* Clear DPD req */
+	tegra_pmc_writel(io_dpd_reg | IO_DPD_OFF, PMC_IO_DPD_REQ);
+	tegra_pmc_writel(io_dpd2_reg | IO_DPD_OFF, PMC_IO_DPD2_REQ);
+
+	/* Clear DPD sample */
+	tegra_pmc_writel(0x0, PMC_DPD_SAMPLE);
+
 	tegra_pmc_writel(0x0, PMC_SCRATCH41);
 }
 
 void tegra_pmc_pm_set(enum tegra_suspend_mode mode)
 {
-	u32 reg, csr_reg;
+	u32 reg, csr_reg, boot_flag;
 	unsigned long rate = 0;
 
 	reg = tegra_pmc_readl(PMC_CTRL);
 	reg |= TEGRA_POWER_CPU_PWRREQ_OE;
+	if (pmc_pm_data.combined_req)
+		reg &= ~TEGRA_POWER_PWRREQ_OE;
+	else
+		reg |= TEGRA_POWER_PWRREQ_OE;
 	reg &= ~TEGRA_POWER_EFFECT_LP0;
 
 	switch (tegra_chip_id) {
@@ -625,6 +699,44 @@ void tegra_pmc_pm_set(enum tegra_suspend_mode mode)
 	}
 
 	switch (mode) {
+	case TEGRA_SUSPEND_LP0:
+		/*
+		 * Enable DPD sample to trigger sampling pads data and direction
+		 * in which pad will be driven during LP0 mode.
+		 */
+		tegra_pmc_writel(0x1, PMC_DPD_SAMPLE);
+
+		/*
+		 * Power down IO logic
+		 */
+		switch (tegra_chip_id) {
+		case TEGRA114:
+		case TEGRA124:
+			io_dpd_reg = IO_DPD_CSIA | IO_DPD_CSIB | IO_DPD_DSI |
+				IO_DPD_MIPI_BIAS | IO_DPD_PEX_BIAS |
+				IO_DPD_PEX_CLK1 | IO_DPD_PEX_CLK2 |
+				IO_DPD_PEX_CLK3 | IO_DPD_DAC | IO_DPD_USB0 |
+				IO_DPD_USB1 | IO_DPD_USB2 | IO_DPD_USB_BIAS |
+				IO_DPD_UART | IO_DPD_BB | IO_DPD_VI |
+				IO_DPD_AUDIO | IO_DPD_LCD | IO_DPD_HSIC;
+			io_dpd2_reg = IO_DPD2_PEX_CNTRL | IO_DPD2_SDMMC1 |
+				IO_DPD2_SDMMC3 | IO_DPD2_SDMMC4 | IO_DPD2_CAM |
+				IO_DPD2_RES_RAIL | IO_DPD2_HV | IO_DPD2_DSIB |
+				IO_DPD2_DSIC | IO_DPD2_DSID | IO_DPD2_CSIC |
+				IO_DPD2_CSID | IO_DPD2_CSIE;
+			break;
+		default:
+			break;
+		}
+		tegra_pmc_writel(io_dpd_reg | IO_DPD_ON, PMC_IO_DPD_REQ);
+		tegra_pmc_writel(io_dpd2_reg | IO_DPD_ON, PMC_IO_DPD2_REQ);
+
+		/* Set warmboot flag */
+		boot_flag = tegra_pmc_readl(PMC_SCRATCH0);
+		tegra_pmc_writel(boot_flag | 1, PMC_SCRATCH0);
+
+		tegra_pmc_writel(pmc_pm_data.lp0_vec_phy_addr, PMC_SCRATCH1);
+		reg |= TEGRA_POWER_EFFECT_LP0;
 	case TEGRA_SUSPEND_LP1:
 		rate = 32768;
 		break;
@@ -650,12 +762,19 @@ void tegra_pmc_suspend_init(void)
 	reg |= TEGRA_POWER_CPU_PWRREQ_OE;
 	tegra_pmc_writel(reg, PMC_CTRL);
 
+	set_core_power_timers();
+
 	reg = tegra_pmc_readl(PMC_CTRL);
 
 	if (!pmc_pm_data.sysclkreq_high)
 		reg |= TEGRA_POWER_SYSCLK_POLARITY;
 	else
 		reg &= ~TEGRA_POWER_SYSCLK_POLARITY;
+
+	if (!pmc_pm_data.corereq_high)
+		reg |= TEGRA_POWER_PWRREQ_POLARITY;
+	else
+		reg &= ~TEGRA_POWER_PWRREQ_POLARITY;
 
 	/* configure the output polarity while the request is tristated */
 	tegra_pmc_writel(reg, PMC_CTRL);
@@ -770,6 +889,14 @@ void __init tegra_pmc_init(void)
 
 	pmc_pm_data.lp0_vec_phy_addr = lp0_vec[0];
 	pmc_pm_data.lp0_vec_size = lp0_vec[1];
+
+	if (suspend_mode == TEGRA_SUSPEND_LP0) {
+		if (!memblock_is_reserved(pmc_pm_data.lp0_vec_phy_addr)) {
+			pr_info("Suspend mode LP0 requested, but init failed");
+			pr_cont("-- disabling LP0\n");
+			suspend_mode = TEGRA_SUSPEND_LP1;
+		}
+	}
 
 	pmc_pm_data.suspend_mode = suspend_mode;
 

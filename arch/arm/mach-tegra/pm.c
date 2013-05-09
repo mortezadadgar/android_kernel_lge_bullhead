@@ -261,13 +261,23 @@ void tegra_idle_lp2_last(void)
 enum tegra_suspend_mode tegra_pm_validate_suspend_mode(
 				enum tegra_suspend_mode mode)
 {
+	enum tegra_suspend_mode avail_mode = TEGRA_SUSPEND_NONE;
 	/*
 	 * The Tegra devices support suspending to LP1 or lower currently.
+	 * Only Tegra114 & Tegra124 supports LP0.
 	 */
-	if (mode > TEGRA_SUSPEND_LP1)
-		return TEGRA_SUSPEND_LP1;
+	switch (tegra_chip_id) {
+	case TEGRA114:
+	case TEGRA124:
+		avail_mode = mode;
+		break;
+	default:
+		if (mode > TEGRA_SUSPEND_LP1)
+			avail_mode = TEGRA_SUSPEND_LP1;
+		break;
+	}
 
-	return mode;
+	return avail_mode;
 }
 
 static int tegra_sleep_core(unsigned long v2p)
@@ -344,6 +354,19 @@ static bool tegra_sleep_core_init(void)
 	return true;
 }
 
+static void tegra_suspend_enter_lp0(void)
+{
+	tegra_smp_clear_cpu_init_mask();
+	tegra_cpu_reset_handler_save();
+	tegra_tsc_suspend();
+}
+
+static void tegra_suspend_exit_lp0(void)
+{
+	tegra_tsc_resume();
+	tegra_cpu_reset_handler_restore();
+}
+
 static void tegra_suspend_enter_lp1(void)
 {
 	tegra_pmc_suspend();
@@ -391,6 +414,8 @@ static int __cpuinit tegra_suspend_enter(suspend_state_t state)
 
 	suspend_cpu_complex();
 	switch (mode) {
+	case TEGRA_SUSPEND_LP0:
+		tegra_suspend_enter_lp0();
 	case TEGRA_SUSPEND_LP1:
 		tegra_suspend_enter_lp1();
 		break;
@@ -404,6 +429,8 @@ static int __cpuinit tegra_suspend_enter(suspend_state_t state)
 	cpu_suspend(PHYS_OFFSET - PAGE_OFFSET, tegra_sleep_func);
 
 	switch (mode) {
+	case TEGRA_SUSPEND_LP0:
+		tegra_suspend_exit_lp0();
 	case TEGRA_SUSPEND_LP1:
 		tegra_suspend_exit_lp1();
 		break;
@@ -451,6 +478,7 @@ void __init tegra_init_suspend(void)
 
 	/* set up sleep function for cpu_suspend */
 	switch (mode) {
+	case TEGRA_SUSPEND_LP0:
 	case TEGRA_SUSPEND_LP1:
 		tegra_sleep_func = tegra_sleep_core;
 		break;
