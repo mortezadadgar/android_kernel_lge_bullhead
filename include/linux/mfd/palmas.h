@@ -62,6 +62,11 @@ struct palmas {
 	u8 gpio_muxed;
 	u8 led_muxed;
 	u8 pwm_muxed;
+
+	int design_revision;
+	int sw_otp_version;
+	int es_minor_version;
+	int es_major_version;
 };
 
 struct palmas_gpadc_platform_data {
@@ -442,6 +447,7 @@ enum usb_irq_events {
 #define PALMAS_GPIO_BASE					0x280
 #define PALMAS_USB_BASE						0x290
 #define PALMAS_GPADC_BASE					0x2C0
+#define PALMAS_PAGE3_BASE					0x300
 #define PALMAS_TRIM_GPADC_BASE					0x3CD
 
 /* Registers for function RTC */
@@ -2632,6 +2638,9 @@ enum usb_irq_events {
 #define PALMAS_OD_OUTPUT_GPIO_CTRL_GPIO_2_OD_SHIFT		2
 #define PALMAS_OD_OUTPUT_GPIO_CTRL_GPIO_1_OD			0x02
 #define PALMAS_OD_OUTPUT_GPIO_CTRL_GPIO_1_OD_SHIFT		1
+
+#define PALMAS_INTERNAL_DESIGNREV				0x57
+#define PALMAS_INTERNAL_DESIGNREV_DESIGNREV(val)		((val) & 0xF)
 
 /* Registers for function GPADC */
 #define PALMAS_GPADC_CTRL1					0x0

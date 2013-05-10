@@ -328,6 +328,63 @@ static void palmas_power_off(void)
 				__func__, ret);
 }
 
+static int palmas_read_version_information(struct palmas *palmas)
+{
+	unsigned int sw_rev, des_rev;
+	int ret;
+
+	ret = palmas_read(palmas, PALMAS_PMU_CONTROL_BASE,
+				PALMAS_SW_REVISION, &sw_rev);
+	if (ret < 0) {
+		dev_err(palmas->dev, "SW_REVISION read failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = palmas_read(palmas, PALMAS_PAGE3_BASE,
+				PALMAS_INTERNAL_DESIGNREV, &des_rev);
+	if (ret < 0) {
+		dev_err(palmas->dev,
+			"INTERNAL_DESIGNREV read failed: %d\n", ret);
+		return ret;
+	}
+
+	palmas->sw_otp_version = sw_rev;
+
+	dev_info(palmas->dev, "Internal DesignRev 0x%02X, SWRev 0x%02X\n",
+			des_rev, sw_rev);
+	des_rev = PALMAS_INTERNAL_DESIGNREV_DESIGNREV(des_rev);
+	switch (des_rev) {
+	case 0:
+		palmas->es_major_version = 1;
+		palmas->es_minor_version = 0;
+		palmas->design_revision = 0xA0;
+		break;
+	case 1:
+		palmas->es_major_version = 2;
+		palmas->es_minor_version = 0;
+		palmas->design_revision = 0xB0;
+		break;
+	case 2:
+		palmas->es_major_version = 2;
+		palmas->es_minor_version = 1;
+		palmas->design_revision = 0xB1;
+		break;
+	case 3:
+		palmas->es_major_version = 2;
+		palmas->es_minor_version = 2;
+		palmas->design_revision = 0xB2;
+		break;
+	default:
+		dev_err(palmas->dev, "Invalid design revision\n");
+		return -EINVAL;
+	}
+
+	dev_info(palmas->dev, "ES version %d.%d: ChipRevision 0x%02X%02X\n",
+		palmas->es_major_version, palmas->es_minor_version,
+		palmas->design_revision, palmas->sw_otp_version);
+	return 0;
+}
+
 static int palmas_i2c_probe(struct i2c_client *i2c,
 			    const struct i2c_device_id *id)
 {
@@ -387,6 +444,10 @@ static int palmas_i2c_probe(struct i2c_client *i2c,
 			goto err;
 		}
 	}
+
+	ret = palmas_read_version_information(palmas);
+	if (ret < 0)
+		goto err;
 
 	/* Change interrupt line output polarity */
 	if (pdata->irq_flags & IRQ_TYPE_LEVEL_HIGH)
