@@ -230,7 +230,7 @@ int mwifiex_bss_start(struct mwifiex_private *priv, struct cfg80211_bss *bss,
 	struct mwifiex_adapter *adapter = priv->adapter;
 	struct mwifiex_bssdescriptor *bss_desc = NULL;
 	u8 *beacon_ie = NULL;
-	size_t beacon_ie_len = bss->len_information_elements;
+	size_t beacon_ie_len;
 
 	priv->scan_block = false;
 
@@ -245,6 +245,7 @@ int mwifiex_bss_start(struct mwifiex_private *priv, struct cfg80211_bss *bss,
 			return -ENOMEM;
 		}
 
+		beacon_ie_len = bss->len_information_elements;
 		beacon_ie = kmemdup(bss->information_elements, beacon_ie_len,
 				    GFP_KERNEL);
 		if (!beacon_ie) {
