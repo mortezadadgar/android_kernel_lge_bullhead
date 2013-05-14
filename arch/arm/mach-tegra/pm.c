@@ -25,6 +25,8 @@
 #include <linux/suspend.h>
 #include <linux/err.h>
 #include <linux/clk/tegra.h>
+#include <linux/serial_reg.h>
+#include <linux/syscore_ops.h>
 
 #include <asm/smp_plat.h>
 #include <asm/cacheflush.h>
@@ -33,6 +35,7 @@
 #include <asm/proc-fns.h>
 #include <asm/tlbflush.h>
 
+#include "common.h"
 #include "iomap.h"
 #include "reset.h"
 #include "flowctrl.h"
@@ -49,6 +52,83 @@ struct tegra_lp1_iram tegra_lp1_iram;
 void (*tegra_tear_down_cpu)(void);
 void (*tegra_sleep_core_finish)(unsigned long v2p);
 static int (*tegra_sleep_func)(unsigned long v2p);
+
+#ifdef CONFIG_DEBUG_LL
+static u8 sctx_uart[5];
+
+static int tegra_debug_uart_suspend(void)
+{
+	void __iomem *uart;
+	u32 lcr;
+
+	/* Debug UART virtual address */
+	if (!tegra_uart_config[2])
+		return 0;
+	else
+		uart = (void __iomem *)tegra_uart_config[2];
+
+	lcr = readb(uart + UART_LCR * 4);
+
+	sctx_uart[0] = lcr;
+	sctx_uart[1] = readb(uart + UART_MCR * 4);
+
+	/* DLAB = 0 */
+	writeb(lcr & ~UART_LCR_DLAB, uart + UART_LCR * 4);
+
+	sctx_uart[2] = readb(uart + UART_IER * 4);
+
+	/* DLAB = 1 */
+	writeb(lcr | UART_LCR_DLAB, uart + UART_LCR * 4);
+
+	sctx_uart[3] = readb(uart + UART_DLL * 4);
+	sctx_uart[4] = readb(uart + UART_DLM * 4);
+
+	writeb(lcr, uart + UART_LCR * 4);
+
+	return 0;
+}
+
+static void tegra_debug_uart_resume(void)
+{
+	void __iomem *uart;
+	u32 lcr;
+
+	/* Debug UART virtual address */
+	if (!tegra_uart_config[2])
+		return;
+	else
+		uart = (void __iomem *)tegra_uart_config[2];
+
+	lcr = sctx_uart[0];
+
+	writeb(sctx_uart[1], uart + UART_MCR * 4);
+
+	/* DLAB = 0 */
+	writeb(lcr & ~UART_LCR_DLAB, uart + UART_LCR * 4);
+
+	writeb(UART_FCR_ENABLE_FIFO | UART_FCR_T_TRIG_01 | UART_FCR_R_TRIG_01,
+	       uart + UART_FCR * 4);
+	writeb(sctx_uart[2], uart + UART_IER * 4);
+
+	/* DLAB = 1 */
+	writeb(lcr | UART_LCR_DLAB, uart + UART_LCR * 4);
+
+	writeb(sctx_uart[3], uart + UART_DLL * 4);
+	writeb(sctx_uart[4], uart + UART_DLM * 4);
+
+	writeb(lcr, uart + UART_LCR * 4);
+}
+
+static struct syscore_ops tegra_debug_uart_syscore_ops = {
+	.suspend = tegra_debug_uart_suspend,
+	.resume = tegra_debug_uart_resume,
+};
+
+static void tegra_debug_uart_syscore_init(void)
+{
+	register_syscore_ops(&tegra_debug_uart_syscore_ops);
+}
+#endif
 
 static void tegra_tear_down_cpu_init(void)
 {
@@ -351,6 +431,10 @@ void __init tegra_init_suspend(void)
 
 	if (mode == TEGRA_SUSPEND_NONE)
 		return;
+
+#ifdef CONFIG_DEBUG_LL
+	tegra_debug_uart_syscore_init();
+#endif
 
 	tegra_tear_down_cpu_init();
 	tegra_pmc_suspend_init();

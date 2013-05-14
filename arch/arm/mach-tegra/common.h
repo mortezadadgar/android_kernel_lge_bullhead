@@ -1,3 +1,4 @@
+extern u32 tegra_uart_config[4];
 extern struct smp_operations tegra_smp_ops;
 
 extern int tegra_cpu_kill(unsigned int cpu);
