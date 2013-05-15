@@ -147,6 +147,10 @@ static void __init tegra_dt_init(void)
 	 * devices
 	 */
 out:
+#ifdef CONFIG_PM_SLEEP
+	tegra_pmc_lp0_wakeup_init();
+#endif
+
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, parent);
 	tegra_dvfs_init();
 }
