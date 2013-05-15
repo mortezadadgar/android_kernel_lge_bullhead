@@ -41,7 +41,7 @@ struct clk *tegra114_emc_predict_parent(unsigned long rate);
 void tegra114_emc_timing_invalidate(void);
 #else
 static inline long tegra114_emc_round_rate(unsigned long rate)
-{ return -ENODEV; }
+{ return 0; }
 static inline int tegra114_emc_set_rate(unsigned long rate) { return -ENODEV; }
 static inline unsigned long tegra114_emc_get_rate(void) { return -ENODEV; }
 static inline struct clk *tegra114_emc_predict_parent(unsigned long rate)

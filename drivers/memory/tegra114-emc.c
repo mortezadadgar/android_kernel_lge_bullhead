@@ -412,10 +412,10 @@ long tegra114_emc_round_rate(unsigned long rate)
 	int max = 0;
 
 	if (!emc_enable)
-		return -ENODEV;
+		return 0;
 
 	if (!tegra_emc_table_size)
-		return __clk_get_rate(emc_clk);
+		return 0;
 
 	i = get_start_idx(rate);
 	for (; i < tegra_emc_table_size; i++) {
