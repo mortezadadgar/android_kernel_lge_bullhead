@@ -391,7 +391,7 @@ unsigned long tegra114_emc_get_rate(void)
 	if (!emc_enable)
 		return -ENODEV;
 
-	if (!tegra_emc_table)
+	if (!tegra_emc_table_size)
 		return -EINVAL;
 
 	val = clk_cfg_readl();
@@ -414,7 +414,7 @@ long tegra114_emc_round_rate(unsigned long rate)
 	if (!emc_enable)
 		return -ENODEV;
 
-	if (!tegra_emc_table)
+	if (!tegra_emc_table_size)
 		return __clk_get_rate(emc_clk);
 
 	i = get_start_idx(rate);
@@ -790,7 +790,7 @@ int tegra114_emc_set_rate(unsigned long rate)
 	if (!emc_enable)
 		return -ENODEV;
 
-	if (!tegra_emc_table)
+	if (!tegra_emc_table_size)
 		return -EINVAL;
 
 	if (rate == tegra114_emc_get_rate())
