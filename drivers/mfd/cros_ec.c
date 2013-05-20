@@ -150,9 +150,11 @@ fail_mfd:
 	if (ec_dev->irq)
 		free_irq(ec_dev->irq, ec_dev);
 fail_irq:
-	kfree(ec_dev->dout);
+	if (ec_dev->dout_size)
+		kfree(ec_dev->dout);
 fail_dout:
-	kfree(ec_dev->din);
+	if (ec_dev->din_size)
+		kfree(ec_dev->din);
 fail_din:
 	return err;
 }
@@ -163,8 +165,10 @@ int cros_ec_remove(struct cros_ec_device *ec_dev)
 	mfd_remove_devices(ec_dev->dev);
 	if (ec_dev->irq)
 		free_irq(ec_dev->irq, ec_dev);
-	kfree(ec_dev->dout);
-	kfree(ec_dev->din);
+	if (ec_dev->dout_size)
+		kfree(ec_dev->dout);
+	if (ec_dev->din_size)
+		kfree(ec_dev->din);
 
 	return 0;
 }
