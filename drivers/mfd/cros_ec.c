@@ -123,17 +123,15 @@ int cros_ec_register(struct cros_ec_device *ec_dev)
 		}
 	}
 
-	if (!ec_dev->irq) {
-		dev_dbg(dev, "no valid IRQ: %d\n", ec_dev->irq);
-		goto fail_irq;
-	}
-
-	err = request_threaded_irq(ec_dev->irq, NULL, ec_irq_thread,
-				   IRQF_TRIGGER_LOW | IRQF_ONESHOT,
-				   "chromeos-ec", ec_dev);
-	if (err) {
-		dev_err(dev, "request irq %d: error %d\n", ec_dev->irq, err);
-		goto fail_irq;
+	if (ec_dev->irq) {
+		err = request_threaded_irq(ec_dev->irq, NULL, ec_irq_thread,
+					   IRQF_TRIGGER_LOW | IRQF_ONESHOT,
+					   "chromeos-ec", ec_dev);
+		if (err) {
+			dev_err(dev, "request irq %d: error %d\n",
+				ec_dev->irq, err);
+			goto fail_irq;
+		}
 	}
 
 	err = mfd_add_devices(dev, 0, cros_devs,
@@ -149,7 +147,8 @@ int cros_ec_register(struct cros_ec_device *ec_dev)
 	return 0;
 
 fail_mfd:
-	free_irq(ec_dev->irq, ec_dev);
+	if (ec_dev->irq)
+		free_irq(ec_dev->irq, ec_dev);
 fail_irq:
 	kfree(ec_dev->dout);
 fail_dout:
@@ -162,7 +161,8 @@ EXPORT_SYMBOL(cros_ec_register);
 int cros_ec_remove(struct cros_ec_device *ec_dev)
 {
 	mfd_remove_devices(ec_dev->dev);
-	free_irq(ec_dev->irq, ec_dev);
+	if (ec_dev->irq)
+		free_irq(ec_dev->irq, ec_dev);
 	kfree(ec_dev->dout);
 	kfree(ec_dev->din);
 
