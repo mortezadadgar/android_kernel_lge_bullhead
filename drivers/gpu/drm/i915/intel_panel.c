@@ -769,6 +769,7 @@ int intel_panel_setup_backlight(struct drm_connector *connector)
 
 	memset(&props, 0, sizeof(props));
 	props.type = BACKLIGHT_RAW;
+
 	props.brightness = dev_priv->backlight.level;
 
 	spin_lock_irqsave(&dev_priv->backlight.lock, flags);
