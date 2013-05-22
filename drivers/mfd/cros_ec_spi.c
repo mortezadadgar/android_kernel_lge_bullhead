@@ -69,7 +69,7 @@
  * @spi: SPI device we are connected to
  * @last_transfer_ns: time that we last finished a transfer, or 0 if there
  *	if no record
- * @lock: mutex to ensure only one user of cros_ec_command_spi_xfer at a time
+ * @lock: mutex to ensure only one user of cros_ec_cmd_xfer_spi at a time
  */
 struct cros_ec_spi {
 	struct spi_device *spi;
@@ -203,13 +203,13 @@ static int cros_ec_spi_receive_response(struct cros_ec_device *ec_dev,
 }
 
 /**
- * cros_ec_command_spi_xfer - Transfer a message over SPI and receive the reply
+ * cros_ec_cmd_xfer_spi - Transfer a message over SPI and receive the reply
  *
  * @ec_dev: ChromeOS EC device
  * @ec_msg: Message to transfer
  */
-static int cros_ec_command_spi_xfer(struct cros_ec_device *ec_dev,
-				    struct cros_ec_msg *ec_msg)
+static int cros_ec_cmd_xfer_spi(struct cros_ec_device *ec_dev,
+				struct cros_ec_msg *ec_msg)
 {
 	struct cros_ec_spi *ec_spi = ec_dev->priv;
 	struct spi_transfer trans;
@@ -272,6 +272,7 @@ static int cros_ec_command_spi_xfer(struct cros_ec_device *ec_dev,
 	}
 
 	/* check response error code */
+	/* FIXME (crbug.com/242706): The caller needs to know this byte! */
 	ptr = ec_dev->din;
 	if (ptr[0]) {
 		dev_warn(ec_dev->dev, "command 0x%02x returned an error %d\n",
@@ -340,7 +341,7 @@ static int cros_ec_probe_spi(struct spi_device *spi)
 	ec_dev->dev = dev;
 	ec_dev->priv = ec_spi;
 	ec_dev->irq = spi->irq;
-	ec_dev->command_xfer = cros_ec_command_spi_xfer;
+	ec_dev->cmd_xfer = cros_ec_cmd_xfer_spi;
 	ec_dev->ec_name = ec_spi->spi->modalias;
 	ec_dev->phys_name = dev_name(&ec_spi->spi->dev);
 	ec_dev->parent = &ec_spi->spi->dev;
