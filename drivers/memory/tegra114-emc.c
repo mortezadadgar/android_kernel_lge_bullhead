@@ -290,6 +290,7 @@ static int clkchange_delay = 100;
 static int last_round_idx;
 static u32 tegra_dram_dev_num;
 static u32 tegra_dram_type = -1;
+static bool tegra_emc_ready;
 static void __iomem *tegra_emc_base;
 static void __iomem *tegra_emc0_base;
 static void __iomem *tegra_emc1_base;
@@ -380,6 +381,12 @@ void tegra114_emc_timing_invalidate(void)
 {
 	emc_timing = NULL;
 }
+
+bool tegra114_emc_is_ready(void)
+{
+	return tegra_emc_ready;
+}
+EXPORT_SYMBOL(tegra114_emc_is_ready);
 
 unsigned long tegra114_emc_get_rate(void)
 {
@@ -1218,6 +1225,8 @@ static int tegra114_emc_probe(struct platform_device *pdev)
 	tegra_emc_base = of_iomap(pdev->dev.of_node, 2);
 
 	ret = tegra114_init_emc_data(pdev);
+	if (!ret)
+		tegra_emc_ready = true;
 
 out:
 	if (mc_np)
