@@ -45,6 +45,8 @@ const char *i2c_adapter_names[] = {
 	"SMBus I801 adapter",
 	"i915 gmbus vga",
 	"i915 gmbus panel",
+	"i2c-designware-pci-9",
+	"i2c-designware-pci-10",
 };
 
 /* Keep this enum consistent with i2c_adapter_names */
@@ -52,6 +54,8 @@ enum i2c_adapter_type {
 	I2C_ADAPTER_SMBUS = 0,
 	I2C_ADAPTER_VGADDC,
 	I2C_ADAPTER_PANEL,
+	I2C_ADAPTER_I2C0,
+	I2C_ADAPTER_I2C1,
 };
 
 static struct i2c_board_info __initdata cyapa_device = {
@@ -248,6 +252,13 @@ static int __init setup_cyapa_smbus_tp(const struct dmi_system_id *id)
 	return 0;
 }
 
+static int __init setup_cyapa_i2c0_tp(const struct dmi_system_id *id)
+{
+	/* add cypress touchpad on I2C0 */
+	tp = add_i2c_device("trackpad", I2C_ADAPTER_I2C0, &cyapa_device);
+	return 0;
+}
+
 static int __init setup_atmel_224s_tp(const struct dmi_system_id *id)
 {
 	const unsigned short addr_list[] = { ATMEL_TP_I2C_BL_ADDR,
@@ -284,6 +295,14 @@ static int __init setup_isl29023_als(const struct dmi_system_id *id)
 {
 	/* add isl29023 light sensor on Panel GMBus */
 	als = add_i2c_device("lightsensor", I2C_ADAPTER_PANEL,
+			     &isl_als_device);
+	return 0;
+}
+
+static int __init setup_isl29023_als_i2c1(const struct dmi_system_id *id)
+{
+	/* add isl29023 light sensor on I2C1 */
+	als = add_i2c_device("lightsensor", I2C_ADAPTER_I2C1,
 			     &isl_als_device);
 	return 0;
 }
@@ -399,6 +418,54 @@ static struct dmi_system_id __initdata chromeos_laptop_dmi_table[] = {
 			DMI_MATCH(DMI_PRODUCT_NAME, "Link"),
 		},
 		.callback = setup_keyboard_backlight,
+	},
+	{
+		.ident = "Falco - Light Sensor",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "GOOGLE"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Falco"),
+		},
+		.callback = setup_isl29023_als_i2c1,
+	},
+	{
+		.ident = "Peppy - Light Sensor",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "GOOGLE"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Peppy"),
+		},
+		.callback = setup_isl29023_als_i2c1,
+	},
+	{
+		.ident = "Slippy - Light Sensor",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "GOOGLE"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Slippy"),
+		},
+		.callback = setup_isl29023_als_i2c1,
+	},
+	{
+		.ident = "Falco - Touchpad",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "GOOGLE"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Falco"),
+		},
+		.callback = setup_cyapa_i2c0_tp,
+	},
+	{
+		.ident = "Peppy - Touchpad",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "GOOGLE"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Peppy"),
+		},
+		.callback = setup_cyapa_i2c0_tp,
+	},
+	{
+		.ident = "Slippy - Touchpad",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "GOOGLE"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Slippy"),
+		},
+		.callback = setup_cyapa_i2c0_tp,
 	},
 	{ }
 };
