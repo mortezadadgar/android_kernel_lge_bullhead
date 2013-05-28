@@ -1225,14 +1225,14 @@ static int tegra114_emc_probe(struct platform_device *pdev)
 	tegra_emc_base = of_iomap(pdev->dev.of_node, 2);
 
 	ret = tegra114_init_emc_data(pdev);
-	if (!ret)
-		tegra_emc_ready = true;
 
 out:
 	if (mc_np)
 		of_node_put(mc_np);
 	if (car_np)
 		of_node_put(car_np);
+
+	tegra_emc_ready = true;
 	return ret;
 }
 
