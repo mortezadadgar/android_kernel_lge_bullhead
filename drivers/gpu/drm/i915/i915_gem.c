@@ -4933,8 +4933,14 @@ i915_gem_inactive_shrink(struct shrinker *shrinker, struct shrink_control *sc)
 		if (nr_to_scan > 0)
 			nr_to_scan -= __i915_gem_shrink(dev_priv, nr_to_scan,
 							false);
-		if (nr_to_scan > 0)
-			i915_gem_shrink_all(dev_priv);
+
+		/* We don't want to shrink all objects. When the shrinker is
+		 * called too often, this causes bouncing of GEM objects in
+		 * and out of the GTT, as well as GPU synchronization which
+		 * slows the system to a crawl.
+		 */
+		/*if (nr_to_scan > 0)
+			i915_gem_shrink_all(dev_priv);*/
 	}
 
 	cnt = 0;
