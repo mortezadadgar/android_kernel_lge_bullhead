@@ -8953,7 +8953,8 @@ int intel_framebuffer_init(struct drm_device *dev,
 	case DRM_FORMAT_XRGB1555:
 	case DRM_FORMAT_ARGB1555:
 		if (INTEL_INFO(dev)->gen > 3) {
-			DRM_DEBUG("invalid format: 0x%08x\n", mode_cmd->pixel_format);
+			DRM_DEBUG("unsupported pixel format: %s\n",
+				  drm_get_format_name(mode_cmd->pixel_format));
 			return -EINVAL;
 		}
 		break;
@@ -8964,7 +8965,8 @@ int intel_framebuffer_init(struct drm_device *dev,
 	case DRM_FORMAT_XBGR2101010:
 	case DRM_FORMAT_ABGR2101010:
 		if (INTEL_INFO(dev)->gen < 4) {
-			DRM_DEBUG("invalid format: 0x%08x\n", mode_cmd->pixel_format);
+			DRM_DEBUG("unsupported pixel format: %s\n",
+				  drm_get_format_name(mode_cmd->pixel_format));
 			return -EINVAL;
 		}
 		break;
@@ -8973,12 +8975,14 @@ int intel_framebuffer_init(struct drm_device *dev,
 	case DRM_FORMAT_YVYU:
 	case DRM_FORMAT_VYUY:
 		if (INTEL_INFO(dev)->gen < 5) {
-			DRM_DEBUG("invalid format: 0x%08x\n", mode_cmd->pixel_format);
+			DRM_DEBUG("unsupported pixel format: %s\n",
+				  drm_get_format_name(mode_cmd->pixel_format));
 			return -EINVAL;
 		}
 		break;
 	default:
-		DRM_DEBUG("unsupported pixel format 0x%08x\n", mode_cmd->pixel_format);
+		DRM_DEBUG("unsupported pixel format: %s\n",
+			  drm_get_format_name(mode_cmd->pixel_format));
 		return -EINVAL;
 	}
 
