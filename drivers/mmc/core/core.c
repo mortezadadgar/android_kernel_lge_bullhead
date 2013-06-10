@@ -2465,9 +2465,7 @@ void mmc_stop_host(struct mmc_host *host)
 	mmc_bus_get(host);
 	if (host->bus_ops && !host->bus_dead) {
 		/* Calling bus_ops->remove() with a claimed host can deadlock */
-		if (host->bus_ops->remove)
-			host->bus_ops->remove(host);
-
+		host->bus_ops->remove(host);
 		mmc_claim_host(host);
 		mmc_detach_bus(host);
 		mmc_power_off(host);
@@ -2620,8 +2618,7 @@ int mmc_suspend_host(struct mmc_host *host)
 			 * bus_ops->remove() with a claimed host can
 			 * deadlock.)
 			 */
-			if (host->bus_ops->remove)
-				host->bus_ops->remove(host);
+			host->bus_ops->remove(host);
 			mmc_claim_host(host);
 			mmc_detach_bus(host);
 			mmc_power_off(host);
@@ -2704,9 +2701,7 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 			break;
 
 		/* Calling bus_ops->remove() with a claimed host can deadlock */
-		if (host->bus_ops->remove)
-			host->bus_ops->remove(host);
-
+		host->bus_ops->remove(host);
 		mmc_claim_host(host);
 		mmc_detach_bus(host);
 		mmc_power_off(host);
