@@ -690,3 +690,63 @@ sound/pci/hda/patch_hdmi.c:908 hdmi_pcm_open() error: potential NULL dereference
 sound/pci/hda/patch_realtek.c:2440 alc_build_pcms() error: we previously assumed 'spec->adc_nids' could be null (see line 2355)
 sound/usb/midi.c:2135 snd_usbmidi_create() error: we previously assumed 'quirk' could be null (see line 2124)
 sound/usb/mixer_quirks.c:375 snd_nativeinstruments_control_get() error: doing dma on the stack ((null))
+drivers/media/v4l2-core/v4l2-ioctl.c:242:9: error: cannot size expression
+drivers/media/v4l2-core/v4l2-ioctl.c:2045:9: error: bad integer constant expression
+fs/proc/task_mmu.c:571:18: error: bad integer constant expression
+lib/reed_solomon/decode_rs.c:35:27: error: bad constant expression
+block/blk-core.c:1019 __get_request() error: we previously assumed 'ioc' could be null (see line 977)
+fs/xattr.c:923 __simple_xattr_set() error: potential NULL dereference 'new_xattr'.
+drivers/base/power/qos.c:470 dev_pm_qos_add_notifier() error: we previously assumed 'dev->power.qos' could be null (see line 464)
+net/bluetooth/amp.c:153:55: error: bad constant expression
+arch/x86/kernel/cpu/perf_event_intel_uncore.c:2458 uncore_type_init() error: buffer overflow 'attr_groups' 2 <= 2
+mm/slub.c:1918 unfreeze_partials() error: potential NULL dereference 'n'.
+net/mac80211-3.4/cfg.c:145 ieee80211_add_key() error: potential null dereference 'key'.  (ieee80211_key_alloc returns null)
+fs/fat/dir.c:893 fat_get_dotdot_entry() error: potential NULL dereference '*de'.
+net/wireless-3.4/lib80211_crypt_ccmp.c:158 ccmp_init_blocks() error: memcpy() 'hdr->addr1' too small (6 vs 18)
+fs/pstore/platform.c:173 pstore_dump() error: double unlock 'irqsave:flags'
+kernel/rcutree.c:1986 force_quiescent_state() error: potential NULL dereference 'rnp_old'.
+fs/pstore/ram_core.c:85:25: error: bad constant expression
+fs/pstore/ram_core.c:88:24: error: cannot size expression
+drivers/iio/industrialio-core.c:695 iio_device_add_channel_sysfs() error: buffer overflow 'iio_chan_info_postfix' 16 <= 31
+drivers/iio/industrialio-event.c:271 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_type_text' 5 <= 15
+drivers/iio/industrialio-event.c:272 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_dir_text' 3 <= 3
+drivers/iio/industrialio-event.c:309 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_type_text' 5 <= 15
+drivers/iio/industrialio-event.c:310 iio_device_add_event_sysfs() error: buffer overflow 'iio_ev_dir_text' 3 <= 3
+net/wireless-3.4/nl80211.c:3838 nl80211_trigger_scan() error: we previously assumed 'request->ssids' could be null (see line 3776)
+net/wireless-3.4/nl80211.c:4064 nl80211_start_sched_scan() error: we previously assumed 'request->ssids' could be null (see line 3989)
+drivers/media/usb/uvc/uvc_video.c:1795 uvc_video_init() error: potential NULL dereference 'format'.
+drivers/media/usb/uvc/uvc_video.c:1813 uvc_video_init() error: potential NULL dereference 'frame'.
+drivers/media/usb/uvc/uvc_v4l2.c:190 uvc_v4l2_try_format() error: potential NULL dereference 'format'.
+drivers/media/usb/uvc/uvc_v4l2.c:753 uvc_v4l2_do_ioctl() error: doing dma on the stack ((null))
+drivers/media/v4l2-core/v4l2-ioctl.c:247:17: error: too many errors
+drivers/net/usb/hso.c:1433 hso_serial_set_termios() error: we previously assumed 'old' could be null (see line 1424)
+drivers/net/usb/net1080.c:290 net1080_reset() error: doing dma on the stack ((null))
+drivers/net/usb/net1080.c:334 net1080_check_connect() error: doing dma on the stack ((null))
+drivers/gpu/drm/i915/intel_display.c:8013 intel_modeset_stage_output_state() error: potential NULL dereference 'connector->new_encoder'.
+drivers/gpu/drm/i915/intel_display.c:8063 intel_modeset_stage_output_state() error: potential NULL dereference 'encoder->new_crtc'.
+drivers/net/wireless-3.4/iwlwifi/iwl-agn-rs.c:2475 rs_rate_scale_perform() error: testing array offset 'high' after use.
+drivers/net/wireless-3.4/iwlwifi/iwl-agn-rs.c:2477 rs_rate_scale_perform() error: testing array offset 'low' after use.
+drivers/net/wireless-3.4/iwlwifi/iwl-agn-rs.c:2517 rs_rate_scale_perform() error: testing array offset 'low' after use.
+drivers/net/wireless-3.4/iwlwifi/iwl-agn-rs.c:2551 rs_rate_scale_perform() error: testing array offset 'low' after use.
+drivers/net/wireless-3.4/iwlwifi/iwl-agn-rs.c:2559 rs_rate_scale_perform() error: testing array offset 'high' after use.
+drivers/net/wireless-3.4/iwlwifi/iwl-agn-rs.c:3042 rs_fill_link_cmd() error: buffer overflow 'lq_cmd->rs_table' 16 <= 16
+drivers/net/wireless-3.4/iwlwifi/iwl-agn-rs.c:2768 rs_get_rate() error: we previously assumed 'lq_sta' could be null (see line 2759)
+drivers/net/wireless-3.4/iwlwifi/iwl-agn-tx.c:443 iwlagn_tx_skb() error: buffer overflow 'priv->tid_data[sta_id]' 8 <= 8
+drivers/net/wireless-3.4/libertas_tf/main.c:282 lbtf_tx_work() error: memcpy() 'txpd->tx_dest_addr_high' too small (2 vs 6)
+drivers/net/wireless-3.4/hostap/hostap_main.c:394 hostap_set_encryption() error: testing array offset 'idx' after use.
+drivers/net/wireless-3.4/rt2x00/rt2x00mac.c:534 rt2x00mac_set_key() error: memcpy() 'crypto.key' too small (16 vs 32)
+drivers/net/wireless-3.4/hostap/hostap_ioctl.c:189 prism2_ioctl_siwencode() error: we previously assumed '(*crypt)->ops' could be null (see line 151)
+drivers/net/wireless-3.4/rt2x00/rt2x00firmware.c:115 rt2x00lib_load_firmware() error: we previously assumed 'rt2x00dev->fw' could be null (see line 105)
+drivers/net/wireless-3.4/iwlegacy/4965-rs.c:1978 il4965_rs_rate_scale_perform() error: testing array offset 'high' after use.
+drivers/net/wireless-3.4/iwlegacy/4965-rs.c:1980 il4965_rs_rate_scale_perform() error: testing array offset 'low' after use.
+drivers/net/wireless-3.4/iwlegacy/4965-rs.c:2015 il4965_rs_rate_scale_perform() error: testing array offset 'low' after use.
+drivers/net/wireless-3.4/iwlegacy/4965-rs.c:2022 il4965_rs_rate_scale_perform() error: testing array offset 'low' after use.
+drivers/net/wireless-3.4/iwlegacy/4965-rs.c:2030 il4965_rs_rate_scale_perform() error: testing array offset 'high' after use.
+drivers/net/wireless-3.4/iwlegacy/4965-rs.c:2485 il4965_rs_fill_link_cmd() error: buffer overflow 'lq_cmd->rs_table' 16 <= 16
+drivers/net/wireless-3.4/rtlwifi/cam.c:331 rtl_cam_del_entry() error: we previously assumed 'sta_addr' could be null (see line 327)
+drivers/net/wireless-3.4/iwlwifi/iwl-scan.c:680 iwlagn_request_scan() error: we previously assumed 'vif' could be null (see line 646)
+drivers/net/wireless-3.4/iwlwifi/iwl-scan.c:844 iwlagn_request_scan() error: we previously assumed 'priv->scan_request' could be null (see line 743)
+drivers/net/wireless-3.4/rtlwifi/rtl8192c/phy_common.c:804 _rtl92c_phy_sw_chnl_step_by_step() error: potential NULL dereference 'currentcmd'.
+drivers/net/wireless-3.4/ath/ath9k/ar9003_phy.c:212 ar9003_hw_spur_mitigate_mrc_cck() error: potential NULL dereference 'spur_fbin_ptr'.
+drivers/net/wireless-3.4/ath/ath9k_btcoex/btcoex.c:93 ath9k_btcoex_ath9k_hw_init_btcoex_hw() error: buffer overflow 'ah->hw_gen_timers.gen_timer_index' 32 <= 2009813776
+drivers/net/wireless-3.4/ath/ath9k/btcoex.c:93 ath9k_hw_init_btcoex_hw() error: buffer overflow 'ah->hw_gen_timers.gen_timer_index' 32 <= 2009813776
