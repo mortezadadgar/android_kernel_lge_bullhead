@@ -34,6 +34,7 @@ mwifiex-y += sta_event.o
 mwifiex-y += sta_tx.o
 mwifiex-y += sta_rx.o
 mwifiex-y += cfg80211.o
+mwifiex-y += 11h.o
 mwifiex-$(CONFIG_DEBUG_FS) += debugfs.o
 obj-$(CONFIG_MWIFIEX) += mwifiex.o
 

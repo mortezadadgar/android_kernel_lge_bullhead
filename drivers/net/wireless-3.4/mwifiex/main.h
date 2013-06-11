@@ -293,6 +293,9 @@ struct mwifiex_bssdescriptor {
 	u16 wapi_offset;
 	u8 *beacon_buf;
 	u32 beacon_buf_size;
+	u8 sensed_11h;
+	u8 local_constraint;
+	u8 chan_sw_ie_present;
 };
 
 struct mwifiex_current_bss_params {
@@ -1008,6 +1011,10 @@ struct net_device *mwifiex_add_virtual_intf(struct wiphy *wiphy,
 int mwifiex_del_virtual_intf(struct wiphy *wiphy, struct net_device *dev);
 
 u8 *mwifiex_11d_code_2_region(u8 code);
+
+void mwifiex_11h_process_join(struct mwifiex_private *priv, u8 **buffer,
+			      struct mwifiex_bssdescriptor *bss_desc);
+int mwifiex_11h_handle_event_chanswann(struct mwifiex_private *priv);
 
 #ifdef CONFIG_DEBUG_FS
 void mwifiex_debugfs_init(void);

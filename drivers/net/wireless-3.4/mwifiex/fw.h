@@ -332,6 +332,7 @@ enum ENH_PS_MODES {
 #define EVENT_BW_CHANGE                 0x00000048
 
 #define EVENT_HOSTWAKE_STAIE		0x0000004d
+#define EVENT_CHANNEL_SWITCH_ANN        0x00000050
 
 #define EVENT_ID_MASK                   0xffff
 #define BSS_NUM_MASK                    0xf
@@ -785,6 +786,7 @@ enum SNMP_MIB_INDEX {
 	LONG_RETRY_LIM_I = 7,
 	FRAG_THRESH_I = 8,
 	DOT11D_I = 9,
+	DOT11H_I = 10,
 };
 
 #define MAX_SNMP_BUF_SIZE   128
@@ -990,6 +992,18 @@ struct host_cmd_ds_amsdu_aggr_ctrl {
 	__le16 enable;
 	__le16 curr_buf_size;
 } __packed;
+
+struct mwifiex_ie_types_pwr_capability {
+	struct mwifiex_ie_types_header header;
+	s8 min_pwr;
+	s8 max_pwr;
+};
+
+struct mwifiex_ie_types_local_pwr_constraint {
+	struct mwifiex_ie_types_header header;
+	u8 chan;
+	u8 constraint;
+};
 
 struct mwifiex_ie_types_wmm_param_set {
 	struct mwifiex_ie_types_header header;
