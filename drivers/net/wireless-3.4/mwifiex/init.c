@@ -219,6 +219,9 @@ static int mwifiex_init_priv(struct mwifiex_private *priv)
 	setup_timer(&priv->scan_delay_timer, scan_delay_timer_fn,
 		    (unsigned long)priv);
 
+	priv->csa_chan = 0;
+	priv->csa_expire_time = 0;
+
 	return mwifiex_add_bss_prio_tbl(priv);
 }
 

@@ -482,6 +482,8 @@ struct mwifiex_private {
 	u32 mgmt_frame_mask;
 	u32 mgmt_rx_freq;
 	bool scan_aborting;
+	u8 csa_chan;
+	unsigned long csa_expire_time;
 };
 
 enum mwifiex_ba_status {
@@ -924,6 +926,24 @@ mwifiex_netdev_get_priv(struct net_device *dev)
 static inline bool mwifiex_is_skb_mgmt_frame(struct sk_buff *skb)
 {
 	return (*(u32 *)skb->data == PKT_TYPE_MGMT);
+}
+
+/* This function retrieves channel closed for operation by Channel
+ * Switch Announcement.
+ */
+static inline u8
+mwifiex_11h_get_csa_closed_channel(struct mwifiex_private *priv)
+{
+	if (!priv->csa_chan)
+		return 0;
+
+	/* Clear csa channel, if DFS channel move time has passed */
+	if (jiffies > priv->csa_expire_time) {
+		priv->csa_chan = 0;
+		priv->csa_expire_time = 0;
+	}
+
+	return priv->csa_chan;
 }
 
 int mwifiex_init_shutdown_fw(struct mwifiex_private *priv,
