@@ -438,7 +438,7 @@ u32 intel_panel_get_max_backlight(struct drm_device *dev)
 		 * default backlight PWM settings.
 		 */
 		i915_set_default_max_backlight(dev);
-		max = i915_read_blc_pwm_ctl(dev);
+		max = _intel_panel_get_max_backlight(dev);
 	}
 
 	DRM_DEBUG_DRIVER("max backlight PWM = %d\n", max);
