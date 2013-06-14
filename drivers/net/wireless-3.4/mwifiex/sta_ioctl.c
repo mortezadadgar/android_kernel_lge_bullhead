@@ -265,6 +265,9 @@ int mwifiex_bss_start(struct mwifiex_private *priv, struct cfg80211_bss *bss,
 		if (ret)
 			goto done;
 
+		if (bss_desc == NULL)
+			goto done;
+
 		ret = mwifiex_check_network_compatibility(priv, bss_desc);
 		if (ret)
 			goto done;
