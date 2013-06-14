@@ -359,6 +359,8 @@ static int cros_ec_probe_spi(struct spi_device *spi)
 		return err;
 	}
 
+	device_init_wakeup(&spi->dev, true);
+
 	return 0;
 }
 
