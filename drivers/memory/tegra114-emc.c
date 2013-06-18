@@ -388,6 +388,29 @@ bool tegra114_emc_is_ready(void)
 }
 EXPORT_SYMBOL(tegra114_emc_is_ready);
 
+unsigned long tegra114_predict_emc_rate(int millivolts)
+{
+	int i;
+	unsigned long ret = -EINVAL;
+
+	if (!emc_enable)
+		return -ENODEV;
+
+	if (!tegra_emc_table_size)
+		return -EINVAL;
+
+	for (i = 0; i < tegra_emc_table_size; i++) {
+		if (tegra_emc_clk_sel[i].input == NULL)
+			continue;
+		if (tegra_emc_table[i].emc_min_mv > millivolts)
+			break;
+		ret = tegra_emc_table[i].rate;
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(tegra114_predict_emc_rate);
+
 unsigned long tegra114_emc_get_rate(void)
 {
 	u32 val;

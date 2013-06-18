@@ -40,6 +40,7 @@ unsigned long tegra114_emc_get_rate(void);
 struct clk *tegra114_emc_predict_parent(unsigned long rate);
 void tegra114_emc_timing_invalidate(void);
 bool tegra114_emc_is_ready(void);
+unsigned long tegra114_predict_emc_rate(int millivolts);
 #else
 static inline long tegra114_emc_round_rate(unsigned long rate)
 { return 0; }
@@ -49,6 +50,8 @@ static inline struct clk *tegra114_emc_predict_parent(unsigned long rate)
 { return ERR_PTR(-ENODEV); }
 static inline void tegra114_emc_timing_invalidate(void) { return; };
 static inline bool tegra114_emc_is_ready(void) { return true; };
+static inline unsigned long tegra114_predict_emc_rate(int millivolts)
+{ return -ENODEV; }
 #endif
 
 #endif
