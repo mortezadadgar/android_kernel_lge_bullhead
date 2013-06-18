@@ -750,3 +750,11 @@ drivers/net/wireless-3.4/rtlwifi/rtl8192c/phy_common.c:804 _rtl92c_phy_sw_chnl_s
 drivers/net/wireless-3.4/ath/ath9k/ar9003_phy.c:212 ar9003_hw_spur_mitigate_mrc_cck() error: potential NULL dereference 'spur_fbin_ptr'.
 drivers/net/wireless-3.4/ath/ath9k_btcoex/btcoex.c:93 ath9k_btcoex_ath9k_hw_init_btcoex_hw() error: buffer overflow 'ah->hw_gen_timers.gen_timer_index' 32 <= 2009813776
 drivers/net/wireless-3.4/ath/ath9k/btcoex.c:93 ath9k_hw_init_btcoex_hw() error: buffer overflow 'ah->hw_gen_timers.gen_timer_index' 32 <= 2009813776
+net/ipv4/inet_connection_sock.c:904 inet_csk_rebuild_route() error: potential NULL dereference 'rt'.
+net/mac80211-3.4/key.c:286 __ieee80211_key_replace() error: we previously assumed 'new' could be null (see line 277)
+net/wireless-3.4/reg.c:2192 __set_regdom() error: we previously assumed 'request_wiphy' could be null (see line 2141)
+fs/pstore/ram.c:428 ramoops_probe() error: we previously assumed 'pdata' could be null (see line 420)
+drivers/net/wireless-3.4/ath/ath5k/phy.c:966 ath5k_hw_rfregs_init() error: potential NULL dereference 'go'.
+drivers/base/power/qos.c:601 dev_pm_qos_expose_latency_limit() error: we previously assumed 'dev->power.qos' could be null (see line 590)
+drivers/base/power/qos.c:648 dev_pm_qos_expose_flags() error: we previously assumed 'dev->power.qos' could be null (see line 636)
+kernel/rcutree.c:1987 force_quiescent_state() error: double unlock 'spin_lock:&rnp_old->fqslock'
