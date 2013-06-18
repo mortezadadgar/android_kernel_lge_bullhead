@@ -354,8 +354,9 @@ void read_efuse(struct ieee80211_hw *hw, u16 _offset, u16 _size_byte, u8 *pbuf)
 	rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_EFUSE_USAGE,
 				      (u8 *)&efuse_usage);
 done:
-	for (i = 0; i < EFUSE_MAX_WORD_UNIT; i++)
-		kfree(efuse_word[i]);
+	if (efuse_word)
+		for (i = 0; i < EFUSE_MAX_WORD_UNIT; i++)
+			kfree(efuse_word[i]);
 	kfree(efuse_word);
 	kfree(efuse_tbl);
 }
