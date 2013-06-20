@@ -15,6 +15,7 @@ Optional properties:
 - regulator-suspend-mem-disabled: turn off when entering S2M
 - regulator-suspend-standby-microvolt: voltage applied when entering standby
 - regulator-suspend-standby-disabled: turn off when entering standby
+- regulator-allow-bypass: allow the regulator to go into bypass mode
 - <name>-supply: phandle to the parent supply/regulator node
 - regulator-ramp-delay: ramp delay for regulator(in uV/uS)
 
