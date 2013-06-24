@@ -1123,6 +1123,20 @@ static void azx_load_dsp_cleanup(struct hda_bus *bus,
 				 struct snd_dma_buffer *dmab);
 #endif
 
+/* enter link reset */
+static void azx_reset_link(struct azx *chip)
+{
+	unsigned long timeout;
+
+	/* reset controller */
+	azx_writel(chip, GCTL, azx_readl(chip, GCTL) & ~ICH6_GCTL_RESET);
+
+	timeout = jiffies + msecs_to_jiffies(100);
+	while ((azx_readb(chip, GCTL) & ICH6_GCTL_RESET) &&
+			time_before(jiffies, timeout))
+		usleep_range(500, 1000);
+}
+
 /* reset codec link */
 static int azx_reset(struct azx *chip, int full_reset)
 {
@@ -2897,6 +2911,7 @@ static int azx_suspend(struct device *dev)
 	if (chip->initialized)
 		snd_hda_suspend(chip->bus);
 	azx_stop_chip(chip);
+	azx_reset_link(chip);
 	if (chip->irq >= 0) {
 		free_irq(chip->irq, chip);
 		chip->irq = -1;
@@ -2953,6 +2968,7 @@ static int azx_runtime_suspend(struct device *dev)
 	struct azx *chip = card->private_data;
 
 	azx_stop_chip(chip);
+	azx_reset_link(chip);
 	azx_clear_irq_pending(chip);
 	if (chip->driver_caps & AZX_DCAPS_I915_POWERWELL)
 		hda_display_power(false);
