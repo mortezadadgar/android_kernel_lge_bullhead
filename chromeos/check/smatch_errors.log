@@ -758,3 +758,30 @@ drivers/net/wireless-3.4/ath/ath5k/phy.c:966 ath5k_hw_rfregs_init() error: poten
 drivers/base/power/qos.c:601 dev_pm_qos_expose_latency_limit() error: we previously assumed 'dev->power.qos' could be null (see line 590)
 drivers/base/power/qos.c:648 dev_pm_qos_expose_flags() error: we previously assumed 'dev->power.qos' could be null (see line 636)
 kernel/rcutree.c:1987 force_quiescent_state() error: double unlock 'spin_lock:&rnp_old->fqslock'
+arch/arm/kernel/atags_parse.c:208 setup_machine_tags() error: potential NULL dereference 'mdesc'.
+arch/arm/kernel/atags_parse.c:208 setup_machine_tags() error: we previously assumed 'mdesc' could be null (see line 200)
+arch/arm/kernel/devtree.c:225 setup_machine_fdt() error: potential NULL dereference 'mdesc_best'.
+arch/arm/kernel/devtree.c:225 setup_machine_fdt() error: we previously assumed 'mdesc_best' could be null (see line 202)
+sound/soc/soc-core.c:97:25: error: bad constant expression
+sound/soc/soc-core.c:98:29: error: bad constant expression
+sound/soc/soc-dapm.c:3353 snd_soc_dapm_new_dai_widgets() error: we previously assumed 'w' could be null (see line 3348)
+sound/soc/codecs/max98095.c:1966 max98095_handle_eq_pdata() error: potential NULL dereference 'max98095->eq_texts'.
+sound/soc/codecs/max98095.c:2121 max98095_handle_bq_pdata() error: potential NULL dereference 'max98095->bq_texts'.
+sound/soc/codecs/wm8994.c:3122 wm8994_handle_retune_mobile_pdata() error: potential NULL dereference 'wm8994->retune_mobile_texts'.
+drivers/dma/pl330.c:2921 pl330_prep_slave_sg() error: potential NULL dereference 'desc'.
+fs/proc/base.c:250 proc_pid_auxv() error: memcpy() 'mm->saved_auxv' too small (320 vs 4096)
+drivers/gpu/arm/t6xx/kbase/src/common/mali_kbase_js.c:773 kbasep_js_runpool_attempt_fast_start_ctx() error: potential NULL dereference 'js_kctx_new'.
+drivers/iio/adc/exynos_adc.c:147 exynos_read_raw() error: 'wait_for_completion_interruptible_timeout()' returns negative and 'timeout' is unsigned
+drivers/input/keyboard/cros_ec_keyb.c:200:31: error: bad constant expression
+drivers/input/keyboard/cros_ec_keyb.c:212:32: error: bad constant expression
+drivers/input/keyboard/cros_ec_keyb.c:213:32: error: bad constant expression
+drivers/input/keyboard/cros_ec_keyb.c:226:46: error: cannot size expression
+drivers/input/keyboard/cros_ec_keyb.c:228:55: error: cannot size expression
+drivers/gpu/arm/t6xx/kbase/src/common/mali_kbase_js_policy_cfs.c:1031 kbasep_js_policy_enqueue_ctx() error: potential NULL dereference 'list_kctx'.
+drivers/rtc/rtc-proc.c:33 is_rtc_hctosys() error: strncmp() '"rtc0"' too small (5 vs 10)
+drivers/net/wireless-3.4/mwifiex/scan.c:1175 mwifiex_update_bss_desc_with_ie() error: memcmp() 'vendor_ie->vend_hdr.oui' too small (3 vs 4)
+drivers/net/wireless-3.4/mwifiex/scan.c:1183 mwifiex_update_bss_desc_with_ie() error: memcmp() 'vendor_ie->vend_hdr.oui' too small (3 vs 4)
+drivers/net/wireless-3.4/mwifiex/sta_ioctl.c:1464 mwifiex_set_gen_ie_helper() error: memcmp() 'pvendor_ie->oui' too small (3 vs 4)
+drivers/net/wireless-3.4/mwifiex/sta_ioctl.c:1489 mwifiex_set_gen_ie_helper() error: memcmp() 'pvendor_ie->oui' too small (3 vs 4)
+drivers/net/wireless-3.4/mwifiex/sta_cmd.c:674 mwifiex_cmd_802_11_key_material() error: memcpy() 'param->key' too small (16 vs 32)
+arch/arm/boot/compressed/../../../../lib/zlib_inflate/inftrees.c:258 zlib_inflate_table() error: buffer overflow 'count' 16 <= 16
