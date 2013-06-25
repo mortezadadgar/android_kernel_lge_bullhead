@@ -1124,7 +1124,7 @@ static void azx_load_dsp_cleanup(struct hda_bus *bus,
 #endif
 
 /* enter link reset */
-static void azx_reset_link(struct azx *chip)
+static void azx_enter_link_reset(struct azx *chip)
 {
 	unsigned long timeout;
 
@@ -1137,11 +1137,22 @@ static void azx_reset_link(struct azx *chip)
 		usleep_range(500, 1000);
 }
 
-/* reset codec link */
-static int azx_reset(struct azx *chip, int full_reset)
+/* exit link reset */
+static void azx_exit_link_reset(struct azx *chip)
 {
 	unsigned long timeout;
 
+	azx_writeb(chip, GCTL, azx_readb(chip, GCTL) | ICH6_GCTL_RESET);
+
+	timeout = jiffies + msecs_to_jiffies(100);
+	while (!azx_readb(chip, GCTL) &&
+			time_before(jiffies, timeout))
+		usleep_range(500, 1000);
+}
+
+/* reset codec link */
+static int azx_reset(struct azx *chip, int full_reset)
+{
 	if (!full_reset)
 		goto __skip;
 
@@ -1149,12 +1160,7 @@ static int azx_reset(struct azx *chip, int full_reset)
 	azx_writeb(chip, STATESTS, STATESTS_INT_MASK);
 
 	/* reset controller */
-	azx_writel(chip, GCTL, azx_readl(chip, GCTL) & ~ICH6_GCTL_RESET);
-
-	timeout = jiffies + msecs_to_jiffies(100);
-	while (azx_readb(chip, GCTL) &&
-			time_before(jiffies, timeout))
-		usleep_range(500, 1000);
+	azx_enter_link_reset(chip);
 
 	/* delay for >= 100us for codec PLL to settle per spec
 	 * Rev 0.9 section 5.5.1
@@ -1162,12 +1168,7 @@ static int azx_reset(struct azx *chip, int full_reset)
 	usleep_range(500, 1000);
 
 	/* Bring controller out of reset */
-	azx_writeb(chip, GCTL, azx_readb(chip, GCTL) | ICH6_GCTL_RESET);
-
-	timeout = jiffies + msecs_to_jiffies(100);
-	while (!azx_readb(chip, GCTL) &&
-			time_before(jiffies, timeout))
-		usleep_range(500, 1000);
+	azx_exit_link_reset(chip);
 
 	/* Brent Chartrand said to wait >= 540us for codecs to initialize */
 	usleep_range(1000, 1200);
@@ -2911,7 +2912,7 @@ static int azx_suspend(struct device *dev)
 	if (chip->initialized)
 		snd_hda_suspend(chip->bus);
 	azx_stop_chip(chip);
-	azx_reset_link(chip);
+	azx_enter_link_reset(chip);
 	if (chip->irq >= 0) {
 		free_irq(chip->irq, chip);
 		chip->irq = -1;
@@ -2968,7 +2969,7 @@ static int azx_runtime_suspend(struct device *dev)
 	struct azx *chip = card->private_data;
 
 	azx_stop_chip(chip);
-	azx_reset_link(chip);
+	azx_enter_link_reset(chip);
 	azx_clear_irq_pending(chip);
 	if (chip->driver_caps & AZX_DCAPS_I915_POWERWELL)
 		hda_display_power(false);
