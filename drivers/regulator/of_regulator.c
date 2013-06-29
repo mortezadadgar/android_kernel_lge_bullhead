@@ -22,6 +22,7 @@ static void of_get_regulation_constraints(struct device_node *np,
 	const __be32 *min_uV, *max_uV, *uV_offset;
 	const __be32 *min_uA, *max_uA, *ramp_delay;
 	const __be32 *state_disk_uV, *state_mem_uV, *state_standby_uV;
+	struct property *prop;
 	struct regulation_constraints *constraints = &(*init_data)->constraints;
 
 	constraints->name = of_get_property(np, "regulator-name", NULL);
@@ -65,10 +66,6 @@ static void of_get_regulation_constraints(struct device_node *np,
 	if (of_property_read_bool(np, "regulator-allow-bypass"))
 		constraints->valid_ops_mask |= REGULATOR_CHANGE_BYPASS;
 
-	ramp_delay = of_get_property(np, "regulator-ramp-delay", NULL);
-	if (ramp_delay)
-		constraints->ramp_delay = be32_to_cpu(*ramp_delay);
-
 	/* regulator state for suspend to disk */
 	state_disk_uV = of_get_property(np, "regulator-suspend-disk-microvolt",
 					NULL);
@@ -98,6 +95,15 @@ static void of_get_regulation_constraints(struct device_node *np,
 	}
 	if (of_find_property(np, "regulator-suspend-standby-disabled", NULL))
 		constraints->state_standby.disabled = true;
+
+	prop = of_find_property(np, "regulator-ramp-delay", NULL);
+	if (prop && prop->value) {
+		ramp_delay = prop->value;
+		if (*ramp_delay)
+			constraints->ramp_delay = be32_to_cpu(*ramp_delay);
+		else
+			constraints->ramp_disable = true;
+	}
 }
 
 /**
