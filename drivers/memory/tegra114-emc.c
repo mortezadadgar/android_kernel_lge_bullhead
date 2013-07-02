@@ -940,7 +940,7 @@ static struct device_node *tegra114_emc_sku_devnode(struct device_node *np)
 		if (of_find_property(iter, "nvidia,chip-sku", NULL)) {
 			of_property_for_each_u32(iter, "nvidia,chip-sku",
 				prop, p, u) {
-				if (u == tegra_get_skuid())
+				if (u == tegra_sku_id)
 					return iter;
 			}
 		} else
