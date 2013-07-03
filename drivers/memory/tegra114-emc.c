@@ -751,6 +751,11 @@ static noinline void emc_set_clock(const struct emc_table *next_timing,
 		wmb();
 	}
 
+	/* 15. set auto-cal interval */
+	if (next_timing->rev >= 0x42)
+		emc_writel(next_timing->emc_acal_interval,
+			EMC_AUTO_CAL_INTERVAL);
+
 	/* 16. restore dynamic self-refresh */
 	if (next_timing->emc_cfg & EMC_CFG_DYN_SREF_ENABLE) {
 		emc_cfg_reg |= EMC_CFG_DYN_SREF_ENABLE;
