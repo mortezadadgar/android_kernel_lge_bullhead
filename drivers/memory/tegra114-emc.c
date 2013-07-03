@@ -396,7 +396,7 @@ unsigned long tegra114_predict_emc_rate(int millivolts)
 	if (!emc_enable)
 		return -ENODEV;
 
-	if (!tegra_emc_table_size)
+	if (!tegra_emc_ready || !tegra_emc_table_size)
 		return -EINVAL;
 
 	for (i = 0; i < tegra_emc_table_size; i++) {
@@ -421,7 +421,7 @@ unsigned long tegra114_emc_get_rate(void)
 	if (!emc_enable)
 		return -ENODEV;
 
-	if (!tegra_emc_table_size)
+	if (!tegra_emc_ready || !tegra_emc_table_size)
 		return -EINVAL;
 
 	val = clk_cfg_readl();
@@ -444,7 +444,7 @@ long tegra114_emc_round_rate(unsigned long rate)
 	if (!emc_enable)
 		return 0;
 
-	if (!tegra_emc_table_size)
+	if (!tegra_emc_ready || !tegra_emc_table_size)
 		return 0;
 
 	i = get_start_idx(rate);
@@ -820,7 +820,7 @@ int tegra114_emc_set_rate(unsigned long rate)
 	if (!emc_enable)
 		return -ENODEV;
 
-	if (!tegra_emc_table_size)
+	if (!tegra_emc_ready || !tegra_emc_table_size)
 		return -EINVAL;
 
 	if (rate == tegra114_emc_get_rate())
@@ -973,7 +973,7 @@ static struct device_node *tegra114_emc_sku_devnode(struct device_node *np)
 	return ERR_PTR(-ENODATA);
 }
 
-void tegra114_parse_dt_data(struct platform_device *pdev)
+static void tegra114_parse_dt_data(struct platform_device *pdev)
 {
 	struct device_node *np;
 	struct device_node *iter;
@@ -992,17 +992,15 @@ void tegra114_parse_dt_data(struct platform_device *pdev)
 	if (IS_ERR(tablenode))
 		return;
 
-	tegra_emc_table_size = 0;
+	i = 0;
 	for_each_child_of_node(tablenode, iter)
-		if (of_device_is_compatible(iter, "nvidia,tegra114-emc-table"))
-			tegra_emc_table_size++;
-
-	if (!tegra_emc_table_size)
+		if (of_device_is_compatible(iter, "nvidia,tegra11-emc-table"))
+			i++;
+	if (!i)
 		return;
 
 	tegra_emc_table = devm_kzalloc(&pdev->dev,
-		sizeof(struct emc_table) * tegra_emc_table_size, GFP_KERNEL);
-
+		sizeof(struct emc_table) * i, GFP_KERNEL);
 	if (!tegra_emc_table)
 		return;
 
