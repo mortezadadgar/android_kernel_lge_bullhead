@@ -41,181 +41,186 @@
 
 #define TEGRA_EMC_TABLE_MAX_SIZE		16
 #define EMC_STATUS_UPDATE_TIMEOUT		100
+#define TEGRA_EMC_CHANNEL			2
 
 static bool emc_enable = true;
 module_param(emc_enable, bool, 0644);
 
-#define EMC_BURST_REG_LIST	\
-{	\
-	DEFINE_REG(EMC_RC),				\
-	DEFINE_REG(EMC_RFC),				\
-	DEFINE_REG(EMC_RFC_SLR),			\
-	DEFINE_REG(EMC_RAS),				\
-	DEFINE_REG(EMC_RP),				\
-	DEFINE_REG(EMC_R2W),				\
-	DEFINE_REG(EMC_W2R),				\
-	DEFINE_REG(EMC_R2P),				\
-	DEFINE_REG(EMC_W2P),				\
-	DEFINE_REG(EMC_RD_RCD),				\
-	DEFINE_REG(EMC_WR_RCD),				\
-	DEFINE_REG(EMC_RRD),				\
-	DEFINE_REG(EMC_REXT),				\
-	DEFINE_REG(EMC_WEXT),				\
-	DEFINE_REG(EMC_WDV),				\
-	DEFINE_REG(EMC_WDV_MASK),			\
-	DEFINE_REG(EMC_IBDLY),				\
-	DEFINE_REG(EMC_PUTERM_EXTRA),			\
-	DEFINE_REG(EMC_CDB_CNTL_2),			\
-	DEFINE_REG(EMC_QRST),				\
-	DEFINE_REG(EMC_RDV_MASK),			\
-	DEFINE_REG(EMC_REFRESH),			\
-	DEFINE_REG(EMC_BURST_REFRESH_NUM),		\
-	DEFINE_REG(EMC_PRE_REFRESH_REQ_CNT),		\
-	DEFINE_REG(EMC_PDEX2WR),			\
-	DEFINE_REG(EMC_PDEX2RD),			\
-	DEFINE_REG(EMC_PCHG2PDEN),			\
-	DEFINE_REG(EMC_ACT2PDEN),			\
-	DEFINE_REG(EMC_AR2PDEN),			\
-	DEFINE_REG(EMC_RW2PDEN),			\
-	DEFINE_REG(EMC_TXSR),				\
-	DEFINE_REG(EMC_TXSRDLL),			\
-	DEFINE_REG(EMC_TCKE),				\
-	DEFINE_REG(EMC_TCKESR),				\
-	DEFINE_REG(EMC_TPD),				\
-	DEFINE_REG(EMC_TFAW),				\
-	DEFINE_REG(EMC_TRPAB),				\
-	DEFINE_REG(EMC_TCLKSTABLE),			\
-	DEFINE_REG(EMC_TCLKSTOP),			\
-	DEFINE_REG(EMC_TREFBW),				\
-	DEFINE_REG(EMC_QUSE_EXTRA),			\
-	DEFINE_REG(EMC_ODT_WRITE),			\
-	DEFINE_REG(EMC_ODT_READ),			\
-	DEFINE_REG(EMC_FBIO_CFG5),			\
-	DEFINE_REG(EMC_CFG_DIG_DLL),			\
-	DEFINE_REG(EMC_CFG_DIG_DLL_PERIOD),		\
-	DEFINE_REG(EMC_DLL_XFORM_DQS4),			\
-	DEFINE_REG(EMC_DLL_XFORM_DQS5),			\
-	DEFINE_REG(EMC_DLL_XFORM_DQS6),			\
-	DEFINE_REG(EMC_DLL_XFORM_DQS7),			\
-	DEFINE_REG(EMC_DLL_XFORM_QUSE4),		\
-	DEFINE_REG(EMC_DLL_XFORM_QUSE5),		\
-	DEFINE_REG(EMC_DLL_XFORM_QUSE6),		\
-	DEFINE_REG(EMC_DLL_XFORM_QUSE7),		\
-	DEFINE_REG(EMC_DLI_TRIM_TXDQS4),		\
-	DEFINE_REG(EMC_DLI_TRIM_TXDQS5),		\
-	DEFINE_REG(EMC_DLI_TRIM_TXDQS6),		\
-	DEFINE_REG(EMC_DLI_TRIM_TXDQS7),		\
-	DEFINE_REG(EMC_XM2CMDPADCTRL),			\
-	DEFINE_REG(EMC_XM2CMDPADCTRL4),			\
-	DEFINE_REG(EMC_XM2DQSPADCTRL2),			\
-	DEFINE_REG(EMC_XM2DQPADCTRL2),			\
-	DEFINE_REG(EMC_XM2CLKPADCTRL),			\
-	DEFINE_REG(EMC_XM2COMPPADCTRL),			\
-	DEFINE_REG(EMC_XM2VTTGENPADCTRL),		\
-	DEFINE_REG(EMC_XM2VTTGENPADCTRL2),		\
-	DEFINE_REG(EMC_DSR_VTTGEN_DRV),			\
-	DEFINE_REG(EMC_TXDSRVTTGEN),			\
-	DEFINE_REG(EMC_FBIO_SPARE),			\
-	DEFINE_REG(EMC_CTT_TERM_CTRL),			\
-	DEFINE_REG(EMC_ZCAL_INTERVAL),			\
-	DEFINE_REG(EMC_ZCAL_WAIT_CNT),			\
-	DEFINE_REG(EMC_MRS_WAIT_CNT),			\
-	DEFINE_REG(EMC_MRS_WAIT_CNT2),			\
-	DEFINE_REG(EMC_AUTO_CAL_CONFIG2),		\
-	DEFINE_REG(EMC_AUTO_CAL_CONFIG3),		\
-	DEFINE_REG(EMC_CTT),				\
-	DEFINE_REG(EMC_CTT_DURATION),			\
-	DEFINE_REG(EMC_DYN_SELF_REF_CONTROL),		\
-	DEFINE_REG(EMC_CA_TRAINING_TIMING_CNTL1),	\
-	DEFINE_REG(EMC_CA_TRAINING_TIMING_CNTL2),	\
-}
+enum tegra114_mem_reg_type {
+	TEGRA114_MEM_REG_EMC,
+	TEGRA114_MEM_REG_MC,
+};
 
-#define MC_BURST_REG_LIST	\
+#define BURST_REG_LIST	\
 {	\
-	DEFINE_REG(MC_EMEM_ARB_CFG),			\
-	DEFINE_REG(MC_EMEM_ARB_OUTSTANDING_REQ),	\
-	DEFINE_REG(MC_EMEM_ARB_TIMING_RCD),		\
-	DEFINE_REG(MC_EMEM_ARB_TIMING_RP),		\
-	DEFINE_REG(MC_EMEM_ARB_TIMING_RC),		\
-	DEFINE_REG(MC_EMEM_ARB_TIMING_RAS),		\
-	DEFINE_REG(MC_EMEM_ARB_TIMING_FAW),		\
-	DEFINE_REG(MC_EMEM_ARB_TIMING_RRD),		\
-	DEFINE_REG(MC_EMEM_ARB_TIMING_RAP2PRE),		\
-	DEFINE_REG(MC_EMEM_ARB_TIMING_WAP2PRE),		\
-	DEFINE_REG(MC_EMEM_ARB_TIMING_R2R),		\
-	DEFINE_REG(MC_EMEM_ARB_TIMING_W2W),		\
-	DEFINE_REG(MC_EMEM_ARB_TIMING_R2W),		\
-	DEFINE_REG(MC_EMEM_ARB_TIMING_W2R),		\
-	DEFINE_REG(MC_EMEM_ARB_DA_TURNS),		\
-	DEFINE_REG(MC_EMEM_ARB_DA_COVERS),		\
-	DEFINE_REG(MC_EMEM_ARB_MISC0),			\
-	DEFINE_REG(MC_EMEM_ARB_RING1_THROTTLE),	\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_RC),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_RFC),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_RFC_SLR),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_RAS),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_RP),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_R2W),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_W2R),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_R2P),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_W2P),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_RD_RCD),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_WR_RCD),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_RRD),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_REXT),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_WEXT),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_WDV),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_WDV_MASK),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_IBDLY),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_PUTERM_EXTRA),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_CDB_CNTL_2),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_QRST),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_RDV_MASK),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_REFRESH),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_BURST_REFRESH_NUM),	\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_PRE_REFRESH_REQ_CNT),	\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_PDEX2WR),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_PDEX2RD),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_PCHG2PDEN),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_ACT2PDEN),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_AR2PDEN),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_RW2PDEN),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_TXSR),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_TXSRDLL),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_TCKE),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_TCKESR),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_TPD),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_TFAW),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_TRPAB),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_TCLKSTABLE),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_TCLKSTOP),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_TREFBW),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_QUSE_EXTRA),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_ODT_WRITE),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_ODT_READ),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_FBIO_CFG5),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_CFG_DIG_DLL),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_CFG_DIG_DLL_PERIOD),	\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_DQS4),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_DQS5),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_DQS6),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_DQS7),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_QUSE4),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_QUSE5),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_QUSE6),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_QUSE7),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLI_TRIM_TXDQS4),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLI_TRIM_TXDQS5),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLI_TRIM_TXDQS6),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLI_TRIM_TXDQS7),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_XM2CMDPADCTRL),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_XM2CMDPADCTRL4),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_XM2DQSPADCTRL2),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_XM2DQPADCTRL2),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_XM2CLKPADCTRL),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_XM2COMPPADCTRL),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_XM2VTTGENPADCTRL),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_XM2VTTGENPADCTRL2),	\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DSR_VTTGEN_DRV),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_TXDSRVTTGEN),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_FBIO_SPARE),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_CTT_TERM_CTRL),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_ZCAL_INTERVAL),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_ZCAL_WAIT_CNT),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_MRS_WAIT_CNT),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_MRS_WAIT_CNT2),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_AUTO_CAL_CONFIG2),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_AUTO_CAL_CONFIG3),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_CTT),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_CTT_DURATION),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DYN_SELF_REF_CONTROL),	\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_CA_TRAINING_TIMING_CNTL1),	\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_CA_TRAINING_TIMING_CNTL2),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_CFG),		\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_OUTSTANDING_REQ),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_TIMING_RCD),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_TIMING_RP),		\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_TIMING_RC),		\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_TIMING_RAS),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_TIMING_FAW),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_TIMING_RRD),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_TIMING_RAP2PRE),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_TIMING_WAP2PRE),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_TIMING_R2R),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_TIMING_W2W),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_TIMING_R2W),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_TIMING_W2R),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_DA_TURNS),		\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_DA_COVERS),		\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_MISC0),		\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_EMEM_ARB_RING1_THROTTLE),	\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_SEL_DPD_CTRL),		\
 }
 
 #define BURST_UP_DOWN_REG_LIST	\
 {	\
-	DEFINE_REG(MC_PTSA_GRANT_DECREMENT),		\
-	DEFINE_REG(MC_LATENCY_ALLOWANCE_G2_0),		\
-	DEFINE_REG(MC_LATENCY_ALLOWANCE_G2_1),		\
-	DEFINE_REG(MC_LATENCY_ALLOWANCE_NV_0),		\
-	DEFINE_REG(MC_LATENCY_ALLOWANCE_NV2_0),		\
-	DEFINE_REG(MC_LATENCY_ALLOWANCE_NV_2),		\
-	DEFINE_REG(MC_LATENCY_ALLOWANCE_NV_1),		\
-	DEFINE_REG(MC_LATENCY_ALLOWANCE_NV2_1),		\
-	DEFINE_REG(MC_LATENCY_ALLOWANCE_NV_3),		\
-	DEFINE_REG(MC_LATENCY_ALLOWANCE_EPP_0),		\
-	DEFINE_REG(MC_LATENCY_ALLOWANCE_EPP_1),\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_PTSA_GRANT_DECREMENT),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_LATENCY_ALLOWANCE_G2_0),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_LATENCY_ALLOWANCE_G2_1),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_LATENCY_ALLOWANCE_NV_0),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_LATENCY_ALLOWANCE_NV2_0),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_LATENCY_ALLOWANCE_NV_2),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_LATENCY_ALLOWANCE_NV_1),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_LATENCY_ALLOWANCE_NV2_1),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_LATENCY_ALLOWANCE_NV_3),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_LATENCY_ALLOWANCE_EPP_0),	\
+	DEFINE_REG(TEGRA114_MEM_REG_MC, MC_LATENCY_ALLOWANCE_EPP_1),	\
 	}
 
 #define EMC_TRIMMERS_REG_LIST	\
 {	\
-	DEFINE_REG(EMC_CDB_CNTL_1),			\
-	DEFINE_REG(EMC_FBIO_CFG6),			\
-	DEFINE_REG(EMC_QUSE),				\
-	DEFINE_REG(EMC_EINPUT),				\
-	DEFINE_REG(EMC_EINPUT_DURATION),		\
-	DEFINE_REG(EMC_DLL_XFORM_DQS0),			\
-	DEFINE_REG(EMC_QSAFE),				\
-	DEFINE_REG(EMC_DLL_XFORM_QUSE0),		\
-	DEFINE_REG(EMC_RDV),				\
-	DEFINE_REG(EMC_XM2DQSPADCTRL4),			\
-	DEFINE_REG(EMC_XM2DQSPADCTRL3),			\
-	DEFINE_REG(EMC_DLL_XFORM_DQ0),			\
-	DEFINE_REG(EMC_AUTO_CAL_CONFIG),		\
-	DEFINE_REG(EMC_DLL_XFORM_ADDR0),		\
-	DEFINE_REG(EMC_XM2CLKPADCTRL2),			\
-	DEFINE_REG(EMC_DLI_TRIM_TXDQS0),		\
-	DEFINE_REG(EMC_DLL_XFORM_ADDR1),		\
-	DEFINE_REG(EMC_DLL_XFORM_ADDR2),		\
-	DEFINE_REG(EMC_DLL_XFORM_DQS1),			\
-	DEFINE_REG(EMC_DLL_XFORM_DQS2),			\
-	DEFINE_REG(EMC_DLL_XFORM_DQS3),			\
-	DEFINE_REG(EMC_DLL_XFORM_DQ1),			\
-	DEFINE_REG(EMC_DLL_XFORM_DQ2),			\
-	DEFINE_REG(EMC_DLL_XFORM_DQ3),			\
-	DEFINE_REG(EMC_DLI_TRIM_TXDQS1),		\
-	DEFINE_REG(EMC_DLI_TRIM_TXDQS2),		\
-	DEFINE_REG(EMC_DLI_TRIM_TXDQS3),		\
-	DEFINE_REG(EMC_DLL_XFORM_QUSE1),		\
-	DEFINE_REG(EMC_DLL_XFORM_QUSE2),		\
-	DEFINE_REG(EMC_DLL_XFORM_QUSE3),\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_CDB_CNTL_1),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_FBIO_CFG6),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_QUSE),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_EINPUT),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_EINPUT_DURATION),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_DQS0),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_QSAFE),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_QUSE0),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_RDV),			\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_XM2DQSPADCTRL4),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_XM2DQSPADCTRL3),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_DQ0),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_AUTO_CAL_CONFIG),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_ADDR0),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_XM2CLKPADCTRL2),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLI_TRIM_TXDQS0),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_ADDR1),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_ADDR2),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_DQS1),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_DQS2),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_DQS3),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_DQ1),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_DQ2),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_DQ3),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLI_TRIM_TXDQS1),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLI_TRIM_TXDQS2),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLI_TRIM_TXDQS3),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_QUSE1),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_QUSE2),		\
+	DEFINE_REG(TEGRA114_MEM_REG_EMC, EMC_DLL_XFORM_QUSE3),		\
 }
 
-#define DEFINE_REG(reg)		reg##_INDEX
-enum EMC_BURST_REG_LIST;
-enum MC_BURST_REG_LIST;
+#define DEFINE_REG(type, reg)		reg##_INDEX
+enum BURST_REG_LIST;
 enum BURST_UP_DOWN_REG_LIST;
 #undef DEFINE_REG
 
-#define DEFINE_REG(reg)		reg##_TRIM_INDEX
+#define DEFINE_REG(type, reg)		reg##_TRIM_INDEX
 enum EMC_TRIMMERS_REG_LIST;
 #undef DEFINE_REG
 
-#define DEFINE_REG(reg)		(reg)
-static const u32 emc_burst_reg_addr[] = EMC_BURST_REG_LIST;
-static const u32 mc_burst_reg_addr[] = MC_BURST_REG_LIST;
+#define DEFINE_REG(type, reg)		(reg)
+static const u32 burst_reg_addr[] = BURST_REG_LIST;
 static const u32 burst_up_down_reg_addr[] = BURST_UP_DOWN_REG_LIST;
 static const u32 emc_trimmer_offs[] = EMC_TRIMMERS_REG_LIST;
+#undef DEFINE_REG
+
+#define DEFINE_REG(type, reg)		(type)
+static const u32 burst_reg_type[] = BURST_REG_LIST;
 #undef DEFINE_REG
 
 enum {
@@ -236,24 +241,21 @@ enum TEGRA_EMC_SOURCE {
 };
 
 struct emc_table {
-	u8 rev;
+	u32 rev;
 	unsigned long rate;
 	int emc_min_mv;
 	const char *src_name;
 	u32 src_sel_reg;
 
-	int emc_burst_regs_num;
-	int mc_burst_regs_num;
+	int burst_regs_num;
 	int emc_trimmers_num;
 	int up_down_regs_num;
 
 	/* unconditionally updated in one burst shot */
-	u32 *emc_burst_regs;
-	u32 *mc_burst_regs;
+	u32 *burst_regs;
 
 	/* unconditionally updated in one burst shot to particular channel */
-	u32 *emc_trimmers_0;
-	u32 *emc_trimmers_1;
+	u32 *emc_trimmers[2];
 
 	/* one burst shot, but update time depends on rate change direction */
 	u32 *up_down_regs;
@@ -292,8 +294,7 @@ static u32 tegra_dram_dev_num;
 static u32 tegra_dram_type = -1;
 static bool tegra_emc_ready;
 static void __iomem *tegra_emc_base;
-static void __iomem *tegra_emc0_base;
-static void __iomem *tegra_emc1_base;
+static void __iomem *tegra_emc_base_channel[TEGRA_EMC_CHANNEL];
 static void __iomem *tegra_clk_base;
 static unsigned long emc_backup_rate;
 static struct emc_sel tegra_emc_clk_sel[TEGRA_EMC_TABLE_MAX_SIZE];
@@ -314,24 +315,20 @@ static const char *tegra_emc_src_names[TEGRA_EMC_SRC_COUNT] = {
 	[TEGRA_EMC_SRC_PLLC3] = "pll_c3",
 };
 
-static inline void emc0_writel(u32 val, unsigned long addr)
+static inline void trimmers_reg_writel(u32 val, unsigned int channel, int index)
 {
-	writel(val, tegra_emc0_base + addr);
+	if (channel >= TEGRA_EMC_CHANNEL)
+		return;
+
+	writel(val, tegra_emc_base_channel[channel] + emc_trimmer_offs[index]);
 }
 
-static inline u32 emc0_readl(unsigned long addr)
+static inline u32 trimmers_reg_readl(unsigned int channel, int index)
 {
-	return readl(tegra_emc0_base + addr);
-}
+	if (channel >= TEGRA_EMC_CHANNEL)
+		return -EINVAL;
 
-static inline void emc1_writel(u32 val, unsigned long addr)
-{
-	writel(val, tegra_emc1_base + addr);
-}
-
-static inline u32 emc1_readl(unsigned long addr)
-{
-	return readl(tegra_emc1_base + addr);
+	return readl(tegra_emc_base_channel[channel] + emc_trimmer_offs[index]);
 }
 
 static inline void emc_writel(u32 val, unsigned long addr)
@@ -355,6 +352,22 @@ static inline void ccfifo_writel(u32 val, unsigned long addr)
 {
 	writel(val, tegra_emc_base + EMC_CCFIFO_DATA);
 	writel(addr, tegra_emc_base + EMC_CCFIFO_ADDR);
+}
+
+static inline void burst_reg_writel(u32 val, int index)
+{
+	if (burst_reg_type[index] == TEGRA114_MEM_REG_EMC)
+		return emc_writel(val, burst_reg_addr[index]);
+
+	return tegra114_mc_writel(val, burst_reg_addr[index]);
+}
+
+static inline u32 burst_reg_readl(int index)
+{
+	if (burst_reg_type[index] == TEGRA114_MEM_REG_EMC)
+		return emc_readl(burst_reg_addr[index]);
+
+	return tegra114_mc_readl(burst_reg_addr[index]);
 }
 
 static inline void clk_cfg_writel(u32 val)
@@ -464,27 +477,18 @@ long tegra114_emc_round_rate(unsigned long rate)
 
 static inline void emc_get_timing(struct emc_table *timing)
 {
-	int i;
+	int i, j;
 
-	for (i = 0; i < timing->emc_burst_regs_num; i++) {
-		if (emc_burst_reg_addr[i])
-			timing->emc_burst_regs[i] =
-				emc_readl(emc_burst_reg_addr[i]);
+	for (i = 0; i < timing->burst_regs_num; i++) {
+		if (burst_reg_addr[i])
+			timing->burst_regs[i] = burst_reg_readl(i);
 		else
-			timing->emc_burst_regs[i] = 0;
+			timing->burst_regs[i] = 0;
 	}
 
-	for (i = 0; i < timing->mc_burst_regs_num; i++) {
-		if (mc_burst_reg_addr[i])
-			timing->mc_burst_regs[i] =
-				tegra114_mc_readl(mc_burst_reg_addr[i]);
-		else
-			timing->mc_burst_regs[i] = 0;
-	}
-
-	for (i = 0; i < timing->emc_trimmers_num; i++) {
-		timing->emc_trimmers_0[i] = emc0_readl(emc_trimmer_offs[i]);
-		timing->emc_trimmers_1[i] = emc1_readl(emc_trimmer_offs[i]);
+	for (i = 0; i < TEGRA_EMC_CHANNEL; i++) {
+		for (j = 0; j < timing->emc_trimmers_num; j++)
+			timing->emc_trimmers[i][j] = trimmers_reg_readl(i, j);
 	}
 
 	timing->emc_acal_interval = 0;
@@ -518,12 +522,12 @@ static inline bool dqs_preset(const struct emc_table *next_timing,
 
 #define DQS_SET(reg, bit)						\
 	do {								\
-		if ((next_timing->emc_burst_regs[EMC_##reg##_INDEX] &	\
+		if ((next_timing->burst_regs[EMC_##reg##_INDEX] &	\
 			EMC_##reg##_##bit##_ENABLE) &&			\
-			(!(last_timing->emc_burst_regs[EMC_##reg##_INDEX] &\
+			(!(last_timing->burst_regs[EMC_##reg##_INDEX] &\
 			EMC_##reg##_##bit##_ENABLE))) {			\
 			emc_writel(					\
-				last_timing->emc_burst_regs[EMC_##reg##_INDEX]\
+				last_timing->burst_regs[EMC_##reg##_INDEX]\
 				| EMC_##reg##_##bit##_ENABLE, EMC_##reg);\
 			ret = true;					\
 		}							\
@@ -571,13 +575,13 @@ static inline void overwrite_mrs_wait_cnt(const struct emc_table *next_timing,
 	if (zcal_long)
 		cnt -= tegra_dram_dev_num * 256;
 
-	reg = (next_timing->emc_burst_regs[EMC_MRS_WAIT_CNT_INDEX] &
+	reg = (next_timing->burst_regs[EMC_MRS_WAIT_CNT_INDEX] &
 		EMC_MRS_WAIT_CNT_SHORT_WAIT_MASK) >>
 		EMC_MRS_WAIT_CNT_SHORT_WAIT_SHIFT;
 	if (cnt < reg)
 		cnt = reg;
 
-	reg = (next_timing->emc_burst_regs[EMC_MRS_WAIT_CNT_INDEX] &
+	reg = (next_timing->burst_regs[EMC_MRS_WAIT_CNT_INDEX] &
 		(~EMC_MRS_WAIT_CNT_LONG_WAIT_MASK));
 	reg |= (cnt << EMC_MRS_WAIT_CNT_LONG_WAIT_SHIFT) &
 		EMC_MRS_WAIT_CNT_LONG_WAIT_MASK;
@@ -635,15 +639,15 @@ static noinline void emc_set_clock(const struct emc_table *next_timing,
 				   const struct emc_table *last_timing,
 				   u32 clk_setting)
 {
-	int i, dll_change, pre_wait;
+	int i, j, dll_change, pre_wait;
 	bool dyn_sref_enabled, zcal_long;
 
 	u32 emc_cfg_reg = emc_readl(EMC_CFG);
 
 	dyn_sref_enabled = emc_cfg_reg & EMC_CFG_DYN_SREF_ENABLE;
 	dll_change = get_dll_change(next_timing, last_timing);
-	zcal_long = (next_timing->emc_burst_regs[EMC_ZCAL_INTERVAL_INDEX] != 0)
-		&& (last_timing->emc_burst_regs[EMC_ZCAL_INTERVAL_INDEX] == 0);
+	zcal_long = (next_timing->burst_regs[EMC_ZCAL_INTERVAL_INDEX] != 0)
+		&& (last_timing->burst_regs[EMC_ZCAL_INTERVAL_INDEX] == 0);
 
 	/* 1. clear clkchange_complete interrupts */
 	emc_writel(EMC_INTSTATUS_CLKCHANGE_COMPLETE, EMC_INTSTATUS);
@@ -669,25 +673,16 @@ static noinline void emc_set_clock(const struct emc_table *next_timing,
 	}
 
 	/* 4. program burst shadow registers */
-	for (i = 0; i < next_timing->emc_burst_regs_num; i++) {
-		if (!emc_burst_reg_addr[i])
+	for (i = 0; i < next_timing->burst_regs_num; i++) {
+		if (!burst_reg_addr[i])
 			continue;
-		emc_writel(next_timing->emc_burst_regs[i],
-			emc_burst_reg_addr[i]);
+		burst_reg_writel(next_timing->burst_regs[i], i);
 	}
 
-	for (i = 0; i < next_timing->mc_burst_regs_num; i++) {
-		if (!mc_burst_reg_addr[i])
-			continue;
-		tegra114_mc_writel(next_timing->mc_burst_regs[i],
-			mc_burst_reg_addr[i]);
-	}
-
-	for (i = 0; i < next_timing->emc_trimmers_num; i++) {
-		emc0_writel(next_timing->emc_trimmers_0[i],
-			emc_trimmer_offs[i]);
-		emc1_writel(next_timing->emc_trimmers_1[i],
-			emc_trimmer_offs[i]);
+	for (i = 0; i < TEGRA_EMC_CHANNEL; i++) {
+		for (j = 0; j < next_timing->emc_trimmers_num; j++)
+			trimmers_reg_writel(next_timing->emc_trimmers[i][j],
+				i, j);
 	}
 
 	emc_cfg_reg &= ~EMC_CFG_UPDATE_MASK;
@@ -901,7 +896,7 @@ static int find_matching_input(const struct emc_table *table,
 
 	if (!(table->src_sel_reg & EMC_CLK_MC_SAME_FREQ) !=
 		!(MC_EMEM_ARB_MISC0_EMC_SAME_FREQ &
-		table->mc_burst_regs[MC_EMEM_ARB_MISC0_INDEX])) {
+		table->burst_regs[MC_EMEM_ARB_MISC0_INDEX])) {
 		pr_warn("Tegra114: ambiguous EMC to MC ratio for rate %lu\n",
 			table->rate);
 		return -EINVAL;
@@ -980,7 +975,6 @@ static void tegra114_parse_dt_data(struct platform_device *pdev)
 	struct device_node *tablenode = NULL;
 	int i;
 	u32 prop;
-	int regs_count;
 	int ret;
 
 	np = pdev->dev.of_node;
@@ -1006,11 +1000,13 @@ static void tegra114_parse_dt_data(struct platform_device *pdev)
 
 	i = 0;
 	for_each_child_of_node(tablenode, iter) {
-		ret = of_property_read_u8(iter, "nvidia,revision",
+		ret = of_property_read_u32(iter, "nvidia,revision",
 			&tegra_emc_table[i].rev);
 		if (ret)
 			continue;
-		ret = of_property_read_u32(iter, "nvidia,emc-src-sel-reg",
+		if (tegra_emc_table[i].rev < 0x40)
+			continue;
+		ret = of_property_read_u32(iter, "nvidia,src-sel-reg",
 			&tegra_emc_table[i].src_sel_reg);
 		if (ret)
 			continue;
@@ -1018,7 +1014,7 @@ static void tegra114_parse_dt_data(struct platform_device *pdev)
 			&tegra_emc_table[i].emc_min_mv);
 		if (ret)
 			continue;
-		ret = of_property_read_u32(iter, "nvidia,emc-zcal-wait-cnt",
+		ret = of_property_read_u32(iter, "nvidia,emc-zcal-cnt-long",
 			&tegra_emc_table[i].emc_zcal_cnt_long);
 		if (ret)
 			continue;
@@ -1046,58 +1042,69 @@ static void tegra114_parse_dt_data(struct platform_device *pdev)
 			&tegra_emc_table[i].emc_mode_4);
 		if (ret)
 			continue;
-		ret = of_property_read_u32(iter, "nvidia,emc-latency",
-			&tegra_emc_table[i].clock_change_latency);
-		if (ret)
-			continue;
-		ret = of_property_read_u32(iter, "nvidia,emc-burst-regs-num",
-			&tegra_emc_table[i].emc_burst_regs_num);
-		if (ret)
-			continue;
-		ret = of_property_read_u32(iter, "nvidia,mc-burst-regs-num",
-			&tegra_emc_table[i].mc_burst_regs_num);
+		if (tegra_emc_table[i].rev > 0x40) {
+			ret = of_property_read_u32(iter,
+				"nvidia,emc-clock-latency-change",
+				&tegra_emc_table[i].clock_change_latency);
+			if (ret)
+				continue;
+		}
+		ret = of_property_read_u32(iter, "nvidia,burst-regs-num",
+			&tegra_emc_table[i].burst_regs_num);
 		if (ret)
 			continue;
 		ret = of_property_read_u32(iter, "nvidia,emc-trimmers-num",
 			&tegra_emc_table[i].emc_trimmers_num);
 		if (ret)
 			continue;
-		ret = of_property_read_u32(iter, "nvidia,up-down-regs-num",
+		ret = of_property_read_u32(iter,
+			"nvidia,burst-up-down-regs-num",
 			&tegra_emc_table[i].up_down_regs_num);
 		if (ret)
 			continue;
-		regs_count = tegra_emc_table[i].emc_burst_regs_num +
-			tegra_emc_table[i].mc_burst_regs_num +
-			tegra_emc_table[i].emc_trimmers_num * 2 +
-			tegra_emc_table[i].up_down_regs_num;
-		tegra_emc_table[i].emc_burst_regs = devm_kzalloc(&pdev->dev,
-			sizeof(u32) * regs_count, GFP_KERNEL);
+		tegra_emc_table[i].burst_regs = devm_kzalloc(&pdev->dev,
+			sizeof(u32) * tegra_emc_table[i].burst_regs_num,
+			GFP_KERNEL);
 		ret = of_property_read_u32_array(iter, "nvidia,emc-registers",
-			tegra_emc_table[i].emc_burst_regs, regs_count);
+			tegra_emc_table[i].burst_regs,
+			tegra_emc_table[i].burst_regs_num);
 		if (ret)
 			continue;
-		tegra_emc_table[i].mc_burst_regs =
-			tegra_emc_table[i].emc_burst_regs +
-			tegra_emc_table[i].emc_burst_regs_num;
-		tegra_emc_table[i].emc_trimmers_0 =
-			tegra_emc_table[i].mc_burst_regs +
-			tegra_emc_table[i].mc_burst_regs_num;
-		tegra_emc_table[i].emc_trimmers_1 =
-			tegra_emc_table[i].emc_trimmers_0 +
-			tegra_emc_table[i].emc_trimmers_num;
-		tegra_emc_table[i].up_down_regs =
-			tegra_emc_table[i].emc_trimmers_1 +
-			tegra_emc_table[i].emc_trimmers_num;
+		tegra_emc_table[i].emc_trimmers[0] = devm_kzalloc(&pdev->dev,
+			sizeof(u32) * tegra_emc_table[i].emc_trimmers_num,
+			GFP_KERNEL);
+		ret = of_property_read_u32_array(iter, "nvidia,emc-trimmers-0",
+			tegra_emc_table[i].emc_trimmers[0],
+			tegra_emc_table[i].emc_trimmers_num);
+		if (ret)
+			continue;
+		tegra_emc_table[i].emc_trimmers[1] = devm_kzalloc(&pdev->dev,
+			sizeof(u32) * tegra_emc_table[i].emc_trimmers_num,
+			GFP_KERNEL);
+		ret = of_property_read_u32_array(iter, "nvidia,emc-trimmers-1",
+			tegra_emc_table[i].emc_trimmers[1],
+			tegra_emc_table[i].emc_trimmers_num);
+		if (ret)
+			continue;
+		tegra_emc_table[i].up_down_regs = devm_kzalloc(&pdev->dev,
+			sizeof(u32) * tegra_emc_table[i].up_down_regs_num,
+			GFP_KERNEL);
+		ret = of_property_read_u32_array(iter,
+			"nvidia,emc-burst-up-down-regs",
+			tegra_emc_table[i].up_down_regs,
+			tegra_emc_table[i].up_down_regs_num);
+		if (ret)
+			continue;
 		ret = of_property_read_u32(iter, "clock-frequency", &prop);
 		if (ret)
 			continue;
-		tegra_emc_table[i].rate = prop;
+		tegra_emc_table[i].rate = prop * 1000;
 		i++;
 	}
 	tegra_emc_table_size = i;
 }
 
-int tegra114_init_emc_data(struct platform_device *pdev)
+static int tegra114_init_emc_data(struct platform_device *pdev)
 {
 	int i;
 	bool max_entry = false;
@@ -1180,25 +1187,21 @@ int tegra114_init_emc_data(struct platform_device *pdev)
 		EMC_CFG_2_SREF_MODE) << EMC_CFG_2_MODE_SHIFT;
 	emc_writel(val, EMC_CFG_2);
 
-	start_timing.emc_burst_regs_num = ARRAY_SIZE(emc_burst_reg_addr);
-	start_timing.mc_burst_regs_num = ARRAY_SIZE(mc_burst_reg_addr);
+	start_timing.burst_regs_num = ARRAY_SIZE(burst_reg_addr);
 	start_timing.emc_trimmers_num = ARRAY_SIZE(emc_trimmer_offs);
 	start_timing.up_down_regs_num = ARRAY_SIZE(burst_up_down_reg_addr);
 
-	regs_count = start_timing.emc_burst_regs_num +
-		start_timing.mc_burst_regs_num +
+	regs_count = start_timing.burst_regs_num +
 		start_timing.emc_trimmers_num * 2 +
 		start_timing.up_down_regs_num;
-	start_timing.emc_burst_regs = devm_kzalloc(&pdev->dev,
+	start_timing.burst_regs = devm_kzalloc(&pdev->dev,
 		sizeof(u32) * regs_count, GFP_KERNEL);
 
-	start_timing.mc_burst_regs = start_timing.emc_burst_regs +
-		start_timing.emc_burst_regs_num;
-	start_timing.emc_trimmers_0 = start_timing.mc_burst_regs +
-		start_timing.mc_burst_regs_num;
-	start_timing.emc_trimmers_1 = start_timing.emc_trimmers_0 +
+	start_timing.emc_trimmers[0] = start_timing.burst_regs +
+		start_timing.burst_regs_num;
+	start_timing.emc_trimmers[1] = start_timing.emc_trimmers[0] +
 		start_timing.emc_trimmers_num;
-	start_timing.up_down_regs = start_timing.emc_trimmers_1 +
+	start_timing.up_down_regs = start_timing.emc_trimmers[1] +
 		start_timing.emc_trimmers_num;
 
 	return 0;
@@ -1241,8 +1244,8 @@ static int tegra114_emc_probe(struct platform_device *pdev)
 	}
 
 	tegra_clk_base = of_iomap(car_dev->dev.of_node, 0);
-	tegra_emc0_base = of_iomap(pdev->dev.of_node, 0);
-	tegra_emc1_base = of_iomap(pdev->dev.of_node, 1);
+	tegra_emc_base_channel[0] = of_iomap(pdev->dev.of_node, 0);
+	tegra_emc_base_channel[1] = of_iomap(pdev->dev.of_node, 1);
 	tegra_emc_base = of_iomap(pdev->dev.of_node, 2);
 
 	ret = tegra114_init_emc_data(pdev);
