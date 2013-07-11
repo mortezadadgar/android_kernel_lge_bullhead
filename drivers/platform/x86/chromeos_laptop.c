@@ -426,6 +426,18 @@ static struct chromeos_laptop __initdata cr48 = {
 	},
 };
 
+static struct chromeos_laptop __initdata bolt = {
+	.i2c_peripherals = {
+		/* Touchscreen. */
+		{ .add = setup_atmel_1664s_ts, I2C_ADAPTER_I2C1 },
+		/* Touchpad. */
+		{. add = setup_atmel_224s_tp, I2C_ADAPTER_I2C0 },
+		/* Light Sensor. */
+		{. add = setup_isl29023_als, I2C_ADAPTER_I2C1 },
+	},
+	.has_keyboard_backlight = true,
+};
+
 #define _CBDD(board_) \
 	.callback = &chromeos_laptop_add_peripherals, \
 	.driver_data = (void *)&board_
@@ -505,6 +517,14 @@ static struct dmi_system_id __initdata chromeos_laptop_dmi_table[] = {
 			DMI_MATCH(DMI_PRODUCT_NAME, "Mario"),
 		},
 		_CBDD(cr48),
+	},
+	{
+		.ident = "Bolt",
+		.matches = {
+			DMI_MATCH(DMI_BIOS_VENDOR, "coreboot"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Bolt"),
+		},
+		_CBDD(bolt),
 	},
 	{ }
 };
