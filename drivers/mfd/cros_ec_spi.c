@@ -343,7 +343,6 @@ static int cros_ec_probe_spi(struct spi_device *spi)
 		return -ENOMEM;
 
 	spi_set_drvdata(spi, ec_dev);
-	ec_dev->name = "SPI";
 	ec_dev->dev = dev;
 	ec_dev->priv = ec_spi;
 	ec_dev->irq = spi->irq;
