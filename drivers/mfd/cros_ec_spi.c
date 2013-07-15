@@ -18,6 +18,7 @@
 #include <linux/module.h>
 #include <linux/mfd/cros_ec.h>
 #include <linux/mfd/cros_ec_commands.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
@@ -76,10 +77,13 @@
  * @spi: SPI device we are connected to
  * @last_transfer_ns: time that we last finished a transfer, or 0 if there
  *	if no record
+ * @end_of_msg_delay: used to set the delay_usecs on the spi_transfer that
+ *      is sent when we want to turn off CS at the end of a transaction.
  */
 struct cros_ec_spi {
 	struct spi_device *spi;
 	s64 last_transfer_ns;
+	unsigned int end_of_msg_delay;
 };
 
 static void debug_packet(struct device *dev, const char *name, u8 *ptr,
@@ -259,6 +263,17 @@ static int cros_ec_cmd_xfer_spi(struct cros_ec_device *ec_dev,
 
 	/* turn off CS */
 	spi_message_init(&msg);
+
+	if (ec_spi->end_of_msg_delay) {
+		/*
+		 * Add delay for last transaction, to ensure the rising edge
+		 * doesn't come too soon after the end of the data.
+		 */
+		memset(&trans, '\0', sizeof(trans));
+		trans.delay_usecs = ec_spi->end_of_msg_delay;
+		spi_message_add_tail(&trans, &msg);
+	}
+
 	final_ret = spi_sync(ec_spi->spi, &msg);
 	ktime_get_ts(&ts);
 	ec_spi->last_transfer_ns = timespec_to_ns(&ts);
@@ -321,6 +336,17 @@ exit:
 	return ret;
 }
 
+static void cros_ec_probe_spi_dt(struct cros_ec_spi *ec_spi, struct device *dev)
+{
+	struct device_node *np = dev->of_node;
+	u32 val;
+	int ret;
+
+	ret = of_property_read_u32(np, "google,cros-ec-spi-msg-delay", &val);
+	if (!ret)
+		ec_spi->end_of_msg_delay = val;
+}
+
 static int cros_ec_probe_spi(struct spi_device *spi)
 {
 	struct device *dev = &spi->dev;
@@ -341,6 +367,10 @@ static int cros_ec_probe_spi(struct spi_device *spi)
 	ec_dev = devm_kzalloc(dev, sizeof(*ec_dev), GFP_KERNEL);
 	if (!ec_dev)
 		return -ENOMEM;
+
+	/* Check for any DT properties */
+	if (IS_ENABLED(CONFIG_OF) && dev->of_node)
+		cros_ec_probe_spi_dt(ec_spi, dev);
 
 	spi_set_drvdata(spi, ec_dev);
 	ec_dev->dev = dev;
