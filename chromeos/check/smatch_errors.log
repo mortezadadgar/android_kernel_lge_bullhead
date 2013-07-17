@@ -785,3 +785,9 @@ drivers/net/wireless-3.4/mwifiex/sta_ioctl.c:1464 mwifiex_set_gen_ie_helper() er
 drivers/net/wireless-3.4/mwifiex/sta_ioctl.c:1489 mwifiex_set_gen_ie_helper() error: memcmp() 'pvendor_ie->oui' too small (3 vs 4)
 drivers/net/wireless-3.4/mwifiex/sta_cmd.c:674 mwifiex_cmd_802_11_key_material() error: memcpy() 'param->key' too small (16 vs 32)
 arch/arm/boot/compressed/../../../../lib/zlib_inflate/inftrees.c:258 zlib_inflate_table() error: buffer overflow 'count' 16 <= 16
+sound/pci/hda/patch_hdmi.c:385 hdmi_eld_ctl_get() error: memcpy() 'eld->eld_buffer' too small (256 vs 512)
+drivers/misc/lkdtm.c:312 lkdtm_do_action() error: buffer overflow 'p' 8 <= 63
+drivers/misc/lkdtm.c:331 lkdtm_do_action() error: potential null dereference 'data'.  (kmalloc returns null)
+drivers/misc/lkdtm.c:331 lkdtm_do_action() error: buffer overflow 'data' 255 <= 256
+drivers/bus/arm-cci.c:254:17: error: attribute '__noclone__': unknown attribute
+drivers/mmc/host/dw_mmc.c:1059 dw_mci_tasklet_func() error: we previously assumed 'data' could be null (see line 1035)
