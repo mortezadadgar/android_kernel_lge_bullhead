@@ -3059,7 +3059,7 @@ static void sd_shutdown(struct device *dev)
 
 	/* Avoid race condition with resume */
 	if (work_pending(&sdkp->resume_work))
-		flush_work_sync(&sdkp->resume_work);
+		flush_work(&sdkp->resume_work);
 
 	if (pm_runtime_suspended(dev))
 		goto exit;
@@ -3088,7 +3088,7 @@ static int sd_suspend(struct device *dev)
 
 	/* Avoid race condition with resume */
 	if (work_pending(&sdkp->resume_work))
-		flush_work_sync(&sdkp->resume_work);
+		flush_work(&sdkp->resume_work);
 
 	if (sdkp->WCE) {
 		sd_printk(KERN_NOTICE, sdkp, "Synchronizing SCSI cache\n");
