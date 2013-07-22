@@ -19,6 +19,7 @@
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
+#include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
@@ -41,11 +42,15 @@
 #define TPS65090_VACG		BIT(1)
 #define TPS65090_NOITERM	BIT(5)
 
+#define POLL_INTERVAL		(HZ * 2)	/* Used when no irq */
+
 struct tps65090_charger {
 	struct	device	*dev;
 	int	ac_online;
 	int	prev_ac_online;
 	int	irq;
+	struct task_struct	*poll_task;
+	bool			passive_mode;
 	struct power_supply	ac;
 	struct tps65090_platform_data *pdata;
 };
@@ -57,6 +62,9 @@ static enum power_supply_property tps65090_ac_props[] = {
 static int tps65090_low_chrg_current(struct tps65090_charger *charger)
 {
 	int ret;
+
+	if (charger->passive_mode)
+		return 0;
 
 	ret = tps65090_write(charger->dev->parent, TPS65090_REG_CG_CTRL5,
 			TPS65090_NOITERM);
@@ -72,6 +80,9 @@ static int tps65090_enable_charging(struct tps65090_charger *charger)
 {
 	int ret;
 	uint8_t ctrl0 = 0;
+
+	if (charger->passive_mode)
+		return 0;
 
 	ret = tps65090_read(charger->dev->parent, TPS65090_REG_CG_CTRL0,
 			    &ctrl0);
@@ -95,6 +106,9 @@ static int tps65090_config_charger(struct tps65090_charger *charger)
 {
 	uint8_t intrmask = 0;
 	int ret;
+
+	if (charger->passive_mode)
+		return 0;
 
 	if (charger->pdata->enable_low_current_chrg) {
 		ret = tps65090_low_chrg_current(charger);
@@ -173,10 +187,14 @@ static irqreturn_t tps65090_charger_isr(int irq, void *dev_id)
 	}
 
 	/* Clear interrupts. */
-	ret = tps65090_write(charger->dev->parent, TPS65090_REG_INTR_STS, 0x00);
-	if (ret < 0) {
-		dev_err(charger->dev, "%s(): Error in writing reg 0x%x\n",
+	if (!charger->passive_mode) {
+		ret = tps65090_write(charger->dev->parent,
+				     TPS65090_REG_INTR_STS, 0x00);
+		if (ret < 0) {
+			dev_err(charger->dev,
+				"%s(): Error in writing reg 0x%x\n",
 				__func__, TPS65090_REG_INTR_STS);
+		}
 	}
 
 	if (charger->prev_ac_online != charger->ac_online)
@@ -217,6 +235,15 @@ static struct tps65090_platform_data *
 	return NULL;
 }
 #endif
+
+static int tps65090_charger_poll_task(void *data)
+{
+	while (!kthread_should_stop()) {
+		schedule_timeout_interruptible(POLL_INTERVAL);
+		tps65090_charger_isr(-1, data);
+	}
+	return 0;
+}
 
 static int tps65090_charger_probe(struct platform_device *pdev)
 {
@@ -263,26 +290,14 @@ static int tps65090_charger_probe(struct platform_device *pdev)
 	}
 
 	irq = platform_get_irq(pdev, 0);
-	if (irq <= 0) {
-		dev_warn(&pdev->dev, "Unable to get charger irq = %d\n", irq);
-		ret = irq;
-		goto fail_unregister_supply;
-	}
-
+	if (irq < 0)
+		irq = NO_IRQ;
 	cdata->irq = irq;
-
-	ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
-		tps65090_charger_isr, 0, "tps65090-charger", cdata);
-	if (ret) {
-		dev_err(cdata->dev, "Unable to register irq %d err %d\n", irq,
-			ret);
-		goto fail_free_irq;
-	}
 
 	ret = tps65090_config_charger(cdata);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "charger config failed, err %d\n", ret);
-		goto fail_free_irq;
+			goto fail_unregister_supply;
 	}
 
 	/* Check for charger presence */
@@ -291,23 +306,42 @@ static int tps65090_charger_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(cdata->dev, "%s(): Error in reading reg 0x%x", __func__,
 			TPS65090_REG_CG_STATUS1);
-		goto fail_free_irq;
+			goto fail_unregister_supply;
 	}
 
 	if (status1 != 0) {
 		ret = tps65090_enable_charging(cdata);
 		if (ret < 0) {
 			dev_err(cdata->dev, "error enabling charger\n");
-			goto fail_free_irq;
+			goto fail_unregister_supply;
 		}
 		cdata->ac_online = 1;
 		power_supply_changed(&cdata->ac);
 	}
 
+	if (irq != NO_IRQ) {
+		ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
+			tps65090_charger_isr, 0, "tps65090-charger", cdata);
+		if (ret) {
+			dev_err(cdata->dev,
+				"Unable to register irq %d err %d\n", irq,
+				ret);
+			goto fail_unregister_supply;
+		}
+	} else {
+		cdata->poll_task = kthread_run(tps65090_charger_poll_task,
+					      cdata, "ktps65090charger");
+		cdata->passive_mode = true;
+		if (IS_ERR(cdata->poll_task)) {
+			ret = PTR_ERR(cdata->poll_task);
+			dev_err(cdata->dev,
+				"Unable to run kthread err %d\n", ret);
+			goto fail_unregister_supply;
+		}
+	}
+
 	return 0;
 
-fail_free_irq:
-	devm_free_irq(cdata->dev, irq, cdata);
 fail_unregister_supply:
 	power_supply_unregister(&cdata->ac);
 
@@ -318,7 +352,10 @@ static int tps65090_charger_remove(struct platform_device *pdev)
 {
 	struct tps65090_charger *cdata = dev_get_drvdata(&pdev->dev);
 
-	devm_free_irq(cdata->dev, cdata->irq, cdata);
+	if (cdata->irq != NO_IRQ)
+		devm_free_irq(cdata->dev, cdata->irq, cdata);
+	else
+		kthread_stop(cdata->poll_task);
 	power_supply_unregister(&cdata->ac);
 
 	return 0;
