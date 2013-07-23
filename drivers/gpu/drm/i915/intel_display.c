@@ -7650,7 +7650,8 @@ inline static void intel_mark_page_flip_active(struct intel_crtc *intel_crtc)
 static int intel_gen2_queue_flip(struct drm_device *dev,
 				 struct drm_crtc *crtc,
 				 struct drm_framebuffer *fb,
-				 struct drm_i915_gem_object *obj)
+				 struct drm_i915_gem_object *obj,
+				 uint32_t flags)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
@@ -7694,7 +7695,8 @@ err:
 static int intel_gen3_queue_flip(struct drm_device *dev,
 				 struct drm_crtc *crtc,
 				 struct drm_framebuffer *fb,
-				 struct drm_i915_gem_object *obj)
+				 struct drm_i915_gem_object *obj,
+				 uint32_t flags)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
@@ -7735,7 +7737,8 @@ err:
 static int intel_gen4_queue_flip(struct drm_device *dev,
 				 struct drm_crtc *crtc,
 				 struct drm_framebuffer *fb,
-				 struct drm_i915_gem_object *obj)
+				 struct drm_i915_gem_object *obj,
+				 uint32_t flags)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
@@ -7783,7 +7786,8 @@ err:
 static int intel_gen6_queue_flip(struct drm_device *dev,
 				 struct drm_crtc *crtc,
 				 struct drm_framebuffer *fb,
-				 struct drm_i915_gem_object *obj)
+				 struct drm_i915_gem_object *obj,
+				 uint32_t flags)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
@@ -7833,7 +7837,8 @@ err:
 static int intel_gen7_queue_flip(struct drm_device *dev,
 				 struct drm_crtc *crtc,
 				 struct drm_framebuffer *fb,
-				 struct drm_i915_gem_object *obj)
+				 struct drm_i915_gem_object *obj,
+				 uint32_t flags)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
@@ -7883,14 +7888,16 @@ err:
 static int intel_default_queue_flip(struct drm_device *dev,
 				    struct drm_crtc *crtc,
 				    struct drm_framebuffer *fb,
-				    struct drm_i915_gem_object *obj)
+				    struct drm_i915_gem_object *obj,
+				    uint32_t flags)
 {
 	return -ENODEV;
 }
 
 static int intel_crtc_page_flip(struct drm_crtc *crtc,
 				struct drm_framebuffer *fb,
-				struct drm_pending_vblank_event *event)
+				struct drm_pending_vblank_event *event,
+				uint32_t page_flip_flags)
 {
 	struct drm_device *dev = crtc->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -7960,7 +7967,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	atomic_inc(&intel_crtc->unpin_work_count);
 	intel_crtc->reset_counter = atomic_read(&dev_priv->gpu_error.reset_counter);
 
-	ret = dev_priv->display.queue_flip(dev, crtc, fb, obj);
+	ret = dev_priv->display.queue_flip(dev, crtc, fb, obj, page_flip_flags);
 	if (ret)
 		goto cleanup_pending;
 
