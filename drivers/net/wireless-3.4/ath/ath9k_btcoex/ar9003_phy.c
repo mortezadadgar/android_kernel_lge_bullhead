@@ -660,7 +660,7 @@ static int ar9003_hw_process_ini(struct ath_hw *ah,
 		ar9003_hw_prog_ini(ah, &ah->iniMac[i], modesIndex);
 		ar9003_hw_prog_ini(ah, &ah->iniBB[i], modesIndex);
 		ar9003_hw_prog_ini(ah, &ah->iniRadio[i], modesIndex);
-		if (i == ATH_INI_POST && AR_SREV_9462_20(ah))
+		if (i == ATH_INI_POST && AR_SREV_9462_20_OR_LATER(ah))
 			ar9003_hw_prog_ini(ah,
 					   &ah->ini_radio_post_sys2ant,
 					   modesIndex);
@@ -1253,7 +1253,7 @@ static int ar9003_hw_fast_chan_change(struct ath_hw *ah,
 	ar9003_hw_prog_ini(ah, &ah->iniMac[ATH_INI_POST], modesIndex);
 	ar9003_hw_prog_ini(ah, &ah->iniBB[ATH_INI_POST], modesIndex);
 	ar9003_hw_prog_ini(ah, &ah->iniRadio[ATH_INI_POST], modesIndex);
-	if (AR_SREV_9462_20(ah))
+	if (AR_SREV_9462_20_OR_LATER(ah))
 		ar9003_hw_prog_ini(ah,
 				&ah->ini_radio_post_sys2ant,
 				modesIndex);

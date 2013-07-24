@@ -4010,8 +4010,9 @@ static void ar9003_hw_thermo_cal_apply(struct ath_hw *ah)
 {
 	u32 data, ko, kg;
 
-	if (!AR_SREV_9462_20(ah))
+	if (!AR_SREV_9462_20_OR_LATER(ah))
 		return;
+
 	ar9300_otp_read_word(ah, 1, &data);
 	ko = data & 0xff;
 	kg = (data >> 8) & 0xff;
@@ -4597,7 +4598,7 @@ static int ar9003_hw_power_control_override(struct ath_hw *ah,
 
 	REG_RMW_FIELD(ah, AR_PHY_TPC_19, AR_PHY_TPC_19_ALPHA_THERM, tempSlope);
 
-	if (AR_SREV_9462_20(ah))
+	if (AR_SREV_9462_20_OR_LATER(ah))
 		REG_RMW_FIELD(ah, AR_PHY_TPC_19_B1,
 			      AR_PHY_TPC_19_B1_ALPHA_THERM, tempSlope);
 

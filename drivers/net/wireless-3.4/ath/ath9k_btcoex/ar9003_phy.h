@@ -1013,7 +1013,8 @@
 #define AR_GLB_GPIO_CONTROL	(AR_GLB_BASE)
 #define AR_PHY_GLB_CONTROL	(AR_GLB_BASE + 0x44)
 #define AR_GLB_SCRATCH(_ah)	(AR_GLB_BASE + \
-					(AR_SREV_9462_20(_ah) ? 0x4c : 0x50))
+					(AR_SREV_9462_20_OR_LATER(_ah) ? \
+					 0x4c : 0x50))
 #define AR_GLB_STATUS		(AR_GLB_BASE + 0x48)
 
 /*
