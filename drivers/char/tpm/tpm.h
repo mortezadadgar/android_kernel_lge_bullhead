@@ -96,6 +96,7 @@ struct tpm_vendor_specific {
 	void (*cancel) (struct tpm_chip *);
 	u8 (*status) (struct tpm_chip *);
 	void (*release) (struct device *);
+	void (*update_timeouts)(struct tpm_chip *);
 	struct miscdevice miscdev;
 	struct attribute_group *attr_group;
 	struct list_head list;
