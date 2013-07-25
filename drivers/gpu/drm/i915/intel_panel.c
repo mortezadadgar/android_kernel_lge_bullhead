@@ -773,7 +773,7 @@ int intel_panel_setup_backlight(struct drm_connector *connector)
 	props.brightness = dev_priv->backlight.level;
 
 	spin_lock_irqsave(&dev_priv->backlight.lock, flags);
-	props.max_brightness = intel_panel_get_max_backlight(dev);
+	props.max_brightness = dev_priv->get_max_backlight(dev);
 	spin_unlock_irqrestore(&dev_priv->backlight.lock, flags);
 
 	if (props.max_brightness == 0) {
