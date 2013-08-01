@@ -23,7 +23,8 @@ int dma_declare_coherent_memory(struct device *dev, dma_addr_t bus_addr,
 	int pages = size >> PAGE_SHIFT;
 	int bitmap_size = BITS_TO_LONGS(pages) * sizeof(long);
 
-	if ((flags & (DMA_MEMORY_MAP | DMA_MEMORY_IO)) == 0)
+	if ((flags &
+		(DMA_MEMORY_MAP | DMA_MEMORY_IO | DMA_MEMORY_NOMAP)) == 0)
 		goto out;
 	if (!size)
 		goto out;
@@ -32,10 +33,6 @@ int dma_declare_coherent_memory(struct device *dev, dma_addr_t bus_addr,
 
 	/* FIXME: this routine just ignores DMA_MEMORY_INCLUDES_CHILDREN */
 
-	mem_base = ioremap(bus_addr, size);
-	if (!mem_base)
-		goto out;
-
 	dev->dma_mem = kzalloc(sizeof(struct dma_coherent_mem), GFP_KERNEL);
 	if (!dev->dma_mem)
 		goto out;
@@ -43,7 +40,15 @@ int dma_declare_coherent_memory(struct device *dev, dma_addr_t bus_addr,
 	if (!dev->dma_mem->bitmap)
 		goto free1_out;
 
+	if (flags & DMA_MEMORY_NOMAP)
+		goto skip_mapping;
+
+	mem_base = ioremap(bus_addr, size);
+	if (!mem_base)
+		goto out;
 	dev->dma_mem->virt_base = mem_base;
+
+skip_mapping:
 	dev->dma_mem->device_base = device_addr;
 	dev->dma_mem->pfn_base = PFN_DOWN(bus_addr);
 	dev->dma_mem->size = pages;
@@ -51,6 +56,9 @@ int dma_declare_coherent_memory(struct device *dev, dma_addr_t bus_addr,
 
 	if (flags & DMA_MEMORY_MAP)
 		return DMA_MEMORY_MAP;
+
+	if (flags & DMA_MEMORY_NOMAP)
+		return DMA_MEMORY_NOMAP;
 
 	return DMA_MEMORY_IO;
 
@@ -70,7 +78,10 @@ void dma_release_declared_memory(struct device *dev)
 	if (!mem)
 		return;
 	dev->dma_mem = NULL;
-	iounmap(mem->virt_base);
+
+	if (!(mem->flags & DMA_MEMORY_NOMAP))
+		iounmap(mem->virt_base);
+
 	kfree(mem->bitmap);
 	kfree(mem);
 }
@@ -136,8 +147,10 @@ int dma_alloc_from_coherent(struct device *dev, ssize_t size,
 	 * Memory was found in the per-device area.
 	 */
 	*dma_handle = mem->device_base + (pageno << PAGE_SHIFT);
-	*ret = mem->virt_base + (pageno << PAGE_SHIFT);
-	memset(*ret, 0, size);
+	if (!(mem->flags & DMA_MEMORY_NOMAP)) {
+		*ret = mem->virt_base + (pageno << PAGE_SHIFT);
+		memset(*ret, 0, size);
+	}
 
 	return 1;
 
@@ -167,11 +180,20 @@ EXPORT_SYMBOL(dma_alloc_from_coherent);
 int dma_release_from_coherent(struct device *dev, int order, void *vaddr)
 {
 	struct dma_coherent_mem *mem = dev ? dev->dma_mem : NULL;
+	void *mem_addr;
 
-	if (mem && vaddr >= mem->virt_base && vaddr <
-		   (mem->virt_base + (mem->size << PAGE_SHIFT))) {
-		int page = (vaddr - mem->virt_base) >> PAGE_SHIFT;
+	if (!mem)
+		return 0;
 
+	if (mem->flags & DMA_MEMORY_NOMAP)
+		mem_addr =  (void *)mem->device_base;
+	else
+		mem_addr =  mem->virt_base;
+
+	if (mem && vaddr >= mem_addr && vaddr <
+		   (mem_addr + (mem->size << PAGE_SHIFT))) {
+
+		int page = (vaddr - mem_addr) >> PAGE_SHIFT;
 		bitmap_release_region(mem->bitmap, page, order);
 		return 1;
 	}
@@ -198,11 +220,20 @@ int dma_mmap_from_coherent(struct device *dev, struct vm_area_struct *vma,
 			   void *vaddr, size_t size, int *ret)
 {
 	struct dma_coherent_mem *mem = dev ? dev->dma_mem : NULL;
+	void *mem_addr;
 
-	if (mem && vaddr >= mem->virt_base && vaddr + size <=
-		   (mem->virt_base + (mem->size << PAGE_SHIFT))) {
+	if (!mem)
+		return 0;
+
+	if (mem->flags & DMA_MEMORY_NOMAP)
+		mem_addr =  (void *)mem->device_base;
+	else
+		mem_addr =  mem->virt_base;
+
+	if (mem && vaddr >= mem_addr && vaddr + size <=
+		   (mem_addr + (mem->size << PAGE_SHIFT))) {
 		unsigned long off = vma->vm_pgoff;
-		int start = (vaddr - mem->virt_base) >> PAGE_SHIFT;
+		int start = (vaddr - mem_addr) >> PAGE_SHIFT;
 		int user_count = (vma->vm_end - vma->vm_start) >> PAGE_SHIFT;
 		int count = size >> PAGE_SHIFT;
 
