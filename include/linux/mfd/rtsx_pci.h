@@ -24,8 +24,7 @@
 
 #include <linux/sched.h>
 #include <linux/pci.h>
-
-#include "rtsx_common.h"
+#include <linux/mfd/rtsx_common.h>
 
 #define MAX_RW_REG_CNT			1024
 
@@ -764,7 +763,7 @@ struct pcr_ops {
 	unsigned int	(*cd_deglitch)(struct rtsx_pcr *pcr);
 	int		(*conv_clk_and_div_n)(int clk, int dir);
 	void		(*init_settings)(struct rtsx_pcr *pcr);
-	void		(*force_power_down)(struct rtsx_pcr *pcr);
+	void		(*force_power_down)(struct rtsx_pcr *pcr, u8 pm_state);
 };
 
 enum PDEV_STAT  {PDEV_STAT_IDLE, PDEV_STAT_RUN};

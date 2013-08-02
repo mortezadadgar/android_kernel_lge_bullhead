@@ -86,7 +86,7 @@ static void rtl8411b_init_settings(struct rtsx_pcr *pcr)
 	}
 }
 
-static void rtl8411_force_power_down(struct rtsx_pcr *pcr)
+static void rtl8411_force_power_down(struct rtsx_pcr *pcr, u8 pm_state)
 {
 	rtsx_pci_write_register(pcr, FPDCTL, 0x07, 0x07);
 }

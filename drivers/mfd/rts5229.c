@@ -55,7 +55,7 @@ static void rts5229_init_settings(struct rtsx_pcr *pcr)
 	}
 }
 
-static void rts5229_force_power_down(struct rtsx_pcr *pcr)
+static void rts5229_force_power_down(struct rtsx_pcr *pcr, u8 pm_state)
 {
 	rtsx_pci_write_register(pcr, FPDCTL, 0x03, 0x03);
 }
