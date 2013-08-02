@@ -1,6 +1,6 @@
 /* Driver for Realtek PCI-Express card reader
  *
- * Copyright(c) 2009 Realtek Semiconductor Corp. All rights reserved.
+ * Copyright(c) 2009-2013 Realtek Semiconductor Corp. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,7 +17,6 @@
  *
  * Author:
  *   Wei WANG <wei_wang@realsil.com.cn>
- *   No. 450, Shenhu Road, Suzhou Industry Park, Suzhou, China
  */
 
 #include <linux/pci.h>
@@ -73,6 +72,9 @@ void rtsx_pci_start_run(struct rtsx_pcr *pcr)
 		pcr->state = PDEV_STAT_RUN;
 		if (pcr->ops->enable_auto_blink)
 			pcr->ops->enable_auto_blink(pcr);
+
+		if (pcr->aspm_en)
+			rtsx_pci_write_config_byte(pcr, LCTLR, 0);
 	}
 
 	mod_delayed_work(system_wq, &pcr->idle_work, msecs_to_jiffies(200));
@@ -717,7 +719,7 @@ int rtsx_pci_card_exclusive_check(struct rtsx_pcr *pcr, int card)
 		[RTSX_MS_CARD] = MS_EXIST
 	};
 
-	if (!pcr->ms_pmos) {
+	if (!(pcr->flags & PCR_MS_PMOS)) {
 		/* When using single PMOS, accessing card is not permitted
 		 * if the existing card is not the designated one.
 		 */
@@ -918,6 +920,9 @@ static void rtsx_pci_idle_work(struct work_struct *work)
 	if (pcr->ops->turn_off_led)
 		pcr->ops->turn_off_led(pcr);
 
+	if (pcr->aspm_en)
+		rtsx_pci_write_config_byte(pcr, LCTLR, pcr->aspm_en);
+
 	mutex_unlock(&pcr->pcr_mutex);
 }
 
@@ -956,8 +961,8 @@ static int rtsx_pci_init_hw(struct rtsx_pcr *pcr)
 	/* Reset delink mode */
 	rtsx_pci_add_cmd(pcr, WRITE_REG_CMD, CHANGE_LINK_STATE, 0x0A, 0);
 	/* Card driving select */
-	rtsx_pci_add_cmd(pcr, WRITE_REG_CMD, SD30_DRIVE_SEL,
-			0x07, DRIVER_TYPE_D);
+	rtsx_pci_add_cmd(pcr, WRITE_REG_CMD, CARD_DRIVE_SEL,
+			0xFF, pcr->card_drive_sel);
 	/* Enable SSC Clock */
 	rtsx_pci_add_cmd(pcr, WRITE_REG_CMD, SSC_CTL1,
 			0xFF, SSC_8X_EN | SSC_SEL_4M);
@@ -988,6 +993,8 @@ static int rtsx_pci_init_hw(struct rtsx_pcr *pcr)
 	err = rtsx_pci_send_cmd(pcr, 100);
 	if (err < 0)
 		return err;
+
+	rtsx_pci_write_config_byte(pcr, LCTLR, 0);
 
 	/* Enable clk_request_n to enable clock power management */
 	rtsx_pci_write_config_byte(pcr, 0x81, 1);
@@ -1052,6 +1059,18 @@ static int rtsx_pci_init_chip(struct rtsx_pcr *pcr)
 			GFP_KERNEL);
 	if (!pcr->slots)
 		return -ENOMEM;
+
+	if (pcr->ops->init_settings)
+		pcr->ops->init_settings(pcr);
+
+	dev_dbg(&(pcr->pci->dev), "pcr->aspm_en = 0x%x\n", pcr->aspm_en);
+	dev_dbg(&(pcr->pci->dev), "pcr->sd30_drive_sel_1v8 = 0x%x\n",
+			pcr->sd30_drive_sel_1v8);
+	dev_dbg(&(pcr->pci->dev), "pcr->sd30_drive_sel_3v3 = 0x%x\n",
+			pcr->sd30_drive_sel_3v3);
+	dev_dbg(&(pcr->pci->dev), "pcr->card_drive_sel = 0x%x\n",
+			pcr->card_drive_sel);
+	dev_dbg(&(pcr->pci->dev), "pcr->flags = 0x%x\n", pcr->flags);
 
 	pcr->state = PDEV_STAT_IDLE;
 	err = rtsx_pci_init_hw(pcr);
