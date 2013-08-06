@@ -84,7 +84,7 @@ ssize_t hdmi_avi_infoframe_pack(struct hdmi_avi_infoframe *frame, void *buffer,
 	if (size < length)
 		return -ENOSPC;
 
-	memset(buffer, 0, length);
+	memset(buffer, 0, size);
 
 	ptr[0] = frame->type;
 	ptr[1] = frame->version;
@@ -191,7 +191,7 @@ ssize_t hdmi_spd_infoframe_pack(struct hdmi_spd_infoframe *frame, void *buffer,
 	if (size < length)
 		return -ENOSPC;
 
-	memset(buffer, 0, length);
+	memset(buffer, 0, size);
 
 	ptr[0] = frame->type;
 	ptr[1] = frame->version;
@@ -256,7 +256,7 @@ ssize_t hdmi_audio_infoframe_pack(struct hdmi_audio_infoframe *frame,
 	if (size < length)
 		return -ENOSPC;
 
-	memset(buffer, 0, length);
+	memset(buffer, 0, size);
 
 	if (frame->channels >= 2)
 		channels = frame->channels - 1;
