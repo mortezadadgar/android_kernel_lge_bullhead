@@ -865,7 +865,7 @@ static unsigned long tegra114_input_freq[] = {
 			mux_d_audio_clk_idx, 0)
 
 enum tegra114_clk {
-	rtc = 4, timer = 5, uarta = 6, sdmmc2 = 9, i2s1 = 11, i2c1 = 12,
+	cop = 1, rtc = 4, timer = 5, uarta = 6, sdmmc2 = 9, i2s1 = 11, i2c1 = 12,
 	ndflash = 13, sdmmc1 = 14, sdmmc4 = 15, pwm = 17, i2s2 = 18, epp = 19,
 	gr_2d = 21, usbd = 22, isp = 23, gr_3d = 24, disp2 = 26, disp1 = 27,
 	host1x = 28, vcp = 29, i2s0 = 30, apbdma = 34, kbc = 36, kfuse = 40,
@@ -1922,6 +1922,13 @@ static __init void tegra114_periph_clk_init(void __iomem *clk_base)
 	struct clk *clk;
 	int i;
 	u32 val;
+
+	/* cop */
+	clk = tegra_clk_register_periph_gate("cop", NULL, TEGRA_PERIPH_NO_CLK,
+						clk_base, CLK_IGNORE_UNUSED, 1,
+						&periph_l_regs,
+						periph_clk_enb_refcnt);
+	clks[cop] = clk;
 
 	/* apbdma */
 	clk = tegra_clk_register_periph_gate("apbdma", "clk_m", 0, clk_base,
