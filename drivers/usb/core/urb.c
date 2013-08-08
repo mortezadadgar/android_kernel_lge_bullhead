@@ -4,6 +4,7 @@
 #include <linux/slab.h>
 #include <linux/init.h>
 #include <linux/log2.h>
+#include <linux/scatterlist.h>	/* define for_each_sg */
 #include <linux/usb.h>
 #include <linux/wait.h>
 #include <linux/usb/hcd.h>
@@ -413,6 +414,14 @@ int usb_submit_urb(struct urb *urb, gfp_t mem_flags)
 			urb->iso_frame_desc[n].status = -EXDEV;
 			urb->iso_frame_desc[n].actual_length = 0;
 		}
+	} else if (urb->num_sgs && !urb->dev->bus->no_sg_constraint &&
+			dev->speed != USB_SPEED_WIRELESS) {
+		struct scatterlist *sg;
+		int i;
+
+		for_each_sg(urb->sg, sg, urb->num_sgs - 1, i)
+			if (sg->length % max)
+				return -EINVAL;
 	}
 
 	/* the I/O buffer must be mapped/unmapped, except when length=0 */
