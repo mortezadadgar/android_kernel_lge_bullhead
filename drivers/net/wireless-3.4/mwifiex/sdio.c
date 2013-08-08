@@ -1747,30 +1747,6 @@ mwifiex_update_mp_end_port(struct mwifiex_adapter *adapter, u16 port)
 		port, card->mp_data_port_mask);
 }
 
-static bool mwifiex_sdio_mwi87xx_reset(void)
-{
-	struct regulator *wifi_en, *wifi_rst;
-	bool ok;
-
-	wifi_en = regulator_get(NULL, "wifi-en");
-	wifi_rst = regulator_get(NULL, "wifi-rst-l");
-	ok = !IS_ERR(wifi_en) && !IS_ERR(wifi_rst);
-	if (ok) {
-		regulator_disable(wifi_rst);
-		regulator_disable(wifi_en);
-		regulator_enable(wifi_rst);
-		/* as per 8797 datasheet section 1.5.2 */
-		mdelay(1);
-		regulator_enable(wifi_en);
-	}
-
-	if (!IS_ERR(wifi_rst))
-		regulator_put(wifi_rst);
-	if (!IS_ERR(wifi_en))
-		regulator_put(wifi_en);
-	return ok;
-}
-
 static void mwifiex_sdio_reset_work(struct mwifiex_adapter *adapter)
 {
 	struct sdio_mmc_card *card = adapter->card;
@@ -1778,8 +1754,9 @@ static void mwifiex_sdio_reset_work(struct mwifiex_adapter *adapter)
 
 	pr_err("Resetting card...\n");
 	mmc_remove_host(host);
-	if (!mwifiex_sdio_mwi87xx_reset())
-		pr_err("External card reset failed! Trying to reattach...\n");
+
+	/* Card "regulators" should cause a reset to happen */
+
 	/* 20ms delay is based on experiment with sdhci controller */
 	mdelay(20);
 	mmc_add_host(host);
