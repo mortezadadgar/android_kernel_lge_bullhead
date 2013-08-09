@@ -1534,10 +1534,18 @@ static int rcu_gp_init(struct rcu_state *rsp)
 	ACCESS_ONCE(rsp->gp_activity) = jiffies;
 	rcu_bind_gp_kthread();
 	raw_spin_lock_irq(&rnp->lock);
+	if (!ACCESS_ONCE(rsp->gp_flags)) {
+		/* Spurious wakeup, tell caller to go back to sleep.  */
+		raw_spin_unlock_irq(&rnp->lock);
+		return 0;
+	}
 	ACCESS_ONCE(rsp->gp_flags) = 0; /* Clear all flags: New grace period. */
 
-	if (rcu_gp_in_progress(rsp)) {
-		/* Grace period already in progress, don't start another.  */
+	if (WARN_ON_ONCE(rcu_gp_in_progress(rsp))) {
+		/*
+		 * Grace period already in progress, don't start another.
+		 * Not supposed to be able to happen.
+		 */
 		raw_spin_unlock_irq(&rnp->lock);
 		return 0;
 	}
@@ -1595,7 +1603,7 @@ static int rcu_gp_init(struct rcu_state *rsp)
 /*
  * Do one round of quiescent-state forcing.
  */
-int rcu_gp_fqs(struct rcu_state *rsp, int fqs_state_in)
+static int rcu_gp_fqs(struct rcu_state *rsp, int fqs_state_in)
 {
 	int fqs_state = fqs_state_in;
 	struct rcu_node *rnp = rcu_get_root(rsp);
@@ -1701,8 +1709,7 @@ static int __noreturn rcu_gp_kthread(void *arg)
 			wait_event_interruptible(rsp->gp_wq,
 						 ACCESS_ONCE(rsp->gp_flags) &
 						 RCU_GP_FLAG_INIT);
-			if ((ACCESS_ONCE(rsp->gp_flags) & RCU_GP_FLAG_INIT) &&
-			    rcu_gp_init(rsp))
+			if (rcu_gp_init(rsp))
 				break;
 			cond_resched();
 			ACCESS_ONCE(rsp->gp_activity) = jiffies;
