@@ -1167,7 +1167,10 @@ int cpu_is_first_sibling_in_core(int cpu)
 		perror(path);
 		exit(1);
 	}
-	fscanf(filep, "%d", &first_cpu);
+	if (fscanf(filep, "%d", &first_cpu) != 1) {
+		perror(path);
+		exit(1);
+	}
 	fclose(filep);
 	return (cpu == first_cpu);
 }
@@ -1188,7 +1191,10 @@ int cpu_is_first_core_in_package(int cpu)
 		perror(path);
 		exit(1);
 	}
-	fscanf(filep, "%d", &first_cpu);
+	if (fscanf(filep, "%d", &first_cpu) != 1) {
+		perror(path);
+		exit(1);
+	}
 	fclose(filep);
 	return (cpu == first_cpu);
 }
@@ -1205,7 +1211,10 @@ int get_physical_package_id(int cpu)
 		perror(path);
 		exit(1);
 	}
-	fscanf(filep, "%d", &pkg);
+	if (fscanf(filep, "%d", &pkg) != 1) {
+		perror(path);
+		exit(1);
+	}
 	fclose(filep);
 	return pkg;
 }
@@ -1222,7 +1231,10 @@ int get_core_id(int cpu)
 		perror(path);
 		exit(1);
 	}
-	fscanf(filep, "%d", &core);
+	if (fscanf(filep, "%d", &core) != 1) {
+		perror(path);
+		exit(1);
+	}
 	fclose(filep);
 	return core;
 }
