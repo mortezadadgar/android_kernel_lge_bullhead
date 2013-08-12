@@ -17,6 +17,7 @@
  * this warranty disclaimer.
  */
 
+#include <linux/bug.h>
 #include <linux/firmware.h>
 
 #include "decl.h"
@@ -1862,6 +1863,8 @@ static void mwifiex_sdio_card_reset(struct mwifiex_adapter *adapter)
 {
 	if (test_bit(MWIFIEX_SDIO_WORK_RESET, &sdio_work_flags))
 		return;
+
+	WARN_ON(1);
 
 	/* The actual reset operation must be run outside of driver thread.
 	 * This is because mmc_remove_host() will cause the device to be
