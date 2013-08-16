@@ -789,6 +789,171 @@
 			regulator-always-on;
 		};
 
+		palmas: tps65913@58 {
+			compatible = "ti,palmas";
+			reg = <0x58>;
+			interrupts = <0 86 0x8>;
+
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			ti,power-ctrl = <0x06>;
+			ti,nsleep-smps-assign = <0x24>;
+
+			ti,system-power-controller;
+
+			palmas_gpio: palmas_gpio {
+				compatible = "ti,palmas-gpio";
+				gpio-controller;
+				#gpio-cells = <2>;
+			};
+
+			palmas_pmic {
+				compatible = "ti,palmas-pmic";
+				smps1-in-supply = <&tps65090_dcdc3_reg>;
+				smps3-in-supply = <&tps65090_dcdc3_reg>;
+				smps4-in-supply = <&tps65090_dcdc2_reg>;
+				smps6-in-supply = <&floating>;
+				smps7-in-supply = <&tps65090_dcdc2_reg>;
+				smps8-in-supply = <&tps65090_dcdc2_reg>;
+				smps9-in-supply = <&tps65090_dcdc2_reg>;
+				smps10-in-supply = <&floating>;
+				ldo1-in-supply = <&tps65090_dcdc2_reg>;
+				ldo2-in-supply = <&tps65090_dcdc2_reg>;
+				ldo3-in-supply = <&palmas_smps3_reg>;
+				ldo4-in-supply = <&tps65090_dcdc2_reg>;
+				ldo5-in-supply = <&vdd_ac_bat_reg>;
+				ldo6-in-supply = <&tps65090_dcdc2_reg>;
+				ldo7-in-supply = <&tps65090_dcdc2_reg>;
+				ldo8-in-supply = <&tps65090_dcdc2_reg>;
+				ldo9-in-supply = <&tps65090_dcdc2_reg>;
+				ldoln-in-supply = <&tps65090_dcdc1_reg>;
+				ldousb-in-supply = <&tps65090_dcdc1_reg>;
+				regulators {
+					smps12 {
+						regulator-name = "vddio-ddr";
+						regulator-min-microvolt = <1350000>;
+						regulator-max-microvolt = <1350000>;
+						regulator-always-on;
+						regulator-boot-on;
+					};
+
+					palmas_smps3_reg: smps3 {
+						regulator-name = "vddio-1v8";
+						regulator-min-microvolt = <1800000>;
+						regulator-max-microvolt = <1800000>;
+						regulator-boot-on;
+					};
+
+					smps45 {
+						regulator-name = "vdd-core";
+						regulator-min-microvolt = <900000>;
+						regulator-max-microvolt = <1400000>;
+						regulator-always-on;
+						regulator-boot-on;
+						ti,roof-floor;
+					};
+
+					smps457 {
+						regulator-name = "vdd-core";
+						regulator-min-microvolt = <900000>;
+						regulator-max-microvolt = <1400000>;
+						regulator-always-on;
+						regulator-boot-on;
+						ti,roof-floor;
+					};
+
+					smps8 {
+						regulator-name = "avdd-pll";
+						regulator-min-microvolt = <1050000>;
+						regulator-max-microvolt = <1050000>;
+						regulator-always-on;
+						regulator-boot-on;
+						ti,roof-floor;
+					};
+
+					smps9 {
+						regulator-name = "sdhci-vdd-sd-slot";
+						regulator-min-microvolt = <2800000>;
+						regulator-max-microvolt = <2800000>;
+						regulator-boot-on;
+					};
+
+					ldo1 {
+						regulator-name = "avdd-cam1";
+						regulator-min-microvolt = <2800000>;
+						regulator-max-microvolt = <2800000>;
+					};
+
+					ldo2 {
+						regulator-name = "avdd-cam2";
+						regulator-min-microvolt = <2800000>;
+						regulator-max-microvolt = <2800000>;
+					};
+
+					ldo3 {
+						regulator-name = "avdd-dsi-csi";
+						regulator-min-microvolt = <1200000>;
+						regulator-max-microvolt = <1200000>;
+					};
+
+					ldo4 {
+						regulator-name = "vpp-fuse";
+						regulator-min-microvolt = <1800000>;
+						regulator-max-microvolt = <1800000>;
+					};
+
+					ldo6 {
+						regulator-name = "vdd-sensor-2v85";
+						regulator-min-microvolt = <2850000>;
+						regulator-max-microvolt = <2850000>;
+					};
+
+					ldo7 {
+						regulator-name = "vdd-af-cam1";
+						regulator-min-microvolt = <2800000>;
+						regulator-max-microvolt = <2800000>;
+					};
+
+					ldo8 {
+						regulator-name = "vdd-rtc";
+						regulator-min-microvolt = <900000>;
+						regulator-max-microvolt = <900000>;
+						regulator-always-on;
+						regulator-boot-on;
+						ti,enable-ldo8-tracking;
+					};
+
+					ldo9 {
+						regulator-name = "vddio-sdmmc-2";
+						regulator-min-microvolt = <1800000>;
+						regulator-max-microvolt = <3300000>;
+						regulator-boot-on;
+					};
+
+					ldoln {
+						regulator-name = "hvdd-usb";
+						regulator-min-microvolt = <3300000>;
+						regulator-max-microvolt = <3300000>;
+						regulator-always-on;
+						regulator-boot-on;
+					};
+
+					ldousb {
+						regulator-name = "avdd-usb-hdmi";
+						regulator-min-microvolt = <3300000>;
+						regulator-max-microvolt = <3300000>;
+						regulator-always-on;
+						regulator-boot-on;
+					};
+				};
+			};
+
+			rtc {
+				compatible = "ti,palmas-rtc";
+				interrupt-parent = <&palmas>;
+				interrupts = <8 0>;
+			};
+		};
 	};
 
 	spi@7000d600 {
@@ -833,7 +998,7 @@
 					};
 
 					regulators {
-						dcdc1 {
+						tps65090_dcdc1_reg: dcdc1 {
 							regulator-name = "vdd-sys-5v0";
 							regulator-always-on;
 							regulator-boot-on;
@@ -845,7 +1010,7 @@
 							regulator-boot-on;
 						};
 
-						dcdc3 {
+						tps65090_dcdc3_reg: dcdc3 {
 							regulator-name = "vdd-ao";
 							regulator-always-on;
 							regulator-boot-on;
@@ -1701,6 +1866,22 @@
 			regulator-max-microvolt = <5000000>;
 			enable-active-high;
 			gpio = <&gpio 81 0>; /* GPIO PK1 */
+		};
+
+		en_1v8_cam_reg: regulator@6 {
+			compatible = "regulator-fixed";
+			reg = <6>;
+			regulator-name = "en_1v8_cam_reg";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			enable-active-high;
+			gpio = <&palmas_gpio 6 0>; /* Palmas GPIO6 */
+		};
+
+		floating: regulator@7 {
+			compatible = "regulator-fixed";
+			reg = <7>;
+			regulator-name = "floating";
 		};
 	};
 };
