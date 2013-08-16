@@ -330,9 +330,18 @@ static void mt_feature_mapping(struct hid_device *hdev,
 				break;
 			}
 		}
+		/* Ignore if value index is out of bounds. */
+		if (td->inputmode_index < 0 ||
+		    td->inputmode_index >= field->report_count) {
+			dev_err(&hdev->dev, "HID_DG_INPUTMODE out of range\n");
+			td->inputmode = -1;
+		}
 
 		break;
 	case HID_DG_CONTACTMAX:
+		/* Ignore if value count is out of bounds. */
+		if (field->report_count < 1)
+			break;
 		td->maxcontact_report_id = field->report->id;
 		td->maxcontacts = field->value[0];
 		if (!td->maxcontacts &&
