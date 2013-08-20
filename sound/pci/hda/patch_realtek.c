@@ -2528,6 +2528,7 @@ enum {
 	ALC269_TYPE_ALC269VD,
 	ALC269_TYPE_ALC280,
 	ALC269_TYPE_ALC282,
+	ALC269_TYPE_ALC283,
 	ALC269_TYPE_ALC284,
 	ALC269_TYPE_ALC286,
 };
@@ -2554,6 +2555,7 @@ static int alc269_parse_auto_config(struct hda_codec *codec)
 	case ALC269_TYPE_ALC269VD:
 	case ALC269_TYPE_ALC282:
 	case ALC269_TYPE_ALC286:
+	case ALC269_TYPE_ALC283:
 		ssids = alc269_ssids;
 		break;
 	default:
@@ -2585,6 +2587,69 @@ static void alc269_shutup(struct hda_codec *codec)
 		msleep(150);
 	}
 	snd_hda_shutup_pins(codec);
+}
+
+static void alc283_init(struct hda_codec *codec)
+{
+	struct alc_spec *spec = codec->spec;
+	hda_nid_t hp_pin = spec->gen.autocfg.hp_pins[0];
+	int hp_pin_sense = snd_hda_jack_detect(codec, hp_pin);
+	int val;
+
+	if (!hp_pin)
+		return;
+
+	alc_write_coef_idx(codec, 0x43, 0x9004);
+
+	snd_hda_codec_write(codec, hp_pin, 0,
+			    AC_VERB_SET_AMP_GAIN_MUTE, AMP_OUT_MUTE);
+
+	if (hp_pin_sense)
+		msleep(75);
+
+	snd_hda_codec_write(codec, hp_pin, 0,
+			    AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_HP);
+
+	if (hp_pin_sense)
+		msleep(75);
+	val = alc_read_coef_idx(codec, 0x06);
+	alc_write_coef_idx(codec, 0x06, val & ~0x000c);;
+
+	val = alc_read_coef_idx(codec, 0x46);
+	alc_write_coef_idx(codec, 0x46, val & ~(3 << 12));
+	alc_write_coef_idx(codec, 0x43, 0x9614);
+}
+
+static void alc283_shutup(struct hda_codec *codec)
+{
+	struct alc_spec *spec = codec->spec;
+	hda_nid_t hp_pin = spec->gen.autocfg.hp_pins[0];
+	int hp_pin_sense = snd_hda_jack_detect(codec, hp_pin);
+	int val;
+
+	if (!hp_pin) {
+		alc269_shutup(codec);
+		return;
+	}
+
+	alc_write_coef_idx(codec, 0x43, 0x9004);
+
+	snd_hda_codec_write(codec, hp_pin, 0,
+			    AC_VERB_SET_AMP_GAIN_MUTE, AMP_OUT_MUTE);
+
+	if (hp_pin_sense)
+		msleep(75);
+
+	snd_hda_codec_write(codec, hp_pin, 0,
+			    AC_VERB_SET_PIN_WIDGET_CONTROL, 0x0);
+
+	val = alc_read_coef_idx(codec, 0x46);
+	alc_write_coef_idx(codec, 0x46, val | (3 << 12));
+
+	if (hp_pin_sense)
+		msleep(75);
+	snd_hda_shutup_pins(codec);
+	alc_write_coef_idx(codec, 0x43, 0x9614);
 }
 
 #ifdef CONFIG_PM
@@ -3712,10 +3777,14 @@ static int patch_alc269(struct hda_codec *codec)
 	case 0x10ec0290:
 		spec->codec_variant = ALC269_TYPE_ALC280;
 		break;
-	case 0x10ec0233:
 	case 0x10ec0282:
-	case 0x10ec0283:
 		spec->codec_variant = ALC269_TYPE_ALC282;
+		break;
+	case 0x10ec0233:
+	case 0x10ec0283:
+		spec->codec_variant = ALC269_TYPE_ALC283;
+		spec->shutup = alc283_shutup;
+		spec->init_hook = alc283_init;
 		break;
 	case 0x10ec0284:
 	case 0x10ec0292:
@@ -3738,7 +3807,8 @@ static int patch_alc269(struct hda_codec *codec)
 #ifdef CONFIG_PM
 	codec->patch_ops.resume = alc269_resume;
 #endif
-	spec->shutup = alc269_shutup;
+	if (!spec->shutup)
+		spec->shutup = alc269_shutup;
 
 	snd_hda_apply_fixup(codec, HDA_FIXUP_ACT_PROBE);
 
