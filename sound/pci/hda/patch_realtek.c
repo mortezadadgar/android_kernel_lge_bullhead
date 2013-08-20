@@ -3263,6 +3263,16 @@ static void alc269_fixup_limit_int_mic_boost(struct hda_codec *codec,
 	}
 }
 
+static void alc283_fixup_dac_wcaps(struct hda_codec *codec,
+      const struct hda_fixup *fix, int action)
+{
+	switch (action) {
+	case HDA_FIXUP_ACT_PRE_PROBE:
+		snd_hda_override_wcaps(codec, 0x03, 0);
+		break;
+	}
+}
+
 enum {
 	ALC269_FIXUP_SONY_VAIO,
 	ALC275_FIXUP_SONY_VAIO_GPIO2,
@@ -3298,6 +3308,7 @@ enum {
 	ALC271_FIXUP_HP_GATE_MIC_JACK,
 	ALC269_FIXUP_ACER_AC700,
 	ALC269_FIXUP_LIMIT_INT_MIC_BOOST,
+	ALC283_FIXUP_DAC_WCAPS,
 };
 
 static const struct hda_fixup alc269_fixups[] = {
@@ -3540,6 +3551,11 @@ static const struct hda_fixup alc269_fixups[] = {
 		.type = HDA_FIXUP_FUNC,
 		.v.func = alc269_fixup_limit_int_mic_boost,
 	},
+	[ALC283_FIXUP_DAC_WCAPS] = {
+		/* Disable the second DAC, ensuring only DAC1 is used. */
+		.type = HDA_FIXUP_FUNC,
+		.v.func = alc283_fixup_dac_wcaps,
+	},
 };
 
 static const struct snd_pci_quirk alc269_fixup_tbl[] = {
@@ -3674,6 +3690,7 @@ static const struct hda_model_fixup alc269_fixup_models[] = {
 	{.id = ALC269_FIXUP_HP_GPIO_LED, .name = "hp-gpio-led"},
 	{.id = ALC269_FIXUP_DELL1_MIC_NO_PRESENCE, .name = "dell-headset-multi"},
 	{.id = ALC269_FIXUP_DELL2_MIC_NO_PRESENCE, .name = "dell-headset-dock"},
+	{.id = ALC283_FIXUP_DAC_WCAPS, .name = "alc283-dac-wcaps"},
 	{}
 };
 
