@@ -838,6 +838,29 @@
 		enable-supply = <&lcd_bl_en_reg>;
 	};
 
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		lid {
+			label = "Lid";
+			gpios = <&gpio 178 1>; /* gpio w2, active low */
+			linux,input-type = <5>; /* EV_SW */
+			linux,code = <0>; /* SW_LID */
+			debounce-interval = <1>;
+			gpio-key,wakeup;
+		};
+
+		power {
+			label = "Power";
+			gpios = <&gpio 128 1>; /* gpio PQ0, active low */
+			linux,input-type = <1>; /* EV_KEY */
+			linux,code = <116>; /* KEY_POWER */
+			debounce-interval = <10>;
+			gpio-key,wakeup;
+		};
+
+	};
+
 	regulators {
 		compatible = "simple-bus";
 		#address-cells = <1>;
