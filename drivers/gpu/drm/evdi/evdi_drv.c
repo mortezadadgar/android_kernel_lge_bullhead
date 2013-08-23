@@ -232,11 +232,6 @@ static ssize_t loglevel_store(struct device *dev,
 	return count;
 }
 
-#define __ATTR_WO(_name)        {                                       \
-	.attr = { .name = __stringify(_name), .mode = S_IWUSR },        \
-	.store = _name##_store,                                         \
-}
-
 static struct device_attribute evdi_device_attributes[] = {
 	__ATTR_RO(count),
 	__ATTR_RO(version),
