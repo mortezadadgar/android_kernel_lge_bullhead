@@ -25,6 +25,7 @@ enum tegra_suspend_mode {
 	TEGRA_SUSPEND_LP2,	/* CPU voltage off */
 	TEGRA_SUSPEND_LP1,	/* CPU voltage off, DRAM self-refresh */
 	TEGRA_SUSPEND_LP0,      /* CPU + core voltage off, DRAM self-refresh */
+	TEGRA_CLUSTER_SWITCH,
 	TEGRA_MAX_SUSPEND_MODE,
 };
 

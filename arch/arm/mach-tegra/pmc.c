@@ -675,6 +675,7 @@ void tegra_pmc_resume(void)
 void tegra_pmc_pm_set(enum tegra_suspend_mode mode)
 {
 	u32 reg, csr_reg, boot_flag;
+	u32 us_off = pmc_pm_data.cpu_off_time;
 	unsigned long rate = 0;
 
 	reg = tegra_pmc_readl(PMC_CTRL);
@@ -743,12 +744,15 @@ void tegra_pmc_pm_set(enum tegra_suspend_mode mode)
 	case TEGRA_SUSPEND_LP2:
 		rate = clk_get_rate(tegra_pclk);
 		break;
+	case TEGRA_CLUSTER_SWITCH:
+		rate = clk_get_rate(tegra_pclk);
+		us_off = 2;
+		break;
 	default:
 		break;
 	}
 
-	set_power_timers(pmc_pm_data.cpu_good_time, pmc_pm_data.cpu_off_time,
-			 rate);
+	set_power_timers(pmc_pm_data.cpu_good_time, us_off, rate);
 
 	tegra_pmc_writel(reg, PMC_CTRL);
 }
