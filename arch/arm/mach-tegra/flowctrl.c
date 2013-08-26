@@ -52,12 +52,16 @@ static void flowctrl_update(u8 offset, u32 value)
 	readl_relaxed(addr);
 }
 
-u32 flowctrl_read_cpu_csr(unsigned int cpuid)
+static u32 flowctrl_read(u8 offset)
 {
-	u8 offset = flowctrl_offset_cpu_csr[cpuid];
 	void __iomem *addr = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + offset;
 
 	return readl(addr);
+}
+
+u32 flowctrl_read_cpu_csr(unsigned int cpuid)
+{
+	return flowctrl_read(flowctrl_offset_cpu_csr[cpuid]);
 }
 
 void flowctrl_write_cpu_csr(unsigned int cpuid, u32 value)
@@ -137,4 +141,13 @@ void flowctrl_cpu_suspend_exit(unsigned int cpuid)
 	reg |= FLOW_CTRL_CSR_INTR_FLAG;			/* clear intr */
 	reg |= FLOW_CTRL_CSR_EVENT_FLAG;		/* clear event */
 	flowctrl_write_cpu_csr(cpuid, reg);
+}
+
+void flowctrl_cpu_rail_enable(void)
+{
+	u32 reg;
+
+	reg = flowctrl_read(FLOW_CTLR_CPU_PWR_CSR);
+	reg |= FLOW_CTRL_CPU_PWR_CSR_RAIL_ENABLE;
+	flowctrl_update(FLOW_CTLR_CPU_PWR_CSR, reg);
 }

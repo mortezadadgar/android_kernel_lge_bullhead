@@ -38,9 +38,13 @@
 #define FLOW_CTRL_CSR_ENABLE_EXT_MASK ( \
 		FLOW_CTRL_CSR_ENABLE_EXT_NCPU | \
 		FLOW_CTRL_CSR_ENABLE_EXT_CRAIL)
+#define FLOW_CTRL_CSR_IMMEDIATE_WAKE	(1 << 3)
+#define FLOW_CTRL_CSR_SWITCH_CLUSTER	(1 << 2)
 #define FLOW_CTRL_CSR_ENABLE		(1 << 0)
 #define FLOW_CTRL_HALT_CPU1_EVENTS	0x14
 #define FLOW_CTRL_CPU1_CSR		0x18
+#define FLOW_CTLR_CPU_PWR_CSR		0x38
+#define FLOW_CTRL_CPU_PWR_CSR_RAIL_ENABLE BIT(0)
 
 #define TEGRA20_FLOW_CTRL_CSR_WFE_CPU0		(1 << 4)
 #define TEGRA20_FLOW_CTRL_CSR_WFE_BITMAP	(3 << 4)
@@ -57,6 +61,7 @@ void flowctrl_write_cpu_halt(unsigned int cpuid, u32 value);
 
 void flowctrl_cpu_suspend_enter(unsigned int cpuid);
 void flowctrl_cpu_suspend_exit(unsigned int cpuid);
+void flowctrl_cpu_rail_enable(void);
 #endif
 
 #endif
