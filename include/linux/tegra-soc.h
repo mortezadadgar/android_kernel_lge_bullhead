@@ -17,6 +17,8 @@
 #ifndef __LINUX_TEGRA_SOC_H_
 #define __LINUX_TEGRA_SOC_H_
 
+#include <asm/cputype.h>
+
 extern int tegra_sku_id;
 
 u32 tegra_read_chipid(void);
@@ -31,9 +33,29 @@ int tegra_get_gpu_speedo_value(void);
 int tegra_get_cpu_iddq_value(void);
 u32 tegra_get_vp8_enable(void);
 
+enum {
+	TEGRA_CLUSTER_G = 0,
+	TEGRA_CLUSTER_LP = 1,
+};
+
+static inline bool is_lp_cluster(void)
+{
+	return MPIDR_AFFINITY_LEVEL(read_cpuid_mpidr(), 1) == TEGRA_CLUSTER_LP;
+}
+
 #ifdef CONFIG_ARCH_TEGRA_124_SOC
+int tegra_switch_cluster(int new_cluster);
+int tegra_cluster_control_init(void);
 int tegra124_get_core_speedo_mv(void);
 #else
+static inline int tegra_switch_cluster(int new_cluster)
+{
+	return -EINVAL;
+}
+static inline int tegra_cluster_control_init(void)
+{
+	return -EINVAL;
+}
 static inline int tegra124_get_core_speedo_mv(void)
 { return -EINVAL; }
 #endif
