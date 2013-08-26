@@ -155,7 +155,7 @@ static void tegra_tear_down_cpu_init(void)
  *
  * Always called on CPU 0.
  */
-static void restore_cpu_complex(void)
+void restore_cpu_complex(void)
 {
 	int cpu = smp_processor_id();
 
@@ -179,7 +179,7 @@ static void restore_cpu_complex(void)
  *
  * Must always be called on cpu 0.
  */
-static void suspend_cpu_complex(void)
+void suspend_cpu_complex(void)
 {
 	int cpu = smp_processor_id();
 
@@ -245,10 +245,8 @@ static int tegra_sleep_cpu(unsigned long v2p)
 	return 0;
 }
 
-void tegra_idle_lp2_last(void)
+void tegra_idle_last(void)
 {
-	tegra_pmc_pm_set(TEGRA_SUSPEND_LP2);
-
 	cpu_cluster_pm_enter();
 	suspend_cpu_complex();
 
@@ -256,6 +254,13 @@ void tegra_idle_lp2_last(void)
 
 	restore_cpu_complex();
 	cpu_cluster_pm_exit();
+}
+
+void tegra_idle_lp2_last(void)
+{
+	tegra_pmc_pm_set(TEGRA_SUSPEND_LP2);
+
+	tegra_idle_last();
 }
 
 enum tegra_suspend_mode tegra_pm_validate_suspend_mode(

@@ -37,6 +37,9 @@ void tegra30_sleep_core_init(void);
 
 extern unsigned long l2x0_saved_regs_addr;
 
+void suspend_cpu_complex(void);
+void restore_cpu_complex(void);
+
 void save_cpu_arch_register(void);
 void restore_cpu_arch_register(void);
 
@@ -44,6 +47,7 @@ void tegra_clear_cpu_in_lp2(void);
 bool tegra_set_cpu_in_lp2(void);
 
 void tegra_idle_lp2_last(void);
+void tegra_idle_last(void);
 extern void (*tegra_tear_down_cpu)(void);
 
 #ifdef CONFIG_PM_SLEEP
