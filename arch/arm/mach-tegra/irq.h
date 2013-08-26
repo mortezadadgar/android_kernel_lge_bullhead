@@ -18,6 +18,7 @@
 #define __TEGRA_IRQ_H
 
 bool tegra_pending_sgi(void);
+void tegra_cluster_switch_restore_gic(void);
 
 #ifdef CONFIG_PM_SLEEP
 int tegra_legacy_irq_syscore_init(void);

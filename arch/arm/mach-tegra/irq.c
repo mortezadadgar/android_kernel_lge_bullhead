@@ -255,6 +255,30 @@ static void tegra114_gic_cpu_pm_registration(void)
 static void tegra114_gic_cpu_pm_registration(void) { }
 #endif
 
+void tegra_cluster_switch_restore_gic(void)
+{
+	unsigned int max_irq, i;
+	void __iomem *distbase = IO_ADDRESS(TEGRA_ARM_INT_DIST_BASE);
+
+	/*
+	 * Reprogram the interrupt affinity because on the LP CPU,
+	 * the interrupt distributor affinity regsiters are stubbed out
+	 * by ARM (reads as zero, writes ignored). So when the LP CPU
+	 * context save code runs, the affinity registers will read
+	 * as all zero. This causes all interrupts to be effectively
+	 * disabled when back on the G CPU because they aren't routable
+	 * to any CPU.
+	 */
+
+	max_irq = readl_relaxed(distbase + GIC_DIST_CTR) & 0x1f;
+	max_irq = (max_irq + 1) * 32;
+
+	for (i = 32; i < max_irq; i += 4) {
+		u32 val = 0x01010101;
+		writel(val, distbase + GIC_DIST_TARGET + i * 4 / 4);
+	}
+}
+
 void __init tegra_init_irq(void)
 {
 	int i;
