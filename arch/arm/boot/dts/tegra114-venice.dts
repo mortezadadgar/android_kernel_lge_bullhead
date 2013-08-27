@@ -828,6 +828,7 @@
 	sdhci@78000400 {
 		cd-gpios = <&gpio 170 0>; /* gpio PV2 */
 		bus-width = <4>;
+		no-1-8-v;
 		status = "okay";
 	};
 
