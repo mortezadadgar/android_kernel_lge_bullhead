@@ -857,11 +857,12 @@ static void shrink_dentry_list(struct list_head *list)
  * This function may fail to free any resources if all the dentries are in
  * use.
  */
-void prune_dcache_sb(struct super_block *sb, int count)
+long prune_dcache_sb(struct super_block *sb, unsigned long nr_to_scan)
 {
 	struct dentry *dentry;
 	LIST_HEAD(referenced);
 	LIST_HEAD(tmp);
+	long freed = 0;
 
 relock:
 	spin_lock(&dcache_lru_lock);
@@ -884,7 +885,8 @@ relock:
 			list_move_tail(&dentry->d_lru, &tmp);
 			dentry->d_flags |= DCACHE_SHRINK_LIST;
 			spin_unlock(&dentry->d_lock);
-			if (!--count)
+			freed++;
+			if (!--nr_to_scan)
 				break;
 		}
 		cond_resched_lock(&dcache_lru_lock);
@@ -894,6 +896,7 @@ relock:
 	spin_unlock(&dcache_lru_lock);
 
 	shrink_dentry_list(&tmp);
+	return freed;
 }
 
 /**
