@@ -57,8 +57,6 @@
 #define CPU_FINETRIM_R_FCPU_6_SHIFT	10		/* ftop */
 #define CPU_FINETRIM_R_FCPU_6_MASK	(0x3 << CPU_FINETRIM_R_FCPU_6_SHIFT)
 
-#define CLK_OUT_ENB_NUM			6
-
 #define TEGRA114_CLK_PERIPH_BANKS	5
 
 #define PLLC_BASE 0x80
@@ -265,8 +263,6 @@ static struct cpu_clk_suspend_context {
 	u32 cclkg_divider;
 } tegra114_cpu_clk_sctx;
 #endif
-
-static int periph_clk_enb_refcnt[CLK_OUT_ENB_NUM * 32];
 
 static void __iomem *clk_base;
 static void __iomem *pmc_base;
@@ -711,71 +707,70 @@ static unsigned long tegra114_input_freq[] = {
 #define TEGRA_INIT_DATA_MUX(_name, _con_id, _dev_id, _parents, _offset,	\
 			    _clk_num, _gate_flags, _clk_id)	\
 	TEGRA_INIT_DATA_TABLE(_name, _con_id, _dev_id, _parents, _offset,\
-			30, MASK(2), 0, 0, 8, 1, 0, _clk_num,		\
-			periph_clk_enb_refcnt, _gate_flags, _clk_id,	\
-			_parents##_idx, 0)
+			30, MASK(2), 0, 0, 8, 1, 0, _clk_num, _gate_flags,\
+			_clk_id, _parents##_idx, 0)
 
 #define TEGRA_INIT_DATA_MUX_FLAGS(_name, _con_id, _dev_id, _parents, _offset,\
 			    _clk_num, _gate_flags, _clk_id, flags)\
 	TEGRA_INIT_DATA_TABLE(_name, _con_id, _dev_id, _parents, _offset,\
 			30, MASK(2), 0, 0, 8, 1, 0, _clk_num,	\
-			periph_clk_enb_refcnt, _gate_flags, _clk_id,	\
+			_gate_flags, _clk_id,	\
 			_parents##_idx, flags)
 
 #define TEGRA_INIT_DATA_MUX8(_name, _con_id, _dev_id, _parents, _offset, \
 			     _clk_num, _gate_flags, _clk_id)	\
 	TEGRA_INIT_DATA_TABLE(_name, _con_id, _dev_id, _parents, _offset,\
 			29, MASK(3), 0, 0, 8, 1, 0, _clk_num,	\
-			periph_clk_enb_refcnt, _gate_flags, _clk_id,	\
+			_gate_flags, _clk_id,	\
 			_parents##_idx, 0)
 
 #define TEGRA_INIT_DATA_INT_FLAGS(_name, _con_id, _dev_id, _parents, _offset,\
 			    _clk_num, _gate_flags, _clk_id, flags)\
 	TEGRA_INIT_DATA_TABLE(_name, _con_id, _dev_id, _parents, _offset,\
 			30, MASK(2), 0, 0, 8, 1, TEGRA_DIVIDER_INT, \
-			_clk_num, periph_clk_enb_refcnt, _gate_flags,	\
+			_clk_num, _gate_flags,	\
 			_clk_id, _parents##_idx, flags)
 
 #define TEGRA_INIT_DATA_INT8(_name, _con_id, _dev_id, _parents, _offset,\
 			    _clk_num, _gate_flags, _clk_id)	\
 	TEGRA_INIT_DATA_TABLE(_name, _con_id, _dev_id, _parents, _offset,\
 			29, MASK(3), 0, 0, 8, 1, TEGRA_DIVIDER_INT, \
-			_clk_num, periph_clk_enb_refcnt, _gate_flags,	\
+			_clk_num, _gate_flags,	\
 			_clk_id, _parents##_idx, 0)
 
 #define TEGRA_INIT_DATA_UART(_name, _con_id, _dev_id, _parents, _offset,\
 			     _clk_num, _clk_id)			\
 	TEGRA_INIT_DATA_TABLE(_name, _con_id, _dev_id, _parents, _offset,\
 			30, MASK(2), 0, 0, 16, 1, TEGRA_DIVIDER_UART, \
-			_clk_num, periph_clk_enb_refcnt, 0, _clk_id,	\
+			_clk_num, 0, _clk_id,	\
 			_parents##_idx, 0)
 
 #define TEGRA_INIT_DATA_I2C(_name, _con_id, _dev_id, _parents, _offset,\
 			     _clk_num, _clk_id)			\
 	TEGRA_INIT_DATA_TABLE(_name, _con_id, _dev_id, _parents, _offset,\
 			30, MASK(2), 0, 0, 16, 0, 0, _clk_num,	\
-			periph_clk_enb_refcnt, 0, _clk_id, _parents##_idx, 0)
+			0, _clk_id, _parents##_idx, 0)
 
 #define TEGRA_INIT_DATA_NODIV(_name, _con_id, _dev_id, _parents, _offset, \
 			      _mux_shift, _mux_mask, _clk_num, \
 			      _gate_flags, _clk_id)			\
 	TEGRA_INIT_DATA_TABLE(_name, _con_id, _dev_id, _parents, _offset,\
 			_mux_shift, _mux_mask, 0, 0, 0, 0, 0,\
-			_clk_num, periph_clk_enb_refcnt, _gate_flags,	\
+			_clk_num, _gate_flags,	\
 			_clk_id, _parents##_idx, 0)
 
 #define TEGRA_INIT_DATA_XUSB(_name, _con_id, _dev_id, _parents, _offset, \
 			     _clk_num, _gate_flags, _clk_id)	 \
 	TEGRA_INIT_DATA_TABLE(_name, _con_id, _dev_id, _parents, _offset, \
 			29, MASK(3), 0, 0, 8, 1, TEGRA_DIVIDER_INT, \
-			_clk_num, periph_clk_enb_refcnt, _gate_flags,	 \
+			_clk_num, _gate_flags,	 \
 			_clk_id, _parents##_idx, 0)
 
 #define TEGRA_INIT_DATA_AUDIO(_name, _con_id, _dev_id, _offset,  _clk_num,\
 				 _gate_flags, _clk_id)		\
 	TEGRA_INIT_DATA_TABLE(_name, _con_id, _dev_id, mux_d_audio_clk,	\
 			_offset, 16, 0xE01F, 0, 0, 8, 1, 0, _clk_num, \
-			periph_clk_enb_refcnt, _gate_flags , _clk_id,	\
+			_gate_flags , _clk_id,	\
 			mux_d_audio_clk_idx, 0)
 
 struct utmi_clk_param {
@@ -941,8 +936,7 @@ static const struct clk_div_table pll_re_div_table[] = {
 	{ .val = 0, .div = 0 },
 };
 
-static struct clk *clks[TEGRA114_CLK_CLK_MAX];
-static struct clk_onecell_data clk_data;
+static struct clk **clks;
 
 static unsigned long osc_freq;
 static unsigned long pll_ref_freq;
@@ -2233,7 +2227,6 @@ static struct tegra_clk_duplicate tegra_clk_duplicates[] = {
 static void __init tegra114_clock_init(struct device_node *np)
 {
 	struct device_node *node;
-	int i;
 
 	clk_base = of_iomap(np, 0);
 	if (!clk_base) {
@@ -2255,10 +2248,11 @@ static void __init tegra114_clock_init(struct device_node *np)
 		return;
 	}
 
-	if (tegra114_osc_clk_init(clk_base) < 0)
+	clks = tegra_clk_init(TEGRA114_CLK_CLK_MAX, TEGRA114_CLK_PERIPH_BANKS);
+	if (!clks)
 		return;
 
-	if (tegra_clk_set_periph_banks(TEGRA114_CLK_PERIPH_BANKS) < 0)
+	if (tegra114_osc_clk_init(clk_base) < 0)
 		return;
 
 	tegra114_fixed_clk_init(clk_base);
@@ -2268,21 +2262,9 @@ static void __init tegra114_clock_init(struct device_node *np)
 	tegra114_pmc_clk_init(pmc_base);
 	tegra114_super_clk_init(clk_base);
 
-	for (i = 0; i < ARRAY_SIZE(clks); i++) {
-		if (IS_ERR(clks[i])) {
-			pr_err
-			    ("Tegra114 clk %d: register failed with %ld\n",
-			     i, PTR_ERR(clks[i]));
-		}
-		if (!clks[i])
-			clks[i] = ERR_PTR(-EINVAL);
-	}
-
 	tegra_init_dup_clks(tegra_clk_duplicates, clks, TEGRA114_CLK_CLK_MAX);
 
-	clk_data.clks = clks;
-	clk_data.clk_num = ARRAY_SIZE(clks);
-	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
+	tegra_add_of_provider(np);
 
 	tegra_clk_apply_init_table = tegra114_clock_apply_init_table;
 
