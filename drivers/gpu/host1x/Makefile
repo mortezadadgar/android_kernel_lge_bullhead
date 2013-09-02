@@ -7,6 +7,7 @@ host1x-y = \
 	channel.o \
 	job.o \
 	debug.o \
+	mipi.o \
 	hw/host1x01.o
 
 obj-$(CONFIG_TEGRA_HOST1X) += host1x.o
