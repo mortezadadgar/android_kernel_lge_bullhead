@@ -208,8 +208,9 @@ static int find_i2c_adapter_num(enum i2c_adapter_type type)
 	dev = bus_find_device(&i2c_bus_type, NULL, (void *)name,
 			      __find_i2c_adap);
 	if (!dev) {
-		pr_err("%s: i2c adapter %s not found on system.\n", __func__,
-		       name);
+		/* Adapters may appear later. Deferred probing will retry */
+		pr_notice("%s: i2c adapter %s not found on system.\n", __func__,
+			  name);
 		return -ENODEV;
 	}
 	adapter = to_i2c_adapter(dev);
