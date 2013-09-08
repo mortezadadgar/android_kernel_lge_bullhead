@@ -258,7 +258,7 @@ static void __d_free(struct rcu_head *head)
  */
 static void d_free(struct dentry *dentry)
 {
-	BUG_ON(dentry->d_lockref.count);
+	BUG_ON((int)dentry->d_lockref.count > 0);
 	this_cpu_dec(nr_dentry);
 	if (dentry->d_op && dentry->d_op->d_release)
 		dentry->d_op->d_release(dentry);
@@ -474,7 +474,7 @@ EXPORT_SYMBOL(d_drop);
  * If ref is non-zero, then decrement the refcount too.
  * Returns dentry requiring refcount drop, or NULL if we're done.
  */
-static inline struct dentry *dentry_kill(struct dentry *dentry, int ref)
+static inline struct dentry *dentry_kill(struct dentry *dentry)
 	__releases(dentry->d_lock)
 {
 	struct inode *inode;
@@ -497,8 +497,11 @@ relock:
 		goto relock;
 	}
 
-	if (ref)
-		dentry->d_lockref.count--;
+	/*
+	 * The dentry is now unrecoverably dead to the world.
+	 */
+	lockref_mark_dead(&dentry->d_lockref);
+
 	/*
 	 * inform the fs via d_prune that this dentry is about to be
 	 * unhashed and destroyed.
@@ -564,7 +567,7 @@ repeat:
 	return;
 
 kill_it:
-	dentry = dentry_kill(dentry, 1);
+	dentry = dentry_kill(dentry);
 	if (dentry)
 		goto repeat;
 }
@@ -781,7 +784,7 @@ static void try_prune_one_dentry(struct dentry *dentry)
 {
 	struct dentry *parent;
 
-	parent = dentry_kill(dentry, 0);
+	parent = dentry_kill(dentry);
 	/*
 	 * If dentry_kill returns NULL, we have nothing more to do.
 	 * if it returns the same dentry, trylocks failed. In either
@@ -802,7 +805,7 @@ static void try_prune_one_dentry(struct dentry *dentry)
 	while (dentry) {
 		if (lockref_put_or_lock(&dentry->d_lockref))
 			return;
-		dentry = dentry_kill(dentry, 1);
+		dentry = dentry_kill(dentry);
 	}
 }
 
