@@ -25,4 +25,12 @@ static inline u32 tegra114_mc_readl(u32 offs) { return -ENODEV; }
 static inline void tegra114_mc_writel(u32 val, u32 offs) {}
 #endif
 
+#ifdef CONFIG_TEGRA124_MC
+u32 tegra124_mc_readl(u32 offs);
+void tegra124_mc_writel(u32 val, u32 offs);
+#else
+static inline u32 tegra124_mc_readl(u32 offs) { return -ENODEV; }
+static inline void tegra124_mc_writel(u32 val, u32 offs) {}
+#endif
+
 #endif
