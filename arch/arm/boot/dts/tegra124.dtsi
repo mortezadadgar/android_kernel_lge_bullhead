@@ -298,6 +298,13 @@
 		clock-names = "pclk", "clk32k_in";
 	};
 
+	mc: memory-controller@70019000 {
+		compatible = "nvidia,tegra124-mc";
+		reg = <0x70019000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
 	sdhci@700b0000 {
 		compatible = "nvidia,tegra124-sdhci", "nvidia,tegra114-sdhci";
 		reg = <0x700b0000 0x200>;
