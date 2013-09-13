@@ -483,6 +483,7 @@ set_usb2_hardware_lpm(struct device *dev, struct device_attribute *attr,
 
 	ret = strtobool(buf, &value);
 
+	udev->usb2_hw_lpm_allowed = value;
 	if (!ret)
 		ret = usb_set_usb2_hardware_lpm(udev, value);
 
