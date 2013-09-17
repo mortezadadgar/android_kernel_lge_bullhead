@@ -146,6 +146,7 @@ int mwifiex_main_process(struct mwifiex_adapter *adapter)
 	/* Check if already processing */
 	if (adapter->mwifiex_processing) {
 		spin_unlock_irqrestore(&adapter->main_proc_lock, flags);
+		queue_work(adapter->workqueue, &adapter->main_work);
 		goto exit_main_proc;
 	} else {
 		adapter->mwifiex_processing = true;
