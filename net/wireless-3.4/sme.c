@@ -16,6 +16,7 @@
 #include <net/rtnetlink.h>
 #include "nl80211.h"
 #include "reg.h"
+#include "core.h"
 
 struct cfg80211_conn {
 	struct cfg80211_connect_params params;
@@ -477,6 +478,8 @@ void __cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 		kfree(wdev->connect_keys);
 		wdev->connect_keys = NULL;
 		wdev->ssid_len = 0;
+		if (bss)
+			cfg80211_unhold_bss(bss_from_pub(bss));
 		cfg80211_put_bss(bss);
 		return;
 	}
@@ -493,7 +496,9 @@ void __cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 	if (WARN_ON(!bss))
 		return;
 
-	cfg80211_hold_bss(bss_from_pub(bss));
+	if (atomic_read(&bss_from_pub(bss)->hold) == 0)
+		cfg80211_hold_bss(bss_from_pub(bss));
+
 	wdev->current_bss = bss_from_pub(bss);
 
 	wdev->sme_state = CFG80211_SME_CONNECTED;
@@ -890,6 +895,14 @@ int __cfg80211_connect(struct cfg80211_registered_device *rdev,
 
 		return err;
 	} else {
+		bss = cfg80211_get_bss(&rdev->wiphy, connect->channel,
+				connect->bssid, connect->ssid,
+				connect->ssid_len,
+				WLAN_CAPABILITY_ESS, WLAN_CAPABILITY_ESS);
+
+		if (bss)
+			cfg80211_hold_bss(bss_from_pub(bss));
+
 		wdev->sme_state = CFG80211_SME_CONNECTING;
 		wdev->connect_keys = connkeys;
 		err = rdev->ops->connect(&rdev->wiphy, dev, connect);
