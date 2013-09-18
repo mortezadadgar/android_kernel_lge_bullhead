@@ -24,6 +24,8 @@ static void of_get_regulation_constraints(struct device_node *np,
 	const __be32 *state_disk_uV, *state_mem_uV, *state_standby_uV;
 	struct property *prop;
 	struct regulation_constraints *constraints = &(*init_data)->constraints;
+	int ret;
+	u32 pval;
 
 	constraints->name = of_get_property(np, "regulator-name", NULL);
 
@@ -104,6 +106,10 @@ static void of_get_regulation_constraints(struct device_node *np,
 		else
 			constraints->ramp_disable = true;
 	}
+
+	ret = of_property_read_u32(np, "regulator-enable-ramp-delay", &pval);
+	if (!ret)
+		constraints->enable_time = pval;
 }
 
 /**
