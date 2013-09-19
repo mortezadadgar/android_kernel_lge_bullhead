@@ -460,7 +460,7 @@
 		status = "okay";
 		clock-frequency = <100000>;
 
-		audio-codec {
+		max98090: max98090 {
 			compatible = "maxim,max98090";
 			reg = <0x10>;
 			interrupt-parent = <&gpio>;
@@ -1749,6 +1749,12 @@
 		};
 	};
 
+	ahub {
+		i2s@70301100 {
+			status = "okay";
+		};
+	};
+
 	sdhci@700b0000 {
 		power-gpios = <&gpio 191 0>;
 		bus-width = <4>;
@@ -1978,5 +1984,23 @@
 		compatible = "nvidia,tegra124-dfll-cdev-action";
 		act-dev = <&{/dfll@70110000}>;
 		cdev-type = "DFLL";
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-max98090-venice2",
+			   "nvidia,tegra-audio-max98090";
+		nvidia,model = "NVIDIA Tegra Venice2";
+
+		nvidia,audio-routing =
+			"Headphone Jack", "HPR",
+			"Headphone Jack", "HPL",
+			"Speakers", "SPKR",
+			"Speakers", "SPKL";
+
+		nvidia,i2s-controller = <&tegra_i2s1>;
+		nvidia,audio-codec = <&max98090>;
+
+		clocks = <&tegra_car 216>, <&tegra_car 217>, <&tegra_car 120>;
+		clock-names = "pll_a", "pll_a_out0", "mclk";
 	};
 };
