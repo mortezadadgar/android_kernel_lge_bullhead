@@ -40,8 +40,8 @@
 		#clock-cells = <1>;
 	};
 
-	apbdma: dma {
-		compatible = "nvidia,tegra124-apbdma", "nvidia,tegra114-apbdma";
+	apbdma: dma@60020000 {
+		compatible = "nvidia,tegra124-apbdma", "nvidia,tegra148-apbdma";
 		reg = <0x60020000 0x1400>;
 		interrupts = <0 104 0x04
 			      0 105 0x04
