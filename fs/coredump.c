@@ -671,7 +671,7 @@ void do_coredump(siginfo_t *siginfo)
 		 */
 		if (!uid_eq(inode->i_uid, current_fsuid()))
 			goto close_fail;
-		if (!cprm.file->f_op || !cprm.file->f_op->write)
+		if (!cprm.file->f_op->write)
 			goto close_fail;
 		if (do_truncate2(cprm.file->f_path.mnt, cprm.file->f_path.dentry, 0, 0, cprm.file))
 			goto close_fail;
