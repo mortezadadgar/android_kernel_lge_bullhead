@@ -1711,6 +1711,7 @@ static int __noreturn rcu_gp_kthread(void *arg)
 			wait_event_interruptible(rsp->gp_wq,
 						 ACCESS_ONCE(rsp->gp_flags) &
 						 RCU_GP_FLAG_INIT);
+			/* Locking provides needed memory barrier. */
 			if (rcu_gp_init(rsp))
 				break;
 			cond_resched();
@@ -1735,6 +1736,7 @@ static int __noreturn rcu_gp_kthread(void *arg)
 					(!ACCESS_ONCE(rnp->qsmask) &&
 					 !rcu_preempt_blocked_readers_cgp(rnp)),
 					j);
+			/* Locking provides needed memory barriers. */
 			/* If grace period done, leave loop. */
 			if (!ACCESS_ONCE(rnp->qsmask) &&
 			    !rcu_preempt_blocked_readers_cgp(rnp))
