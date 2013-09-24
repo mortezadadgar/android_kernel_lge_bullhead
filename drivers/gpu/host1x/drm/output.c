@@ -7,7 +7,6 @@
  * published by the Free Software Foundation.
  */
 
-#include <linux/module.h>
 #include <linux/of_gpio.h>
 #include <linux/of_i2c.h>
 
