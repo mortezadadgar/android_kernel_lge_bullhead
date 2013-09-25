@@ -146,7 +146,6 @@ int mwifiex_main_process(struct mwifiex_adapter *adapter)
 	/* Check if already processing */
 	if (adapter->mwifiex_processing) {
 		spin_unlock_irqrestore(&adapter->main_proc_lock, flags);
-		queue_work(adapter->workqueue, &adapter->main_work);
 		goto exit_main_proc;
 	} else {
 		adapter->mwifiex_processing = true;
@@ -263,10 +262,12 @@ process_start:
 		}
 	} while (true);
 
-	if ((adapter->int_status) || IS_CARD_RX_RCVD(adapter))
-		goto process_start;
-
 	spin_lock_irqsave(&adapter->main_proc_lock, flags);
+	if ((adapter->int_status) || IS_CARD_RX_RCVD(adapter)) {
+		spin_unlock_irqrestore(&adapter->main_proc_lock, flags);
+		goto process_start;
+	}
+
 	adapter->mwifiex_processing = false;
 	spin_unlock_irqrestore(&adapter->main_proc_lock, flags);
 
