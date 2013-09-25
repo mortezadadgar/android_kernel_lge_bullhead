@@ -2002,5 +2002,7 @@
 
 		clocks = <&tegra_car 216>, <&tegra_car 217>, <&tegra_car 120>;
 		clock-names = "pll_a", "pll_a_out0", "mclk";
+
+		nvidia,memory-clients = <14 24>;
 	};
 };
