@@ -2623,7 +2623,7 @@ static void alc283_init(struct hda_codec *codec)
 	if (hp_pin_sense)
 		msleep(75);
 	val = alc_read_coef_idx(codec, 0x06);
-	alc_write_coef_idx(codec, 0x06, val & ~0x000c);;
+	alc_write_coef_idx(codec, 0x06, val & ~0x000c);
 
 	val = alc_read_coef_idx(codec, 0x46);
 	alc_write_coef_idx(codec, 0x46, val & ~(3 << 12));
