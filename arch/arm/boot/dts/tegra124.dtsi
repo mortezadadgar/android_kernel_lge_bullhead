@@ -328,6 +328,73 @@
 		status = "disabled";
 	};
 
+	ahub {
+		compatible = "nvidia,tegra124-ahub";
+		reg = <0x70300000 0x200>,
+		      <0x70300800 0x800>,
+		      <0x70300200 0x600>;
+		interrupts = <0 103 4>;
+		clocks = <&tegra_car 106>, <&tegra_car 107>, <&tegra_car 30>,
+			 <&tegra_car 11>, <&tegra_car 18>, <&tegra_car 101>,
+			 <&tegra_car 102>, <&tegra_car 108>, <&tegra_car 109>,
+			 <&tegra_car 110>, <&tegra_car 194>, <&tegra_car 153>,
+			 <&tegra_car 185>, <&tegra_car 154>, <&tegra_car 180>,
+			 <&tegra_car 186>, <&tegra_car 187>, <&tegra_car 188>,
+			 <&tegra_car 189>, <&tegra_car 190>, <&tegra_car 191>;
+		clock-names = "d_audio", "apbif", "i2s0", "i2s1", "i2s2",
+			      "i2s3", "i2s4", "dam0", "dam1", "dam2",
+			      "spdif_in", "amx", "amx1", "adx", "adx1",
+			      "afc0", "afc1", "afc2", "afc3", "afc4", "afc5";
+		ranges;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		nvidia,dma-request-selector = <&apbdma 1>, <&apbdma 2>,
+			<&apbdma 3>, <&apbdma 4>, <&apbdma 6>, <&apbdma 7>,
+			<&apbdma 12>, <&apbdma 13>, <&apbdma 14>,
+			<&apbdma 29>;
+
+		tegra_i2s0: i2s@70301000 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301000 0x100>;
+			clocks = <&tegra_car 30>;
+			nvidia,ahub-cif-ids = <4 4>;
+			status = "disabled";
+		};
+
+		tegra_i2s1: i2s@70301100 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301100 0x100>;
+			clocks = <&tegra_car 11>;
+			nvidia,ahub-cif-ids = <5 5>;
+			status = "disabled";
+		};
+
+		tegra_i2s2: i2s@70301200 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301200 0x100>;
+			clocks = <&tegra_car 18>;
+			nvidia,ahub-cif-ids = <6 6>;
+			status = "disabled";
+		};
+
+		tegra_i2s3: i2s@70301300 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301300 0x100>;
+			clocks = <&tegra_car 101>;
+			nvidia,ahub-cif-ids = <7 7>;
+			status = "disabled";
+		};
+
+		tegra_i2s4: i2s@70301400 {
+			compatible = "nvidia,tegra124-i2s";
+			reg = <0x70301400 0x100>;
+			clocks = <&tegra_car 102>;
+			nvidia,ahub-cif-ids = <8 8>;
+			status = "disabled";
+		};
+	};
+
 	sdhci@700b0000 {
 		compatible = "nvidia,tegra124-sdhci", "nvidia,tegra114-sdhci";
 		reg = <0x700b0000 0x200>;
