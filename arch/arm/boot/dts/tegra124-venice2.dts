@@ -567,6 +567,19 @@
 		clock-frequency = <400000>;
 	};
 
+	spi@7000d400 {
+		status = "okay";
+		ec: cros-ec@0 {
+			compatible = "google,cros-ec-spi";
+			spi-max-frequency = <4000000>;
+			interrupt-parent = <&gpio>;
+			interrupts = <23 0x08>; /* GPIO PC7 */
+			reg = <0>;
+
+			google,cros-ec-spi-msg-delay = <2000>;
+		};
+	};
+
 	pmc {
 		nvidia,invert-interrupt;
 	};
