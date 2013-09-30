@@ -41,9 +41,6 @@
 
 #define BYT_PLAT_CLK_3_HZ	25000000
 
-static int debounce = 100;
-module_param(debounce, int, 0644);
-
 struct byt_mc_private {
 	struct snd_soc_jack jack;
 };
@@ -54,7 +51,7 @@ static inline struct snd_soc_codec *byt_get_codec(struct snd_soc_card *card)
 	struct snd_soc_codec *codec;
 
 	list_for_each_entry(codec, &card->codec_dev_list, card_list) {
-		if (!strstr(codec->name, "rt5640.2-001c")) {
+		if (!strstr(codec->name, "rt5640.1-001c")) {
 			pr_debug("codec was %s", codec->name);
 			continue;
 		} else {
@@ -86,7 +83,7 @@ static int platform_clock_control(struct snd_soc_dapm_widget *w,
 	}
 	if (SND_SOC_DAPM_EVENT_ON(event)) {
 		vlv2_plat_configure_clock(VLV2_PLAT_CLK_AUDIO,
-				PLAT_CLK_FORCE_ON);
+						PLAT_CLK_FORCE_ON);
 		pr_debug("Platform clk turned ON\n");
 		snd_soc_codec_set_sysclk(codec, RT5640_SCLK_S_PLL1,
 				0, BYT_PLAT_CLK_3_HZ, SND_SOC_CLOCK_IN);
@@ -97,7 +94,7 @@ static int platform_clock_control(struct snd_soc_dapm_widget *w,
 		snd_soc_codec_set_sysclk(codec, RT5640_SCLK_S_RCCLK,
 				0, 0, SND_SOC_CLOCK_IN);
 		vlv2_plat_configure_clock(VLV2_PLAT_CLK_AUDIO,
-				PLAT_CLK_FORCE_OFF);
+						PLAT_CLK_FORCE_OFF);
 		pr_debug("Platform clk turned OFF\n");
 	}
 
@@ -286,7 +283,7 @@ static struct snd_soc_dai_link byt_dailink[] = {
 		.stream_name = "Audio",
 		.cpu_dai_name = "Front-cpu-dai",
 		.codec_dai_name = "rt5640-aif1",
-		.codec_name = "rt5640.0-001c",
+		.codec_name = "rt5640.1-001c",
 		.platform_name = "sst-platform",
 		.init = byt_init,
 		.ignore_suspend = 1,
@@ -297,7 +294,7 @@ static struct snd_soc_dai_link byt_dailink[] = {
 		.stream_name = "Voice",
 		.cpu_dai_name = "Mic1-cpu-dai",
 		.codec_dai_name = "rt5640-aif2",
-		.codec_name = "rt5640.0-001c",
+		.codec_name = "rt5640.1-001c",
 		.platform_name = "sst-platform",
 		.init = NULL,
 		.ignore_suspend = 1,

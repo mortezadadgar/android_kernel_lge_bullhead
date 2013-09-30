@@ -25,7 +25,7 @@
 int port_number = 2;
 	
 enum byt_i2c_bus {
-	BYT_I2C_BUS0 = 0x0,
+	BYT_I2C_BUS1 = 0x1,
 };
 
 static const struct i2c_board_info i2c_bus_info[] = {
@@ -128,7 +128,7 @@ void *byt_audio_platform_data(void *info)
 	}
 		
 	/* bus number - the i2c port which is connected with the codec */
-	i2c_register_board_info(0, &i2c_bus_info[0], 1);
+	i2c_register_board_info(BYT_I2C_BUS1, &i2c_bus_info[0], 1);
 
 	return NULL;
 }
