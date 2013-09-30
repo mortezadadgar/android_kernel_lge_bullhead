@@ -36,6 +36,8 @@ struct tegra_edid_pvt {
 	bool				support_stereo;
 	bool				support_underscan;
 	bool				support_audio;
+	int			        hdmi_vic_len;
+	u8			        hdmi_vic[7];
 	/* Note: dc_edid must remain the last member */
 	struct tegra_dc_edid		dc_edid;
 };
@@ -193,6 +195,16 @@ int tegra_edid_read_block(struct tegra_edid *edid, int block, u8 *data)
 	return 0;
 }
 
+static inline void
+tegra_edid_setup_hdmi_vic(struct tegra_edid_pvt *edid, int len, const u8 *vic)
+{
+	int i = 0;
+
+	edid->hdmi_vic_len = len;
+	for (i = 0; i < len; i++)
+		edid->hdmi_vic[i] = vic[i];
+}
+
 int tegra_edid_parse_ext_block(const u8 *raw, int idx,
 			       struct tegra_edid_pvt *edid)
 {
@@ -204,6 +216,7 @@ int tegra_edid_parse_ext_block(const u8 *raw, int idx,
 	bool basic_audio = false;
 
 	edid->support_audio = 0;
+	edid->hdmi_vic_len = 0;
 	ptr = &raw[0];
 
 	/* If CEA 861 block get info for eld struct */
@@ -283,6 +296,12 @@ int tegra_edid_parse_ext_block(const u8 *raw, int idx,
 					/* 3D_present? */
 					if (j <= len && (ptr[j] & 0x80))
 						edid->support_stereo = 1;
+					/* HDMI_VIC_LEN */
+					if (++j <= len && (ptr[j] & 0xe0)) {
+						int vlen = ptr[j] >> 5;
+						tegra_edid_setup_hdmi_vic(edid,
+						vlen, &ptr[++j]);
+					}
 				}
 			}
 			if ((len > 5) &&
@@ -419,6 +438,34 @@ fail:
 	return ret;
 }
 
+static inline int
+tegra_edid_setup_modedb(struct fb_monspecs *specs, struct tegra_edid_pvt *edid)
+{
+	int k;
+	int l = specs->modedb_len;
+	struct fb_videomode *m;
+
+	m = krealloc(specs->modedb,
+		     (specs->modedb_len + edid->hdmi_vic_len) *
+		     sizeof(struct fb_videomode), GFP_KERNEL);
+	if (!m)
+		return -ENOMEM;
+
+	specs->modedb = m;
+	for (k = 0; k < edid->hdmi_vic_len; k++) {
+		unsigned vic = edid->hdmi_vic[k];
+		if (vic >= HDMI_EXT_MODEDB_SIZE) {
+			pr_warn("Unsupported HDMI VIC %d, ignoring\n", vic);
+			continue;
+		}
+		memcpy(&specs->modedb[l], &hdmi_ext_modes[vic],
+		       sizeof(specs->modedb[l]));
+		l++;
+	}
+	specs->modedb_len += edid->hdmi_vic_len;
+	return 0;
+}
+
 int tegra_edid_get_monspecs(struct tegra_edid *edid, struct fb_monspecs *specs)
 {
 	int i;
@@ -477,6 +524,12 @@ int tegra_edid_get_monspecs(struct tegra_edid *edid, struct fb_monspecs *specs)
 						specs->modedb[j].vmode |=
 						FB_VMODE_STEREO_FRAME_PACK;
 				}
+			}
+
+			if (new_data->hdmi_vic_len > 0) {
+				ret = tegra_edid_setup_modedb(specs, new_data);
+				if (ret < 0)
+					break;
 			}
 		}
 	}
