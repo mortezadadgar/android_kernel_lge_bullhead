@@ -835,7 +835,7 @@
 
 	pmc {
 		nvidia,invert-interrupt;
-		nvidia,suspend-mode = <1>;
+		nvidia,suspend-mode = <0>;
 		#wake-cells = <3>;
 		nvidia,cpu-pwr-good-time = <500>;
 		nvidia,cpu-pwr-off-time = <300>;
