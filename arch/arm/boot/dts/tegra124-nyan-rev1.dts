@@ -34,6 +34,7 @@
 			reg = <0x67>;
 			interrupt-parent = <&gpio>;
 			interrupts = <179 0>; /* GPIO PW3 */
+			nvidia,pmc-wakeup = <&pmc 1 11 2>;
 			wakeup-source;
 		};
 	};

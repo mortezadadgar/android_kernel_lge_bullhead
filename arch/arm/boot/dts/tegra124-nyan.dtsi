@@ -463,6 +463,10 @@
 		status = "okay";
 	};
 
+	rtc {
+		nvidia,pmc-wakeup = <&pmc 1 16 4>;
+	};
+
 	i2c@7000c000 {
 		status = "okay";
 		clock-frequency = <100000>;
@@ -491,7 +495,6 @@
 			reg = <0x4a>;
 			interrupt-parent = <&gpio>;
 			interrupts = <82 0>; /* GPIO PK2 */
-			wakeup-source;
 		};
 
 		touchscreen-bootloader {
@@ -499,7 +502,6 @@
 			reg = <0x26>;
 			interrupt-parent = <&gpio>;
 			interrupts = <82 0>; /* GPIO PK2 */
-			wakeup-source;
 		};
 	};
 
@@ -529,6 +531,7 @@
 			interrupts = <0 86 0>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
+			nvidia,pmc-wakeup = <&pmc 1 18 8>;
 
 			gpio-controller;
 			#gpio-cells = <2>;
@@ -701,6 +704,7 @@
 			spi-max-frequency = <4000000>;
 			interrupt-parent = <&gpio>;
 			interrupts = <23 0x08>; /* GPIO PC7 */
+			nvidia,pmc-wakeup = <&pmc 1 8 8>;
 			reg = <0>;
 
 			google,cros-ec-spi-msg-delay = <2000>;
@@ -832,6 +836,7 @@
 	pmc {
 		nvidia,invert-interrupt;
 		nvidia,suspend-mode = <1>;
+		#wake-cells = <3>;
 		nvidia,cpu-pwr-good-time = <500>;
 		nvidia,cpu-pwr-off-time = <300>;
 		nvidia,core-pwr-good-time = <641 3845>;
@@ -1856,6 +1861,7 @@
 			linux,code = <0>;
 			debounce-interval = <1>;
 			gpio-key,wakeup;
+			nvidia,pmc-wakeup = <&pmc 0 50 0>;
 		};
 
 		power {
@@ -1864,6 +1870,7 @@
 			linux,code = <116>;
 			debounce-interval = <10>;
 			gpio-key,wakeup;
+			nvidia,pmc-wakeup = <&pmc 0 51 0>;
 		};
 	};
 

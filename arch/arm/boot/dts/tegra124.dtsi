@@ -293,7 +293,7 @@
 		clocks = <&tegra_car 4>;
 	};
 
-	pmc {
+	pmc: pmc {
 		compatible = "nvidia,tegra124-pmc", "nvidia,tegra114-pmc";
 		reg = <0x7000e400 0x400>;
 		clocks = <&tegra_car 261>, <&clk32k_in>;
