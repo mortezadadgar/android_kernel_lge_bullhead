@@ -49,7 +49,7 @@ nouveau_user_framebuffer_destroy(struct drm_framebuffer *drm_fb)
 	struct nouveau_framebuffer *fb = nouveau_framebuffer(drm_fb);
 
 	if (fb->nvbo)
-		drm_gem_object_unreference_unlocked(fb->nvbo->gem);
+		drm_gem_object_unreference_unlocked(&fb->nvbo->gem);
 
 	drm_framebuffer_cleanup(drm_fb);
 	kfree(fb);
@@ -62,7 +62,7 @@ nouveau_user_framebuffer_create_handle(struct drm_framebuffer *drm_fb,
 {
 	struct nouveau_framebuffer *fb = nouveau_framebuffer(drm_fb);
 
-	return drm_gem_handle_create(file_priv, fb->nvbo->gem, handle);
+	return drm_gem_handle_create(file_priv, &fb->nvbo->gem, handle);
 }
 
 static const struct drm_framebuffer_funcs nouveau_framebuffer_funcs = {
@@ -684,8 +684,8 @@ nouveau_display_dumb_create(struct drm_file *file_priv, struct drm_device *dev,
 	if (ret)
 		return ret;
 
-	ret = drm_gem_handle_create(file_priv, bo->gem, &args->handle);
-	drm_gem_object_unreference_unlocked(bo->gem);
+	ret = drm_gem_handle_create(file_priv, &bo->gem, &args->handle);
+	drm_gem_object_unreference_unlocked(&bo->gem);
 	return ret;
 }
 
@@ -698,7 +698,7 @@ nouveau_display_dumb_map_offset(struct drm_file *file_priv,
 
 	gem = drm_gem_object_lookup(dev, file_priv, handle);
 	if (gem) {
-		struct nouveau_bo *bo = gem->driver_private;
+		struct nouveau_bo *bo = nouveau_gem_object(gem);
 		*poffset = drm_vma_node_offset_addr(&bo->bo.vma_node);
 		drm_gem_object_unreference_unlocked(gem);
 		return 0;
