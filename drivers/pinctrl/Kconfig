@@ -49,6 +49,17 @@ config PINCTRL_AB8505
 	bool "AB8505 pin controller driver"
 	depends on PINCTRL_ABX500 && ARCH_U8500
 
+config PINCTRL_AS3722
+	bool "Pinctrl and GPIO driver for ams AS3722 PMIC"
+	depends on MFD_AS3722 && GPIOLIB
+	select PINMUX
+	select GENERIC_PINCONF
+	help
+	  AS3722 device supports the configuration of GPIO pins for different
+	  functionality. This driver supports the pinmux, push-pull and
+	  open drain configuration for the GPIO pins of AS3722 devices. It also
+	  supports the GPIO functionality through gpiolib.
+
 config PINCTRL_AT91
 	bool "AT91 pinctrl driver"
 	depends on OF
