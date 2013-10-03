@@ -545,6 +545,30 @@
 			interrupt-parent = <&gpio>;
 			interrupts = <187 0>; /* GPIO X3 */
 		};
+
+		touchscreen {
+			compatible = "atmel,atmel_mxt_ts";
+			reg = <0x4a>;
+			interrupt-parent = <&gpio>;
+			interrupts = <82 0>; /* GPIO PK2 */
+			wakeup-source;
+		};
+
+		trackpad {
+			compatible = "atmel,atmel_mxt_tp";
+			reg = <0x4b>;
+			interrupt-parent = <&gpio>;
+			interrupts = <179 0>; /* GPIO PW3 */
+			wakeup-source;
+		};
+
+		trackpad-bootloader {
+			compatible = "atmel,atmel_mxt_tp";
+			reg = <0x25>;
+			interrupt-parent = <&gpio>;
+			interrupts = <179 0>; /* GPIO PW3 */
+			wakeup-source;
+		};
 	};
 
 	i2c@7000c500 {
