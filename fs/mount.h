@@ -80,6 +80,15 @@ static inline int is_mounted(struct vfsmount *mnt)
 
 extern struct mount *__lookup_mnt(struct vfsmount *, struct dentry *, int);
 
+extern void __detach_mounts(struct dentry *dentry);
+
+static inline void detach_mounts(struct dentry *dentry)
+{
+	if (!d_mountpoint(dentry))
+		return;
+	__detach_mounts(dentry);
+}
+
 static inline void get_mnt_ns(struct mnt_namespace *ns)
 {
 	atomic_inc(&ns->count);
