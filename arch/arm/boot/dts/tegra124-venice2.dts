@@ -578,6 +578,21 @@
 
 			google,cros-ec-spi-msg-delay = <2000>;
 
+			i2c_20: i2c-tunnel {
+				compatible = "google,cros-ec-i2c-tunnel";
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				google,remote-bus = <0>;
+
+				battery: smart-battery {
+					compatible = "sbs,sbs-battery";
+					reg = <0xb>;
+					battery-name = "battery";
+					sbs,poll-retry-count = <10>;
+				};
+			};
+
 			keyboard-controller {
 				compatible = "google,cros-ec-keyb";
 				keypad,num-rows = <8>;
