@@ -131,10 +131,10 @@ static void cros_ec_keyb_process(struct cros_ec_keyb *ckdev,
 			 uint8_t *kb_state, int len)
 {
 	struct input_dev *idev = ckdev->idev;
+	struct cros_ec_device *ec = ckdev->ec;
 	int col, row;
 	int new_state;
 	int num_cols;
-
 	num_cols = len;
 
 	if (ckdev->ghost_filter && cros_ec_keyb_has_ghosting(ckdev, kb_state)) {
@@ -159,7 +159,11 @@ static void cros_ec_keyb_process(struct cros_ec_keyb *ckdev,
 				dev_dbg(ckdev->dev,
 					"changed: [r%d c%d]: byte %02x\n",
 					row, col, new_state);
-
+				/* Change to power supply status */
+				if ((ec->charger && code == KEY_BATTERY)) {
+					power_supply_changed(ec->charger);
+					continue;
+				}
 				input_report_key(idev, code, new_state);
 			}
 		}
