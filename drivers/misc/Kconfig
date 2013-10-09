@@ -381,6 +381,13 @@ config HMC6352
 	  This driver provides support for the Honeywell HMC6352 compass,
 	  providing configuration and heading data via sysfs.
 
+config TEGRA_THROUGHPUT
+	bool "Device node to set throughput target"
+	depends on TEGRA_DC && TEGRA_DC_EXTENSIONS
+	default y
+	help
+	  Dev node /dev/tegra-throughput used to set a throughput target.
+
 config EP93XX_PWM
 	tristate "EP93xx PWM support"
 	depends on ARCH_EP93XX
