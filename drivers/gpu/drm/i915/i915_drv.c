@@ -495,6 +495,12 @@ static int i915_drm_freeze(struct drm_device *dev)
 	/* We do a lot of poking in a lot of registers, make sure they work
 	 * properly. */
 	hsw_disable_package_c8(dev_priv);
+
+	/* ignore lid events during suspend */
+	mutex_lock(&dev_priv->modeset_restore_lock);
+	dev_priv->modeset_restore = MODESET_SUSPENDED;
+	mutex_unlock(&dev_priv->modeset_restore_lock);
+
 	intel_set_power_well(dev, true);
 
 	drm_kms_helper_poll_disable(dev);
