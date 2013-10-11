@@ -292,6 +292,13 @@
 				nvidia,tristate = <0>;
 				nvidia,enable-input = <1>;
 			};
+			en_vdd_sd {
+				nvidia,pins = "kb_row0_pr0";
+				nvidia,function = "rsvd4";
+				nvidia,pull = <0>;
+				nvidia,tristate = <0>;
+				nvidia,enable-input = <0>;
+			};
 			kbl_pwm {
 				nvidia,pins = "ph0";
 				nvidia,function = "pwm0";
@@ -889,6 +896,7 @@
 		bus-width = <4>;
 		status = "okay";
 		vmmc-supply = <&vddio_sdmmc3>;
+		sd-slot-supply = <&en_vdd_sd_reg>;
 	};
 
 	sdhci@700b0600 {
@@ -980,6 +988,17 @@
 			compatible = "regulator-fixed";
 			reg = <0>;
 			regulator-name = "floating";
+		};
+
+		en_vdd_sd_reg: regulator@1 {
+			compatible = "regulator-fixed";
+			reg = <2>;
+			regulator-name = "en_vdd_sd";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			enable-active-high;
+			regulator-boot-on;
+			gpio = <&gpio 136 0>; /* GPIO PR0 */
 		};
 	};
 };
