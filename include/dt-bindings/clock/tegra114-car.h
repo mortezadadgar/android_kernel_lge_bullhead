@@ -17,7 +17,7 @@
 #define _DT_BINDINGS_CLOCK_TEGRA114_CAR_H
 
 /* 0 */
-/* 1 */
+#define TEGRA114_CLK_COP 1
 /* 2 */
 /* 3 */
 #define TEGRA114_CLK_RTC 4
