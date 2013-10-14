@@ -2316,18 +2316,19 @@ void tegra114_clock_deassert_dfll_dvco_reset(void)
 EXPORT_SYMBOL(tegra114_clock_deassert_dfll_dvco_reset);
 
 static struct tegra_clk_duplicate tegra_clk_duplicates[] = {
-	TEGRA_CLK_DUPLICATE(hdmi, "tegradc.0", "hdmi"),
-	TEGRA_CLK_DUPLICATE(hdmi, "tegradc.1", "hdmi"),
-	TEGRA_CLK_DUPLICATE(usbd, "utmip-pad", NULL),
-	TEGRA_CLK_DUPLICATE(usbd, "tegra-ehci.0", NULL),
-	TEGRA_CLK_DUPLICATE(usbd, "tegra-otg", NULL),
-	TEGRA_CLK_DUPLICATE(bsev, "tegra-avp", "bsev"),
-	TEGRA_CLK_DUPLICATE(bsev, "nvavp", "bsev"),
-	TEGRA_CLK_DUPLICATE(vde, "tegra-aes", "vde"),
-	TEGRA_CLK_DUPLICATE(bsea, "tegra-aes", "bsea"),
-	TEGRA_CLK_DUPLICATE(bsea, "nvavp", "bsea"),
-	TEGRA_CLK_DUPLICATE(vcp, "nvavp", "vcp"),
-	TEGRA_CLK_DUPLICATE(clk_max, NULL, NULL), /* MUST be the last entry */
+	TEGRA_CLK_DUPLICATE(TEGRA114_CLK_HDMI, "tegradc.0", "hdmi"),
+	TEGRA_CLK_DUPLICATE(TEGRA114_CLK_HDMI, "tegradc.1", "hdmi"),
+	TEGRA_CLK_DUPLICATE(TEGRA114_CLK_USBD, "utmip-pad", NULL),
+	TEGRA_CLK_DUPLICATE(TEGRA114_CLK_USBD, "tegra-ehci.0", NULL),
+	TEGRA_CLK_DUPLICATE(TEGRA114_CLK_USBD, "tegra-otg", NULL),
+	TEGRA_CLK_DUPLICATE(TEGRA114_CLK_BSEV, "tegra-avp", "bsev"),
+	TEGRA_CLK_DUPLICATE(TEGRA114_CLK_BSEV, "nvavp", "bsev"),
+	TEGRA_CLK_DUPLICATE(TEGRA114_CLK_VDE, "tegra-aes", "vde"),
+	TEGRA_CLK_DUPLICATE(TEGRA114_CLK_BSEA, "tegra-aes", "bsea"),
+	TEGRA_CLK_DUPLICATE(TEGRA114_CLK_BSEA, "nvavp", "bsea"),
+	TEGRA_CLK_DUPLICATE(TEGRA114_CLK_VCP, "nvavp", "vcp"),
+	/* MUST be the last entry */
+	TEGRA_CLK_DUPLICATE(TEGRA114_CLK_CLK_MAX, NULL, NULL),
 };
 
 static void __init tegra114_clock_init(struct device_node *np)
@@ -2375,7 +2376,7 @@ static void __init tegra114_clock_init(struct device_node *np)
 			clks[i] = ERR_PTR(-EINVAL);
 	}
 
-	tegra_init_dup_clks(tegra_clk_duplicates, clks, clk_max);
+	tegra_init_dup_clks(tegra_clk_duplicates, clks, TEGRA114_CLK_CLK_MAX);
 
 	clk_data.clks = clks;
 	clk_data.clk_num = ARRAY_SIZE(clks);
