@@ -3263,38 +3263,18 @@ static void alc269_fixup_limit_int_mic_boost(struct hda_codec *codec,
 	}
 }
 
-static void alc283_hp_automute_hook(struct hda_codec *codec,
-				    struct hda_jack_tbl *jack)
-{
-	struct alc_spec *spec = codec->spec;
-	int vref;
-
-	msleep(200);
-	snd_hda_gen_hp_automute(codec, jack);
-
-	vref = spec->gen.hp_jack_present ? PIN_VREF80 : 0;
-
-	msleep(600);
-	snd_hda_codec_write(codec, 0x19, 0, AC_VERB_SET_PIN_WIDGET_CONTROL,
-			    vref);
-}
-
 static void alc283_fixup_dac_wcaps(struct hda_codec *codec,
       const struct hda_fixup *fix, int action)
 {
-	struct alc_spec *spec = codec->spec;
 	int val;
 
 	switch (action) {
 	case HDA_FIXUP_ACT_PRE_PROBE:
 		snd_hda_override_wcaps(codec, 0x03, 0);
-		spec->gen.hp_automute_hook = alc283_hp_automute_hook;
 		break;
 	case HDA_FIXUP_ACT_INIT:
 		/* MIC2-VREF control */
 		/* Set to manual mode */
-		val = alc_read_coef_idx(codec, 0x06);
-		alc_write_coef_idx(codec, 0x06, val & ~0x000c);
 		val = alc_read_coef_idx(codec, 0x1a);
 		alc_write_coef_idx(codec, 0x1a, val | (1 << 4));
 		break;
