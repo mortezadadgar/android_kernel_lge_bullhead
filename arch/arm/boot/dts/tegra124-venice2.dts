@@ -1091,4 +1091,16 @@
 	usb@7d008000 {
 		status = "okay";
 	};
+
+	soc_therm {
+		compatible = "nvidia,tegra124-soctherm";
+		reg = <0x700e2000 0x1000>;
+		clocks = <&tegra_car 78>, <&tegra_car 100>;
+		clock-names = "soc_therm", "tsensor";
+		pmu-16bit-ops = <0>;
+		pmu-i2c-addr = <0x40>;
+		i2c-controller-id = <4>;
+		poweroff-reg-addr = <0x36>;
+		poweroff-reg-data = <0x2>;
+	};
 };
