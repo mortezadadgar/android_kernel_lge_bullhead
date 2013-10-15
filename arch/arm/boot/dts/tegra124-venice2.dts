@@ -994,6 +994,7 @@
 			linux,input-type = <5>;
 			linux,code = <0>;
 			debounce-interval = <1>;
+			gpio-key,wakeup;
 		};
 
 		power {
@@ -1001,6 +1002,7 @@
 			gpios = <&gpio 128 1>; /* GPIO Q0 */
 			linux,code = <116>;
 			debounce-interval = <10>;
+			gpio-key,wakeup;
 		};
 	};
 
