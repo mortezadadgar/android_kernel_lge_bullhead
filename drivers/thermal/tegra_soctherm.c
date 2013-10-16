@@ -1917,7 +1917,8 @@ void soctherm_init_clk_rate(struct platform_device *pdev,
 static const struct of_device_id tegra_soctherm_match[] = {
 	{ .compatible = "nvidia,tegra114-soctherm",
 	  .data = &tegra114_soctherm_init, },
-	{ .compatible = "nvidia,tegra124-soctherm", },
+	{ .compatible = "nvidia,tegra124-soctherm",
+	  .data = &tegra124_soctherm_init, },
 	{},
 };
 

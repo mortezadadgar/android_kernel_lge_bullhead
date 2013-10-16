@@ -149,4 +149,11 @@ static inline int tegra114_soctherm_init(struct device_node *soctherm_dn)
 { return 0 };
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_124_SOC
+int tegra124_soctherm_init(struct device_node *soctherm_dn);
+#else
+static inline int tegra124_soctherm_init(struct device_node *soctherm_dn)
+{ return 0 };
+#endif
+
 #endif /* __TEGRA_SOCTHERM_H */

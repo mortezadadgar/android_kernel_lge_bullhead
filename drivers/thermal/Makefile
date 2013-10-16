@@ -26,4 +26,5 @@ obj-$(CONFIG_INTEL_POWERCLAMP)	+= intel_powerclamp.o
 obj-$(CONFIG_TEGRA_SOCTHERM)	+= tegra_soctherm.o
 ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
 obj-$(CONFIG_ARCH_TEGRA_114_SOC)	+= tegra114_soctherm.o
+obj-$(CONFIG_ARCH_TEGRA_124_SOC)	+= tegra124_soctherm.o
 endif
