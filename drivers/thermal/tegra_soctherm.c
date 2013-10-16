@@ -1882,8 +1882,41 @@ int soctherm_parse_pmu_dt(struct platform_device *pdev)
 	return 0;
 }
 
+void soctherm_init_sensor(struct platform_device *pdev,
+			  const struct soctherm_sensor *sensor)
+{
+	int i;
+	struct soctherm_platform_data *pdata = platform_get_drvdata(pdev);
+
+	for (i = 0; i < TSENSE_SIZE; i++) {
+		struct soctherm_sensor *s;
+		s = &pdata->sensor_data[i];
+		s->tall      = s->tall      ?: sensor->tall;
+		s->tiddq     = s->tiddq     ?: sensor->tiddq;
+		s->ten_count = s->ten_count ?: sensor->ten_count;
+		s->tsample   = s->tsample   ?: sensor->tsample;
+		s->tsamp_ate = s->tsamp_ate ?: sensor->tsamp_ate;
+		s->pdiv      = s->pdiv      ?: sensor->pdiv;
+		s->pdiv_ate  = s->pdiv_ate  ?: sensor->pdiv_ate;
+	}
+}
+
+void soctherm_init_clk_rate(struct platform_device *pdev,
+			     unsigned long soctherm_clk_rate,
+			     unsigned long tsensor_clk_rate)
+{
+	struct soctherm_platform_data *pdata = platform_get_drvdata(pdev);
+
+	if (!pdata->soctherm_clk_rate)
+		pdata->soctherm_clk_rate = soctherm_clk_rate;
+
+	if (!pdata->tsensor_clk_rate)
+		pdata->tsensor_clk_rate = tsensor_clk_rate;
+}
+
 static const struct of_device_id tegra_soctherm_match[] = {
-	{ .compatible = "nvidia,tegra114-soctherm", },
+	{ .compatible = "nvidia,tegra114-soctherm",
+	  .data = &tegra114_soctherm_init, },
 	{ .compatible = "nvidia,tegra124-soctherm", },
 	{},
 };

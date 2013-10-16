@@ -24,3 +24,6 @@ obj-$(CONFIG_ARMADA_THERMAL)	+= armada_thermal.o
 obj-$(CONFIG_DB8500_CPUFREQ_COOLING)	+= db8500_cpufreq_cooling.o
 obj-$(CONFIG_INTEL_POWERCLAMP)	+= intel_powerclamp.o
 obj-$(CONFIG_TEGRA_SOCTHERM)	+= tegra_soctherm.o
+ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
+obj-$(CONFIG_ARCH_TEGRA_114_SOC)	+= tegra114_soctherm.o
+endif

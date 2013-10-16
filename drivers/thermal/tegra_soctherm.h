@@ -136,5 +136,17 @@ struct soctherm_platform_data {
 };
 
 int soctherm_parse_pmu_dt(struct platform_device *pdev);
+void soctherm_init_sensor(struct platform_device *pdev,
+			  const struct soctherm_sensor *sensor);
+void soctherm_init_clk_rate(struct platform_device *pdev,
+			    unsigned long scotherm_clk_rate,
+			    unsigned long tsensor_clk_rate);
+
+#ifdef CONFIG_ARCH_TEGRA_114_SOC
+int tegra114_soctherm_init(struct device_node *soctherm_dn);
+#else
+static inline int tegra114_soctherm_init(struct device_node *soctherm_dn)
+{ return 0 };
+#endif
 
 #endif /* __TEGRA_SOCTHERM_H */
