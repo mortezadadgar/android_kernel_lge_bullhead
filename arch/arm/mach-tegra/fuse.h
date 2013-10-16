@@ -60,7 +60,6 @@ extern int tegra_bct_strapping;
 unsigned long long tegra_chip_uid(void);
 void tegra_init_fuse(void);
 bool tegra_spare_fuse(int bit);
-u32 tegra_fuse_readl(unsigned long offset);
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 void tegra20_init_speedo_data(void);

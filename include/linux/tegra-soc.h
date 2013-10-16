@@ -39,4 +39,6 @@ static inline int tegra_cpufreq_init(void)
 }
 #endif
 
+u32 tegra_fuse_readl(unsigned long offset);
+
 #endif /* __LINUX_TEGRA_SOC_H_ */
