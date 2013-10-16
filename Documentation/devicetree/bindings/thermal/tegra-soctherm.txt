@@ -1,0 +1,27 @@
+* Tegra114/124 SOC_THERM
+
+** Thermal node required properties:
+
+- compatible : "nvidia,tegra124-soctherm" or "nvidia,tegra114-soctherm".
+- reg : address range of the thermal sensor registers;
+- clocks : clocks for soc_therm.
+- clock-names : clock names for soc_therm.
+- pmu-16bit-ops : 16bit ops.
+- pmu-i2c-addr : i2c slave address.
+- i2c-controller-id : i2c controller id.
+- poweroff-reg-addr : pmu poweroff register address.
+- poweroff-reg-data : pmu poweroff register data.
+
+Example soc_therm node:
+
+soc_therm {
+	compatible = "nvidia,tegra124-soctherm";
+	reg = <0x700e2000 0x1000>;
+	clocks = <&tegra_car 78>, <&tegra_car 100>;
+	clock-names = "soc_therm", "tsensor";
+	pmu-16bit-ops = <0>;
+	pmu-i2c-addr = <0x40>;
+	i2c-controller-id = <4>;
+	poweroff-reg-addr = <0x36>;
+	poweroff-reg-data = <0x2>;
+};

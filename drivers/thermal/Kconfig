@@ -169,4 +169,11 @@ config INTEL_POWERCLAMP
 	  enforce idle time which results in more package C-state residency. The
 	  user interface is exposed via generic thermal framework.
 
+config TEGRA_SOCTHERM
+	bool "Enable Tegra soc_therm"
+        depends on (ARCH_TEGRA_114_SOC || ARCH_TEGRA_124_SOC)
+        default y
+        help
+          Enables use of soc_therm for thermal management.
+
 endif
