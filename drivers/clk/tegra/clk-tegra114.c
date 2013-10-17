@@ -1885,7 +1885,7 @@ static __init void tegra114_periph_clk_init(void __iomem *clk_base)
 						clk_base, CLK_IGNORE_UNUSED, 1,
 						&periph_l_regs,
 						periph_clk_enb_refcnt);
-	clks[cop] = clk;
+	clks[TEGRA114_CLK_COP] = clk;
 
 	/* apbdma */
 	clk = tegra_clk_register_periph_gate("apbdma", "clk_m", 0, clk_base,
