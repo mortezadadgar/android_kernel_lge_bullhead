@@ -185,3 +185,21 @@ struct clk *tegra_clk_register_divider(const char *name,
 
 	return clk;
 }
+
+#if defined(CONFIG_PM_SLEEP)
+void tegra_clk_divider_resume(struct clk *c, unsigned long rate)
+{
+	struct clk_hw *hw = __clk_get_hw(c);
+	struct clk *parent = clk_get_parent(c);
+	unsigned long parent_rate;
+
+	if (IS_ERR(parent)) {
+		WARN_ON(1);
+		return;
+	}
+	parent_rate = clk_get_rate(parent);
+
+	if (clk_frac_div_set_rate(hw, rate, parent_rate) < 0)
+		WARN_ON(1);
+}
+#endif
