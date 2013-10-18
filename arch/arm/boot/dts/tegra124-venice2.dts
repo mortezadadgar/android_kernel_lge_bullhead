@@ -800,6 +800,7 @@
 					reg = <0xb>;
 					battery-name = "battery";
 					sbs,poll-retry-count = <10>;
+					power-supplies = <&charger>;
 				};
 			};
 
