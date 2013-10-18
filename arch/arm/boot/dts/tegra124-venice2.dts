@@ -456,6 +456,13 @@
 				nvidia,slew-rate-falling = <0>;
 				nvidia,drive-type = <1>;
 			};
+			ac_ok {
+				nvidia,pins = "pj0";
+				nvidia,function = "gmi";
+				nvidia,pull = <2>;
+				nvidia,tristate = <1>;
+				nvidia,enable-input = <1>;
+			};
 			als_irq_l {
 				nvidia,pins = "gpio_x3_aud_px3";
 				nvidia,function = "gmi";
@@ -779,6 +786,14 @@
 				#size-cells = <0>;
 
 				google,remote-bus = <0>;
+
+				charger: bq24735 {
+					compatible = "ti,bq24735";
+					reg = <0x9>;
+					interrupt-parent = <&gpio>;
+					interrupts = <72 0>; /* GPIO PJ0 */
+					ti,ac-detect-gpios = <&gpio 72 0x0>;
+				};
 
 				battery: smart-battery {
 					compatible = "sbs,sbs-battery";
