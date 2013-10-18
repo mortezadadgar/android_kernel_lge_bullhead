@@ -608,6 +608,8 @@
 			gpio-controller;
 			#gpio-cells = <2>;
 
+			ams,system-power-controller;
+
 			pinctrl-names = "default";
 			pinctrl-0 = <&as3722_default>;
 
