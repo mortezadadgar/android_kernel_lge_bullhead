@@ -338,4 +338,18 @@ static struct pcmcia_driver orinoco_driver = {
 	.suspend	= orinoco_cs_suspend,
 	.resume		= orinoco_cs_resume,
 };
-module_pcmcia_driver(orinoco_driver);
+
+static int __init
+init_orinoco_cs(void)
+{
+	return pcmcia_register_driver(&orinoco_driver);
+}
+
+static void __exit
+exit_orinoco_cs(void)
+{
+	pcmcia_unregister_driver(&orinoco_driver);
+}
+
+module_init(init_orinoco_cs);
+module_exit(exit_orinoco_cs);

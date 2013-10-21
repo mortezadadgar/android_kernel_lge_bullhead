@@ -6,12 +6,11 @@
 #include "core.h"
 #include "trace.h"
 
-static inline int rdev_suspend(struct cfg80211_registered_device *rdev,
-			       struct cfg80211_wowlan *wowlan)
+static inline int rdev_suspend(struct cfg80211_registered_device *rdev)
 {
 	int ret;
-	trace_rdev_suspend(&rdev->wiphy, wowlan);
-	ret = rdev->ops->suspend(&rdev->wiphy, wowlan);
+	trace_rdev_suspend(&rdev->wiphy, rdev->wowlan);
+	ret = rdev->ops->suspend(&rdev->wiphy, rdev->wowlan);
 	trace_rdev_return_int(&rdev->wiphy, ret);
 	return ret;
 }
@@ -875,52 +874,5 @@ static inline void rdev_stop_p2p_device(struct cfg80211_registered_device *rdev,
 	trace_rdev_stop_p2p_device(&rdev->wiphy, wdev);
 	rdev->ops->stop_p2p_device(&rdev->wiphy, wdev);
 	trace_rdev_return_void(&rdev->wiphy);
-}
-
-static inline int rdev_set_mac_acl(struct cfg80211_registered_device *rdev,
-				   struct net_device *dev,
-				   struct cfg80211_acl_data *params)
-{
-	int ret;
-
-	trace_rdev_set_mac_acl(&rdev->wiphy, dev, params);
-	ret = rdev->ops->set_mac_acl(&rdev->wiphy, dev, params);
-	trace_rdev_return_int(&rdev->wiphy, ret);
-	return ret;
-}
-
-static inline int rdev_update_ft_ies(struct cfg80211_registered_device *rdev,
-				     struct net_device *dev,
-				     struct cfg80211_update_ft_ies_params *ftie)
-{
-	int ret;
-
-	trace_rdev_update_ft_ies(&rdev->wiphy, dev, ftie);
-	ret = rdev->ops->update_ft_ies(&rdev->wiphy, dev, ftie);
-	trace_rdev_return_int(&rdev->wiphy, ret);
-	return ret;
-}
-
-static inline int rdev_crit_proto_start(struct cfg80211_registered_device *rdev,
-					struct wireless_dev *wdev,
-					enum nl80211_crit_proto_id protocol,
-					u16 duration)
-{
-	int ret;
-
-	trace_rdev_crit_proto_start(&rdev->wiphy, wdev, protocol, duration);
-	ret = rdev->ops->crit_proto_start(&rdev->wiphy, wdev,
-					  protocol, duration);
-	trace_rdev_return_int(&rdev->wiphy, ret);
-	return ret;
-}
-
-static inline void rdev_crit_proto_stop(struct cfg80211_registered_device *rdev,
-				       struct wireless_dev *wdev)
-{
-	trace_rdev_crit_proto_stop(&rdev->wiphy, wdev);
-	rdev->ops->crit_proto_stop(&rdev->wiphy, wdev);
-	trace_rdev_return_void(&rdev->wiphy);
-}
-
+}					
 #endif /* __CFG80211_RDEV_OPS */

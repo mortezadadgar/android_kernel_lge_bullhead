@@ -39,8 +39,7 @@ mac80211-$(CONFIG_MAC80211_MESH) += \
 	mesh_pathtbl.o \
 	mesh_plink.o \
 	mesh_hwmp.o \
-	mesh_sync.o \
-	mesh_ps.o
+	mesh_sync.o
 
 mac80211-$(CONFIG_PM) += pm.o
 

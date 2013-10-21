@@ -449,9 +449,6 @@ void rtl8723ae_set_hw_reg(struct ieee80211_hw *hw, u8 variable, u8 *val)
 		rtl8723ae_set_fw_joinbss_report_cmd(hw, (*(u8 *) val));
 
 		break; }
-	case HW_VAR_H2C_FW_P2P_PS_OFFLOAD:
-		rtl8723ae_set_p2p_ps_offload_cmd(hw, (*(u8 *)val));
-		break;
 	case HW_VAR_AID:{
 		u16 u2btmp;
 		u2btmp = rtl_read_word(rtlpriv, REG_BCN_PSR_RPT);
@@ -476,39 +473,6 @@ void rtl8723ae_set_hw_reg(struct ieee80211_hw *hw, u8 variable, u8 *val)
 
 		if (btype_ibss == true)
 			_rtl8723ae_resume_tx_beacon(hw);
-		break; }
-	case HW_VAR_FW_LPS_ACTION: {
-		bool enter_fwlps = *((bool *)val);
-		u8 rpwm_val, fw_pwrmode;
-		bool fw_current_inps;
-
-		if (enter_fwlps) {
-			rpwm_val = 0x02;	/* RF off */
-			fw_current_inps = true;
-			rtlpriv->cfg->ops->set_hw_reg(hw,
-					HW_VAR_FW_PSMODE_STATUS,
-					(u8 *)(&fw_current_inps));
-			rtlpriv->cfg->ops->set_hw_reg(hw,
-					HW_VAR_H2C_FW_PWRMODE,
-					(u8 *)(&ppsc->fwctrl_psmode));
-
-			rtlpriv->cfg->ops->set_hw_reg(hw,
-					HW_VAR_SET_RPWM,
-					(u8 *)(&rpwm_val));
-		} else {
-			rpwm_val = 0x0C;	/* RF on */
-			fw_pwrmode = FW_PS_ACTIVE_MODE;
-			fw_current_inps = false;
-			rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_SET_RPWM,
-					(u8 *)(&rpwm_val));
-			rtlpriv->cfg->ops->set_hw_reg(hw,
-					HW_VAR_H2C_FW_PWRMODE,
-					(u8 *)(&fw_pwrmode));
-
-			rtlpriv->cfg->ops->set_hw_reg(hw,
-					HW_VAR_FW_PSMODE_STATUS,
-					(u8 *)(&fw_current_inps));
-		}
 		break; }
 	default:
 		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
@@ -739,9 +703,11 @@ static void _rtl8723ae_hw_configure(struct ieee80211_hw *hw)
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_pci_priv *pcipriv = rtl_pcipriv(hw);
 	u8 reg_bw_opmode;
-	u32 reg_prsr;
+	u32 reg_ratr, reg_prsr;
 
 	reg_bw_opmode = BW_OPMODE_20MHZ;
+	reg_ratr = RATE_ALL_CCK | RATE_ALL_OFDM_AG |
+	    RATE_ALL_OFDM_1SS | RATE_ALL_OFDM_2SS;
 	reg_prsr = RATE_ALL_CCK | RATE_ALL_OFDM_AG;
 
 	rtl_write_byte(rtlpriv, REG_INIRTS_RATE_SEL, 0x8);
@@ -1415,7 +1381,7 @@ static void _rtl8723ae_read_txpower_info_from_hwpg(struct ieee80211_hw *hw,
 		}
 
 		for (i = 0; i < 14; i++) {
-			RTPRINT(rtlpriv, FINIT, INIT_TXPOWER,
+			RTPRINT(rtlpriv, FINIT, INIT_TxPower,
 				"RF(%d)-Ch(%d) [CCK / HT40_1S / HT40_2S] = "
 				"[0x%x / 0x%x / 0x%x]\n", rf_path, i,
 				rtlefuse->txpwrlevel_cck[rf_path][i],
@@ -1456,10 +1422,10 @@ static void _rtl8723ae_read_txpower_info_from_hwpg(struct ieee80211_hw *hw,
 				    0xf0) >> 4);
 			}
 
-			RTPRINT(rtlpriv, FINIT, INIT_TXPOWER,
+			RTPRINT(rtlpriv, FINIT, INIT_TxPower,
 				"RF-%d pwrgroup_ht20[%d] = 0x%x\n", rf_path, i,
 				rtlefuse->pwrgroup_ht20[rf_path][i]);
-			RTPRINT(rtlpriv, FINIT, INIT_TXPOWER,
+			RTPRINT(rtlpriv, FINIT, INIT_TxPower,
 				"RF-%d pwrgroup_ht40[%d] = 0x%x\n", rf_path, i,
 				rtlefuse->pwrgroup_ht40[rf_path][i]);
 		}
@@ -1499,19 +1465,19 @@ static void _rtl8723ae_read_txpower_info_from_hwpg(struct ieee80211_hw *hw,
 	    rtlefuse->txpwr_legacyhtdiff[RF90_PATH_A][7];
 
 	for (i = 0; i < 14; i++)
-		RTPRINT(rtlpriv, FINIT, INIT_TXPOWER,
+		RTPRINT(rtlpriv, FINIT, INIT_TxPower,
 			"RF-A Ht20 to HT40 Diff[%d] = 0x%x\n", i,
 			rtlefuse->txpwr_ht20diff[RF90_PATH_A][i]);
 	for (i = 0; i < 14; i++)
-		RTPRINT(rtlpriv, FINIT, INIT_TXPOWER,
+		RTPRINT(rtlpriv, FINIT, INIT_TxPower,
 			"RF-A Legacy to Ht40 Diff[%d] = 0x%x\n", i,
 			rtlefuse->txpwr_legacyhtdiff[RF90_PATH_A][i]);
 	for (i = 0; i < 14; i++)
-		RTPRINT(rtlpriv, FINIT, INIT_TXPOWER,
+		RTPRINT(rtlpriv, FINIT, INIT_TxPower,
 			"RF-B Ht20 to HT40 Diff[%d] = 0x%x\n", i,
 			rtlefuse->txpwr_ht20diff[RF90_PATH_B][i]);
 	for (i = 0; i < 14; i++)
-		RTPRINT(rtlpriv, FINIT, INIT_TXPOWER,
+		RTPRINT(rtlpriv, FINIT, INIT_TxPower,
 			"RF-B Legacy to HT40 Diff[%d] = 0x%x\n", i,
 			rtlefuse->txpwr_legacyhtdiff[RF90_PATH_B][i]);
 
@@ -1519,14 +1485,14 @@ static void _rtl8723ae_read_txpower_info_from_hwpg(struct ieee80211_hw *hw,
 		rtlefuse->eeprom_regulatory = (hwinfo[RF_OPTION1] & 0x7);
 	else
 		rtlefuse->eeprom_regulatory = 0;
-	RTPRINT(rtlpriv, FINIT, INIT_TXPOWER,
+	RTPRINT(rtlpriv, FINIT, INIT_TxPower,
 		"eeprom_regulatory = 0x%x\n", rtlefuse->eeprom_regulatory);
 
 	if (!autoload_fail)
 		rtlefuse->eeprom_tssi[RF90_PATH_A] = hwinfo[EEPROM_TSSI_A];
 	else
 		rtlefuse->eeprom_tssi[RF90_PATH_A] = EEPROM_DEFAULT_TSSI;
-	RTPRINT(rtlpriv, FINIT, INIT_TXPOWER,
+	RTPRINT(rtlpriv, FINIT, INIT_TxPower,
 		"TSSI_A = 0x%x, TSSI_B = 0x%x\n",
 		rtlefuse->eeprom_tssi[RF90_PATH_A],
 		rtlefuse->eeprom_tssi[RF90_PATH_B]);
@@ -1541,7 +1507,7 @@ static void _rtl8723ae_read_txpower_info_from_hwpg(struct ieee80211_hw *hw,
 		rtlefuse->apk_thermalmeterignore = true;
 
 	rtlefuse->thermalmeter[0] = rtlefuse->eeprom_thermalmeter;
-	RTPRINT(rtlpriv, FINIT, INIT_TXPOWER,
+	RTPRINT(rtlpriv, FINIT, INIT_TxPower,
 		"thermalmeter = 0x%x\n", rtlefuse->eeprom_thermalmeter);
 }
 
@@ -1749,7 +1715,19 @@ static void _rtl8723ae_hal_customized_behavior(struct ieee80211_hw *hw)
 	struct rtl_pci_priv *pcipriv = rtl_pcipriv(hw);
 	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
 
-	pcipriv->ledctl.led_opendrain = true;
+	switch (rtlhal->oem_id) {
+	case RT_CID_819x_HP:
+		pcipriv->ledctl.led_opendrain = true;
+		break;
+	case RT_CID_819x_Lenovo:
+	case RT_CID_DEFAULT:
+	case RT_CID_TOSHIBA:
+	case RT_CID_CCX:
+	case RT_CID_819x_Acer:
+	case RT_CID_WHQL:
+	default:
+		break;
+	}
 	RT_TRACE(rtlpriv, COMP_INIT, DBG_DMESG,
 		 "RT Customized ID: 0x%02X\n", rtlhal->oem_id);
 }
@@ -1890,7 +1868,8 @@ static void rtl8723ae_update_hal_rate_mask(struct ieee80211_hw *hw,
 	struct rtl_sta_info *sta_entry = NULL;
 	u32 ratr_bitmap;
 	u8 ratr_index;
-	u8 curtxbw_40mhz = (sta->bandwidth >= IEEE80211_STA_RX_BW_40) ? 1 : 0;
+	u8 curtxbw_40mhz = (sta->ht_cap.cap & IEEE80211_HT_CAP_SUP_WIDTH_20_40)
+				? 1 : 0;
 	u8 curshortgi_40mhz = (sta->ht_cap.cap & IEEE80211_HT_CAP_SGI_40) ?
 				1 : 0;
 	u8 curshortgi_20mhz = (sta->ht_cap.cap & IEEE80211_HT_CAP_SGI_20) ?
@@ -2051,7 +2030,7 @@ bool rtl8723ae_gpio_radio_on_off_checking(struct ieee80211_hw *hw, u8 *valid)
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_ps_ctl *ppsc = rtl_psc(rtl_priv(hw));
 	struct rtl_phy *rtlphy = &(rtlpriv->phy);
-	enum rf_pwrstate e_rfpowerstate_toset;
+	enum rf_pwrstate e_rfpowerstate_toset, cur_rfstate;
 	u8 u1tmp;
 	bool actuallyset = false;
 
@@ -2069,6 +2048,8 @@ bool rtl8723ae_gpio_radio_on_off_checking(struct ieee80211_hw *hw, u8 *valid)
 		ppsc->rfchange_inprogress = true;
 		spin_unlock(&rtlpriv->locks.rf_ps_lock);
 	}
+
+	cur_rfstate = ppsc->rfpwr_state;
 
 	rtl_write_byte(rtlpriv, REG_GPIO_IO_SEL_2,
 		       rtl_read_byte(rtlpriv, REG_GPIO_IO_SEL_2)&~(BIT(1)));

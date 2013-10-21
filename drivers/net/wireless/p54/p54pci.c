@@ -559,7 +559,6 @@ static int p54p_probe(struct pci_dev *pdev,
 	mem_len = pci_resource_len(pdev, 0);
 	if (mem_len < sizeof(struct p54p_csr)) {
 		dev_err(&pdev->dev, "Too short PCI resources\n");
-		err = -ENODEV;
 		goto err_disable_dev;
 	}
 
@@ -569,10 +568,8 @@ static int p54p_probe(struct pci_dev *pdev,
 		goto err_disable_dev;
 	}
 
-	err = pci_set_dma_mask(pdev, DMA_BIT_MASK(32));
-	if (!err)
-		err = pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
-	if (err) {
+	if (pci_set_dma_mask(pdev, DMA_BIT_MASK(32)) ||
+	    pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32))) {
 		dev_err(&pdev->dev, "No suitable DMA available\n");
 		goto err_free_reg;
 	}

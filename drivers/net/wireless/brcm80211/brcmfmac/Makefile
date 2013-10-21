@@ -26,12 +26,9 @@ brcmfmac-objs += \
 		wl_cfg80211.o \
 		fwil.o \
 		fweh.o \
-		fwsignal.o \
-		p2p.o \
 		dhd_cdc.o \
 		dhd_common.o \
-		dhd_linux.o \
-		btcoex.o
+		dhd_linux.o
 brcmfmac-$(CONFIG_BRCMFMAC_SDIO) += \
 		dhd_sdio.o \
 		bcmsdh.o \
@@ -41,5 +38,3 @@ brcmfmac-$(CONFIG_BRCMFMAC_USB) += \
 		usb.o
 brcmfmac-$(CONFIG_BRCMDBG) += \
 		dhd_dbg.o
-brcmfmac-$(CONFIG_BRCM_TRACING) += \
-		tracepoint.o

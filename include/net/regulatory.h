@@ -18,7 +18,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <linux/rcupdate.h>
 
 /**
  * enum environment_cap - Environment parsed from country IE
@@ -36,7 +35,6 @@ enum environment_cap {
 /**
  * struct regulatory_request - used to keep track of regulatory requests
  *
- * @rcu_head: RCU head struct used to free the request
  * @wiphy_idx: this is set if this request's initiator is
  * 	%REGDOM_SET_BY_COUNTRY_IE or %REGDOM_SET_BY_DRIVER. This
  * 	can be used by the wireless core to deal with conflicts
@@ -74,7 +72,6 @@ enum environment_cap {
  * @list: used to insert into the reg_requests_list linked list
  */
 struct regulatory_request {
-	struct rcu_head rcu_head;
 	int wiphy_idx;
 	enum nl80211_reg_initiator initiator;
 	enum nl80211_user_reg_hint_type user_reg_hint_type;
@@ -104,7 +101,6 @@ struct ieee80211_reg_rule {
 };
 
 struct ieee80211_regdomain {
-	struct rcu_head rcu_head;
 	u32 n_reg_rules;
 	char alpha2[2];
 	u8 dfs_region;

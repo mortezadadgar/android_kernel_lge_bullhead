@@ -155,6 +155,7 @@ static int upload_code(struct usb_device *udev,
 	 */
 	p = kmalloc(MAX_TRANSFER_SIZE, GFP_KERNEL);
 	if (!p) {
+		dev_err(&udev->dev, "out of memory\n");
 		r = -ENOMEM;
 		goto error;
 	}

@@ -23,7 +23,6 @@ mwifiex-y += util.o
 mwifiex-y += txrx.o
 mwifiex-y += wmm.o
 mwifiex-y += 11n.o
-mwifiex-y += 11ac.o
 mwifiex-y += 11n_aggr.o
 mwifiex-y += 11n_rxreorder.o
 mwifiex-y += scan.o
@@ -39,7 +38,6 @@ mwifiex-y += sta_tx.o
 mwifiex-y += sta_rx.o
 mwifiex-y += uap_txrx.o
 mwifiex-y += cfg80211.o
-mwifiex-y += ethtool.o
 mwifiex-$(CONFIG_DEBUG_FS) += debugfs.o
 obj-$(CONFIG_MWIFIEX) += mwifiex.o
 

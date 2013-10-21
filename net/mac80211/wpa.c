@@ -181,6 +181,7 @@ static int tkip_encrypt_skb(struct ieee80211_tx_data *tx, struct sk_buff *skb)
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *) skb->data;
 	struct ieee80211_key *key = tx->key;
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
+	unsigned long flags;
 	unsigned int hdrlen;
 	int len, tail;
 	u8 *pos;
@@ -215,12 +216,12 @@ static int tkip_encrypt_skb(struct ieee80211_tx_data *tx, struct sk_buff *skb)
 		return 0;
 
 	/* Increase IV for the frame */
-	spin_lock(&key->u.tkip.txlock);
+	spin_lock_irqsave(&key->u.tkip.txlock, flags);
 	key->u.tkip.tx.iv16++;
 	if (key->u.tkip.tx.iv16 == 0)
 		key->u.tkip.tx.iv32++;
 	pos = ieee80211_tkip_add_iv(pos, key);
-	spin_unlock(&key->u.tkip.txlock);
+	spin_unlock_irqrestore(&key->u.tkip.txlock, flags);
 
 	/* hwaccel - with software IV */
 	if (info->control.hw_key)

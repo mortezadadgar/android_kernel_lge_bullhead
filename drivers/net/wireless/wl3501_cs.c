@@ -2013,7 +2013,19 @@ static struct pcmcia_driver wl3501_driver = {
 	.suspend	= wl3501_suspend,
 	.resume		= wl3501_resume,
 };
-module_pcmcia_driver(wl3501_driver);
+
+static int __init wl3501_init_module(void)
+{
+	return pcmcia_register_driver(&wl3501_driver);
+}
+
+static void __exit wl3501_exit_module(void)
+{
+	pcmcia_unregister_driver(&wl3501_driver);
+}
+
+module_init(wl3501_init_module);
+module_exit(wl3501_exit_module);
 
 MODULE_AUTHOR("Fox Chen <mhchen@golf.ccl.itri.org.tw>, "
 	      "Arnaldo Carvalho de Melo <acme@conectiva.com.br>,"

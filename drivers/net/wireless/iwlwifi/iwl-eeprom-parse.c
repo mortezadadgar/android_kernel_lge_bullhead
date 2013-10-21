@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2008 - 2013 Intel Corporation. All rights reserved.
+ * Copyright(c) 2008 - 2012 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -22,7 +22,7 @@
  * USA
  *
  * The full GNU General Public License is included in this distribution
- * in the file called COPYING.
+ * in the file called LICENSE.GPL.
  *
  * Contact Information:
  *  Intel Linux Wireless <ilw@linux.intel.com>
@@ -30,7 +30,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2005 - 2013 Intel Corporation. All rights reserved.
+ * Copyright(c) 2005 - 2012 Intel Corporation. All rights reserved.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,7 +62,6 @@
 #include <linux/types.h>
 #include <linux/slab.h>
 #include <linux/export.h>
-#include "iwl-drv.h"
 #include "iwl-modparams.h"
 #include "iwl-eeprom-parse.h"
 
@@ -704,9 +703,9 @@ static int iwl_init_channel_map(struct device *dev, const struct iwl_cfg *cfg,
 	return n_channels;
 }
 
-int iwl_init_sband_channels(struct iwl_nvm_data *data,
-			    struct ieee80211_supported_band *sband,
-			    int n_channels, enum ieee80211_band band)
+static int iwl_init_sband_channels(struct iwl_nvm_data *data,
+				   struct ieee80211_supported_band *sband,
+				   int n_channels, enum ieee80211_band band)
 {
 	struct ieee80211_channel *chan = &data->channels[0];
 	int n = 0, idx = 0;
@@ -729,10 +728,10 @@ int iwl_init_sband_channels(struct iwl_nvm_data *data,
 #define MAX_BIT_RATE_40_MHZ	150 /* Mbps */
 #define MAX_BIT_RATE_20_MHZ	72 /* Mbps */
 
-void iwl_init_ht_hw_capab(const struct iwl_cfg *cfg,
-			  struct iwl_nvm_data *data,
-			  struct ieee80211_sta_ht_cap *ht_info,
-			  enum ieee80211_band band)
+static void iwl_init_ht_hw_capab(const struct iwl_cfg *cfg,
+				 struct iwl_nvm_data *data,
+				 struct ieee80211_sta_ht_cap *ht_info,
+				 enum ieee80211_band band)
 {
 	int max_bit_rate = 0;
 	u8 rx_chains;
@@ -750,7 +749,7 @@ void iwl_init_ht_hw_capab(const struct iwl_cfg *cfg,
 	}
 
 	ht_info->ht_supported = true;
-	ht_info->cap = IEEE80211_HT_CAP_DSSSCCK40;
+	ht_info->cap = 0;
 
 	if (iwlwifi_mod_params.amsdu_size_8K)
 		ht_info->cap |= IEEE80211_HT_CAP_MAX_AMSDU;
@@ -910,7 +909,7 @@ iwl_parse_eeprom_data(struct device *dev, const struct iwl_cfg *cfg,
 	kfree(data);
 	return NULL;
 }
-IWL_EXPORT_SYMBOL(iwl_parse_eeprom_data);
+EXPORT_SYMBOL_GPL(iwl_parse_eeprom_data);
 
 /* helper functions */
 int iwl_nvm_check_version(struct iwl_nvm_data *data,
@@ -929,4 +928,4 @@ int iwl_nvm_check_version(struct iwl_nvm_data *data,
 		data->calib_version,  trans->cfg->nvm_calib_ver);
 	return -EINVAL;
 }
-IWL_EXPORT_SYMBOL(iwl_nvm_check_version);
+EXPORT_SYMBOL_GPL(iwl_nvm_check_version);

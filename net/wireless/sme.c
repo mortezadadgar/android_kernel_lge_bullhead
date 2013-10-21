@@ -85,7 +85,6 @@ static int cfg80211_conn_scan(struct wireless_dev *wdev)
 	ASSERT_RTNL();
 	ASSERT_RDEV_LOCK(rdev);
 	ASSERT_WDEV_LOCK(wdev);
-	lockdep_assert_held(&rdev->sched_scan_mtx);
 
 	if (rdev->scan_req)
 		return -EBUSY;
@@ -160,7 +159,7 @@ static int cfg80211_conn_do_work(struct wireless_dev *wdev)
 {
 	struct cfg80211_registered_device *rdev = wiphy_to_dev(wdev->wiphy);
 	struct cfg80211_connect_params *params;
-	struct cfg80211_assoc_request req = {};
+	const u8 *prev_bssid = NULL;
 	int err;
 
 	ASSERT_WDEV_LOCK(wdev);
@@ -187,20 +186,15 @@ static int cfg80211_conn_do_work(struct wireless_dev *wdev)
 		BUG_ON(!rdev->ops->assoc);
 		wdev->conn->state = CFG80211_CONN_ASSOCIATING;
 		if (wdev->conn->prev_bssid_valid)
-			req.prev_bssid = wdev->conn->prev_bssid;
-		req.ie = params->ie;
-		req.ie_len = params->ie_len;
-		req.use_mfp = params->mfp != NL80211_MFP_NO;
-		req.crypto = params->crypto;
-		req.flags = params->flags;
-		req.ht_capa = params->ht_capa;
-		req.ht_capa_mask = params->ht_capa_mask;
-		req.vht_capa = params->vht_capa;
-		req.vht_capa_mask = params->vht_capa_mask;
-
-		err = __cfg80211_mlme_assoc(rdev, wdev->netdev, params->channel,
-					    params->bssid, params->ssid,
-					    params->ssid_len, &req);
+			prev_bssid = wdev->conn->prev_bssid;
+		err = __cfg80211_mlme_assoc(rdev, wdev->netdev,
+					    params->channel, params->bssid,
+					    prev_bssid,
+					    params->ssid, params->ssid_len,
+					    params->ie, params->ie_len,
+					    false, &params->crypto,
+					    params->flags, &params->ht_capa,
+					    &params->ht_capa_mask);
 		if (err)
 			__cfg80211_mlme_deauth(rdev, wdev->netdev, params->bssid,
 					       NULL, 0,
@@ -228,18 +222,14 @@ void cfg80211_conn_work(struct work_struct *work)
 	rtnl_lock();
 	cfg80211_lock_rdev(rdev);
 	mutex_lock(&rdev->devlist_mtx);
-	mutex_lock(&rdev->sched_scan_mtx);
 
 	list_for_each_entry(wdev, &rdev->wdev_list, list) {
-		if (!wdev->netdev)
-			continue;
-
 		wdev_lock(wdev);
 		if (!netif_running(wdev->netdev)) {
 			wdev_unlock(wdev);
 			continue;
 		}
-		if (wdev->sme_state != CFG80211_SME_CONNECTING || !wdev->conn) {
+		if (wdev->sme_state != CFG80211_SME_CONNECTING) {
 			wdev_unlock(wdev);
 			continue;
 		}
@@ -256,7 +246,6 @@ void cfg80211_conn_work(struct work_struct *work)
 		wdev_unlock(wdev);
 	}
 
-	mutex_unlock(&rdev->sched_scan_mtx);
 	mutex_unlock(&rdev->devlist_mtx);
 	cfg80211_unlock_rdev(rdev);
 	rtnl_unlock();
@@ -311,7 +300,7 @@ static void __cfg80211_sme_scan_done(struct net_device *dev)
 
 	bss = cfg80211_get_conn_bss(wdev);
 	if (bss) {
-		cfg80211_put_bss(&rdev->wiphy, bss);
+		cfg80211_put_bss(bss);
 	} else {
 		/* not found */
 		if (wdev->conn->state == CFG80211_CONN_SCAN_AGAIN)
@@ -330,9 +319,11 @@ void cfg80211_sme_scan_done(struct net_device *dev)
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
 
+	mutex_lock(&wiphy_to_dev(wdev->wiphy)->devlist_mtx);
 	wdev_lock(wdev);
 	__cfg80211_sme_scan_done(dev);
 	wdev_unlock(wdev);
+	mutex_unlock(&wiphy_to_dev(wdev->wiphy)->devlist_mtx);
 }
 
 void cfg80211_sme_rx_auth(struct net_device *dev,
@@ -472,7 +463,7 @@ void __cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 
 	if (wdev->current_bss) {
 		cfg80211_unhold_bss(wdev->current_bss);
-		cfg80211_put_bss(wdev->wiphy, &wdev->current_bss->pub);
+		cfg80211_put_bss(&wdev->current_bss->pub);
 		wdev->current_bss = NULL;
 	}
 
@@ -488,7 +479,7 @@ void __cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 		kfree(wdev->connect_keys);
 		wdev->connect_keys = NULL;
 		wdev->ssid_len = 0;
-		cfg80211_put_bss(wdev->wiphy, bss);
+		cfg80211_put_bss(bss);
 		return;
 	}
 
@@ -528,8 +519,10 @@ void __cfg80211_connect_result(struct net_device *dev, const u8 *bssid,
 	 * - country_ie + 2, the start of the country ie data, and
 	 * - and country_ie[1] which is the IE length
 	 */
-	regulatory_hint_11d(wdev->wiphy, bss->channel->band,
-			    country_ie + 2, country_ie[1]);
+	regulatory_hint_11d(wdev->wiphy,
+			    bss->channel->band,
+			    country_ie + 2,
+			    country_ie[1]);
 	kfree(country_ie);
 }
 
@@ -594,7 +587,7 @@ void __cfg80211_roamed(struct wireless_dev *wdev,
 	}
 
 	cfg80211_unhold_bss(wdev->current_bss);
-	cfg80211_put_bss(wdev->wiphy, &wdev->current_bss->pub);
+	cfg80211_put_bss(&wdev->current_bss->pub);
 	wdev->current_bss = NULL;
 
 	cfg80211_hold_bss(bss_from_pub(bss));
@@ -629,7 +622,7 @@ void __cfg80211_roamed(struct wireless_dev *wdev,
 
 	return;
 out:
-	cfg80211_put_bss(wdev->wiphy, bss);
+	cfg80211_put_bss(bss);
 }
 
 void cfg80211_roamed(struct net_device *dev,
@@ -671,7 +664,7 @@ void cfg80211_roamed_bss(struct net_device *dev,
 
 	ev = kzalloc(sizeof(*ev) + req_ie_len + resp_ie_len, gfp);
 	if (!ev) {
-		cfg80211_put_bss(wdev->wiphy, bss);
+		cfg80211_put_bss(bss);
 		return;
 	}
 
@@ -712,7 +705,7 @@ void __cfg80211_disconnected(struct net_device *dev, const u8 *ie,
 
 	if (wdev->current_bss) {
 		cfg80211_unhold_bss(wdev->current_bss);
-		cfg80211_put_bss(wdev->wiphy, &wdev->current_bss->pub);
+		cfg80211_put_bss(&wdev->current_bss->pub);
 	}
 
 	wdev->current_bss = NULL;
@@ -883,7 +876,7 @@ int __cfg80211_connect(struct cfg80211_registered_device *rdev,
 		if (bss) {
 			wdev->conn->state = CFG80211_CONN_AUTHENTICATE_NEXT;
 			err = cfg80211_conn_do_work(wdev);
-			cfg80211_put_bss(wdev->wiphy, bss);
+			cfg80211_put_bss(bss);
 		} else {
 			/* otherwise we'll need to scan for the AP first */
 			err = cfg80211_conn_scan(wdev);
@@ -932,12 +925,9 @@ int cfg80211_connect(struct cfg80211_registered_device *rdev,
 	int err;
 
 	mutex_lock(&rdev->devlist_mtx);
-	/* might request scan - scan_mtx -> wdev_mtx dependency */
-	mutex_lock(&rdev->sched_scan_mtx);
 	wdev_lock(dev->ieee80211_ptr);
 	err = __cfg80211_connect(rdev, dev, connect, connkeys, NULL);
 	wdev_unlock(dev->ieee80211_ptr);
-	mutex_unlock(&rdev->sched_scan_mtx);
 	mutex_unlock(&rdev->devlist_mtx);
 
 	return err;
@@ -964,7 +954,7 @@ int __cfg80211_disconnect(struct cfg80211_registered_device *rdev,
 		/* was it connected by userspace SME? */
 		if (!wdev->conn) {
 			cfg80211_mlme_down(rdev, dev);
-			goto disconnect;
+			return 0;
 		}
 
 		if (wdev->sme_state == CFG80211_SME_CONNECTING &&
@@ -990,7 +980,6 @@ int __cfg80211_disconnect(struct cfg80211_registered_device *rdev,
 			return err;
 	}
 
- disconnect:
 	if (wdev->sme_state == CFG80211_SME_CONNECTED)
 		__cfg80211_disconnected(dev, NULL, 0, 0, false);
 	else if (wdev->sme_state == CFG80211_SME_CONNECTING)

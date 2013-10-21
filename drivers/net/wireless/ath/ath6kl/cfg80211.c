@@ -402,7 +402,7 @@ static bool ath6kl_is_valid_iftype(struct ath6kl *ar, enum nl80211_iftype type,
 	if (type == NL80211_IFTYPE_STATION ||
 	    type == NL80211_IFTYPE_AP || type == NL80211_IFTYPE_ADHOC) {
 		for (i = 0; i < ar->vif_max; i++) {
-			if ((ar->avail_idx_map) & BIT(i)) {
+			if ((ar->avail_idx_map >> i) & BIT(0)) {
 				*if_idx = i;
 				return true;
 			}
@@ -412,7 +412,7 @@ static bool ath6kl_is_valid_iftype(struct ath6kl *ar, enum nl80211_iftype type,
 	if (type == NL80211_IFTYPE_P2P_CLIENT ||
 	    type == NL80211_IFTYPE_P2P_GO) {
 		for (i = ar->max_norm_iface; i < ar->vif_max; i++) {
-			if ((ar->avail_idx_map) & BIT(i)) {
+			if ((ar->avail_idx_map >> i) & BIT(0)) {
 				*if_idx = i;
 				return true;
 			}
@@ -427,30 +427,6 @@ static bool ath6kl_is_tx_pending(struct ath6kl *ar)
 	return ar->tx_pending[ath6kl_wmi_get_control_ep(ar->wmi)] == 0;
 }
 
-static void ath6kl_cfg80211_sta_bmiss_enhance(struct ath6kl_vif *vif,
-					      bool enable)
-{
-	int err;
-
-	if (WARN_ON(!test_bit(WMI_READY, &vif->ar->flag)))
-		return;
-
-	if (vif->nw_type != INFRA_NETWORK)
-		return;
-
-	if (!test_bit(ATH6KL_FW_CAPABILITY_BMISS_ENHANCE,
-		      vif->ar->fw_capabilities))
-		return;
-
-	ath6kl_dbg(ATH6KL_DBG_WLAN_CFG, "%s fw bmiss enhance\n",
-		   enable ? "enable" : "disable");
-
-	err = ath6kl_wmi_sta_bmiss_enhance_cmd(vif->ar->wmi,
-					       vif->fw_vif_idx, enable);
-	if (err)
-		ath6kl_err("failed to %s enhanced bmiss detection: %d\n",
-			   enable ? "enable" : "disable", err);
-}
 
 static int ath6kl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 				   struct cfg80211_connect_params *sme)
@@ -640,13 +616,13 @@ static int ath6kl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 					vif->req_bssid, vif->ch_hint,
 					ar->connect_ctrl_flags, nw_subtype);
 
-	if (sme->bg_scan_period == 0) {
-		/* disable background scan if period is 0 */
+	/* disable background scan if period is 0 */
+	if (sme->bg_scan_period == 0)
 		sme->bg_scan_period = 0xffff;
-	} else if (sme->bg_scan_period == -1) {
-		/* configure default value if not specified */
+
+	/* configure default value if not specified */
+	if (sme->bg_scan_period == -1)
 		sme->bg_scan_period = DEFAULT_BG_SCAN_PERIOD;
-	}
 
 	ath6kl_wmi_scanparams_cmd(ar->wmi, vif->fw_vif_idx, 0, 0,
 				  sme->bg_scan_period, 0, 0, 0, 3, 0, 0, 0);
@@ -791,7 +767,7 @@ void ath6kl_cfg80211_connect_event(struct ath6kl_vif *vif, u16 channel,
 		ath6kl_dbg(ATH6KL_DBG_WLAN_CFG, "ad-hoc %s selected\n",
 			   nw_type & ADHOC_CREATOR ? "creator" : "joiner");
 		cfg80211_ibss_joined(vif->ndev, bssid, GFP_KERNEL);
-		cfg80211_put_bss(ar->wiphy, bss);
+		cfg80211_put_bss(bss);
 		return;
 	}
 
@@ -802,7 +778,7 @@ void ath6kl_cfg80211_connect_event(struct ath6kl_vif *vif, u16 channel,
 					assoc_req_ie, assoc_req_len,
 					assoc_resp_ie, assoc_resp_len,
 					WLAN_STATUS_SUCCESS, GFP_KERNEL);
-		cfg80211_put_bss(ar->wiphy, bss);
+		cfg80211_put_bss(bss);
 	} else if (vif->sme_state == SME_CONNECTED) {
 		/* inform roam event to cfg80211 */
 		cfg80211_roamed_bss(vif->ndev, bss, assoc_req_ie, assoc_req_len,
@@ -1478,10 +1454,10 @@ static int ath6kl_cfg80211_set_power_mgmt(struct wiphy *wiphy,
 		return -EIO;
 
 	if (pmgmt) {
-		ath6kl_dbg(ATH6KL_DBG_WLAN_CFG, "%s: rec power\n", __func__);
+		ath6kl_dbg(ATH6KL_DBG_WLAN_CFG, "%s: max perf\n", __func__);
 		mode.pwr_mode = REC_POWER;
 	} else {
-		ath6kl_dbg(ATH6KL_DBG_WLAN_CFG, "%s: max perf\n", __func__);
+		ath6kl_dbg(ATH6KL_DBG_WLAN_CFG, "%s: rec power\n", __func__);
 		mode.pwr_mode = MAX_PERF_POWER;
 	}
 
@@ -1533,11 +1509,9 @@ static int ath6kl_cfg80211_del_iface(struct wiphy *wiphy,
 	list_del(&vif->list);
 	spin_unlock_bh(&ar->list_lock);
 
-	ath6kl_cfg80211_vif_stop(vif, test_bit(WMI_READY, &ar->flag));
+	ath6kl_cleanup_vif(vif, test_bit(WMI_READY, &ar->flag));
 
-	rtnl_lock();
 	ath6kl_cfg80211_vif_cleanup(vif);
-	rtnl_unlock();
 
 	return 0;
 }
@@ -1585,13 +1559,17 @@ static int ath6kl_cfg80211_change_iface(struct wiphy *wiphy,
 set_iface_type:
 	switch (type) {
 	case NL80211_IFTYPE_STATION:
-	case NL80211_IFTYPE_P2P_CLIENT:
 		vif->next_mode = INFRA_NETWORK;
 		break;
 	case NL80211_IFTYPE_ADHOC:
 		vif->next_mode = ADHOC_NETWORK;
 		break;
 	case NL80211_IFTYPE_AP:
+		vif->next_mode = AP_NETWORK;
+		break;
+	case NL80211_IFTYPE_P2P_CLIENT:
+		vif->next_mode = INFRA_NETWORK;
+		break;
 	case NL80211_IFTYPE_P2P_GO:
 		vif->next_mode = AP_NETWORK;
 		break;
@@ -1800,14 +1778,14 @@ static int ath6kl_get_station(struct wiphy *wiphy, struct net_device *dev,
 
 	if (vif->target_stats.rx_byte) {
 		sinfo->rx_bytes = vif->target_stats.rx_byte;
-		sinfo->filled |= STATION_INFO_RX_BYTES64;
+		sinfo->filled |= STATION_INFO_RX_BYTES;
 		sinfo->rx_packets = vif->target_stats.rx_pkt;
 		sinfo->filled |= STATION_INFO_RX_PACKETS;
 	}
 
 	if (vif->target_stats.tx_byte) {
 		sinfo->tx_bytes = vif->target_stats.tx_byte;
-		sinfo->filled |= STATION_INFO_TX_BYTES64;
+		sinfo->filled |= STATION_INFO_TX_BYTES;
 		sinfo->tx_packets = vif->target_stats.tx_pkt;
 		sinfo->filled |= STATION_INFO_TX_PACKETS;
 	}
@@ -2695,6 +2673,30 @@ static int ath6kl_set_ies(struct ath6kl_vif *vif,
 	return 0;
 }
 
+void ath6kl_cfg80211_sta_bmiss_enhance(struct ath6kl_vif *vif, bool enable)
+{
+	int err;
+
+	if (WARN_ON(!test_bit(WMI_READY, &vif->ar->flag)))
+		return;
+
+	if (vif->nw_type != INFRA_NETWORK)
+		return;
+
+	if (!test_bit(ATH6KL_FW_CAPABILITY_BMISS_ENHANCE,
+		      vif->ar->fw_capabilities))
+		return;
+
+	ath6kl_dbg(ATH6KL_DBG_WLAN_CFG, "%s fw bmiss enhance\n",
+		   enable ? "enable" : "disable");
+
+	err = ath6kl_wmi_sta_bmiss_enhance_cmd(vif->ar->wmi,
+					       vif->fw_vif_idx, enable);
+	if (err)
+		ath6kl_err("failed to %s enhanced bmiss detection: %d\n",
+			   enable ? "enable" : "disable", err);
+}
+
 static int ath6kl_get_rsn_capab(struct cfg80211_beacon_data *beacon,
 				u8 *rsn_capab)
 {
@@ -2774,11 +2776,9 @@ static int ath6kl_start_ap(struct wiphy *wiphy, struct net_device *dev,
 
 	ar->ap_mode_bkey.valid = false;
 
-	ret = ath6kl_wmi_ap_set_beacon_intvl_cmd(ar->wmi, vif->fw_vif_idx,
-						 info->beacon_interval);
-
-	if (ret)
-		ath6kl_warn("Failed to set beacon interval: %d\n", ret);
+	/* TODO:
+	 * info->interval
+	 */
 
 	ret = ath6kl_wmi_ap_set_dtim_cmd(ar->wmi, vif->fw_vif_idx,
 					 info->dtim_period);
@@ -2992,15 +2992,13 @@ static int ath6kl_change_station(struct wiphy *wiphy, struct net_device *dev,
 {
 	struct ath6kl *ar = ath6kl_priv(dev);
 	struct ath6kl_vif *vif = netdev_priv(dev);
-	int err;
 
 	if (vif->nw_type != AP_NETWORK)
 		return -EOPNOTSUPP;
 
-	err = cfg80211_check_station_change(wiphy, params,
-					    CFG80211_STA_AP_MLME_CLIENT);
-	if (err)
-		return err;
+	/* Use this only for authorizing/unauthorizing a station */
+	if (!(params->sta_flags_mask & BIT(NL80211_STA_FLAG_AUTHORIZED)))
+		return -EOPNOTSUPP;
 
 	if (params->sta_flags_set & BIT(NL80211_STA_FLAG_AUTHORIZED))
 		return ath6kl_wmi_ap_set_mlme(ar->wmi, vif->fw_vif_idx,
@@ -3494,8 +3492,8 @@ void ath6kl_cfg80211_stop_all(struct ath6kl *ar)
 		ath6kl_cfg80211_stop(vif);
 }
 
-static void ath6kl_cfg80211_reg_notify(struct wiphy *wiphy,
-				       struct regulatory_request *request)
+static int ath6kl_cfg80211_reg_notify(struct wiphy *wiphy,
+				      struct regulatory_request *request)
 {
 	struct ath6kl *ar = wiphy_priv(wiphy);
 	u32 rates[IEEE80211_NUM_BANDS];
@@ -3508,13 +3506,17 @@ static void ath6kl_cfg80211_reg_notify(struct wiphy *wiphy,
 		   request->processed ? " processed" : "",
 		   request->initiator, request->user_reg_hint_type);
 
+	/*
+	 * As firmware is not able intersect regdoms, we can only listen to
+	 * cellular hints.
+	 */
 	if (request->user_reg_hint_type != NL80211_USER_REG_HINT_CELL_BASE)
-		return;
+		return -EOPNOTSUPP;
 
 	ret = ath6kl_wmi_set_regdomain_cmd(ar->wmi, request->alpha2);
 	if (ret) {
 		ath6kl_err("failed to set regdomain: %d\n", ret);
-		return;
+		return ret;
 	}
 
 	/*
@@ -3534,8 +3536,10 @@ static void ath6kl_cfg80211_reg_notify(struct wiphy *wiphy,
 	if (ret) {
 		ath6kl_err("failed to start scan for a regdomain change: %d\n",
 			   ret);
-		return;
+		return ret;
 	}
+
+	return 0;
 }
 
 static int ath6kl_cfg80211_vif_init(struct ath6kl_vif *vif)
@@ -3557,37 +3561,6 @@ static int ath6kl_cfg80211_vif_init(struct ath6kl_vif *vif)
 	INIT_LIST_HEAD(&vif->mc_filter);
 
 	return 0;
-}
-
-void ath6kl_cfg80211_vif_stop(struct ath6kl_vif *vif, bool wmi_ready)
-{
-	static u8 bcast_mac[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-	bool discon_issued;
-
-	netif_stop_queue(vif->ndev);
-
-	clear_bit(WLAN_ENABLED, &vif->flags);
-
-	if (wmi_ready) {
-		discon_issued = test_bit(CONNECTED, &vif->flags) ||
-				test_bit(CONNECT_PEND, &vif->flags);
-		ath6kl_disconnect(vif);
-		del_timer(&vif->disconnect_timer);
-
-		if (discon_issued)
-			ath6kl_disconnect_event(vif, DISCONNECT_CMD,
-						(vif->nw_type & AP_NETWORK) ?
-						bcast_mac : vif->bssid,
-						0, NULL, 0);
-	}
-
-	if (vif->scan_req) {
-		cfg80211_scan_done(vif->scan_req, true);
-		vif->scan_req = NULL;
-	}
-
-	/* need to clean up enhanced bmiss detection fw state */
-	ath6kl_cfg80211_sta_bmiss_enhance(vif, false);
 }
 
 void ath6kl_cfg80211_vif_cleanup(struct ath6kl_vif *vif)
@@ -3663,6 +3636,7 @@ struct wireless_dev *ath6kl_interface_add(struct ath6kl *ar, const char *name,
 	vif->sme_state = SME_DISCONNECTED;
 	set_bit(WLAN_ENABLED, &vif->flags);
 	ar->wlan_pwr_state = WLAN_POWER_STATE_ON;
+	set_bit(NETDEV_REGISTERED, &vif->flags);
 
 	if (type == NL80211_IFTYPE_ADHOC)
 		ar->ibss_if_active = true;

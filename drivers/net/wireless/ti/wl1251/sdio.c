@@ -186,10 +186,8 @@ static int wl1251_sdio_set_power(struct wl1251 *wl, bool enable)
 			wl->set_power(true);
 
 		ret = pm_runtime_get_sync(&func->dev);
-		if (ret < 0) {
-			pm_runtime_put_sync(&func->dev);
+		if (ret < 0)
 			goto out;
-		}
 
 		sdio_claim_host(func);
 		sdio_enable_func(func);

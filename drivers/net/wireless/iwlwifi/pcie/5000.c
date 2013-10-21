@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2013 Intel Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2012 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -29,6 +29,7 @@
 #include "iwl-config.h"
 #include "iwl-agn-hw.h"
 #include "iwl-csr.h"
+#include "cfg.h"
 
 /* Highest firmware API version supported */
 #define IWL5000_UCODE_API_MAX 5

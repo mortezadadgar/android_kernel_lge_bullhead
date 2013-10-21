@@ -2720,7 +2720,7 @@ static int b43legacy_op_dev_config(struct ieee80211_hw *hw,
 		goto out_unlock_mutex;
 
 	/* Switch the PHY mode (if necessary). */
-	switch (conf->chandef.chan->band) {
+	switch (conf->channel->band) {
 	case IEEE80211_BAND_2GHZ:
 		if (phy->type == B43legacy_PHYTYPE_B)
 			new_phymode = B43legacy_PHYMODE_B;
@@ -2748,9 +2748,8 @@ static int b43legacy_op_dev_config(struct ieee80211_hw *hw,
 
 	/* Switch to the requested channel.
 	 * The firmware takes care of races with the TX handler. */
-	if (conf->chandef.chan->hw_value != phy->channel)
-		b43legacy_radio_selectchannel(dev, conf->chandef.chan->hw_value,
-					      0);
+	if (conf->channel->hw_value != phy->channel)
+		b43legacy_radio_selectchannel(dev, conf->channel->hw_value, 0);
 
 	dev->wl->radiotap_enabled = !!(conf->flags & IEEE80211_CONF_MONITOR);
 
@@ -3559,7 +3558,7 @@ static int b43legacy_op_get_survey(struct ieee80211_hw *hw, int idx,
 	if (idx != 0)
 		return -ENOENT;
 
-	survey->channel = conf->chandef.chan;
+	survey->channel = conf->channel;
 	survey->filled = SURVEY_INFO_NOISE_DBM;
 	survey->noise = dev->stats.link_noise;
 

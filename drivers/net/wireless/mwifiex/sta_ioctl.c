@@ -59,6 +59,9 @@ int mwifiex_wait_queue_complete(struct mwifiex_adapter *adapter,
 {
 	int status;
 
+	dev_dbg(adapter->dev, "cmd pending\n");
+	atomic_inc(&adapter->cmd_pending);
+
 	/* Wait for completion */
 	status = wait_event_interruptible(adapter->cmd_wait_q.wait,
 					  *(cmd_queued->condition));
@@ -96,7 +99,7 @@ int mwifiex_request_set_multicast_list(struct mwifiex_private *priv,
 	} else {
 		/* Multicast */
 		priv->curr_pkt_filter &= ~HostCmd_ACT_MAC_PROMISCUOUS_ENABLE;
-		if (mcast_list->mode == MWIFIEX_ALL_MULTI_MODE) {
+		if (mcast_list->mode == MWIFIEX_MULTICAST_MODE) {
 			dev_dbg(priv->adapter->dev,
 				"info: Enabling All Multicast!\n");
 			priv->curr_pkt_filter |=
@@ -108,11 +111,20 @@ int mwifiex_request_set_multicast_list(struct mwifiex_private *priv,
 				dev_dbg(priv->adapter->dev,
 					"info: Set multicast list=%d\n",
 				       mcast_list->num_multicast_addr);
-				/* Send multicast addresses to firmware */
-				ret = mwifiex_send_cmd_async(priv,
-					HostCmd_CMD_MAC_MULTICAST_ADR,
-					HostCmd_ACT_GEN_SET, 0,
-					mcast_list);
+				/* Set multicast addresses to firmware */
+				if (old_pkt_filter == priv->curr_pkt_filter) {
+					/* Send request to firmware */
+					ret = mwifiex_send_cmd_async(priv,
+						HostCmd_CMD_MAC_MULTICAST_ADR,
+						HostCmd_ACT_GEN_SET, 0,
+						mcast_list);
+				} else {
+					/* Send request to firmware */
+					ret = mwifiex_send_cmd_async(priv,
+						HostCmd_CMD_MAC_MULTICAST_ADR,
+						HostCmd_ACT_GEN_SET, 0,
+						mcast_list);
+				}
 			}
 		}
 	}
@@ -131,13 +143,12 @@ int mwifiex_request_set_multicast_list(struct mwifiex_private *priv,
 /*
  * This function fills bss descriptor structure using provided
  * information.
- * beacon_ie buffer is allocated in this function. It is caller's
- * responsibility to free the memory.
  */
 int mwifiex_fill_new_bss_desc(struct mwifiex_private *priv,
 			      struct cfg80211_bss *bss,
 			      struct mwifiex_bssdescriptor *bss_desc)
 {
+	int ret;
 	u8 *beacon_ie;
 	size_t beacon_ie_len;
 	struct mwifiex_bss_priv *bss_priv = (void *)bss->priv;
@@ -145,9 +156,13 @@ int mwifiex_fill_new_bss_desc(struct mwifiex_private *priv,
 
 	rcu_read_lock();
 	ies = rcu_dereference(bss->ies);
+	if (WARN_ON(!ies)) {
+		/* should never happen */
+		rcu_read_unlock();
+		return -EINVAL;
+	}
 	beacon_ie = kmemdup(ies->data, ies->len, GFP_ATOMIC);
 	beacon_ie_len = ies->len;
-	bss_desc->timestamp = ies->tsf;
 	rcu_read_unlock();
 
 	if (!beacon_ie) {
@@ -157,13 +172,13 @@ int mwifiex_fill_new_bss_desc(struct mwifiex_private *priv,
 
 	memcpy(bss_desc->mac_address, bss->bssid, ETH_ALEN);
 	bss_desc->rssi = bss->signal;
-	/* The caller of this function will free beacon_ie */
 	bss_desc->beacon_buf = beacon_ie;
 	bss_desc->beacon_buf_size = beacon_ie_len;
 	bss_desc->beacon_period = bss->beacon_interval;
 	bss_desc->cap_info_bitmap = bss->capability;
 	bss_desc->bss_band = bss_priv->band;
 	bss_desc->fw_tsf = bss_priv->fw_tsf;
+	bss_desc->timestamp = bss->tsf;
 	if (bss_desc->cap_info_bitmap & WLAN_CAPABILITY_PRIVACY) {
 		dev_dbg(priv->adapter->dev, "info: InterpretIE: AP WEP enabled\n");
 		bss_desc->privacy = MWIFIEX_802_11_PRIV_FILTER_8021X_WEP;
@@ -175,12 +190,10 @@ int mwifiex_fill_new_bss_desc(struct mwifiex_private *priv,
 	else
 		bss_desc->bss_mode = NL80211_IFTYPE_STATION;
 
-	/* Disable 11ac by default. Enable it only where there
-	 * exist VHT_CAP IE in AP beacon
-	 */
-	bss_desc->disable_11ac = true;
+	ret = mwifiex_update_bss_desc_with_ie(priv->adapter, bss_desc);
 
-	return mwifiex_update_bss_desc_with_ie(priv->adapter, bss_desc);
+	kfree(beacon_ie);
+	return ret;
 }
 
 static int mwifiex_process_country_ie(struct mwifiex_private *priv,
@@ -247,9 +260,11 @@ int mwifiex_bss_start(struct mwifiex_private *priv, struct cfg80211_bss *bss,
 
 		/* Allocate and fill new bss descriptor */
 		bss_desc = kzalloc(sizeof(struct mwifiex_bssdescriptor),
-				   GFP_KERNEL);
-		if (!bss_desc)
+				GFP_KERNEL);
+		if (!bss_desc) {
+			dev_err(priv->adapter->dev, " failed to alloc bss_desc\n");
 			return -ENOMEM;
+		}
 
 		ret = mwifiex_fill_new_bss_desc(priv, bss, bss_desc);
 		if (ret)
@@ -267,10 +282,9 @@ int mwifiex_bss_start(struct mwifiex_private *priv, struct cfg80211_bss *bss,
 
 			if (mwifiex_band_to_radio_type((u8) bss_desc->bss_band)
 			    == HostCmd_SCAN_RADIO_TYPE_BG)
-				config_bands = BAND_B | BAND_G | BAND_GN |
-					       BAND_GAC;
+				config_bands = BAND_B | BAND_G | BAND_GN;
 			else
-				config_bands = BAND_A | BAND_AN | BAND_AAC;
+				config_bands = BAND_A | BAND_AN;
 
 			if (!((config_bands | adapter->fw_bands) &
 			      ~adapter->fw_bands))
@@ -304,7 +318,7 @@ int mwifiex_bss_start(struct mwifiex_private *priv, struct cfg80211_bss *bss,
 		}
 
 		if (bss)
-			cfg80211_put_bss(priv->adapter->wiphy, bss);
+			cfg80211_put_bss(bss);
 	} else {
 		/* Adhoc mode */
 		/* If the requested SSID matches current SSID, return */
@@ -334,7 +348,7 @@ int mwifiex_bss_start(struct mwifiex_private *priv, struct cfg80211_bss *bss,
 							" list. Joining...\n");
 			ret = mwifiex_adhoc_join(priv, bss_desc);
 			if (bss)
-				cfg80211_put_bss(priv->adapter->wiphy, bss);
+				cfg80211_put_bss(bss);
 		} else {
 			dev_dbg(adapter->dev, "info: Network not found in "
 				"the list, creating adhoc with ssid = %s\n",
@@ -344,11 +358,6 @@ int mwifiex_bss_start(struct mwifiex_private *priv, struct cfg80211_bss *bss,
 	}
 
 done:
-	/* beacon_ie buffer was allocated in function
-	 * mwifiex_fill_new_bss_desc(). Free it now.
-	 */
-	if (bss_desc)
-		kfree(bss_desc->beacon_buf);
 	kfree(bss_desc);
 	return ret;
 }
@@ -379,7 +388,7 @@ static int mwifiex_set_hs_params(struct mwifiex_private *priv, u16 action,
 			break;
 		}
 		if (hs_cfg->is_invoke_hostcmd) {
-			if (hs_cfg->conditions == HS_CFG_CANCEL) {
+			if (hs_cfg->conditions == HOST_SLEEP_CFG_CANCEL) {
 				if (!adapter->is_hs_configured)
 					/* Already cancelled */
 					break;
@@ -394,8 +403,8 @@ static int mwifiex_set_hs_params(struct mwifiex_private *priv, u16 action,
 				adapter->hs_cfg.gpio = (u8)hs_cfg->gpio;
 				if (hs_cfg->gap)
 					adapter->hs_cfg.gap = (u8)hs_cfg->gap;
-			} else if (adapter->hs_cfg.conditions ==
-				   cpu_to_le32(HS_CFG_CANCEL)) {
+			} else if (adapter->hs_cfg.conditions
+				   == cpu_to_le32(HOST_SLEEP_CFG_CANCEL)) {
 				/* Return failure if no parameters for HS
 				   enable */
 				status = -1;
@@ -411,7 +420,7 @@ static int mwifiex_set_hs_params(struct mwifiex_private *priv, u16 action,
 						HostCmd_CMD_802_11_HS_CFG_ENH,
 						HostCmd_ACT_GEN_SET, 0,
 						&adapter->hs_cfg);
-			if (hs_cfg->conditions == HS_CFG_CANCEL)
+			if (hs_cfg->conditions == HOST_SLEEP_CFG_CANCEL)
 				/* Restore previous condition */
 				adapter->hs_cfg.conditions =
 						cpu_to_le32(prev_cond);
@@ -445,7 +454,7 @@ int mwifiex_cancel_hs(struct mwifiex_private *priv, int cmd_type)
 {
 	struct mwifiex_ds_hs_cfg hscfg;
 
-	hscfg.conditions = HS_CFG_CANCEL;
+	hscfg.conditions = HOST_SLEEP_CFG_CANCEL;
 	hscfg.is_invoke_hostcmd = true;
 
 	return mwifiex_set_hs_params(priv, HostCmd_ACT_GEN_SET,
@@ -621,8 +630,11 @@ int mwifiex_set_tx_power(struct mwifiex_private *priv,
 		}
 	}
 	buf = kzalloc(MWIFIEX_SIZE_OF_CMD_BUFFER, GFP_KERNEL);
-	if (!buf)
+	if (!buf) {
+		dev_err(priv->adapter->dev, "%s: failed to alloc cmd buffer\n",
+			__func__);
 		return -ENOMEM;
+	}
 
 	txp_cfg = (struct host_cmd_ds_txpwr_cfg *) buf;
 	txp_cfg->action = cpu_to_le16(HostCmd_ACT_GEN_SET);

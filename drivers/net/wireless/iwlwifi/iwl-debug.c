@@ -22,7 +22,7 @@
  * USA
  *
  * The full GNU General Public License is included in this distribution
- * in the file called COPYING.
+ * in the file called LICENSE.GPL.
  *
  * Contact Information:
  *  Intel Linux Wireless <ilw@linux.intel.com>
@@ -66,7 +66,6 @@
 #include <linux/device.h>
 #include <linux/interrupt.h>
 #include <linux/export.h>
-#include "iwl-drv.h"
 #include "iwl-debug.h"
 #include "iwl-devtrace.h"
 
@@ -86,11 +85,11 @@ void __iwl_ ##fn(struct device *dev, const char *fmt, ...)	\
 }
 
 __iwl_fn(warn)
-IWL_EXPORT_SYMBOL(__iwl_warn);
+EXPORT_SYMBOL_GPL(__iwl_warn);
 __iwl_fn(info)
-IWL_EXPORT_SYMBOL(__iwl_info);
+EXPORT_SYMBOL_GPL(__iwl_info);
 __iwl_fn(crit)
-IWL_EXPORT_SYMBOL(__iwl_crit);
+EXPORT_SYMBOL_GPL(__iwl_crit);
 
 void __iwl_err(struct device *dev, bool rfkill_prefix, bool trace_only,
 		const char *fmt, ...)
@@ -111,7 +110,7 @@ void __iwl_err(struct device *dev, bool rfkill_prefix, bool trace_only,
 	trace_iwlwifi_err(&vaf);
 	va_end(args);
 }
-IWL_EXPORT_SYMBOL(__iwl_err);
+EXPORT_SYMBOL_GPL(__iwl_err);
 
 #if defined(CONFIG_IWLWIFI_DEBUG) || defined(CONFIG_IWLWIFI_DEVICE_TRACING)
 void __iwl_dbg(struct device *dev,
@@ -134,5 +133,5 @@ void __iwl_dbg(struct device *dev,
 	trace_iwlwifi_dbg(level, in_interrupt(), function, &vaf);
 	va_end(args);
 }
-IWL_EXPORT_SYMBOL(__iwl_dbg);
+EXPORT_SYMBOL_GPL(__iwl_dbg);
 #endif

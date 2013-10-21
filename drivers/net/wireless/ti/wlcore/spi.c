@@ -270,7 +270,7 @@ static int __must_check wl12xx_spi_raw_write(struct device *child, int addr,
 					     void *buf, size_t len, bool fixed)
 {
 	struct wl12xx_spi_glue *glue = dev_get_drvdata(child->parent);
-	struct spi_transfer t[2 * (WSPI_MAX_NUM_OF_CHUNKS + 1)];
+	struct spi_transfer t[2 * WSPI_MAX_NUM_OF_CHUNKS];
 	struct spi_message m;
 	u32 commands[WSPI_MAX_NUM_OF_CHUNKS];
 	u32 *cmd;
@@ -327,27 +327,22 @@ static struct wl1271_if_operations spi_ops = {
 static int wl1271_probe(struct spi_device *spi)
 {
 	struct wl12xx_spi_glue *glue;
-	struct wlcore_platdev_data *pdev_data;
+	struct wl12xx_platform_data *pdata;
 	struct resource res[1];
 	int ret = -ENOMEM;
 
-	pdev_data = kzalloc(sizeof(*pdev_data), GFP_KERNEL);
-	if (!pdev_data)
-		goto out;
-
-	pdev_data->pdata = spi->dev.platform_data;
-	if (!pdev_data->pdata) {
+	pdata = spi->dev.platform_data;
+	if (!pdata) {
 		dev_err(&spi->dev, "no platform data\n");
-		ret = -ENODEV;
-		goto out_free_pdev_data;
+		return -ENODEV;
 	}
 
-	pdev_data->if_ops = &spi_ops;
+	pdata->ops = &spi_ops;
 
 	glue = kzalloc(sizeof(*glue), GFP_KERNEL);
 	if (!glue) {
 		dev_err(&spi->dev, "can't allocate glue\n");
-		goto out_free_pdev_data;
+		goto out;
 	}
 
 	glue->dev = &spi->dev;
@@ -364,7 +359,7 @@ static int wl1271_probe(struct spi_device *spi)
 		goto out_free_glue;
 	}
 
-	glue->core = platform_device_alloc("wl12xx", PLATFORM_DEVID_AUTO);
+	glue->core = platform_device_alloc("wl12xx", -1);
 	if (!glue->core) {
 		dev_err(glue->dev, "can't allocate platform_device\n");
 		ret = -ENOMEM;
@@ -385,8 +380,7 @@ static int wl1271_probe(struct spi_device *spi)
 		goto out_dev_put;
 	}
 
-	ret = platform_device_add_data(glue->core, pdev_data,
-				       sizeof(*pdev_data));
+	ret = platform_device_add_data(glue->core, pdata, sizeof(*pdata));
 	if (ret) {
 		dev_err(glue->dev, "can't add platform data\n");
 		goto out_dev_put;
@@ -405,10 +399,6 @@ out_dev_put:
 
 out_free_glue:
 	kfree(glue);
-
-out_free_pdev_data:
-	kfree(pdev_data);
-
 out:
 	return ret;
 }
@@ -417,7 +407,8 @@ static int wl1271_remove(struct spi_device *spi)
 {
 	struct wl12xx_spi_glue *glue = spi_get_drvdata(spi);
 
-	platform_device_unregister(glue->core);
+	platform_device_del(glue->core);
+	platform_device_put(glue->core);
 	kfree(glue);
 
 	return 0;

@@ -240,14 +240,13 @@ static const struct ath_ops ath5k_common_ops = {
 * Driver Initialization *
 \***********************/
 
-static void ath5k_reg_notifier(struct wiphy *wiphy,
-			       struct regulatory_request *request)
+static int ath5k_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request)
 {
 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
 	struct ath5k_hw *ah = hw->priv;
 	struct ath_regulatory *regulatory = ath5k_hw_regulatory(ah);
 
-	ath_reg_notifier_apply(wiphy, request, regulatory);
+	return ath_reg_notifier_apply(wiphy, request, regulatory);
 }
 
 /********************\
@@ -2369,9 +2368,6 @@ ath5k_tx_complete_poll_work(struct work_struct *work)
 	int i;
 	bool needreset = false;
 
-	if (!test_bit(ATH_STAT_STARTED, ah->status))
-		return;
-
 	mutex_lock(&ah->lock);
 
 	for (i = 0; i < ARRAY_SIZE(ah->txqs); i++) {
@@ -2642,7 +2638,7 @@ int ath5k_start(struct ieee80211_hw *hw)
 	 * be followed by initialization of the appropriate bits
 	 * and then setup of the interrupt mask.
 	 */
-	ah->curchan = ah->hw->conf.chandef.chan;
+	ah->curchan = ah->hw->conf.channel;
 	ah->imask = AR5K_INT_RXOK
 		| AR5K_INT_RXERR
 		| AR5K_INT_RXEOL
@@ -2679,7 +2675,6 @@ done:
 	mmiowb();
 	mutex_unlock(&ah->lock);
 
-	set_bit(ATH_STAT_STARTED, ah->status);
 	ieee80211_queue_delayed_work(ah->hw, &ah->tx_complete_work,
 			msecs_to_jiffies(ATH5K_TX_COMPLETE_POLL_INT));
 
@@ -2741,7 +2736,6 @@ void ath5k_stop(struct ieee80211_hw *hw)
 
 	ath5k_stop_tasklets(ah);
 
-	clear_bit(ATH_STAT_STARTED, ah->status);
 	cancel_delayed_work_sync(&ah->tx_complete_work);
 
 	if (!ath5k_modparam_no_hw_rfkill_switch)

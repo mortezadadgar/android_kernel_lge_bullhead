@@ -424,7 +424,7 @@ int prism2_scan(struct wiphy *wiphy, struct cfg80211_scan_request *request)
 			goto exit;
 		}
 
-		cfg80211_put_bss(wiphy, bss);
+		cfg80211_put_bss(bss);
 	}
 
 	if (result)

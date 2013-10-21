@@ -163,7 +163,6 @@ static void _rtl92s_dm_txpowertracking_callback_thermalmeter(
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_efuse *rtlefuse = rtl_efuse(rtl_priv(hw));
 	u8 thermalvalue = 0;
-	u32 fw_cmd = 0;
 
 	rtlpriv->dm.txpower_trackinginit = true;
 
@@ -176,19 +175,7 @@ static void _rtl92s_dm_txpowertracking_callback_thermalmeter(
 
 	if (thermalvalue) {
 		rtlpriv->dm.thermalvalue = thermalvalue;
-		if (hal_get_firmwareversion(rtlpriv) >= 0x35) {
-			rtl92s_phy_set_fw_cmd(hw, FW_CMD_TXPWR_TRACK_THERMAL);
-		} else {
-			fw_cmd = (FW_TXPWR_TRACK_THERMAL |
-				 (rtlpriv->efuse.thermalmeter[0] << 8) |
-				 (thermalvalue << 16));
-
-			RT_TRACE(rtlpriv, COMP_POWER_TRACKING, DBG_LOUD,
-				 "Write to FW Thermal Val = 0x%x\n", fw_cmd);
-
-			rtl_write_dword(rtlpriv, WFM5, fw_cmd);
-			rtl92s_phy_chk_fwcmd_iodone(hw);
-		}
+		rtl92s_phy_set_fw_cmd(hw, FW_CMD_TXPWR_TRACK_THERMAL);
 	}
 
 	rtlpriv->dm.txpowercount = 0;
@@ -230,10 +217,11 @@ static void _rtl92s_dm_refresh_rateadaptive_mask(struct ieee80211_hw *hw)
 	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
 	struct rtl_mac *mac = rtl_mac(rtl_priv(hw));
 	struct rate_adaptive *ra = &(rtlpriv->ra);
-	struct ieee80211_sta *sta = NULL;
+
 	u32 low_rssi_thresh = 0;
 	u32 middle_rssi_thresh = 0;
 	u32 high_rssi_thresh = 0;
+	struct ieee80211_sta *sta = NULL;
 
 	if (is_hal_stop(rtlhal))
 		return;
@@ -241,12 +229,14 @@ static void _rtl92s_dm_refresh_rateadaptive_mask(struct ieee80211_hw *hw)
 	if (!rtlpriv->dm.useramask)
 		return;
 
-	if (hal_get_firmwareversion(rtlpriv) >= 61 &&
-	    !rtlpriv->dm.inform_fw_driverctrldm) {
+	if (!rtlpriv->dm.inform_fw_driverctrldm) {
 		rtl92s_phy_set_fw_cmd(hw, FW_CMD_CTRL_DM_BY_DRIVER);
 		rtlpriv->dm.inform_fw_driverctrldm = true;
 	}
 
+	rcu_read_lock();
+	if (mac->opmode == NL80211_IFTYPE_STATION)
+		sta = get_sta(hw, mac->vif, mac->bssid);
 	if ((mac->link_state == MAC80211_LINKED) &&
 	    (mac->opmode == NL80211_IFTYPE_STATION)) {
 		switch (ra->pre_ratr_state) {
@@ -295,16 +285,12 @@ static void _rtl92s_dm_refresh_rateadaptive_mask(struct ieee80211_hw *hw)
 				 rtlpriv->dm.undec_sm_pwdb, ra->ratr_state,
 				 ra->pre_ratr_state, ra->ratr_state);
 
-			rcu_read_lock();
-			sta = rtl_find_sta(hw, mac->bssid);
-			if (sta)
-				rtlpriv->cfg->ops->update_rate_tbl(hw, sta,
+			rtlpriv->cfg->ops->update_rate_tbl(hw, sta,
 							   ra->ratr_state);
-			rcu_read_unlock();
-
 			ra->pre_ratr_state = ra->ratr_state;
 		}
 	}
+	rcu_read_unlock();
 }
 
 static void _rtl92s_dm_switch_baseband_mrc(struct ieee80211_hw *hw)
@@ -384,8 +370,7 @@ static void _rtl92s_dm_init_rate_adaptive_mask(struct ieee80211_hw *hw)
 	ra->ratr_state = DM_RATR_STA_MAX;
 	ra->pre_ratr_state = DM_RATR_STA_MAX;
 
-	if (rtlpriv->dm.dm_type == DM_TYPE_BYDRIVER &&
-	    hal_get_firmwareversion(rtlpriv) >= 60)
+	if (rtlpriv->dm.dm_type == DM_TYPE_BYDRIVER)
 		rtlpriv->dm.useramask = true;
 	else
 		rtlpriv->dm.useramask = false;
@@ -472,13 +457,13 @@ static void _rtl92s_dm_initial_gain_sta_beforeconnect(struct ieee80211_hw *hw)
 				digtable->back_val = DM_DIG_BACKOFF;
 
 			if ((digtable->rssi_val + 10 - digtable->back_val) >
-				digtable->rx_gain_max)
+				digtable->rx_gain_range_max)
 				digtable->cur_igvalue =
-						digtable->rx_gain_max;
+						digtable->rx_gain_range_max;
 			else if ((digtable->rssi_val + 10 - digtable->back_val)
-				 < digtable->rx_gain_min)
+				 < digtable->rx_gain_range_min)
 				digtable->cur_igvalue =
-						digtable->rx_gain_min;
+						digtable->rx_gain_range_min;
 			else
 				digtable->cur_igvalue = digtable->rssi_val + 10
 					- digtable->back_val;
@@ -490,7 +475,7 @@ static void _rtl92s_dm_initial_gain_sta_beforeconnect(struct ieee80211_hw *hw)
 
 			if (falsealm_cnt->cnt_all > 16000)
 				digtable->cur_igvalue =
-						 digtable->rx_gain_max;
+						 digtable->rx_gain_range_max;
 		/* connected -> connected or disconnected -> disconnected  */
 		} else {
 			/* Firmware control DIG, do nothing in driver dm */
@@ -692,9 +677,9 @@ static void _rtl92s_dm_init_dig(struct ieee80211_hw *hw)
 	/* for dig debug rssi value */
 	digtable->rssi_val = 50;
 	digtable->back_val = DM_DIG_BACKOFF;
-	digtable->rx_gain_max = DM_DIG_MAX;
+	digtable->rx_gain_range_max = DM_DIG_MAX;
 
-	digtable->rx_gain_min = DM_DIG_MIN;
+	digtable->rx_gain_range_min = DM_DIG_MIN;
 
 	digtable->backoffval_range_max = DM_DIG_BACKOFF_MAX;
 	digtable->backoffval_range_min = DM_DIG_BACKOFF_MIN;

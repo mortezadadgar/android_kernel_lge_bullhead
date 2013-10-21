@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2008 - 2013 Intel Corporation. All rights reserved.
+ * Copyright(c) 2008 - 2012 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -28,6 +28,7 @@
 #include <linux/stringify.h>
 #include "iwl-config.h"
 #include "iwl-agn-hw.h"
+#include "cfg.h"
 #include "dvm/commands.h" /* needed for BT for now */
 
 /* Highest firmware API version supported */

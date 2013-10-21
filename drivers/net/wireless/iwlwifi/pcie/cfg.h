@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2012 - 2013 Intel Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2012 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -22,7 +22,7 @@
  * USA
  *
  * The full GNU General Public License is included in this distribution
- * in the file called COPYING.
+ * in the file called LICENSE.GPL.
  *
  * Contact Information:
  *  Intel Linux Wireless <ilw@linux.intel.com>
@@ -30,7 +30,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2012 - 2013 Intel Corporation. All rights reserved.
+ * Copyright(c) 2005 - 2012 Intel Corporation. All rights reserved.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -60,75 +60,54 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *****************************************************************************/
+#ifndef __iwl_pci_h__
+#define __iwl_pci_h__
 
-#include <linux/leds.h>
-#include "iwl-io.h"
-#include "iwl-csr.h"
-#include "mvm.h"
 
-/* Set led register on */
-static void iwl_mvm_led_enable(struct iwl_mvm *mvm)
-{
-	iwl_write32(mvm->trans, CSR_LED_REG, CSR_LED_REG_TURN_ON);
-}
+/*
+ * This file declares the config structures for all devices.
+ */
 
-/* Set led register off */
-static void iwl_mvm_led_disable(struct iwl_mvm *mvm)
-{
-	iwl_write32(mvm->trans, CSR_LED_REG, CSR_LED_REG_TURN_OFF);
-}
+extern const struct iwl_cfg iwl5300_agn_cfg;
+extern const struct iwl_cfg iwl5100_agn_cfg;
+extern const struct iwl_cfg iwl5350_agn_cfg;
+extern const struct iwl_cfg iwl5100_bgn_cfg;
+extern const struct iwl_cfg iwl5100_abg_cfg;
+extern const struct iwl_cfg iwl5150_agn_cfg;
+extern const struct iwl_cfg iwl5150_abg_cfg;
+extern const struct iwl_cfg iwl6005_2agn_cfg;
+extern const struct iwl_cfg iwl6005_2abg_cfg;
+extern const struct iwl_cfg iwl6005_2bg_cfg;
+extern const struct iwl_cfg iwl6005_2agn_sff_cfg;
+extern const struct iwl_cfg iwl6005_2agn_d_cfg;
+extern const struct iwl_cfg iwl6005_2agn_mow1_cfg;
+extern const struct iwl_cfg iwl6005_2agn_mow2_cfg;
+extern const struct iwl_cfg iwl1030_bgn_cfg;
+extern const struct iwl_cfg iwl1030_bg_cfg;
+extern const struct iwl_cfg iwl6030_2agn_cfg;
+extern const struct iwl_cfg iwl6030_2abg_cfg;
+extern const struct iwl_cfg iwl6030_2bgn_cfg;
+extern const struct iwl_cfg iwl6030_2bg_cfg;
+extern const struct iwl_cfg iwl6000i_2agn_cfg;
+extern const struct iwl_cfg iwl6000i_2abg_cfg;
+extern const struct iwl_cfg iwl6000i_2bg_cfg;
+extern const struct iwl_cfg iwl6000_3agn_cfg;
+extern const struct iwl_cfg iwl6050_2agn_cfg;
+extern const struct iwl_cfg iwl6050_2abg_cfg;
+extern const struct iwl_cfg iwl6150_bgn_cfg;
+extern const struct iwl_cfg iwl6150_bg_cfg;
+extern const struct iwl_cfg iwl1000_bgn_cfg;
+extern const struct iwl_cfg iwl1000_bg_cfg;
+extern const struct iwl_cfg iwl100_bgn_cfg;
+extern const struct iwl_cfg iwl100_bg_cfg;
+extern const struct iwl_cfg iwl130_bgn_cfg;
+extern const struct iwl_cfg iwl130_bg_cfg;
+extern const struct iwl_cfg iwl2000_2bgn_cfg;
+extern const struct iwl_cfg iwl2000_2bgn_d_cfg;
+extern const struct iwl_cfg iwl2030_2bgn_cfg;
+extern const struct iwl_cfg iwl6035_2agn_cfg;
+extern const struct iwl_cfg iwl105_bgn_cfg;
+extern const struct iwl_cfg iwl105_bgn_d_cfg;
+extern const struct iwl_cfg iwl135_bgn_cfg;
 
-static void iwl_led_brightness_set(struct led_classdev *led_cdev,
-				   enum led_brightness brightness)
-{
-	struct iwl_mvm *mvm = container_of(led_cdev, struct iwl_mvm, led);
-	if (brightness > 0)
-		iwl_mvm_led_enable(mvm);
-	else
-		iwl_mvm_led_disable(mvm);
-}
-
-int iwl_mvm_leds_init(struct iwl_mvm *mvm)
-{
-	int mode = iwlwifi_mod_params.led_mode;
-	int ret;
-
-	switch (mode) {
-	case IWL_LED_DEFAULT:
-	case IWL_LED_RF_STATE:
-		mode = IWL_LED_RF_STATE;
-		break;
-	case IWL_LED_DISABLE:
-		IWL_INFO(mvm, "Led disabled\n");
-		return 0;
-	default:
-		return -EINVAL;
-	};
-
-	mvm->led.name = kasprintf(GFP_KERNEL, "%s-led",
-				   wiphy_name(mvm->hw->wiphy));
-	mvm->led.brightness_set = iwl_led_brightness_set;
-	mvm->led.max_brightness = 1;
-
-	if (mode == IWL_LED_RF_STATE)
-		mvm->led.default_trigger =
-			ieee80211_get_radio_led_name(mvm->hw);
-
-	ret = led_classdev_register(mvm->trans->dev, &mvm->led);
-	if (ret) {
-		kfree(mvm->led.name);
-		IWL_INFO(mvm, "Failed to enable led\n");
-		return ret;
-	}
-
-	return 0;
-}
-
-void iwl_mvm_leds_exit(struct iwl_mvm *mvm)
-{
-	if (iwlwifi_mod_params.led_mode == IWL_LED_DISABLE)
-		return;
-
-	led_classdev_unregister(&mvm->led);
-	kfree(mvm->led.name);
-}
+#endif /* __iwl_pci_h__ */

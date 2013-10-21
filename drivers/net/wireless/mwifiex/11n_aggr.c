@@ -278,16 +278,14 @@ mwifiex_11n_aggregate_pkt(struct mwifiex_private *priv,
 		dev_dbg(adapter->dev, "data: -EBUSY is returned\n");
 		break;
 	case -1:
-		if (adapter->iface_type != MWIFIEX_PCIE)
-			adapter->data_sent = false;
+		adapter->data_sent = false;
 		dev_err(adapter->dev, "%s: host_to_card failed: %#x\n",
 			__func__, ret);
 		adapter->dbg.num_tx_host_to_card_failure++;
 		mwifiex_write_data_complete(adapter, skb_aggr, 1, ret);
 		return 0;
 	case -EINPROGRESS:
-		if (adapter->iface_type != MWIFIEX_PCIE)
-			adapter->data_sent = false;
+		adapter->data_sent = false;
 		break;
 	case 0:
 		mwifiex_write_data_complete(adapter, skb_aggr, 1, ret);
@@ -296,7 +294,19 @@ mwifiex_11n_aggregate_pkt(struct mwifiex_private *priv,
 		break;
 	}
 	if (ret != -EBUSY) {
-		mwifiex_rotate_priolists(priv, pra_list, ptrindex);
+		spin_lock_irqsave(&priv->wmm.ra_list_spinlock, ra_list_flags);
+		if (mwifiex_is_ralist_valid(priv, pra_list, ptrindex)) {
+			priv->wmm.packets_out[ptrindex]++;
+			priv->wmm.tid_tbl_ptr[ptrindex].ra_list_curr = pra_list;
+		}
+		/* Now bss_prio_cur pointer points to next node */
+		adapter->bss_prio_tbl[priv->bss_priority].bss_prio_cur =
+			list_first_entry(
+				&adapter->bss_prio_tbl[priv->bss_priority]
+				.bss_prio_cur->list,
+				struct mwifiex_bss_prio_node, list);
+		spin_unlock_irqrestore(&priv->wmm.ra_list_spinlock,
+				       ra_list_flags);
 	}
 
 	return 0;

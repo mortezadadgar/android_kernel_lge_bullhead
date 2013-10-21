@@ -257,7 +257,7 @@ static int wl1251_spi_probe(struct spi_device *spi)
 	wl = hw->priv;
 
 	SET_IEEE80211_DEV(hw, &spi->dev);
-	spi_set_drvdata(spi, wl);
+	dev_set_drvdata(&spi->dev, wl);
 	wl->if_priv = spi;
 	wl->if_ops = &wl1251_spi_ops;
 
@@ -311,7 +311,7 @@ static int wl1251_spi_probe(struct spi_device *spi)
 
 static int wl1251_spi_remove(struct spi_device *spi)
 {
-	struct wl1251 *wl = spi_get_drvdata(spi);
+	struct wl1251 *wl = dev_get_drvdata(&spi->dev);
 
 	free_irq(wl->irq, wl);
 	wl1251_free_hw(wl);

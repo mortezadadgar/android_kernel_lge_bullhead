@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2010 - 2013 Intel Corporation. All rights reserved.
+ * Copyright(c) 2010 - 2012 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -22,7 +22,7 @@
  * USA
  *
  * The full GNU General Public License is included in this distribution
- * in the file called COPYING.
+ * in the file called LICENSE.GPL.
  *
  * Contact Information:
  *  Intel Linux Wireless <ilw@linux.intel.com>
@@ -30,7 +30,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2010 - 2013 Intel Corporation. All rights reserved.
+ * Copyright(c) 2010 - 2012 Intel Corporation. All rights reserved.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -64,7 +64,6 @@
 #include <linux/export.h>
 #include <net/netlink.h>
 
-#include "iwl-drv.h"
 #include "iwl-io.h"
 #include "iwl-fh.h"
 #include "iwl-prph.h"
@@ -272,7 +271,7 @@ static int iwl_test_fw_cmd(struct iwl_test *tst, struct nlattr **tb)
 
 	reply_len = le32_to_cpu(pkt->len_n_flags) & FH_RSCSR_FRAME_SIZE_MSK;
 	skb = iwl_test_alloc_reply(tst, reply_len + 20);
-	reply_buf = kmemdup(&pkt->hdr, reply_len, GFP_KERNEL);
+	reply_buf = kmalloc(reply_len, GFP_KERNEL);
 	if (!skb || !reply_buf) {
 		kfree_skb(skb);
 		kfree(reply_buf);
@@ -280,6 +279,7 @@ static int iwl_test_fw_cmd(struct iwl_test *tst, struct nlattr **tb)
 	}
 
 	/* The reply is in a page, that we cannot send to user space. */
+	memcpy(reply_buf, &(pkt->hdr), reply_len);
 	iwl_free_resp(&cmd);
 
 	if (nla_put_u32(skb, IWL_TM_ATTR_COMMAND,
@@ -466,18 +466,19 @@ static int iwl_test_indirect_read(struct iwl_test *tst, u32 addr, u32 size)
 	/* Hard-coded periphery absolute address */
 	if (IWL_ABS_PRPH_START <= addr &&
 	    addr < IWL_ABS_PRPH_START + PRPH_END) {
-			if (!iwl_trans_grab_nic_access(trans, false, &flags)) {
-				return -EIO;
-			}
+			spin_lock_irqsave(&trans->reg_lock, flags);
+			iwl_grab_nic_access(trans);
 			iwl_write32(trans, HBUS_TARG_PRPH_RADDR,
 				    addr | (3 << 24));
 			for (i = 0; i < size; i += 4)
 				*(u32 *)(tst->mem.addr + i) =
 					iwl_read32(trans, HBUS_TARG_PRPH_RDAT);
-			iwl_trans_release_nic_access(trans, &flags);
+			iwl_release_nic_access(trans);
+			spin_unlock_irqrestore(&trans->reg_lock, flags);
 	} else { /* target memory (SRAM) */
-		iwl_trans_read_mem(trans, addr, tst->mem.addr,
-				   tst->mem.size / 4);
+		_iwl_read_targ_mem_dwords(trans, addr,
+					  tst->mem.addr,
+					  tst->mem.size / 4);
 	}
 
 	tst->mem.nchunks =
@@ -500,25 +501,28 @@ static int iwl_test_indirect_write(struct iwl_test *tst, u32 addr,
 
 	if (IWL_ABS_PRPH_START <= addr &&
 	    addr < IWL_ABS_PRPH_START + PRPH_END) {
-		/* Periphery writes can be 1-3 bytes long, or DWORDs */
-		if (size < 4) {
-			memcpy(&val, buf, size);
-			if (!iwl_trans_grab_nic_access(trans, false, &flags))
-					return -EIO;
-			iwl_write32(trans, HBUS_TARG_PRPH_WADDR,
-				    (addr & 0x0000FFFF) |
-				    ((size - 1) << 24));
-			iwl_write32(trans, HBUS_TARG_PRPH_WDAT, val);
-			iwl_trans_release_nic_access(trans, &flags);
-		} else {
-			if (size % 4)
-				return -EINVAL;
-			for (i = 0; i < size; i += 4)
-				iwl_write_prph(trans, addr+i,
-					       *(u32 *)(buf+i));
-		}
+			/* Periphery writes can be 1-3 bytes long, or DWORDs */
+			if (size < 4) {
+				memcpy(&val, buf, size);
+				spin_lock_irqsave(&trans->reg_lock, flags);
+				iwl_grab_nic_access(trans);
+				iwl_write32(trans, HBUS_TARG_PRPH_WADDR,
+					    (addr & 0x0000FFFF) |
+					    ((size - 1) << 24));
+				iwl_write32(trans, HBUS_TARG_PRPH_WDAT, val);
+				iwl_release_nic_access(trans);
+				/* needed after consecutive writes w/o read */
+				mmiowb();
+				spin_unlock_irqrestore(&trans->reg_lock, flags);
+			} else {
+				if (size % 4)
+					return -EINVAL;
+				for (i = 0; i < size; i += 4)
+					iwl_write_prph(trans, addr+i,
+						       *(u32 *)(buf+i));
+			}
 	} else if (iwl_test_valid_hw_addr(tst, addr)) {
-		iwl_trans_write_mem(trans, addr, buf, size / 4);
+		_iwl_write_targ_mem_dwords(trans, addr, buf, size / 4);
 	} else {
 		return -EINVAL;
 	}
@@ -653,7 +657,7 @@ int iwl_test_parse(struct iwl_test *tst, struct nlattr **tb,
 	}
 	return 0;
 }
-IWL_EXPORT_SYMBOL(iwl_test_parse);
+EXPORT_SYMBOL_GPL(iwl_test_parse);
 
 /*
  * Handle test commands.
@@ -715,7 +719,7 @@ int iwl_test_handle_cmd(struct iwl_test *tst, struct nlattr **tb)
 	}
 	return result;
 }
-IWL_EXPORT_SYMBOL(iwl_test_handle_cmd);
+EXPORT_SYMBOL_GPL(iwl_test_handle_cmd);
 
 static int iwl_test_trace_dump(struct iwl_test *tst, struct sk_buff *skb,
 			       struct netlink_callback *cb)
@@ -803,7 +807,7 @@ int iwl_test_dump(struct iwl_test *tst, u32 cmd, struct sk_buff *skb,
 	}
 	return result;
 }
-IWL_EXPORT_SYMBOL(iwl_test_dump);
+EXPORT_SYMBOL_GPL(iwl_test_dump);
 
 /*
  * Multicast a spontaneous messages from the device to the user space.
@@ -849,4 +853,4 @@ void iwl_test_rx(struct iwl_test *tst, struct iwl_rx_cmd_buffer *rxb)
 	if (tst->notify)
 		iwl_test_send_rx(tst, rxb);
 }
-IWL_EXPORT_SYMBOL(iwl_test_rx);
+EXPORT_SYMBOL_GPL(iwl_test_rx);

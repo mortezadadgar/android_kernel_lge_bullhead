@@ -541,6 +541,10 @@ struct il_frame {
 	struct list_head list;
 };
 
+#define SEQ_TO_SN(seq) (((seq) & IEEE80211_SCTL_SEQ) >> 4)
+#define SN_TO_SEQ(ssn) (((ssn) << 4) & IEEE80211_SCTL_SEQ)
+#define MAX_SN ((IEEE80211_SCTL_SEQ) >> 4)
+
 enum {
 	CMD_SYNC = 0,
 	CMD_SIZE_NORMAL = 0,
@@ -1352,7 +1356,6 @@ struct il_priv {
 		struct {
 			struct il_rx_phy_res last_phy_res;
 			bool last_phy_res_valid;
-			u32 ampdu_ref;
 
 			struct completion firmware_loading_complete;
 
@@ -1720,7 +1723,6 @@ void il_mac_remove_interface(struct ieee80211_hw *hw,
 			     struct ieee80211_vif *vif);
 int il_mac_change_interface(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 			    enum nl80211_iftype newtype, bool newp2p);
-void il_mac_flush(struct ieee80211_hw *hw, u32 queues, bool drop);
 int il_alloc_txq_mem(struct il_priv *il);
 void il_free_txq_mem(struct il_priv *il);
 
@@ -1832,16 +1834,16 @@ u32 il_usecs_to_beacons(struct il_priv *il, u32 usec, u32 beacon_interval);
 __le32 il_add_beacon_time(struct il_priv *il, u32 base, u32 addon,
 			  u32 beacon_interval);
 
-#ifdef CONFIG_PM_SLEEP
+#ifdef CONFIG_PM
 extern const struct dev_pm_ops il_pm_ops;
 
 #define IL_LEGACY_PM_OPS	(&il_pm_ops)
 
-#else /* !CONFIG_PM_SLEEP */
+#else /* !CONFIG_PM */
 
 #define IL_LEGACY_PM_OPS	NULL
 
-#endif /* !CONFIG_PM_SLEEP */
+#endif /* !CONFIG_PM */
 
 /*****************************************************
 *  Error Handling Debugging
@@ -2231,8 +2233,9 @@ il_alloc_fw_desc(struct pci_dev *pci_dev, struct fw_desc *desc)
 		return -EINVAL;
 	}
 
-	desc->v_addr = dma_alloc_coherent(&pci_dev->dev, desc->len,
-					  &desc->p_addr, GFP_KERNEL);
+	desc->v_addr =
+	    dma_alloc_coherent(&pci_dev->dev, desc->len, &desc->p_addr,
+			       GFP_KERNEL);
 	return (desc->v_addr != NULL) ? 0 : -ENOMEM;
 }
 

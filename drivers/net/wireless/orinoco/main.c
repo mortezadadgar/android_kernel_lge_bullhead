@@ -853,8 +853,12 @@ void __orinoco_ev_rx(struct net_device *dev, struct hermes *hw)
 	int err;
 
 	desc = kmalloc(sizeof(*desc), GFP_ATOMIC);
-	if (!desc)
+	if (!desc) {
+		printk(KERN_WARNING
+		       "%s: Can't allocate space for RX descriptor\n",
+		       dev->name);
 		goto update_stats;
+	}
 
 	rxfid = hermes_read_regn(hw, RXFID);
 
@@ -1332,9 +1336,10 @@ static void qbuf_scan(struct orinoco_private *priv, void *buf,
 	unsigned long flags;
 
 	sd = kmalloc(sizeof(*sd), GFP_ATOMIC);
-	if (!sd)
+	if (!sd) {
+		printk(KERN_ERR "%s: failed to alloc memory\n", __func__);
 		return;
-
+	}
 	sd->buf = buf;
 	sd->len = len;
 	sd->type = type;
@@ -1352,9 +1357,10 @@ static void qabort_scan(struct orinoco_private *priv)
 	unsigned long flags;
 
 	sd = kmalloc(sizeof(*sd), GFP_ATOMIC);
-	if (!sd)
+	if (!sd) {
+		printk(KERN_ERR "%s: failed to alloc memory\n", __func__);
 		return;
-
+	}
 	sd->len = -1; /* Abort */
 
 	spin_lock_irqsave(&priv->scan_lock, flags);
@@ -2284,6 +2290,7 @@ int orinoco_if_add(struct orinoco_private *priv,
 	netif_carrier_off(dev);
 
 	memcpy(dev->dev_addr, wiphy->perm_addr, ETH_ALEN);
+	memcpy(dev->perm_addr, wiphy->perm_addr, ETH_ALEN);
 
 	dev->base_addr = base_addr;
 	dev->irq = irq;

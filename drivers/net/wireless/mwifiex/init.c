@@ -39,11 +39,16 @@ static int mwifiex_add_bss_prio_tbl(struct mwifiex_private *priv)
 	unsigned long flags;
 
 	bss_prio = kzalloc(sizeof(struct mwifiex_bss_prio_node), GFP_KERNEL);
-	if (!bss_prio)
+	if (!bss_prio) {
+		dev_err(adapter->dev, "%s: failed to alloc bss_prio\n",
+			__func__);
 		return -ENOMEM;
+	}
 
 	bss_prio->priv = priv;
 	INIT_LIST_HEAD(&bss_prio->list);
+	if (!tbl[priv->bss_priority].bss_prio_cur)
+		tbl[priv->bss_priority].bss_prio_cur = bss_prio;
 
 	spin_lock_irqsave(&tbl[priv->bss_priority].bss_prio_lock, flags);
 	list_add_tail(&bss_prio->list, &tbl[priv->bss_priority].bss_prio_head);
@@ -312,13 +317,14 @@ static void mwifiex_init_adapter(struct mwifiex_adapter *adapter)
 
 	adapter->pm_wakeup_fw_try = false;
 
+	adapter->max_tx_buf_size = MWIFIEX_TX_DATA_BUF_SIZE_2K;
 	adapter->tx_buf_size = MWIFIEX_TX_DATA_BUF_SIZE_2K;
 	adapter->curr_tx_buf_size = MWIFIEX_TX_DATA_BUF_SIZE_2K;
 
 	adapter->is_hs_configured = false;
-	adapter->hs_cfg.conditions = cpu_to_le32(HS_CFG_COND_DEF);
-	adapter->hs_cfg.gpio = HS_CFG_GPIO_DEF;
-	adapter->hs_cfg.gap = HS_CFG_GAP_DEF;
+	adapter->hs_cfg.conditions = cpu_to_le32(HOST_SLEEP_CFG_COND_DEF);
+	adapter->hs_cfg.gpio = HOST_SLEEP_CFG_GPIO_DEF;
+	adapter->hs_cfg.gap = HOST_SLEEP_CFG_GAP_DEF;
 	adapter->hs_activated = false;
 
 	memset(adapter->event_body, 0, sizeof(adapter->event_body));
@@ -523,6 +529,7 @@ int mwifiex_init_lock_list(struct mwifiex_adapter *adapter)
 
 	for (i = 0; i < adapter->priv_num; ++i) {
 		INIT_LIST_HEAD(&adapter->bss_prio_tbl[i].bss_prio_head);
+		adapter->bss_prio_tbl[i].bss_prio_cur = NULL;
 		spin_lock_init(&adapter->bss_prio_tbl[i].bss_prio_lock);
 	}
 
@@ -530,8 +537,10 @@ int mwifiex_init_lock_list(struct mwifiex_adapter *adapter)
 		if (!adapter->priv[i])
 			continue;
 		priv = adapter->priv[i];
-		for (j = 0; j < MAX_NUM_TID; ++j)
+		for (j = 0; j < MAX_NUM_TID; ++j) {
 			INIT_LIST_HEAD(&priv->wmm.tid_tbl_ptr[j].ra_list);
+			spin_lock_init(&priv->wmm.tid_tbl_ptr[j].tid_tbl_lock);
+		}
 		INIT_LIST_HEAD(&priv->tx_ba_stream_tbl_ptr);
 		INIT_LIST_HEAD(&priv->rx_reorder_tbl_ptr);
 		INIT_LIST_HEAD(&priv->sta_list);
@@ -582,12 +591,6 @@ int mwifiex_init_fw(struct mwifiex_adapter *adapter)
 				return -1;
 		}
 	}
-
-	if (adapter->if_ops.init_fw_port) {
-		if (adapter->if_ops.init_fw_port(adapter))
-			return -1;
-	}
-
 	for (i = 0; i < adapter->priv_num; i++) {
 		if (adapter->priv[i]) {
 			ret = mwifiex_sta_init_cmd(adapter->priv[i], first_sta);
@@ -622,36 +625,42 @@ static void mwifiex_delete_bss_prio_tbl(struct mwifiex_private *priv)
 {
 	int i;
 	struct mwifiex_adapter *adapter = priv->adapter;
-	struct mwifiex_bss_prio_node *bssprio_node, *tmp_node;
+	struct mwifiex_bss_prio_node *bssprio_node, *tmp_node, **cur;
 	struct list_head *head;
 	spinlock_t *lock; /* bss priority lock */
 	unsigned long flags;
 
 	for (i = 0; i < adapter->priv_num; ++i) {
 		head = &adapter->bss_prio_tbl[i].bss_prio_head;
+		cur = &adapter->bss_prio_tbl[i].bss_prio_cur;
 		lock = &adapter->bss_prio_tbl[i].bss_prio_lock;
 		dev_dbg(adapter->dev, "info: delete BSS priority table,"
 				" bss_type = %d, bss_num = %d, i = %d,"
-				" head = %p\n",
-			      priv->bss_type, priv->bss_num, i, head);
-
-		{
+				" head = %p, cur = %p\n",
+			      priv->bss_type, priv->bss_num, i, head, *cur);
+		if (*cur) {
 			spin_lock_irqsave(lock, flags);
 			if (list_empty(head)) {
 				spin_unlock_irqrestore(lock, flags);
 				continue;
 			}
+			bssprio_node = list_first_entry(head,
+					struct mwifiex_bss_prio_node, list);
+			spin_unlock_irqrestore(lock, flags);
+
 			list_for_each_entry_safe(bssprio_node, tmp_node, head,
 						 list) {
 				if (bssprio_node->priv == priv) {
 					dev_dbg(adapter->dev, "info: Delete "
 						"node %p, next = %p\n",
 						bssprio_node, tmp_node);
+					spin_lock_irqsave(lock, flags);
 					list_del(&bssprio_node->list);
+					spin_unlock_irqrestore(lock, flags);
 					kfree(bssprio_node);
 				}
 			}
-			spin_unlock_irqrestore(lock, flags);
+			*cur = (struct mwifiex_bss_prio_node *)head;
 		}
 	}
 }
@@ -702,7 +711,7 @@ mwifiex_shutdown_drv(struct mwifiex_adapter *adapter)
 	if (adapter->curr_cmd) {
 		dev_warn(adapter->dev, "curr_cmd is still in processing\n");
 		del_timer(&adapter->cmd_timer);
-		mwifiex_recycle_cmd_node(adapter, adapter->curr_cmd);
+		mwifiex_insert_cmd_to_free_q(adapter, adapter->curr_cmd);
 		adapter->curr_cmd = NULL;
 	}
 

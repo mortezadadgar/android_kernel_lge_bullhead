@@ -272,8 +272,11 @@ mwifiex_11n_create_rx_reorder_tbl(struct mwifiex_private *priv, u8 *ta,
 	}
 	/* if !tbl then create one */
 	new_node = kzalloc(sizeof(struct mwifiex_rx_reorder_tbl), GFP_KERNEL);
-	if (!new_node)
+	if (!new_node) {
+		dev_err(priv->adapter->dev, "%s: failed to alloc new_node\n",
+			__func__);
 		return;
+	}
 
 	INIT_LIST_HEAD(&new_node->list);
 	new_node->tid = tid;
@@ -447,7 +450,7 @@ int mwifiex_11n_rx_reorder_pkt(struct mwifiex_private *priv,
 	end_win = ((start_win + win_size) - 1) & (MAX_TID_VALUE - 1);
 	del_timer(&tbl->timer_context.timer);
 	mod_timer(&tbl->timer_context.timer,
-		  jiffies + msecs_to_jiffies(MIN_FLUSH_TIMER_MS * win_size));
+		  jiffies + (MIN_FLUSH_TIMER_MS * win_size * HZ) / 1000);
 
 	/*
 	 * If seq_num is less then starting win then ignore and drop the
