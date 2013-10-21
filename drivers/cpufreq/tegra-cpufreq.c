@@ -18,14 +18,9 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/types.h>
-#include <linux/sched.h>
 #include <linux/cpufreq.h>
-#include <linux/delay.h>
-#include <linux/init.h>
 #include <linux/err.h>
 #include <linux/clk.h>
-#include <linux/io.h>
 #include <linux/suspend.h>
 
 static struct cpufreq_frequency_table freq_table[] = {
@@ -40,14 +35,14 @@ static struct cpufreq_frequency_table freq_table[] = {
 	{ .frequency = CPUFREQ_TABLE_END },
 };
 
-#define NUM_CPUS	2
+#define MAX_CPUS	4
 
 static struct clk *cpu_clk;
 static struct clk *pll_x_clk;
 static struct clk *pll_p_clk;
 static struct clk *emc_clk;
 
-static unsigned long target_cpu_speed[NUM_CPUS];
+static unsigned long target_cpu_speed[MAX_CPUS];
 static DEFINE_MUTEX(tegra_cpu_lock);
 static bool is_suspended;
 
@@ -59,9 +54,6 @@ static int tegra_verify_speed(struct cpufreq_policy *policy)
 static unsigned int tegra_getspeed(unsigned int cpu)
 {
 	unsigned long rate;
-
-	if (cpu >= NUM_CPUS)
-		return 0;
 
 	rate = clk_get_rate(cpu_clk) / 1000;
 	return rate;
@@ -209,9 +201,6 @@ static struct notifier_block tegra_cpu_pm_notifier = {
 
 static int tegra_cpu_init(struct cpufreq_policy *policy)
 {
-	if (policy->cpu >= NUM_CPUS)
-		return -EINVAL;
-
 	clk_prepare_enable(emc_clk);
 	clk_prepare_enable(cpu_clk);
 
