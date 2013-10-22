@@ -34,6 +34,7 @@
 #include <linux/sys_soc.h>
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/clk/tegra.h>
+#include <linux/regulator/machine.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -71,6 +72,8 @@ static void __init tegra_dt_init(void)
 	}
 
 	parent = soc_device_to_device(soc_dev);
+
+	regulator_has_full_constraints();
 
 	/*
 	 * Finished with the static registrations now; fill in the missing
