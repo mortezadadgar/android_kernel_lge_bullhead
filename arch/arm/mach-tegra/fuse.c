@@ -37,9 +37,14 @@
 int tegra_sku_id;
 int tegra_cpu_process_id;
 int tegra_core_process_id;
+int tegra_gpu_process_id;		/* only exit in Tegra124 and later */
 int tegra_chip_id;
 int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
 int tegra_soc_speedo_id;
+int tegra_gpu_speedo_id;
+int tegra_cpu_speedo_value;
+int tegra_gpu_speedo_value;
+int tegra_cpu_iddq_value;
 enum tegra_revision tegra_revision;
 
 static int tegra_fuse_spare_bit;
@@ -140,6 +145,9 @@ void tegra_init_fuse(void)
 		break;
 	case TEGRA114:
 		tegra_init_speedo_data = &tegra114_init_speedo_data;
+		break;
+	case TEGRA124:
+		tegra_init_speedo_data = &tegra124_init_speedo_data;
 		break;
 	default:
 		pr_warn("Tegra: unknown chip id %d\n", tegra_chip_id);

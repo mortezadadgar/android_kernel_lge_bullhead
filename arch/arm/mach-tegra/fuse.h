@@ -45,9 +45,14 @@ enum tegra_revision {
 extern int tegra_sku_id;
 extern int tegra_cpu_process_id;
 extern int tegra_core_process_id;
+extern int tegra_gpu_process_id;	/* only exit in Tegra124 and later */
 extern int tegra_chip_id;
 extern int tegra_cpu_speedo_id;		/* only exist in Tegra30 and later */
 extern int tegra_soc_speedo_id;
+extern int tegra_gpu_speedo_id;
+extern int tegra_cpu_speedo_value;
+extern int tegra_gpu_speedo_value;
+extern int tegra_cpu_iddq_value;
 extern enum tegra_revision tegra_revision;
 
 extern int tegra_bct_strapping;
@@ -74,6 +79,13 @@ void tegra114_init_speedo_data(void);
 #else
 static inline void tegra114_init_speedo_data(void) {}
 #endif
+
+#ifdef CONFIG_ARCH_TEGRA_124_SOC
+void tegra124_init_speedo_data(void);
+#else
+static inline void tegra124_init_speedo_data(void) {}
+#endif
+
 #endif /* __ASSEMBLY__ */
 
 #endif
