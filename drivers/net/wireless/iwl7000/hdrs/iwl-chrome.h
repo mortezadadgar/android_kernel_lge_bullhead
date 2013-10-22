@@ -34,6 +34,7 @@ static inline void iwl7000_idr_destroy(struct idr *idp)
 }
 #define idr_destroy(idp) iwl7000_idr_destroy(idp)
 
+#if 0 // remove as it was implemented in 3.10 include/linux/idr.h
 static inline int idr_alloc(struct idr *idr, void *ptr, int start, int end,
 			    gfp_t gfp_mask)
 {
@@ -59,6 +60,7 @@ static inline void idr_preload(gfp_t gfp_mask)
 static inline void idr_preload_end(void)
 {
 }
+#endif
 
 #define genl_info_snd_portid(__genl_info) (__genl_info->snd_portid)
 #define NETLINK_CB_PORTID(__skb) NETLINK_CB(cb->skb).portid
