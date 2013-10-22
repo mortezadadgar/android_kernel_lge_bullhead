@@ -164,6 +164,54 @@ void tegra_init_fuse(void)
 		tegra_core_process_id);
 }
 
+int tegra_get_cpu_process_id(void)
+{
+	return tegra_cpu_process_id;
+}
+
+int tegra_get_core_process_id(void)
+{
+	return tegra_core_process_id;
+}
+
+int tegra_get_gpu_process_id(void)
+{
+	return tegra_gpu_process_id;
+}
+
+int tegra_get_cpu_speedo_id(void)
+{
+	if (tegra_chip_id == TEGRA20)
+		return -EINVAL;
+
+	return tegra_cpu_speedo_id;
+}
+
+int tegra_get_soc_speedo_id(void)
+{
+	return tegra_soc_speedo_id;
+}
+
+int tegra_get_gpu_speedo_id(void)
+{
+	return tegra_gpu_speedo_id;
+}
+
+int tegra_get_cpu_speedo_value(void)
+{
+	return tegra_cpu_speedo_value;
+}
+
+int tegra_get_gpu_speedo_value(void)
+{
+	return tegra_gpu_speedo_value;
+}
+
+int tegra_get_cpu_iddq_value(void)
+{
+	return tegra_cpu_iddq_value;
+}
+
 unsigned long long tegra_chip_uid(void)
 {
 	unsigned long long lo, hi;

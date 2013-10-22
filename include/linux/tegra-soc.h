@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012,2013, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,5 +20,14 @@
 extern int tegra_sku_id;
 
 u32 tegra_read_chipid(void);
+int tegra_get_cpu_process_id(void);
+int tegra_get_core_process_id(void);
+int tegra_get_gpu_process_id(void);
+int tegra_get_cpu_speedo_id(void);
+int tegra_get_soc_speedo_id(void);
+int tegra_get_gpu_speedo_id(void);
+int tegra_get_cpu_speedo_value(void);
+int tegra_get_gpu_speedo_value(void);
+int tegra_get_cpu_iddq_value(void);
 
 #endif /* __LINUX_TEGRA_SOC_H_ */
