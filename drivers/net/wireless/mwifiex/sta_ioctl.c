@@ -145,11 +145,6 @@ int mwifiex_fill_new_bss_desc(struct mwifiex_private *priv,
 
 	rcu_read_lock();
 	ies = rcu_dereference(bss->ies);
-	if (WARN_ON(!ies)) {
-		/* should never happen */
-		rcu_read_unlock();
-		return -EINVAL;
-	}
 	beacon_ie = kmemdup(ies->data, ies->len, GFP_ATOMIC);
 	beacon_ie_len = ies->len;
 	bss_desc->timestamp = ies->tsf;
@@ -180,8 +175,10 @@ int mwifiex_fill_new_bss_desc(struct mwifiex_private *priv,
 	else
 		bss_desc->bss_mode = NL80211_IFTYPE_STATION;
 
-	if (bss_desc->cap_info_bitmap & WLAN_CAPABILITY_SPECTRUM_MGMT)
-		bss_desc->sensed_11h = true;
+	/* Disable 11ac by default. Enable it only where there
+	 * exist VHT_CAP IE in AP beacon
+	 */
+	bss_desc->disable_11ac = true;
 
 	return mwifiex_update_bss_desc_with_ie(priv->adapter, bss_desc);
 }
@@ -270,9 +267,10 @@ int mwifiex_bss_start(struct mwifiex_private *priv, struct cfg80211_bss *bss,
 
 			if (mwifiex_band_to_radio_type((u8) bss_desc->bss_band)
 			    == HostCmd_SCAN_RADIO_TYPE_BG)
-				config_bands = BAND_B | BAND_G | BAND_GN;
+				config_bands = BAND_B | BAND_G | BAND_GN |
+					       BAND_GAC;
 			else
-				config_bands = BAND_A | BAND_AN;
+				config_bands = BAND_A | BAND_AN | BAND_AAC;
 
 			if (!((config_bands | adapter->fw_bands) &
 			      ~adapter->fw_bands))
@@ -282,14 +280,6 @@ int mwifiex_bss_start(struct mwifiex_private *priv, struct cfg80211_bss *bss,
 		ret = mwifiex_check_network_compatibility(priv, bss_desc);
 		if (ret)
 			goto done;
-
-		if (mwifiex_11h_get_csa_closed_channel(priv) ==
-							(u8)bss_desc->channel) {
-			dev_err(adapter->dev,
-				"Attempt to reconnect on csa closed chan(%d)\n",
-				bss_desc->channel);
-			goto done;
-		}
 
 		dev_dbg(adapter->dev, "info: SSID found in scan list ... "
 				      "associating...\n");
@@ -389,7 +379,7 @@ static int mwifiex_set_hs_params(struct mwifiex_private *priv, u16 action,
 			break;
 		}
 		if (hs_cfg->is_invoke_hostcmd) {
-			if (hs_cfg->conditions == HOST_SLEEP_CFG_CANCEL) {
+			if (hs_cfg->conditions == HS_CFG_CANCEL) {
 				if (!adapter->is_hs_configured)
 					/* Already cancelled */
 					break;
@@ -404,8 +394,8 @@ static int mwifiex_set_hs_params(struct mwifiex_private *priv, u16 action,
 				adapter->hs_cfg.gpio = (u8)hs_cfg->gpio;
 				if (hs_cfg->gap)
 					adapter->hs_cfg.gap = (u8)hs_cfg->gap;
-			} else if (adapter->hs_cfg.conditions
-				   == cpu_to_le32(HOST_SLEEP_CFG_CANCEL)) {
+			} else if (adapter->hs_cfg.conditions ==
+				   cpu_to_le32(HS_CFG_CANCEL)) {
 				/* Return failure if no parameters for HS
 				   enable */
 				status = -1;
@@ -421,7 +411,7 @@ static int mwifiex_set_hs_params(struct mwifiex_private *priv, u16 action,
 						HostCmd_CMD_802_11_HS_CFG_ENH,
 						HostCmd_ACT_GEN_SET, 0,
 						&adapter->hs_cfg);
-			if (hs_cfg->conditions == HOST_SLEEP_CFG_CANCEL)
+			if (hs_cfg->conditions == HS_CFG_CANCEL)
 				/* Restore previous condition */
 				adapter->hs_cfg.conditions =
 						cpu_to_le32(prev_cond);
@@ -455,7 +445,7 @@ int mwifiex_cancel_hs(struct mwifiex_private *priv, int cmd_type)
 {
 	struct mwifiex_ds_hs_cfg hscfg;
 
-	hscfg.conditions = HOST_SLEEP_CFG_CANCEL;
+	hscfg.conditions = HS_CFG_CANCEL;
 	hscfg.is_invoke_hostcmd = true;
 
 	return mwifiex_set_hs_params(priv, HostCmd_ACT_GEN_SET,

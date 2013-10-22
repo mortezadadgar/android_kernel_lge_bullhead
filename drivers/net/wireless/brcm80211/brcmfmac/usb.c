@@ -112,11 +112,6 @@ struct brcmf_usbdev_info {
 static void brcmf_usb_rx_refill(struct brcmf_usbdev_info *devinfo,
 				struct brcmf_usbreq  *req);
 
-MODULE_AUTHOR("Broadcom Corporation");
-MODULE_DESCRIPTION("Broadcom 802.11n wireless LAN fullmac usb driver.");
-MODULE_SUPPORTED_DEVICE("Broadcom 802.11n WLAN fullmac usb cards");
-MODULE_LICENSE("Dual BSD/GPL");
-
 static struct brcmf_usbdev *brcmf_usb_get_buspub(struct device *dev)
 {
 	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
@@ -354,11 +349,10 @@ brcmf_usbdev_qinit(struct list_head *q, int qsize)
 	int i;
 	struct brcmf_usbreq *req, *reqs;
 
-	reqs = kzalloc(sizeof(struct brcmf_usbreq) * qsize, GFP_ATOMIC);
-	if (reqs == NULL) {
-		brcmf_err("fail to allocate memory!\n");
+	reqs = kcalloc(qsize, sizeof(struct brcmf_usbreq), GFP_ATOMIC);
+	if (reqs == NULL)
 		return NULL;
-	}
+
 	req = reqs;
 
 	for (i = 0; i < qsize; i++) {
@@ -421,14 +415,8 @@ static void brcmf_usb_tx_complete(struct urb *urb)
 	brcmf_dbg(USB, "Enter, urb->status=%d, skb=%p\n", urb->status,
 		  req->skb);
 	brcmf_usb_del_fromq(devinfo, req);
-	if (urb->status == 0)
-		devinfo->bus_pub.bus->dstats.tx_packets++;
-	else
-		devinfo->bus_pub.bus->dstats.tx_errors++;
 
 	brcmf_txcomplete(devinfo->dev, req->skb, urb->status == 0);
-
-	brcmu_pkt_buf_free_skb(req->skb);
 	req->skb = NULL;
 	brcmf_usb_enq(devinfo, &devinfo->tx_freeq, req, &devinfo->tx_freecount);
 	if (devinfo->tx_freecount > devinfo->tx_high_watermark &&
@@ -443,30 +431,25 @@ static void brcmf_usb_rx_complete(struct urb *urb)
 	struct brcmf_usbreq  *req = (struct brcmf_usbreq *)urb->context;
 	struct brcmf_usbdev_info *devinfo = req->devinfo;
 	struct sk_buff *skb;
-	int ifidx = 0;
+	struct sk_buff_head skbq;
 
 	brcmf_dbg(USB, "Enter, urb->status=%d\n", urb->status);
 	brcmf_usb_del_fromq(devinfo, req);
 	skb = req->skb;
 	req->skb = NULL;
 
-	if (urb->status == 0) {
-		devinfo->bus_pub.bus->dstats.rx_packets++;
-	} else {
-		devinfo->bus_pub.bus->dstats.rx_errors++;
+	/* zero lenght packets indicate usb "failure". Do not refill */
+	if (urb->status != 0 || !urb->actual_length) {
 		brcmu_pkt_buf_free_skb(skb);
 		brcmf_usb_enq(devinfo, &devinfo->rx_freeq, req, NULL);
 		return;
 	}
 
 	if (devinfo->bus_pub.state == BRCMFMAC_USB_STATE_UP) {
+		skb_queue_head_init(&skbq);
+		skb_queue_tail(&skbq, skb);
 		skb_put(skb, urb->actual_length);
-		if (brcmf_proto_hdrpull(devinfo->dev, &ifidx, skb) != 0) {
-			brcmf_err("rx protocol error\n");
-			brcmu_pkt_buf_free_skb(skb);
-			devinfo->bus_pub.bus->dstats.rx_errors++;
-		} else
-			brcmf_rx_packet(devinfo->dev, ifidx, skb);
+		brcmf_rx_frames(devinfo->dev, &skbq);
 		brcmf_usb_rx_refill(devinfo, req);
 	} else {
 		brcmu_pkt_buf_free_skb(skb);
@@ -587,15 +570,17 @@ static int brcmf_usb_tx(struct device *dev, struct sk_buff *skb)
 	int ret;
 
 	brcmf_dbg(USB, "Enter, skb=%p\n", skb);
-	if (devinfo->bus_pub.state != BRCMFMAC_USB_STATE_UP)
-		return -EIO;
+	if (devinfo->bus_pub.state != BRCMFMAC_USB_STATE_UP) {
+		ret = -EIO;
+		goto fail;
+	}
 
 	req = brcmf_usb_deq(devinfo, &devinfo->tx_freeq,
 					&devinfo->tx_freecount);
 	if (!req) {
-		brcmu_pkt_buf_free_skb(skb);
 		brcmf_err("no req to send\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto fail;
 	}
 
 	req->skb = skb;
@@ -608,18 +593,21 @@ static int brcmf_usb_tx(struct device *dev, struct sk_buff *skb)
 	if (ret) {
 		brcmf_err("brcmf_usb_tx usb_submit_urb FAILED\n");
 		brcmf_usb_del_fromq(devinfo, req);
-		brcmu_pkt_buf_free_skb(req->skb);
 		req->skb = NULL;
 		brcmf_usb_enq(devinfo, &devinfo->tx_freeq, req,
-						&devinfo->tx_freecount);
-	} else {
-		if (devinfo->tx_freecount < devinfo->tx_low_watermark &&
-			!devinfo->tx_flowblock) {
-			brcmf_txflowblock(dev, true);
-			devinfo->tx_flowblock = true;
-		}
+			      &devinfo->tx_freecount);
+		goto fail;
 	}
 
+	if (devinfo->tx_freecount < devinfo->tx_low_watermark &&
+	    !devinfo->tx_flowblock) {
+		brcmf_txflowblock(dev, true);
+		devinfo->tx_flowblock = true;
+	}
+	return 0;
+
+fail:
+	brcmf_txcomplete(dev, skb, false);
 	return ret;
 }
 
@@ -1259,6 +1247,8 @@ static int brcmf_usb_probe_cb(struct brcmf_usbdev_info *devinfo)
 	bus->bus_priv.usb = bus_pub;
 	dev_set_drvdata(dev, bus);
 	bus->ops = &brcmf_usb_bus_ops;
+	bus->chip = bus_pub->devid;
+	bus->chiprev = bus_pub->chiprev;
 
 	/* Attach to the common driver interface */
 	ret = brcmf_attach(0, dev);
@@ -1493,6 +1483,7 @@ static struct usb_device_id brcmf_usb_devid_table[] = {
 	{ USB_DEVICE(BRCMF_USB_VENDOR_ID_BROADCOM, BRCMF_USB_DEVICE_ID_BCMFW) },
 	{ }
 };
+
 MODULE_DEVICE_TABLE(usb, brcmf_usb_devid_table);
 MODULE_FIRMWARE(BRCMF_USB_43143_FW_NAME);
 MODULE_FIRMWARE(BRCMF_USB_43236_FW_NAME);
@@ -1520,10 +1511,23 @@ static void brcmf_release_fw(struct list_head *q)
 	}
 }
 
+static int brcmf_usb_reset_device(struct device *dev, void *notused)
+{
+	/* device past is the usb interface so we
+	 * need to use parent here.
+	 */
+	brcmf_dev_reset(dev->parent);
+	return 0;
+}
 
 void brcmf_usb_exit(void)
 {
+	struct device_driver *drv = &brcmf_usbdrvr.drvwrap.driver;
+	int ret;
+
 	brcmf_dbg(USB, "Enter\n");
+	ret = driver_for_each_device(drv, NULL, NULL,
+				     brcmf_usb_reset_device);
 	usb_deregister(&brcmf_usbdrvr);
 	brcmf_release_fw(&fw_image_list);
 }

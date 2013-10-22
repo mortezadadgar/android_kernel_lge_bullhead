@@ -44,8 +44,6 @@ static int mwifiex_add_bss_prio_tbl(struct mwifiex_private *priv)
 
 	bss_prio->priv = priv;
 	INIT_LIST_HEAD(&bss_prio->list);
-	if (!tbl[priv->bss_priority].bss_prio_cur)
-		tbl[priv->bss_priority].bss_prio_cur = bss_prio;
 
 	spin_lock_irqsave(&tbl[priv->bss_priority].bss_prio_lock, flags);
 	list_add_tail(&bss_prio->list, &tbl[priv->bss_priority].bss_prio_head);
@@ -60,9 +58,6 @@ static void scan_delay_timer_fn(unsigned long data)
 	struct mwifiex_adapter *adapter = priv->adapter;
 	struct cmd_ctrl_node *cmd_node, *tmp_node;
 	unsigned long flags;
-
-	if (adapter->surprise_removed)
-		return;
 
 	if (adapter->scan_delay_cnt == MWIFIEX_MAX_SCAN_DELAY_CNT) {
 		/*
@@ -222,9 +217,6 @@ int mwifiex_init_priv(struct mwifiex_private *priv)
 	setup_timer(&priv->scan_delay_timer, scan_delay_timer_fn,
 		    (unsigned long)priv);
 
-	priv->csa_chan = 0;
-	priv->csa_expire_time = 0;
-
 	return mwifiex_add_bss_prio_tbl(priv);
 }
 
@@ -324,9 +316,9 @@ static void mwifiex_init_adapter(struct mwifiex_adapter *adapter)
 	adapter->curr_tx_buf_size = MWIFIEX_TX_DATA_BUF_SIZE_2K;
 
 	adapter->is_hs_configured = false;
-	adapter->hs_cfg.conditions = cpu_to_le32(HOST_SLEEP_CFG_COND_DEF);
-	adapter->hs_cfg.gpio = HOST_SLEEP_CFG_GPIO_DEF;
-	adapter->hs_cfg.gap = HOST_SLEEP_CFG_GAP_DEF;
+	adapter->hs_cfg.conditions = cpu_to_le32(HS_CFG_COND_DEF);
+	adapter->hs_cfg.gpio = HS_CFG_GPIO_DEF;
+	adapter->hs_cfg.gap = HS_CFG_GAP_DEF;
 	adapter->hs_activated = false;
 
 	memset(adapter->event_body, 0, sizeof(adapter->event_body));
@@ -455,27 +447,21 @@ static void mwifiex_free_lock_list(struct mwifiex_adapter *adapter)
 }
 
 /*
- * This function performs cleanup for adapter structure.
+ * This function frees the adapter structure.
  *
- * The cleanup is done recursively, by canceling all pending
- * commands, freeing the member buffers previously allocated
- * (command buffers, scan table buffer, sleep confirm command
- * buffer), stopping the timers and calling the cleanup routines
- * for every interface.
+ * The freeing operation is done recursively, by canceling all
+ * pending commands, freeing the member buffers previously
+ * allocated (command buffers, scan table buffer, sleep confirm
+ * command buffer), stopping the timers and calling the cleanup
+ * routines for every interface, before the actual adapter
+ * structure is freed.
  */
 static void
-mwifiex_adapter_cleanup(struct mwifiex_adapter *adapter)
+mwifiex_free_adapter(struct mwifiex_adapter *adapter)
 {
-	int i;
-
 	if (!adapter) {
 		pr_err("%s: adapter is NULL\n", __func__);
 		return;
-	}
-
-	for (i = 0; i < adapter->priv_num; i++) {
-		if (adapter->priv[i])
-			del_timer_sync(&adapter->priv[i]->scan_delay_timer);
 	}
 
 	mwifiex_cancel_all_pending_cmd(adapter);
@@ -537,7 +523,6 @@ int mwifiex_init_lock_list(struct mwifiex_adapter *adapter)
 
 	for (i = 0; i < adapter->priv_num; ++i) {
 		INIT_LIST_HEAD(&adapter->bss_prio_tbl[i].bss_prio_head);
-		adapter->bss_prio_tbl[i].bss_prio_cur = NULL;
 		spin_lock_init(&adapter->bss_prio_tbl[i].bss_prio_lock);
 	}
 
@@ -637,42 +622,36 @@ static void mwifiex_delete_bss_prio_tbl(struct mwifiex_private *priv)
 {
 	int i;
 	struct mwifiex_adapter *adapter = priv->adapter;
-	struct mwifiex_bss_prio_node *bssprio_node, *tmp_node, **cur;
+	struct mwifiex_bss_prio_node *bssprio_node, *tmp_node;
 	struct list_head *head;
 	spinlock_t *lock; /* bss priority lock */
 	unsigned long flags;
 
 	for (i = 0; i < adapter->priv_num; ++i) {
 		head = &adapter->bss_prio_tbl[i].bss_prio_head;
-		cur = &adapter->bss_prio_tbl[i].bss_prio_cur;
 		lock = &adapter->bss_prio_tbl[i].bss_prio_lock;
 		dev_dbg(adapter->dev, "info: delete BSS priority table,"
 				" bss_type = %d, bss_num = %d, i = %d,"
-				" head = %p, cur = %p\n",
-			      priv->bss_type, priv->bss_num, i, head, *cur);
-		if (*cur) {
+				" head = %p\n",
+			      priv->bss_type, priv->bss_num, i, head);
+
+		{
 			spin_lock_irqsave(lock, flags);
 			if (list_empty(head)) {
 				spin_unlock_irqrestore(lock, flags);
 				continue;
 			}
-			bssprio_node = list_first_entry(head,
-					struct mwifiex_bss_prio_node, list);
-			spin_unlock_irqrestore(lock, flags);
-
 			list_for_each_entry_safe(bssprio_node, tmp_node, head,
 						 list) {
 				if (bssprio_node->priv == priv) {
 					dev_dbg(adapter->dev, "info: Delete "
 						"node %p, next = %p\n",
 						bssprio_node, tmp_node);
-					spin_lock_irqsave(lock, flags);
 					list_del(&bssprio_node->list);
-					spin_unlock_irqrestore(lock, flags);
 					kfree(bssprio_node);
 				}
 			}
-			*cur = (struct mwifiex_bss_prio_node *)head;
+			spin_unlock_irqrestore(lock, flags);
 		}
 	}
 }
@@ -754,7 +733,8 @@ mwifiex_shutdown_drv(struct mwifiex_adapter *adapter)
 		}
 	}
 
-	mwifiex_adapter_cleanup(adapter);
+	/* Free adapter structure */
+	mwifiex_free_adapter(adapter);
 
 	spin_unlock_irqrestore(&adapter->mwifiex_lock, flags);
 

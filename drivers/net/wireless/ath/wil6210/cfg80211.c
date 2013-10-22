@@ -14,16 +14,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <linux/kernel.h>
-#include <linux/netdevice.h>
-#include <linux/sched.h>
-#include <linux/etherdevice.h>
-#include <linux/wireless.h>
-#include <linux/ieee80211.h>
-#include <linux/slab.h>
-#include <linux/version.h>
-#include <net/cfg80211.h>
-
 #include "wil6210.h"
 #include "wmi.h"
 
@@ -204,7 +194,6 @@ static int wil_cfg80211_scan(struct wiphy *wiphy,
 		break;
 	default:
 		return -EOPNOTSUPP;
-
 	}
 
 	/* FW don't support scan after connection attempt */
@@ -228,8 +217,8 @@ static int wil_cfg80211_scan(struct wiphy *wiphy,
 		}
 		/* 0-based channel indexes */
 		cmd.cmd.channel_list[cmd.cmd.num_channels++].channel = ch - 1;
-		wil_dbg(wil, "Scan for ch %d  : %d MHz\n", ch,
-			request->channels[i]->center_freq);
+		wil_dbg_misc(wil, "Scan for ch %d  : %d MHz\n", ch,
+			     request->channels[i]->center_freq);
 	}
 
 	return wmi_send(wil, WMI_START_SCAN_CMDID, &cmd, sizeof(cmd.cmd) +
@@ -293,7 +282,7 @@ static int wil_cfg80211_connect(struct wiphy *wiphy,
 
 	/* WMI_CONNECT_CMD */
 	memset(&conn, 0, sizeof(conn));
-	switch (bss->capability & 0x03) {
+	switch (bss->capability & WLAN_CAPABILITY_DMG_TYPE_MASK) {
 	case WLAN_CAPABILITY_DMG_TYPE_AP:
 		conn.network_type = WMI_NETTYPE_INFRA;
 		break;
@@ -425,8 +414,8 @@ static int wil_cfg80211_start_ap(struct wiphy *wiphy,
 		return -EINVAL;
 	}
 
-	wil_dbg(wil, "AP on Channel %d %d MHz, %s\n", channel->hw_value,
-		channel->center_freq, info->privacy ? "secure" : "open");
+	wil_dbg_misc(wil, "AP on Channel %d %d MHz, %s\n", channel->hw_value,
+		     channel->center_freq, info->privacy ? "secure" : "open");
 	print_hex_dump_bytes("SSID ", DUMP_PREFIX_OFFSET,
 			     info->ssid, info->ssid_len);
 
@@ -438,17 +427,18 @@ static int wil_cfg80211_start_ap(struct wiphy *wiphy,
 	if (rc)
 		return rc;
 
-	rc = wmi_set_channel(wil, channel->hw_value);
-	if (rc)
-		return rc;
-
 	/* MAC address - pre-requisite for other commands */
 	wmi_set_mac_address(wil, ndev->dev_addr);
 
 	/* IE's */
 	/* bcon 'head IE's are not relevant for 60g band */
-	wmi_set_ie(wil, WMI_FRAME_BEACON, bcon->beacon_ies_len,
-		   bcon->beacon_ies);
+	/*
+	 * FW do not form regular beacon, so bcon IE's are not set
+	 * For the DMG bcon, when it will be supported, bcon IE's will
+	 * be reused; add something like:
+	 * wmi_set_ie(wil, WMI_FRAME_BEACON, bcon->beacon_ies_len,
+	 * bcon->beacon_ies);
+	 */
 	wmi_set_ie(wil, WMI_FRAME_PROBE_RESP, bcon->proberesp_ies_len,
 		   bcon->proberesp_ies);
 	wmi_set_ie(wil, WMI_FRAME_ASSOC_RESP, bcon->assocresp_ies_len,
@@ -456,7 +446,8 @@ static int wil_cfg80211_start_ap(struct wiphy *wiphy,
 
 	wil->secure_pcp = info->privacy;
 
-	rc = wmi_set_bcon(wil, info->beacon_interval, wmi_nettype);
+	rc = wmi_pcp_start(wil, info->beacon_interval, wmi_nettype,
+			   channel->hw_value);
 	if (rc)
 		return rc;
 
@@ -473,11 +464,8 @@ static int wil_cfg80211_stop_ap(struct wiphy *wiphy,
 {
 	int rc = 0;
 	struct wil6210_priv *wil = wiphy_to_wil(wiphy);
-	struct wireless_dev *wdev = ndev->ieee80211_ptr;
-	u8 wmi_nettype = wil_iftype_nl2wmi(wdev->iftype);
 
-	/* To stop beaconing, set BI to 0 */
-	rc = wmi_set_bcon(wil, 0, wmi_nettype);
+	rc = wmi_pcp_stop(wil);
 
 	return rc;
 }

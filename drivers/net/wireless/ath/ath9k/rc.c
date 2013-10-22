@@ -814,7 +814,7 @@ static void ath_get_rate(void *priv, struct ieee80211_sta *sta, void *priv_sta,
 	 * So, set fourth rate in series to be same as third one for
 	 * above conditions.
 	 */
-	if ((sc->hw->conf.channel->band == IEEE80211_BAND_2GHZ) &&
+	if ((sc->hw->conf.chandef.chan->band == IEEE80211_BAND_2GHZ) &&
 	    (conf_is_ht(&sc->hw->conf))) {
 		u8 dot11rate = rate_table->info[rix].dot11rate;
 		u8 phy = rate_table->info[rix].phy;
@@ -1204,7 +1204,7 @@ static u8 ath_rc_build_ht_caps(struct ath_softc *sc, struct ieee80211_sta *sta)
 			caps |= WLAN_RC_TS_FLAG | WLAN_RC_DS_FLAG;
 		else if (sta->ht_cap.mcs.rx_mask[1])
 			caps |= WLAN_RC_DS_FLAG;
-		if (sta->ht_cap.cap & IEEE80211_HT_CAP_SUP_WIDTH_20_40) {
+		if (sta->bandwidth >= IEEE80211_STA_RX_BW_40) {
 			caps |= WLAN_RC_40_FLAG;
 			if (sta->ht_cap.cap & IEEE80211_HT_CAP_SGI_40)
 				caps |= WLAN_RC_SGI_FLAG;
@@ -1227,10 +1227,7 @@ static bool ath_tx_aggr_check(struct ath_softc *sc, struct ieee80211_sta *sta,
 		return false;
 
 	txtid = ATH_AN_2_TID(an, tidno);
-
-	if (!(txtid->state & (AGGR_ADDBA_COMPLETE | AGGR_ADDBA_PROGRESS)))
-			return true;
-	return false;
+	return !txtid->active;
 }
 
 
@@ -1328,7 +1325,7 @@ static void ath_rate_update(void *priv, struct ieee80211_supported_band *sband,
 
 		ath_dbg(ath9k_hw_common(sc->sc_ah), CONFIG,
 			"Operating HT Bandwidth changed to: %d\n",
-			sc->hw->conf.channel_type);
+			cfg80211_get_chandef_type(&sc->hw->conf.chandef));
 	}
 }
 
@@ -1452,17 +1449,7 @@ static void ath_rate_free(void *priv)
 
 static void *ath_rate_alloc_sta(void *priv, struct ieee80211_sta *sta, gfp_t gfp)
 {
-	struct ath_softc *sc = priv;
-	struct ath_rate_priv *rate_priv;
-
-	rate_priv = kzalloc(sizeof(struct ath_rate_priv), gfp);
-	if (!rate_priv) {
-		ath_err(ath9k_hw_common(sc->sc_ah),
-			"Unable to allocate private rc structure\n");
-		return NULL;
-	}
-
-	return rate_priv;
+	return kzalloc(sizeof(struct ath_rate_priv), gfp);
 }
 
 static void ath_rate_free_sta(void *priv, struct ieee80211_sta *sta,

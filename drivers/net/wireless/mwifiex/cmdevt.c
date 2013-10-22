@@ -24,6 +24,7 @@
 #include "main.h"
 #include "wmm.h"
 #include "11n.h"
+#include "11ac.h"
 
 /*
  * This function initializes a command node.
@@ -249,7 +250,7 @@ static int mwifiex_dnld_cmd_to_fw(struct mwifiex_private *priv,
 
 	/* Setup the timer after transmit command */
 	mod_timer(&adapter->cmd_timer,
-		  jiffies + (MWIFIEX_TIMER_10S * HZ) / 1000);
+		  jiffies + msecs_to_jiffies(MWIFIEX_TIMER_10S));
 
 	return 0;
 }
@@ -1163,7 +1164,7 @@ int mwifiex_ret_802_11_hs_cfg(struct mwifiex_private *priv,
 			phs_cfg->params.hs_config.gpio,
 			phs_cfg->params.hs_config.gap);
 	}
-	if (conditions != HOST_SLEEP_CFG_CANCEL) {
+	if (conditions != HS_CFG_CANCEL) {
 		adapter->is_hs_configured = true;
 		if (adapter->iface_type == MWIFIEX_USB ||
 		    adapter->iface_type == MWIFIEX_PCIE)
@@ -1490,6 +1491,24 @@ int mwifiex_ret_get_hw_spec(struct mwifiex_private *priv,
 
 	adapter->fw_release_number = le32_to_cpu(hw_spec->fw_release_number);
 	adapter->number_of_antenna = le16_to_cpu(hw_spec->number_of_antenna);
+
+	if (le32_to_cpu(hw_spec->dot_11ac_dev_cap)) {
+		adapter->is_hw_11ac_capable = true;
+
+		/* Copy 11AC cap */
+		adapter->hw_dot_11ac_dev_cap =
+					le32_to_cpu(hw_spec->dot_11ac_dev_cap);
+		adapter->usr_dot_11ac_dev_cap_bg = adapter->hw_dot_11ac_dev_cap;
+		adapter->usr_dot_11ac_dev_cap_a = adapter->hw_dot_11ac_dev_cap;
+
+		/* Copy 11AC mcs */
+		adapter->hw_dot_11ac_mcs_support =
+				le32_to_cpu(hw_spec->dot_11ac_mcs_support);
+		adapter->usr_dot_11ac_mcs_support =
+					adapter->hw_dot_11ac_mcs_support;
+	} else {
+		adapter->is_hw_11ac_capable = false;
+	}
 
 	dev_dbg(adapter->dev, "info: GET_HW_SPEC: fw_release_number- %#x\n",
 		adapter->fw_release_number);

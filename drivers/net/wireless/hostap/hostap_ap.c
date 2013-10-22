@@ -89,7 +89,7 @@ static const struct file_operations ap_debug_proc_fops = {
 	.open		= ap_debug_proc_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
-	.release	= seq_release,
+	.release	= single_release,
 };
 #endif /* PRISM2_NO_PROCFS_DEBUG */
 
@@ -412,7 +412,7 @@ int ap_control_add_mac(struct mac_restrictions *mac_restrictions, u8 *mac)
 
 	entry = kmalloc(sizeof(struct mac_entry), GFP_KERNEL);
 	if (entry == NULL)
-		return -1;
+		return -ENOMEM;
 
 	memcpy(entry->addr, mac, ETH_ALEN);
 
@@ -1116,7 +1116,7 @@ static const struct file_operations prism2_sta_proc_fops = {
 	.open		= prism2_sta_proc_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
-	.release	= seq_release,
+	.release	= single_release,
 };
 
 static void handle_add_proc_queue(struct work_struct *work)

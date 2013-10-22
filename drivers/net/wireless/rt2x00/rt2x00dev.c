@@ -171,7 +171,7 @@ static void rt2x00lib_autowakeup(struct work_struct *work)
 		return;
 
 	if (rt2x00dev->ops->lib->set_device_state(rt2x00dev, STATE_AWAKE))
-		ERROR(rt2x00dev, "Device failed to wakeup.\n");
+		rt2x00_err(rt2x00dev, "Device failed to wakeup\n");
 	clear_bit(CONFIG_POWERSAVING, &rt2x00dev->flags);
 }
 
@@ -271,6 +271,50 @@ void rt2x00lib_dmadone(struct queue_entry *entry)
 }
 EXPORT_SYMBOL_GPL(rt2x00lib_dmadone);
 
+static inline int rt2x00lib_txdone_bar_status(struct queue_entry *entry)
+{
+	struct rt2x00_dev *rt2x00dev = entry->queue->rt2x00dev;
+	struct ieee80211_bar *bar = (void *) entry->skb->data;
+	struct rt2x00_bar_list_entry *bar_entry;
+	int ret;
+
+	if (likely(!ieee80211_is_back_req(bar->frame_control)))
+		return 0;
+
+	/*
+	 * Unlike all other frames, the status report for BARs does
+	 * not directly come from the hardware as it is incapable of
+	 * matching a BA to a previously send BAR. The hardware will
+	 * report all BARs as if they weren't acked at all.
+	 *
+	 * Instead the RX-path will scan for incoming BAs and set the
+	 * block_acked flag if it sees one that was likely caused by
+	 * a BAR from us.
+	 *
+	 * Remove remaining BARs here and return their status for
+	 * TX done processing.
+	 */
+	ret = 0;
+	rcu_read_lock();
+	list_for_each_entry_rcu(bar_entry, &rt2x00dev->bar_list, list) {
+		if (bar_entry->entry != entry)
+			continue;
+
+		spin_lock_bh(&rt2x00dev->bar_list_lock);
+		/* Return whether this BAR was blockacked or not */
+		ret = bar_entry->block_acked;
+		/* Remove the BAR from our checklist */
+		list_del_rcu(&bar_entry->list);
+		spin_unlock_bh(&rt2x00dev->bar_list_lock);
+		kfree_rcu(bar_entry, head);
+
+		break;
+	}
+	rcu_read_unlock();
+
+	return ret;
+}
+
 void rt2x00lib_txdone(struct queue_entry *entry,
 		      struct txdone_entry_desc *txdesc)
 {
@@ -324,9 +368,12 @@ void rt2x00lib_txdone(struct queue_entry *entry,
 	rt2x00debug_dump_frame(rt2x00dev, DUMP_FRAME_TXDONE, entry->skb);
 
 	/*
-	 * Determine if the frame has been successfully transmitted.
+	 * Determine if the frame has been successfully transmitted and
+	 * remove BARs from our check list while checking for their
+	 * TX status.
 	 */
 	success =
+	    rt2x00lib_txdone_bar_status(entry) ||
 	    test_bit(TXDONE_SUCCESS, &txdesc->flags) ||
 	    test_bit(TXDONE_UNKNOWN, &txdesc->flags);
 
@@ -491,6 +538,50 @@ static void rt2x00lib_sleep(struct work_struct *work)
 				 IEEE80211_CONF_CHANGE_PS);
 }
 
+static void rt2x00lib_rxdone_check_ba(struct rt2x00_dev *rt2x00dev,
+				      struct sk_buff *skb,
+				      struct rxdone_entry_desc *rxdesc)
+{
+	struct rt2x00_bar_list_entry *entry;
+	struct ieee80211_bar *ba = (void *)skb->data;
+
+	if (likely(!ieee80211_is_back(ba->frame_control)))
+		return;
+
+	if (rxdesc->size < sizeof(*ba) + FCS_LEN)
+		return;
+
+	rcu_read_lock();
+	list_for_each_entry_rcu(entry, &rt2x00dev->bar_list, list) {
+
+		if (ba->start_seq_num != entry->start_seq_num)
+			continue;
+
+#define TID_CHECK(a, b) (						\
+	((a) & cpu_to_le16(IEEE80211_BAR_CTRL_TID_INFO_MASK)) ==	\
+	((b) & cpu_to_le16(IEEE80211_BAR_CTRL_TID_INFO_MASK)))		\
+
+		if (!TID_CHECK(ba->control, entry->control))
+			continue;
+
+#undef TID_CHECK
+
+		if (compare_ether_addr(ba->ra, entry->ta))
+			continue;
+
+		if (compare_ether_addr(ba->ta, entry->ra))
+			continue;
+
+		/* Mark BAR since we received the according BA */
+		spin_lock_bh(&rt2x00dev->bar_list_lock);
+		entry->block_acked = 1;
+		spin_unlock_bh(&rt2x00dev->bar_list_lock);
+		break;
+	}
+	rcu_read_unlock();
+
+}
+
 static void rt2x00lib_rxdone_check_ps(struct rt2x00_dev *rt2x00dev,
 				      struct sk_buff *skb,
 				      struct rxdone_entry_desc *rxdesc)
@@ -582,9 +673,8 @@ static int rt2x00lib_rxdone_read_signal(struct rt2x00_dev *rt2x00dev,
 		break;
 	}
 
-	WARNING(rt2x00dev, "Frame received with unrecognized signal, "
-		"mode=0x%.4x, signal=0x%.4x, type=%d.\n",
-		rxdesc->rate_mode, signal, type);
+	rt2x00_warn(rt2x00dev, "Frame received with unrecognized signal, mode=0x%.4x, signal=0x%.4x, type=%d\n",
+		    rxdesc->rate_mode, signal, type);
 	return 0;
 }
 
@@ -629,8 +719,8 @@ void rt2x00lib_rxdone(struct queue_entry *entry, gfp_t gfp)
 	 */
 	if (unlikely(rxdesc.size == 0 ||
 		     rxdesc.size > entry->queue->data_size)) {
-		ERROR(rt2x00dev, "Wrong frame size %d max %d.\n",
-			rxdesc.size, entry->queue->data_size);
+		rt2x00_err(rt2x00dev, "Wrong frame size %d max %d\n",
+			   rxdesc.size, entry->queue->data_size);
 		dev_kfree_skb(entry->skb);
 		goto renew_skb;
 	}
@@ -672,6 +762,12 @@ void rt2x00lib_rxdone(struct queue_entry *entry, gfp_t gfp)
 	 * buffered while we were in powersaving mode.
 	 */
 	rt2x00lib_rxdone_check_ps(rt2x00dev, entry->skb, &rxdesc);
+
+	/*
+	 * Check for incoming BlockAcks to match to the BlockAckReqs
+	 * we've send out.
+	 */
+	rt2x00lib_rxdone_check_ba(rt2x00dev, entry->skb, &rxdesc);
 
 	/*
 	 * Update extra components
@@ -909,7 +1005,7 @@ static int rt2x00lib_probe_hw_modes(struct rt2x00_dev *rt2x00dev,
 
  exit_free_channels:
 	kfree(channels);
-	ERROR(rt2x00dev, "Allocation ieee80211 modes failed.\n");
+	rt2x00_err(rt2x00dev, "Allocation ieee80211 modes failed\n");
 	return -ENOMEM;
 }
 
@@ -1140,6 +1236,9 @@ static inline void rt2x00lib_set_if_combinations(struct rt2x00_dev *rt2x00dev)
 	if_limit = &rt2x00dev->if_limits_ap;
 	if_limit->max = rt2x00dev->ops->max_ap_intf;
 	if_limit->types = BIT(NL80211_IFTYPE_AP);
+#ifdef CONFIG_MAC80211_MESH
+	if_limit->types |= BIT(NL80211_IFTYPE_MESH_POINT);
+#endif
 
 	/*
 	 * Build up AP interface combinations structure.
@@ -1183,6 +1282,8 @@ int rt2x00lib_probe_dev(struct rt2x00_dev *rt2x00dev)
 
 	spin_lock_init(&rt2x00dev->irqmask_lock);
 	mutex_init(&rt2x00dev->csr_mutex);
+	INIT_LIST_HEAD(&rt2x00dev->bar_list);
+	spin_lock_init(&rt2x00dev->bar_list_lock);
 
 	set_bit(DEVICE_STATE_PRESENT, &rt2x00dev->flags);
 
@@ -1235,7 +1336,7 @@ int rt2x00lib_probe_dev(struct rt2x00_dev *rt2x00dev)
 	 */
 	retval = rt2x00dev->ops->lib->probe_hw(rt2x00dev);
 	if (retval) {
-		ERROR(rt2x00dev, "Failed to allocate device.\n");
+		rt2x00_err(rt2x00dev, "Failed to allocate device\n");
 		goto exit;
 	}
 
@@ -1251,7 +1352,7 @@ int rt2x00lib_probe_dev(struct rt2x00_dev *rt2x00dev)
 	 */
 	retval = rt2x00lib_probe_hw(rt2x00dev);
 	if (retval) {
-		ERROR(rt2x00dev, "Failed to initialize hw.\n");
+		rt2x00_err(rt2x00dev, "Failed to initialize hw\n");
 		goto exit;
 	}
 
@@ -1349,7 +1450,7 @@ EXPORT_SYMBOL_GPL(rt2x00lib_remove_dev);
 #ifdef CONFIG_PM
 int rt2x00lib_suspend(struct rt2x00_dev *rt2x00dev, pm_message_t state)
 {
-	NOTICE(rt2x00dev, "Going to sleep.\n");
+	rt2x00_dbg(rt2x00dev, "Going to sleep\n");
 
 	/*
 	 * Prevent mac80211 from accessing driver while suspended.
@@ -1380,8 +1481,7 @@ int rt2x00lib_suspend(struct rt2x00_dev *rt2x00dev, pm_message_t state)
 	 * device is as good as disabled.
 	 */
 	if (rt2x00dev->ops->lib->set_device_state(rt2x00dev, STATE_SLEEP))
-		WARNING(rt2x00dev, "Device failed to enter sleep state, "
-			"continue suspending.\n");
+		rt2x00_warn(rt2x00dev, "Device failed to enter sleep state, continue suspending\n");
 
 	return 0;
 }
@@ -1389,7 +1489,7 @@ EXPORT_SYMBOL_GPL(rt2x00lib_suspend);
 
 int rt2x00lib_resume(struct rt2x00_dev *rt2x00dev)
 {
-	NOTICE(rt2x00dev, "Waking up.\n");
+	rt2x00_dbg(rt2x00dev, "Waking up\n");
 
 	/*
 	 * Restore/enable extra components.

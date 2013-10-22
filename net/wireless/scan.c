@@ -169,7 +169,7 @@ void ___cfg80211_scan_done(struct cfg80211_registered_device *rdev, bool leak)
 	union iwreq_data wrqu;
 #endif
 
-	ASSERT_RDEV_LOCK(rdev);
+	lockdep_assert_held(&rdev->sched_scan_mtx);
 
 	request = rdev->scan_req;
 
@@ -230,9 +230,9 @@ void __cfg80211_scan_done(struct work_struct *wk)
 	rdev = container_of(wk, struct cfg80211_registered_device,
 			    scan_done_wk);
 
-	cfg80211_lock_rdev(rdev);
+	mutex_lock(&rdev->sched_scan_mtx);
 	___cfg80211_scan_done(rdev, false);
-	cfg80211_unlock_rdev(rdev);
+	mutex_unlock(&rdev->sched_scan_mtx);
 }
 
 void cfg80211_scan_done(struct cfg80211_scan_request *request, bool aborted)
@@ -365,14 +365,18 @@ const u8 *cfg80211_find_vendor_ie(unsigned int oui, u8 oui_type,
 		if (!pos)
 			return NULL;
 
-		if (end - pos < sizeof(*ie))
-			return NULL;
-
 		ie = (struct ieee80211_vendor_ie *)pos;
+
+		/* make sure we can access ie->len */
+		BUILD_BUG_ON(offsetof(struct ieee80211_vendor_ie, len) != 1);
+
+		if (ie->len < sizeof(*ie))
+			goto cont;
+
 		ie_oui = ie->oui[0] << 16 | ie->oui[1] << 8 | ie->oui[2];
 		if (ie_oui == oui && ie->oui_type == oui_type)
 			return pos;
-
+cont:
 		pos += 2 + ie->len;
 	}
 	return NULL;
@@ -694,11 +698,6 @@ cfg80211_bss_update(struct cfg80211_registered_device *dev,
 	found = rb_find_bss(dev, tmp, BSS_CMP_REGULAR);
 
 	if (found) {
-		found->pub.beacon_interval = tmp->pub.beacon_interval;
-		found->pub.signal = tmp->pub.signal;
-		found->pub.capability = tmp->pub.capability;
-		found->ts = tmp->ts;
-
 		/* Update IEs */
 		if (rcu_access_pointer(tmp->pub.proberesp_ies)) {
 			const struct cfg80211_bss_ies *old;
@@ -719,6 +718,8 @@ cfg80211_bss_update(struct cfg80211_registered_device *dev,
 
 			if (found->pub.hidden_beacon_bss &&
 			    !list_empty(&found->hidden_list)) {
+				const struct cfg80211_bss_ies *f;
+
 				/*
 				 * The found BSS struct is one of the probe
 				 * response members of a group, but we're
@@ -728,6 +729,10 @@ cfg80211_bss_update(struct cfg80211_registered_device *dev,
 				 * SSID to showing it, which is confusing so
 				 * drop this information.
 				 */
+
+				f = rcu_access_pointer(tmp->pub.beacon_ies);
+				kfree_rcu((struct cfg80211_bss_ies *)f,
+					  rcu_head);
 				goto drop;
 			}
 
@@ -757,6 +762,11 @@ cfg80211_bss_update(struct cfg80211_registered_device *dev,
 				kfree_rcu((struct cfg80211_bss_ies *)old,
 					  rcu_head);
 		}
+
+		found->pub.beacon_interval = tmp->pub.beacon_interval;
+		found->pub.signal = tmp->pub.signal;
+		found->pub.capability = tmp->pub.capability;
+		found->ts = tmp->ts;
 	} else {
 		struct cfg80211_internal_bss *new;
 		struct cfg80211_internal_bss *hidden;
@@ -1052,6 +1062,7 @@ int cfg80211_wext_siwscan(struct net_device *dev,
 	if (IS_ERR(rdev))
 		return PTR_ERR(rdev);
 
+	mutex_lock(&rdev->sched_scan_mtx);
 	if (rdev->scan_req) {
 		err = -EBUSY;
 		goto out;
@@ -1158,6 +1169,7 @@ int cfg80211_wext_siwscan(struct net_device *dev,
 		dev_hold(dev);
 	}
  out:
+	mutex_unlock(&rdev->sched_scan_mtx);
 	kfree(creq);
 	cfg80211_unlock_rdev(rdev);
 	return err;
@@ -1204,16 +1216,6 @@ static void ieee80211_scan_add_ies(struct iw_request_info *info,
 						   end_buf, &iwe,
 						   (void *)pos);
 	}
-}
-
-static inline unsigned int elapsed_jiffies_msecs(unsigned long start)
-{
-	unsigned long end = jiffies;
-
-	if (end >= start)
-		return jiffies_to_msecs(end - start);
-
-	return jiffies_to_msecs(end + (MAX_JIFFY_OFFSET - start) + 1);
 }
 
 static char *
@@ -1292,15 +1294,10 @@ ieee80211_bss(struct wiphy *wiphy, struct iw_request_info *info,
 
 	rcu_read_lock();
 	ies = rcu_dereference(bss->pub.ies);
-	if (ies) {
-		rem = ies->len;
-		ie = ies->data;
-	} else {
-		rem = 0;
-		ie = NULL;
-	}
+	rem = ies->len;
+	ie = ies->data;
 
-	while (ies && rem >= 2) {
+	while (rem >= 2) {
 		/* invalid data */
 		if (ie[1] > rem - 2)
 			break;

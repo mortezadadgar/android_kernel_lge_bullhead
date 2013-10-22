@@ -183,6 +183,7 @@ struct ath_htc_rx_status {
 #define ATH9K_RXERR_DECRYPT       0x08
 #define ATH9K_RXERR_MIC           0x10
 #define ATH9K_RXERR_KEYMISS       0x20
+#define ATH9K_RXERR_CORRUPT_DESC  0x40
 
 #define ATH9K_RX_MORE             0x01
 #define ATH9K_RX_MORE_AGGR        0x02
@@ -226,7 +227,8 @@ enum ath9k_phyerr {
 	ATH9K_PHYERR_HT_LENGTH_ILLEGAL    = 35,
 	ATH9K_PHYERR_HT_RATE_ILLEGAL      = 36,
 
-	ATH9K_PHYERR_MAX                  = 37,
+	ATH9K_PHYERR_SPECTRAL		  = 38,
+	ATH9K_PHYERR_MAX                  = 39,
 };
 
 struct ath_desc {
