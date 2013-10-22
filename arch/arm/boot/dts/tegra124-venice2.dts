@@ -526,6 +526,13 @@
 				nvidia,tristate = <0>;
 				nvidia,enable-input = <1>;
 			};
+			sensor_irq_l {
+				nvidia,pins = "pi6";
+				nvidia,function = "gmi";
+				nvidia,pull = <0>;
+				nvidia,tristate = <0>;
+				nvidia,enable-input = <1>;
+			};
 		};
 	};
 
@@ -546,6 +553,13 @@
 			reg = <0x10>;
 			interrupt-parent = <&gpio>;
 			interrupts = <60 0>; /* GPIO PH4 */
+		};
+
+		temperature-sensor@4c {
+			compatible = "ti,tmp451";
+			reg = <0x4c>;
+			interrupt-parent = <&gpio>;
+			interrupts = <70 0x08>; /* GPIO PI6 */
 		};
 	};
 
