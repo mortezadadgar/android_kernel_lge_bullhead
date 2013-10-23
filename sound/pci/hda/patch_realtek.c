@@ -254,6 +254,13 @@ static void set_eapd(struct hda_codec *codec, hda_nid_t nid, int on)
 {
 	if (get_wcaps_type(get_wcaps(codec, nid)) != AC_WID_PIN)
 		return;
+
+	/* delay de-assert of eapd to allow biasing of amp
+	 * inputs to settle avoiding an audible 'pop'.
+	 */
+	if ((nid == 0x14) && codec->subsystem_id == 0x144dc0a7)
+		msleep(25);
+
 	if (snd_hda_query_pin_caps(codec, nid) & AC_PINCAP_EAPD)
 		snd_hda_codec_write(codec, nid, 0, AC_VERB_SET_EAPD_BTLENABLE,
 				    on ? 2 : 0);
@@ -278,6 +285,7 @@ static void alc_eapd_shutup(struct hda_codec *codec)
 {
 	alc_auto_setup_eapd(codec, false);
 	msleep(200);
+	snd_hda_shutup_pins(codec);
 }
 
 /* generic EAPD initialization */
@@ -822,7 +830,8 @@ static inline void alc_shutup(struct hda_codec *codec)
 
 	if (spec && spec->shutup)
 		spec->shutup(codec);
-	snd_hda_shutup_pins(codec);
+	else
+		snd_hda_shutup_pins(codec);
 }
 
 #define alc_free	snd_hda_gen_free
@@ -2519,6 +2528,7 @@ enum {
 	ALC269_TYPE_ALC269VD,
 	ALC269_TYPE_ALC280,
 	ALC269_TYPE_ALC282,
+	ALC269_TYPE_ALC283,
 	ALC269_TYPE_ALC284,
 	ALC269_TYPE_ALC286,
 };
@@ -2545,6 +2555,7 @@ static int alc269_parse_auto_config(struct hda_codec *codec)
 	case ALC269_TYPE_ALC269VD:
 	case ALC269_TYPE_ALC282:
 	case ALC269_TYPE_ALC286:
+	case ALC269_TYPE_ALC283:
 		ssids = alc269_ssids;
 		break;
 	default:
@@ -2569,15 +2580,76 @@ static void alc269_shutup(struct hda_codec *codec)
 {
 	struct alc_spec *spec = codec->spec;
 
-	if (spec->codec_variant != ALC269_TYPE_ALC269VB)
-		return;
-
 	if (spec->codec_variant == ALC269_TYPE_ALC269VB)
 		alc269vb_toggle_power_output(codec, 0);
 	if (spec->codec_variant == ALC269_TYPE_ALC269VB &&
 			(alc_get_coef0(codec) & 0x00ff) == 0x018) {
 		msleep(150);
 	}
+	snd_hda_shutup_pins(codec);
+}
+
+static void alc283_init(struct hda_codec *codec)
+{
+	struct alc_spec *spec = codec->spec;
+	hda_nid_t hp_pin = spec->gen.autocfg.hp_pins[0];
+	int hp_pin_sense = snd_hda_jack_detect(codec, hp_pin);
+	int val;
+
+	if (!hp_pin)
+		return;
+
+	alc_write_coef_idx(codec, 0x43, 0x9004);
+
+	snd_hda_codec_write(codec, hp_pin, 0,
+			    AC_VERB_SET_AMP_GAIN_MUTE, AMP_OUT_MUTE);
+
+	if (hp_pin_sense)
+		msleep(75);
+
+	snd_hda_codec_write(codec, hp_pin, 0,
+			    AC_VERB_SET_PIN_WIDGET_CONTROL, PIN_HP);
+
+	if (hp_pin_sense)
+		msleep(75);
+	val = alc_read_coef_idx(codec, 0x06);
+	alc_write_coef_idx(codec, 0x06, val & ~0x000c);;
+
+	val = alc_read_coef_idx(codec, 0x46);
+	alc_write_coef_idx(codec, 0x46, val & ~(3 << 12));
+	alc_write_coef_idx(codec, 0x43, 0x9614);
+}
+
+static void alc283_shutup(struct hda_codec *codec)
+{
+	struct alc_spec *spec = codec->spec;
+	hda_nid_t hp_pin = spec->gen.autocfg.hp_pins[0];
+	int hp_pin_sense = snd_hda_jack_detect(codec, hp_pin);
+	int val;
+
+	if (!hp_pin) {
+		alc269_shutup(codec);
+		return;
+	}
+
+	alc_write_coef_idx(codec, 0x43, 0x9004);
+
+	snd_hda_codec_write(codec, hp_pin, 0,
+			    AC_VERB_SET_AMP_GAIN_MUTE, AMP_OUT_MUTE);
+
+	if (hp_pin_sense)
+		msleep(100);
+
+	snd_hda_codec_write(codec, hp_pin, 0,
+			    AC_VERB_SET_PIN_WIDGET_CONTROL, 0x0);
+
+	val = alc_read_coef_idx(codec, 0x46);
+	alc_write_coef_idx(codec, 0x46, val | (3 << 12));
+
+	if (hp_pin_sense)
+		msleep(100);
+	snd_hda_shutup_pins(codec);
+	alc_write_coef_idx(codec, 0x43, 0x9614);
 }
 
 #ifdef CONFIG_PM
@@ -3150,11 +3222,12 @@ static void alc271_hp_gate_mic_jack(struct hda_codec *codec,
 	struct alc_spec *spec = codec->spec;
 
 	if (action == HDA_FIXUP_ACT_PROBE) {
-		if (snd_BUG_ON(!spec->gen.am_entry[1].pin ||
-			       !spec->gen.autocfg.hp_pins[0]))
+		int mic_pin = spec->gen.autocfg.inputs[0].pin;
+		int hp_pin = spec->gen.autocfg.hp_pins[0];
+
+		if (snd_BUG_ON(!mic_pin || !hp_pin))
 			return;
-		snd_hda_jack_set_gating_jack(codec, spec->gen.am_entry[1].pin,
-					     spec->gen.autocfg.hp_pins[0]);
+		snd_hda_jack_set_gating_jack(codec, mic_pin, hp_pin);
 	}
 }
 
@@ -3187,6 +3260,24 @@ static void alc269_fixup_limit_int_mic_boost(struct hda_codec *codec,
 					  (0x01 << AC_AMPCAP_NUM_STEPS_SHIFT) |
 					  (0x2f << AC_AMPCAP_STEP_SIZE_SHIFT) |
 					  (0 << AC_AMPCAP_MUTE_SHIFT));
+	}
+}
+
+static void alc283_fixup_dac_wcaps(struct hda_codec *codec,
+      const struct hda_fixup *fix, int action)
+{
+	int val;
+
+	switch (action) {
+	case HDA_FIXUP_ACT_PRE_PROBE:
+		snd_hda_override_wcaps(codec, 0x03, 0);
+		break;
+	case HDA_FIXUP_ACT_INIT:
+		/* MIC2-VREF control */
+		/* Set to manual mode */
+		val = alc_read_coef_idx(codec, 0x1a);
+		alc_write_coef_idx(codec, 0x1a, val | (1 << 4));
+		break;
 	}
 }
 
@@ -3225,6 +3316,7 @@ enum {
 	ALC271_FIXUP_HP_GATE_MIC_JACK,
 	ALC269_FIXUP_ACER_AC700,
 	ALC269_FIXUP_LIMIT_INT_MIC_BOOST,
+	ALC283_FIXUP_DAC_WCAPS,
 };
 
 static const struct hda_fixup alc269_fixups[] = {
@@ -3467,6 +3559,11 @@ static const struct hda_fixup alc269_fixups[] = {
 		.type = HDA_FIXUP_FUNC,
 		.v.func = alc269_fixup_limit_int_mic_boost,
 	},
+	[ALC283_FIXUP_DAC_WCAPS] = {
+		/* Disable the second DAC, ensuring only DAC1 is used. */
+		.type = HDA_FIXUP_FUNC,
+		.v.func = alc283_fixup_dac_wcaps,
+	},
 };
 
 static const struct snd_pci_quirk alc269_fixup_tbl[] = {
@@ -3601,6 +3698,7 @@ static const struct hda_model_fixup alc269_fixup_models[] = {
 	{.id = ALC269_FIXUP_HP_GPIO_LED, .name = "hp-gpio-led"},
 	{.id = ALC269_FIXUP_DELL1_MIC_NO_PRESENCE, .name = "dell-headset-multi"},
 	{.id = ALC269_FIXUP_DELL2_MIC_NO_PRESENCE, .name = "dell-headset-dock"},
+	{.id = ALC283_FIXUP_DAC_WCAPS, .name = "alc283-dac-wcaps"},
 	{}
 };
 
@@ -3704,10 +3802,14 @@ static int patch_alc269(struct hda_codec *codec)
 	case 0x10ec0290:
 		spec->codec_variant = ALC269_TYPE_ALC280;
 		break;
-	case 0x10ec0233:
 	case 0x10ec0282:
-	case 0x10ec0283:
 		spec->codec_variant = ALC269_TYPE_ALC282;
+		break;
+	case 0x10ec0233:
+	case 0x10ec0283:
+		spec->codec_variant = ALC269_TYPE_ALC283;
+		spec->shutup = alc283_shutup;
+		spec->init_hook = alc283_init;
 		break;
 	case 0x10ec0284:
 	case 0x10ec0292:
@@ -3730,7 +3832,8 @@ static int patch_alc269(struct hda_codec *codec)
 #ifdef CONFIG_PM
 	codec->patch_ops.resume = alc269_resume;
 #endif
-	spec->shutup = alc269_shutup;
+	if (!spec->shutup)
+		spec->shutup = alc269_shutup;
 
 	snd_hda_apply_fixup(codec, HDA_FIXUP_ACT_PROBE);
 
