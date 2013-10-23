@@ -51,6 +51,11 @@ static int clk_periph_is_enabled(struct clk_hw *hw)
 	struct tegra_clk_periph_gate *gate = to_clk_periph_gate(hw);
 	int state = 1;
 
+	if (gate->flags & TEGRA_PERIPH_NO_CLK) {
+		WARN_ON(1);
+		return 0;
+	}
+
 	if (!(read_enb(gate) & periph_clk_to_bit(gate)))
 		state = 0;
 
@@ -65,6 +70,11 @@ static int clk_periph_enable(struct clk_hw *hw)
 {
 	struct tegra_clk_periph_gate *gate = to_clk_periph_gate(hw);
 	unsigned long flags = 0;
+
+	if (gate->flags & TEGRA_PERIPH_NO_CLK) {
+		WARN_ON(1);
+		return -EINVAL;
+	}
 
 	spin_lock_irqsave(&periph_ref_lock, flags);
 
@@ -101,6 +111,11 @@ static void clk_periph_disable(struct clk_hw *hw)
 {
 	struct tegra_clk_periph_gate *gate = to_clk_periph_gate(hw);
 	unsigned long flags = 0;
+
+	if (gate->flags & TEGRA_PERIPH_NO_CLK) {
+		WARN_ON(1);
+		return;
+	}
 
 	spin_lock_irqsave(&periph_ref_lock, flags);
 
@@ -151,12 +166,16 @@ const struct clk_ops tegra_clk_periph_gate_ops = {
 
 struct clk *tegra_clk_register_periph_gate(const char *name,
 		const char *parent_name, u8 gate_flags, void __iomem *clk_base,
-		unsigned long flags, int clk_num,
-		struct tegra_clk_periph_regs *pregs, int *enable_refcnt)
+		unsigned long flags, int clk_num, int *enable_refcnt)
 {
 	struct tegra_clk_periph_gate *gate;
 	struct clk *clk;
 	struct clk_init_data init;
+	struct tegra_clk_periph_regs *pregs;
+
+	pregs = get_reg_bank(clk_num);
+	if (!pregs)
+		return ERR_PTR(-EINVAL);
 
 	gate = kzalloc(sizeof(*gate), GFP_KERNEL);
 	if (!gate) {
