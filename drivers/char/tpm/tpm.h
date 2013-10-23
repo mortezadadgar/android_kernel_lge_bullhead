@@ -96,6 +96,7 @@ struct tpm_vendor_specific {
 	void (*cancel) (struct tpm_chip *);
 	u8 (*status) (struct tpm_chip *);
 	void (*release) (struct device *);
+	void (*update_timeouts)(struct tpm_chip *);
 	struct miscdevice miscdev;
 	struct attribute_group *attr_group;
 	struct list_head list;
@@ -130,6 +131,9 @@ struct tpm_chip {
 	atomic_t data_pending;
 	struct mutex buffer_mutex;
 
+	int needs_resume;
+	struct mutex resume_mutex;
+
 	struct timer_list user_read_timer;	/* user needs to claim result */
 	struct work_struct work;
 	struct mutex tpm_mutex;	/* tpm is processing */
@@ -140,6 +144,7 @@ struct tpm_chip {
 
 	struct list_head list;
 	void (*release) (struct device *);
+	struct notifier_block shutdown_nb;
 };
 
 #define to_tpm_chip(n) container_of(n, struct tpm_chip, vendor)
