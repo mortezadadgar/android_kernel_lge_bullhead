@@ -37,6 +37,7 @@
 #include <linux/mod_devicetable.h>
 #include <linux/log2.h>
 #include <linux/pm.h>
+#include <linux/pm_dark_resume.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
 
@@ -44,6 +45,7 @@
 #include <asm-generic/rtc.h>
 
 struct cmos_rtc {
+	struct dev_dark_resume	dark_resume;
 	struct rtc_device	*rtc;
 	struct device		*dev;
 	int			irq;
@@ -59,6 +61,8 @@ struct cmos_rtc {
 	u8			day_alrm;
 	u8			mon_alrm;
 	u8			century;
+	unsigned char		stored_mask;
+	bool			wake_source_checked;
 };
 
 /* both platform and pnp busses use negative numbers for invalid irqs */
@@ -434,6 +438,33 @@ static int cmos_procfs(struct device *dev, struct seq_file *seq)
 #define	cmos_procfs	NULL
 #endif
 
+static bool cmos_caused_resume(struct device *dev)
+{
+	struct cmos_rtc *cmos = dev_get_drvdata(dev);
+	unsigned char mask;
+	bool ret = false;
+
+	if (!cmos)
+		return false;
+
+	mask = cmos->suspend_ctrl;
+	if (!(mask & RTC_IRQMASK))
+		return false;
+
+	spin_lock_irq(&rtc_lock);
+
+	cmos->wake_source_checked = true;
+	CMOS_WRITE(mask, RTC_CONTROL);
+	hpet_set_rtc_irq_bit(mask & RTC_IRQMASK);
+	cmos->stored_mask = CMOS_READ(RTC_INTR_FLAGS);
+	cmos->stored_mask &= (mask & RTC_IRQMASK) | RTC_IRQF;
+	ret = is_intr(cmos->stored_mask);
+
+	spin_unlock_irq(&rtc_lock);
+
+	return ret;
+}
+
 static const struct rtc_class_ops cmos_rtc_ops = {
 	.read_time		= cmos_read_time,
 	.set_time		= cmos_set_time,
@@ -556,17 +587,24 @@ static irqreturn_t cmos_interrupt(int irq, void *p)
 	rtc_control = CMOS_READ(RTC_CONTROL);
 	if (is_hpet_enabled())
 		irqstat = (unsigned long)irq & 0xF0;
-	irqstat &= (rtc_control & RTC_IRQMASK) | RTC_IRQF;
+
+	/* If we were suspended, RTC_CONTROL may not be accurate since the
+	 * bios may have cleared it.
+	 */
+	if (!cmos_rtc.suspend_ctrl)
+		irqstat &= (rtc_control & RTC_IRQMASK) | RTC_IRQF;
+	else
+		irqstat &= (cmos_rtc.suspend_ctrl & RTC_IRQMASK) | RTC_IRQF;
 
 	/* All Linux RTC alarms should be treated as if they were oneshot.
 	 * Similar code may be needed in system wakeup paths, in case the
 	 * alarm woke the system.
 	 */
 	if (irqstat & RTC_AIE) {
+		cmos_rtc.suspend_ctrl &= ~RTC_AIE;
 		rtc_control &= ~RTC_AIE;
 		CMOS_WRITE(rtc_control, RTC_CONTROL);
 		hpet_mask_rtc_irq_bit(RTC_AIE);
-
 		CMOS_READ(RTC_INTR_FLAGS);
 	}
 	spin_unlock(&rtc_lock);
@@ -731,6 +769,11 @@ cmos_do_probe(struct device *dev, struct resource *ports, int rtc_irq)
 		goto cleanup2;
 	}
 
+	/* setup dark resume source sysfs files and structs */
+	cmos_rtc.wake_source_checked = false;
+	dev_dark_resume_init(cmos_rtc.dev, &cmos_rtc.dark_resume,
+			cmos_caused_resume);
+
 	dev_info(dev, "%s%s, %zd bytes nvram%s\n",
 		!is_valid_irq(rtc_irq) ? "no alarms" :
 			cmos_rtc.mon_alrm ? "alarms up to one year" :
@@ -774,6 +817,7 @@ static void __exit cmos_do_remove(struct device *dev)
 		hpet_unregister_irq_handler(cmos_interrupt);
 	}
 
+	dev_dark_resume_remove(dev);
 	rtc_device_unregister(cmos->rtc);
 	cmos->rtc = NULL;
 
@@ -839,30 +883,38 @@ static inline int cmos_poweroff(struct device *dev)
 static int cmos_resume(struct device *dev)
 {
 	struct cmos_rtc	*cmos = dev_get_drvdata(dev);
-	unsigned char	tmp = cmos->suspend_ctrl;
+	unsigned char	tmp;
 
+	if (cmos->enabled_wake) {
+		if (cmos->wake_off)
+			cmos->wake_off(dev);
+		else
+			disable_irq_wake(cmos->irq);
+		cmos->enabled_wake = 0;
+	}
+
+	spin_lock_irq(&rtc_lock);
+	tmp = cmos->suspend_ctrl;
+	cmos->suspend_ctrl = 0;
 	/* re-enable any irqs previously active */
 	if (tmp & RTC_IRQMASK) {
 		unsigned char	mask;
 
-		if (cmos->enabled_wake) {
-			if (cmos->wake_off)
-				cmos->wake_off(dev);
-			else
-				disable_irq_wake(cmos->irq);
-			cmos->enabled_wake = 0;
-		}
-
-		spin_lock_irq(&rtc_lock);
 		if (device_may_wakeup(dev))
 			hpet_rtc_timer_init();
 
 		do {
-			CMOS_WRITE(tmp, RTC_CONTROL);
-			hpet_set_rtc_irq_bit(tmp & RTC_IRQMASK);
+			if (cmos->wake_source_checked) {
+				cmos->wake_source_checked = false;
+				mask = cmos->stored_mask;
+			} else {
+				CMOS_WRITE(tmp, RTC_CONTROL);
+				hpet_set_rtc_irq_bit(tmp & RTC_IRQMASK);
 
-			mask = CMOS_READ(RTC_INTR_FLAGS);
-			mask &= (tmp & RTC_IRQMASK) | RTC_IRQF;
+				mask = CMOS_READ(RTC_INTR_FLAGS);
+				mask &= (tmp & RTC_IRQMASK) | RTC_IRQF;
+			}
+
 			if (!is_hpet_enabled() || !is_intr(mask))
 				break;
 
@@ -872,9 +924,10 @@ static int cmos_resume(struct device *dev)
 			rtc_update_irq(cmos->rtc, 1, mask);
 			tmp &= ~RTC_AIE;
 			hpet_mask_rtc_irq_bit(RTC_AIE);
+			hpet_rtc_timer_init();
 		} while (mask & RTC_AIE);
-		spin_unlock_irq(&rtc_lock);
 	}
+	spin_unlock_irq(&rtc_lock);
 
 	dev_dbg(dev, "resume, ctrl %02x\n", tmp);
 

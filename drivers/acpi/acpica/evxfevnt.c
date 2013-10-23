@@ -69,6 +69,7 @@ acpi_status acpi_enable(void)
 	ACPI_FUNCTION_TRACE(acpi_enable);
 
 	/* ACPI tables must be present */
+	pr_info("acpi_enable!\n");
 
 	if (!acpi_tb_tables_loaded()) {
 		return_ACPI_STATUS(AE_NO_ACPI_TABLES);
@@ -132,7 +133,8 @@ acpi_status acpi_disable(void)
 
 	ACPI_FUNCTION_TRACE(acpi_disable);
 
-	/* If the Hardware Reduced flag is set, machine is always in acpi mode */
+	pr_info("acpi_disable!\n");
+	dump_stack();
 
 	if (acpi_gbl_reduced_hardware) {
 		return_ACPI_STATUS(AE_OK);

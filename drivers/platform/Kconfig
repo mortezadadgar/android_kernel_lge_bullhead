@@ -1,3 +1,5 @@
+# drivers/platform/Kconfig
+
 if X86
 source "drivers/platform/x86/Kconfig"
 endif
@@ -5,3 +7,82 @@ if GOLDFISH
 source "drivers/platform/goldfish/Kconfig"
 endif
 
+if ARM
+source "drivers/platform/arm/Kconfig"
+endif
+
+config CHROMEOS
+	bool
+	depends on ARM_CHROMEOS_FIRMWARE || (NVRAM && ACPI_CHROMEOS)
+
+	---help---
+	  Provides abstracted interfaces to the firmware features provided on
+	  ChromeOS devices. It depends on a lowlevel driver to implement the
+	  firmware interface on the platform.
+
+config CHROMEOS_VBC_BLK
+	bool
+	depends on CHROMEOS
+
+	---help---
+	  Provides access to vboot context stored on block device.  Select this
+	  if you have a ChromeOS firmware that does not support storing vboot
+	  context in EC's nvram.
+
+config CHROMEOS_VBC_EC
+	bool
+	depends on CHROMEOS
+
+	---help---
+	  Provides access to vboot context stored on EC's nvram.  Select this
+	  if you have a ChromeOS firmware that supports storing vboot context
+	  in EC's nvram.
+
+config CHROMEOS_RAMOOPS_RAM_START
+        hex "Physical address of preserved RAM"
+	depends on PSTORE_RAM && CHROMEOS
+        default "0"
+
+        ---help---
+          Address of the memory area that is used for logging using ramoops.
+	  This value can also be set through platform data.
+
+          For this feature to be useful, the selected memory area must be
+          preserved across reboot, so not used by the boot loader, for example.
+
+config CHROMEOS_RAMOOPS_RAM_SIZE
+        hex "Size of preserved RAM"
+	depends on PSTORE_RAM && CHROMEOS
+        default "0"
+
+        ---help---
+          Size of the memory area that is used for logging using ramoops.
+	  This value can also be set through platform data.
+
+          For this feature to be useful, the selected memory area must be
+          preserved across reboot, so not used by the boot loader, for example.
+
+config CHROMEOS_RAMOOPS_RECORD_SIZE
+        hex "Size of a single dump logged in RAM"
+	depends on PSTORE_RAM && CHROMEOS
+        default "0x00001000"
+
+        ---help---
+          This is the size of a single dump which is logged in RAM. Should be
+	  set according to the level of detail needed in the dump.
+	  This value can also be set through platform data.
+
+	  Must be divisible by CHROMEOS_RAMOOPS_RAM_SIZE.
+
+config CHROMEOS_RAMOOPS_DUMP_OOPS
+        hex "Flag to dump oopses and panics or only panics"
+	depends on PSTORE_RAM && CHROMEOS
+        default "1"
+
+        ---help---
+	  If flag is set to 0 dump oopses and panics.
+	  If flag is set to 1 dump only panics.
+
+	  This value can also be set through platform data.
+          For this feature to be useful, the selected memory area must be
+          preserved across reboot, so not used by the boot loader, for example.

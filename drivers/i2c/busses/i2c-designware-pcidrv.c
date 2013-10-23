@@ -54,6 +54,9 @@ enum dw_pci_ctl_id_t {
 	medfield_3,
 	medfield_4,
 	medfield_5,
+
+	haswell_0,
+	haswell_1,
 };
 
 struct dw_pci_controller {
@@ -128,6 +131,20 @@ static struct  dw_pci_controller  dw_pci_controllers[] = {
 	[medfield_5] = {
 		.bus_num     = 5,
 		.bus_cfg   = INTEL_MID_STD_CFG | DW_IC_CON_SPEED_FAST,
+		.tx_fifo_depth = 32,
+		.rx_fifo_depth = 32,
+		.clk_khz      = 25000,
+	},
+	[haswell_0] = {
+		.bus_num     = -1,
+		.bus_cfg   = INTEL_MID_STD_CFG | DW_IC_CON_SPEED_STD,
+		.tx_fifo_depth = 32,
+		.rx_fifo_depth = 32,
+		.clk_khz      = 25000,
+	},
+	[haswell_1] = {
+		.bus_num     = -1,
+		.bus_cfg   = INTEL_MID_STD_CFG | DW_IC_CON_SPEED_STD,
 		.tx_fifo_depth = 32,
 		.rx_fifo_depth = 32,
 		.clk_khz      = 25000,
@@ -270,8 +287,8 @@ static int i2c_dw_pci_probe(struct pci_dev *pdev,
 	adap->algo = &i2c_dw_algo;
 	adap->dev.parent = &pdev->dev;
 	adap->nr = controller->bus_num;
-	snprintf(adap->name, sizeof(adap->name), "i2c-designware-pci-%d",
-		adap->nr);
+	snprintf(adap->name, sizeof(adap->name), "i2c-designware-pci-%ld",
+		 (adap->nr < 0) ? id->driver_data - haswell_0 : adap->nr);
 
 	r = devm_request_irq(&pdev->dev, pdev->irq, i2c_dw_isr, IRQF_SHARED,
 			adap->name, dev);
@@ -321,6 +338,9 @@ static DEFINE_PCI_DEVICE_TABLE(i2_designware_pci_ids) = {
 	{ PCI_VDEVICE(INTEL, 0x082C), medfield_0 },
 	{ PCI_VDEVICE(INTEL, 0x082D), medfield_1 },
 	{ PCI_VDEVICE(INTEL, 0x082E), medfield_2 },
+	/* Haswell ULT */
+	{ PCI_VDEVICE(INTEL, 0x9c61), haswell_0 },
+	{ PCI_VDEVICE(INTEL, 0x9c62), haswell_1 },
 	{ 0,}
 };
 MODULE_DEVICE_TABLE(pci, i2_designware_pci_ids);
