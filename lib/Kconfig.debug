@@ -1475,6 +1475,14 @@ config ASYNC_RAID6_TEST
 
 	  If unsure, say N.
 
+config TEST_MODULE
+	tristate "Test module loading with 'hello world' module"
+	depends on m
+	help
+	  This builds the "test_module" module that emits "Hello, world"
+	  on printk when loaded. It is designed to be used for basic
+	  evaluation of the module loading subsystem.
+
 source "samples/Kconfig"
 
 source "lib/Kconfig.kgdb"
@@ -1486,3 +1494,12 @@ config TEST_STRING_HELPERS
 
 config TEST_KSTRTOX
 	tristate "Test kstrto*() family of functions at runtime"
+
+config ERROR_ON_WARNING
+	bool "Treat compiler warnings as errors"
+	help
+	  If you say Y here, the Makefile will pass the "-Werror" option to the
+	  compiler.  This will cause the compiler to fail on any warning, as if
+	  it were an error.
+
+	  If unsure, say N.
