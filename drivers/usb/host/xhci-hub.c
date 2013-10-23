@@ -293,12 +293,11 @@ static int xhci_stop_device(struct xhci_hcd *xhci, int slot_id, int suspend)
 	spin_unlock_irqrestore(&xhci->lock, flags);
 
 	/* Wait for last stop endpoint command to finish */
-	timeleft = wait_for_completion_interruptible_timeout(
+	timeleft = wait_for_completion_timeout(
 			cmd->completion,
-			USB_CTRL_SET_TIMEOUT);
+			XHCI_CMD_DEFAULT_TIMEOUT);
 	if (timeleft <= 0) {
-		xhci_warn(xhci, "%s while waiting for stop endpoint command\n",
-				timeleft == 0 ? "Timeout" : "Signal");
+		xhci_warn(xhci, "Timeout while waiting for Stop Endpoint\n");
 		spin_lock_irqsave(&xhci->lock, flags);
 		/* The timeout might have raced with the event ring handler, so
 		 * only delete from the list if the item isn't poisoned.
@@ -634,21 +633,42 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 				goto error;
 			if (time_after_eq(jiffies,
 					bus_state->resume_done[wIndex])) {
+				int time_left;
+
 				xhci_dbg(xhci, "Resume USB2 port %d\n",
 					wIndex + 1);
 				bus_state->resume_done[wIndex] = 0;
 				clear_bit(wIndex, &bus_state->resuming_ports);
+
+				set_bit(wIndex, &bus_state->rexit_ports);
 				xhci_set_link_state(xhci, port_array, wIndex,
 							XDEV_U0);
-				xhci_dbg(xhci, "set port %d resume\n",
-					wIndex + 1);
-				slot_id = xhci_find_slot_id_by_port(hcd, xhci,
-								 wIndex + 1);
-				if (!slot_id) {
-					xhci_dbg(xhci, "slot_id is zero\n");
-					goto error;
+
+				spin_unlock_irqrestore(&xhci->lock, flags);
+				time_left = wait_for_completion_timeout(
+						&bus_state->rexit_done[wIndex],
+						msecs_to_jiffies(
+							XHCI_MAX_REXIT_TIMEOUT));
+				spin_lock_irqsave(&xhci->lock, flags);
+
+				if (time_left) {
+					slot_id = xhci_find_slot_id_by_port(hcd,
+							xhci, wIndex + 1);
+					if (!slot_id) {
+						xhci_dbg(xhci, "slot_id is zero\n");
+						goto error;
+					}
+					xhci_ring_device(xhci, slot_id);
+				} else {
+					int port_status = xhci_readl(xhci,
+							port_array[wIndex]);
+					xhci_warn(xhci, "Port resume took longer than %i msec, port status = 0x%x\n",
+							XHCI_MAX_REXIT_TIMEOUT,
+							port_status);
+					status |= USB_PORT_STAT_SUSPEND;
+					clear_bit(wIndex, &bus_state->rexit_ports);
 				}
-				xhci_ring_device(xhci, slot_id);
+
 				bus_state->port_c_suspend |= 1 << wIndex;
 				bus_state->suspended_ports &= ~(1 << wIndex);
 			} else {
@@ -867,18 +887,18 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 		case USB_PORT_FEAT_U1_TIMEOUT:
 			if (hcd->speed != HCD_USB3)
 				goto error;
-			temp = xhci_readl(xhci, port_array[wIndex] + 1);
+			temp = xhci_readl(xhci, port_array[wIndex] + PORTPMSC);
 			temp &= ~PORT_U1_TIMEOUT_MASK;
 			temp |= PORT_U1_TIMEOUT(timeout);
-			xhci_writel(xhci, temp, port_array[wIndex] + 1);
+			xhci_writel(xhci, temp, port_array[wIndex] + PORTPMSC);
 			break;
 		case USB_PORT_FEAT_U2_TIMEOUT:
 			if (hcd->speed != HCD_USB3)
 				goto error;
-			temp = xhci_readl(xhci, port_array[wIndex] + 1);
+			temp = xhci_readl(xhci, port_array[wIndex] + PORTPMSC);
 			temp &= ~PORT_U2_TIMEOUT_MASK;
 			temp |= PORT_U2_TIMEOUT(timeout);
-			xhci_writel(xhci, temp, port_array[wIndex] + 1);
+			xhci_writel(xhci, temp, port_array[wIndex] + PORTPMSC);
 			break;
 		default:
 			goto error;
@@ -1098,10 +1118,8 @@ int xhci_bus_suspend(struct usb_hcd *hcd)
 			__le32 __iomem *addr;
 			u32 tmp;
 
-			/* Add one to the port status register address to get
-			 * the port power control register address.
-			 */
-			addr = port_array[port_index] + 1;
+			/* Get the port power control register address. */
+			addr = port_array[port_index] + PORTPMSC;
 			tmp = xhci_readl(xhci, addr);
 			tmp |= PORT_RWE;
 			xhci_writel(xhci, tmp, addr);
@@ -1193,7 +1211,7 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 			/* Add one to the port status register address to get
 			 * the port power control register address.
 			 */
-			addr = port_array[port_index] + 1;
+			addr = port_array[port_index] + PORTPMSC;
 			tmp = xhci_readl(xhci, addr);
 			tmp &= ~PORT_RWE;
 			xhci_writel(xhci, tmp, addr);

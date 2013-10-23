@@ -116,6 +116,21 @@ EXPORT_SYMBOL_GPL(ehci_cf_port_reset_rwsem);
 
 static int usb_reset_and_verify_device(struct usb_device *udev);
 
+#define PORT_RESET_TRIES	5
+#define SET_ADDRESS_TRIES	2
+#define GET_DESCRIPTOR_TRIES	2
+#define SET_CONFIG_TRIES	(2 * (use_both_schemes + 1))
+#define USE_NEW_SCHEME(i)	((i) / 2 == (int)old_scheme_first)
+
+#define HUB_ROOT_RESET_TIME	50	/* times are in msec */
+#define HUB_SHORT_RESET_TIME	10
+#define HUB_BH_RESET_TIME	50
+#define HUB_LONG_RESET_TIME	200
+#define HUB_RESET_TIMEOUT	800
+
+static int hub_port_reset(struct usb_hub *hub, int port1,
+			struct usb_device *udev, unsigned int delay, bool warm);
+
 static inline char *portspeed(struct usb_hub *hub, int portstatus)
 {
 	if (hub_is_superspeed(hub->hdev))
@@ -868,7 +883,8 @@ static int hub_set_port_link_state(struct usb_hub *hub, int port1,
  *
  * Instead, set the link state to Disabled, wait for the link to settle into
  * that state, clear any change bits, and then put the port into the RxDetect
- * state.
+ * state.  If the device fails to enter RxDetect state and is instead stuck
+ * in the Polling state then issue a warm reset to recover it.
  */
 static int hub_usb3_port_disable(struct usb_hub *hub, int port1)
 {
@@ -900,7 +916,39 @@ static int hub_usb3_port_disable(struct usb_hub *hub, int port1)
 		dev_warn(hub->intfdev, "Could not disable port %d after %d ms\n",
 				port1, total_time);
 
-	return hub_set_port_link_state(hub, port1, USB_SS_PORT_LS_RX_DETECT);
+	ret = hub_set_port_link_state(hub, port1, USB_SS_PORT_LS_RX_DETECT);
+	if (ret) {
+		dev_err(hub->intfdev, "cannot enable port %d (err = %d)\n",
+				port1, ret);
+		return ret;
+	}
+
+	/* Wait for the link to enter the rxdetect state. */
+	for (total_time = 0; ; total_time += HUB_DEBOUNCE_STEP) {
+		ret = hub_port_status(hub, port1, &portstatus, &portchange);
+		if (ret < 0)
+			return ret;
+
+		portstatus &= USB_PORT_STAT_LINK_STATE;
+		if (portstatus == USB_SS_PORT_LS_RX_DETECT ||
+		    portstatus == USB_SS_PORT_LS_U0 ||
+		    portstatus == USB_SS_PORT_LS_U1 ||
+		    portstatus == USB_SS_PORT_LS_U2)
+			break;
+		if (total_time >= HUB_DEBOUNCE_TIMEOUT)
+			break;
+		msleep(HUB_DEBOUNCE_STEP);
+	}
+	if (total_time >= HUB_DEBOUNCE_TIMEOUT) {
+		dev_warn(hub->intfdev, "Could not enable port %d after %d ms\n",
+				port1, total_time);
+
+		/* Issue warm reset if the port is stuck polling. */
+		if (portstatus == USB_SS_PORT_LS_POLLING)
+			return hub_port_reset(hub, port1, NULL,
+					      HUB_BH_RESET_TIME, true);
+	}
+	return 0;
 }
 
 static int hub_port_disable(struct usb_hub *hub, int port1, int set_state)
@@ -1115,6 +1163,11 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 			need_debounce_delay = true;
 			usb_clear_port_feature(hub->hdev, port1,
 					USB_PORT_FEAT_C_ENABLE);
+		}
+		if (portchange & USB_PORT_STAT_C_RESET) {
+			need_debounce_delay = true;
+			usb_clear_port_feature(hub->hdev, port1,
+					USB_PORT_FEAT_C_RESET);
 		}
 		if ((portchange & USB_PORT_STAT_C_BH_RESET) &&
 				hub_is_superspeed(hub->hdev)) {
@@ -2476,22 +2529,6 @@ static unsigned hub_is_wusb(struct usb_hub *hub)
 	hcd = container_of(hub->hdev->bus, struct usb_hcd, self);
 	return hcd->wireless;
 }
-
-
-#define PORT_RESET_TRIES	5
-#define SET_ADDRESS_TRIES	2
-#define GET_DESCRIPTOR_TRIES	2
-#define SET_CONFIG_TRIES	(2 * (use_both_schemes + 1))
-#define USE_NEW_SCHEME(i)	((i) / 2 == (int)old_scheme_first)
-
-#define HUB_ROOT_RESET_TIME	50	/* times are in msec */
-#define HUB_SHORT_RESET_TIME	10
-#define HUB_BH_RESET_TIME	50
-#define HUB_LONG_RESET_TIME	200
-#define HUB_RESET_TIMEOUT	800
-
-static int hub_port_reset(struct usb_hub *hub, int port1,
-			struct usb_device *udev, unsigned int delay, bool warm);
 
 /* Is a USB 3.0 port in the Inactive or Complinance Mode state?
  * Port worm reset is required to recover
@@ -4767,7 +4804,8 @@ static void hub_events(void)
 					hub->ports[i - 1]->child;
 
 				dev_dbg(hub_dev, "warm reset port %d\n", i);
-				if (!udev) {
+				if (!udev || !(portstatus &
+						USB_PORT_STAT_CONNECTION)) {
 					status = hub_port_reset(hub, i,
 							NULL, HUB_BH_RESET_TIME,
 							true);
@@ -4777,8 +4815,8 @@ static void hub_events(void)
 					usb_lock_device(udev);
 					status = usb_reset_device(udev);
 					usb_unlock_device(udev);
+					connect_change = 0;
 				}
-				connect_change = 0;
 			}
 
 			if (connect_change)
@@ -5039,6 +5077,12 @@ static int usb_reset_and_verify_device(struct usb_device *udev)
 		return -EISDIR;
 	}
 	parent_hub = usb_hub_to_struct_hub(parent_hdev);
+
+	/* Disable USB2 hardware LPM.
+	 * It will be re-enabled by the enumeration process.
+	 */
+	if (udev->usb2_hw_lpm_enabled == 1)
+		usb_set_usb2_hardware_lpm(udev, 0);
 
 	/* Disable LPM and LTM while we reset the device and reinstall the alt
 	 * settings.  Device-initiated LPM settings, and system exit latency
