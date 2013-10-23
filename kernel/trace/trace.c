@@ -95,6 +95,16 @@ static int tracing_disabled = 1;
 
 DEFINE_PER_CPU(int, ftrace_cpu_disabled);
 
+void ftrace_cpu_off(void)
+{
+	__this_cpu_write(ftrace_cpu_disabled, 1);
+}
+
+void ftrace_cpu_on(void)
+{
+	__this_cpu_write(ftrace_cpu_disabled, 0);
+}
+
 cpumask_var_t __read_mostly	tracing_buffer_mask;
 
 /*
@@ -213,6 +223,27 @@ cycle_t ftrace_now(int cpu)
 	ring_buffer_normalize_time_stamp(global_trace.trace_buffer.buffer, cpu, &ts);
 
 	return ts;
+}
+
+/*
+ * Interface used by clock_getres(CLOCK_SYSTEM_TRACE).
+ */
+void trace_clock_getres(struct timespec *tp)
+{
+	*tp = ktime_to_timespec(KTIME_LOW_RES);
+}
+
+/*
+ * Interface used by clock_gettime(CLOCK_SYSTEM_TRACE).
+ */
+void trace_clock_gettime(struct timespec *tp)
+{
+	u64 now;
+	u32 rem;
+
+	now = ftrace_now(raw_smp_processor_id());
+	tp->tv_sec = div_u64_rem(now, NSEC_PER_SEC, &rem);
+	tp->tv_nsec = rem;
 }
 
 int tracing_is_enabled(void)
@@ -5989,6 +6020,13 @@ static __init int tracer_init_debugfs(void)
 
 	trace_create_file("saved_cmdlines", 0444, d_tracer,
 			NULL, &tracing_saved_cmdlines_fops);
+
+	/* OJN: Provide the legacy name since ureadahead currently relies
+	 * on it. We'll fix userspace separately and this can be dropped
+	 * in the future.
+	 */
+	trace_create_file("tracing_enabled", 0644, d_tracer,
+			    &global_trace, &rb_simple_fops);
 
 #ifdef CONFIG_DYNAMIC_FTRACE
 	trace_create_file("dyn_ftrace_total_info", 0444, d_tracer,

@@ -20,7 +20,7 @@
  */
 
 #define _GNU_SOURCE
-#include <asm/msr.h>
+#include MSRHEADER
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -35,6 +35,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <sched.h>
+#include <cpuid.h>
 
 char *proc_stat = "/proc/stat";
 unsigned int interval_sec = 5;	/* set with -i interval_sec */
@@ -230,7 +231,7 @@ int get_msr(int cpu, off_t offset, unsigned long long *msr)
 	close(fd);
 
 	if (retval != sizeof *msr) {
-		fprintf(stderr, "%s offset 0x%zx read failed\n", pathname, offset);
+		fprintf(stderr, "%s offset 0x%llx read failed\n", pathname, (unsigned long long)offset);
 		return -1;
 	}
 
@@ -1166,7 +1167,10 @@ int cpu_is_first_sibling_in_core(int cpu)
 		perror(path);
 		exit(1);
 	}
-	fscanf(filep, "%d", &first_cpu);
+	if (fscanf(filep, "%d", &first_cpu) != 1) {
+		perror(path);
+		exit(1);
+	}
 	fclose(filep);
 	return (cpu == first_cpu);
 }
@@ -1187,7 +1191,10 @@ int cpu_is_first_core_in_package(int cpu)
 		perror(path);
 		exit(1);
 	}
-	fscanf(filep, "%d", &first_cpu);
+	if (fscanf(filep, "%d", &first_cpu) != 1) {
+		perror(path);
+		exit(1);
+	}
 	fclose(filep);
 	return (cpu == first_cpu);
 }
@@ -1204,7 +1211,10 @@ int get_physical_package_id(int cpu)
 		perror(path);
 		exit(1);
 	}
-	fscanf(filep, "%d", &pkg);
+	if (fscanf(filep, "%d", &pkg) != 1) {
+		perror(path);
+		exit(1);
+	}
 	fclose(filep);
 	return pkg;
 }
@@ -1221,7 +1231,10 @@ int get_core_id(int cpu)
 		perror(path);
 		exit(1);
 	}
-	fscanf(filep, "%d", &core);
+	if (fscanf(filep, "%d", &core) != 1) {
+		perror(path);
+		exit(1);
+	}
 	fclose(filep);
 	return core;
 }
@@ -1894,7 +1907,7 @@ void check_cpuid()
 
 	eax = ebx = ecx = edx = 0;
 
-	asm("cpuid" : "=a" (max_level), "=b" (ebx), "=c" (ecx), "=d" (edx) : "a" (0));
+	__get_cpuid(0, &max_level, &ebx, &ecx, &edx);
 
 	if (ebx == 0x756e6547 && edx == 0x49656e69 && ecx == 0x6c65746e)
 		genuine_intel = 1;
@@ -1903,7 +1916,7 @@ void check_cpuid()
 		fprintf(stderr, "CPUID(0): %.4s%.4s%.4s ",
 			(char *)&ebx, (char *)&edx, (char *)&ecx);
 
-	asm("cpuid" : "=a" (fms), "=c" (ecx), "=d" (edx) : "a" (1) : "ebx");
+	__get_cpuid(1, &fms, &ebx, &ecx, &edx);
 	family = (fms >> 8) & 0xf;
 	model = (fms >> 4) & 0xf;
 	stepping = fms & 0xf;
@@ -1925,7 +1938,7 @@ void check_cpuid()
 	 * This check is valid for both Intel and AMD.
 	 */
 	ebx = ecx = edx = 0;
-	asm("cpuid" : "=a" (max_level), "=b" (ebx), "=c" (ecx), "=d" (edx) : "a" (0x80000000));
+	__get_cpuid(0x80000000, &max_level, &ebx, &ecx, &edx);
 
 	if (max_level < 0x80000007) {
 		fprintf(stderr, "CPUID: no invariant TSC (max_level 0x%x)\n", max_level);
@@ -1936,7 +1949,7 @@ void check_cpuid()
 	 * Non-Stop TSC is advertised by CPUID.EAX=0x80000007: EDX.bit8
 	 * this check is valid for both Intel and AMD
 	 */
-	asm("cpuid" : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx) : "a" (0x80000007));
+	__get_cpuid(0x80000007, &eax, &ebx, &ecx, &edx);
 	has_invariant_tsc = edx & (1 << 8);
 
 	if (!has_invariant_tsc) {
@@ -1949,7 +1962,7 @@ void check_cpuid()
 	 * this check is valid for both Intel and AMD
 	 */
 
-	asm("cpuid" : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx) : "a" (0x6));
+	__get_cpuid(0x6, &eax, &ebx, &ecx, &edx);
 	has_aperf = ecx & (1 << 0);
 	do_dts = eax & (1 << 0);
 	do_ptm = eax & (1 << 6);

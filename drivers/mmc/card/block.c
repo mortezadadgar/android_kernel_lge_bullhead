@@ -294,7 +294,15 @@ static int mmc_blk_open(struct block_device *bdev, fmode_t mode)
 			check_disk_change(bdev);
 		ret = 0;
 
-		if ((mode & FMODE_WRITE) && md->read_only) {
+		/*
+		 * Reject read/write access to the RPMB partition.  It should
+		 * only be accessed through ioctls.
+		 */
+		if ((mode & (FMODE_READ | FMODE_WRITE)) &&
+		    md->area_type & MMC_BLK_DATA_AREA_RPMB) {
+			mmc_blk_put(md);
+			ret = -EACCES;
+		} else if ((mode & FMODE_WRITE) && md->read_only) {
 			mmc_blk_put(md);
 			ret = -EROFS;
 		}
@@ -2158,7 +2166,13 @@ static void mmc_blk_remove_req(struct mmc_blk_data *md)
 	struct mmc_card *card;
 
 	if (md) {
+		/*
+		 * Flush remaining requests and free queue. It
+		 * is freeing the queue that stops new requests
+		 * from being accepted.
+		 */
 		card = md->queue.card;
+		mmc_cleanup_queue(&md->queue);
 		if (md->disk->flags & GENHD_FL_UP) {
 			device_remove_file(disk_to_dev(md->disk), &md->force_ro);
 			if ((md->area_type & MMC_BLK_DATA_AREA_BOOT) &&
@@ -2166,12 +2180,9 @@ static void mmc_blk_remove_req(struct mmc_blk_data *md)
 				device_remove_file(disk_to_dev(md->disk),
 					&md->power_ro_lock);
 
-			/* Stop new requests from getting into the queue */
 			del_gendisk(md->disk);
 		}
 
-		/* Then flush out any already in there */
-		mmc_cleanup_queue(&md->queue);
 		if (md->flags & MMC_BLK_PACKED_CMD)
 			mmc_packed_clean(&md->queue);
 		mmc_blk_put(md);

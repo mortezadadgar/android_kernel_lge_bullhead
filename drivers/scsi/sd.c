@@ -51,6 +51,7 @@
 #include <linux/async.h>
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
+#include <linux/workqueue.h>
 #include <asm/uaccess.h>
 #include <asm/unaligned.h>
 
@@ -106,6 +107,7 @@ static int  sd_probe(struct device *);
 static int  sd_remove(struct device *);
 static void sd_shutdown(struct device *);
 static int sd_suspend(struct device *);
+static void __sd_resume(struct work_struct *work);
 static int sd_resume(struct device *);
 static void sd_rescan(struct device *);
 static int sd_done(struct scsi_cmnd *);
@@ -1408,7 +1410,7 @@ out:
 	return retval;
 }
 
-static int sd_sync_cache(struct scsi_disk *sdkp)
+static int sd_sync_cache(struct scsi_disk *sdkp, int *sense_key)
 {
 	int retries, res;
 	struct scsi_device *sdp = sdkp->device;
@@ -1435,8 +1437,11 @@ static int sd_sync_cache(struct scsi_disk *sdkp)
 
 	if (res) {
 		sd_print_result(sdkp, res);
-		if (driver_byte(res) & DRIVER_SENSE)
+		if (driver_byte(res) & DRIVER_SENSE) {
 			sd_print_sense_hdr(sdkp, &sshdr);
+			if (sense_key)
+				*sense_key = sshdr.sense_key;
+		}
 	}
 
 	if (res)
@@ -2888,6 +2893,7 @@ static int sd_probe(struct device *dev)
 	sdkp = kzalloc(sizeof(*sdkp), GFP_KERNEL);
 	if (!sdkp)
 		goto out;
+	INIT_WORK(&sdkp->resume_work, __sd_resume);
 
 	gd = alloc_disk(SD_MINORS);
 	if (!gd)
@@ -3054,12 +3060,16 @@ static void sd_shutdown(struct device *dev)
 	if (!sdkp)
 		return;         /* this can happen */
 
+	/* Avoid race condition with resume */
+	if (work_pending(&sdkp->resume_work))
+		flush_work(&sdkp->resume_work);
+
 	if (pm_runtime_suspended(dev))
 		goto exit;
 
 	if (sdkp->WCE) {
 		sd_printk(KERN_NOTICE, sdkp, "Synchronizing SCSI cache\n");
-		sd_sync_cache(sdkp);
+		sd_sync_cache(sdkp, NULL);
 	}
 
 	if (system_state != SYSTEM_RESTART && sdkp->device->manage_start_stop) {
@@ -3074,16 +3084,29 @@ exit:
 static int sd_suspend(struct device *dev)
 {
 	struct scsi_disk *sdkp = scsi_disk_get_from_dev(dev);
+	int sense_key = 0;
 	int ret = 0;
 
 	if (!sdkp)
 		return 0;	/* this can happen */
 
+	/* Avoid race condition with resume */
+	if (work_pending(&sdkp->resume_work))
+		flush_work(&sdkp->resume_work);
+
 	if (sdkp->WCE) {
 		sd_printk(KERN_NOTICE, sdkp, "Synchronizing SCSI cache\n");
-		ret = sd_sync_cache(sdkp);
-		if (ret)
-			goto done;
+		ret = sd_sync_cache(sdkp, &sense_key);
+		/*
+		 * If this is a bad drive that doesn't support sync, there's not
+		 * much to do.
+		 */
+		if (ret) {
+			if (sense_key == ILLEGAL_REQUEST)
+				ret = 0;
+			else
+				goto done;
+		}
 	}
 
 	if (sdkp->device->manage_start_stop) {
@@ -3096,9 +3119,10 @@ done:
 	return ret;
 }
 
-static int sd_resume(struct device *dev)
+static void __sd_resume(struct work_struct *work)
 {
-	struct scsi_disk *sdkp = scsi_disk_get_from_dev(dev);
+	struct scsi_disk *sdkp = container_of(work, struct scsi_disk,
+		resume_work);
 	int ret = 0;
 
 	if (!sdkp->device->manage_start_stop)
@@ -3106,10 +3130,21 @@ static int sd_resume(struct device *dev)
 
 	sd_printk(KERN_NOTICE, sdkp, "Starting disk\n");
 	ret = sd_start_stop_device(sdkp, 1);
+	WARN_ON(ret);
 
 done:
 	scsi_disk_put(sdkp);
-	return ret;
+	return;
+}
+
+static int sd_resume(struct device *dev)
+{
+	struct scsi_disk *sdkp = scsi_disk_get_from_dev(dev);
+
+	PREPARE_WORK(&sdkp->resume_work, __sd_resume);
+	schedule_work(&sdkp->resume_work);
+
+	return 0;
 }
 
 /**

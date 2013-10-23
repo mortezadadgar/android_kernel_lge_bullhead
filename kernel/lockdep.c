@@ -4090,7 +4090,7 @@ void debug_check_no_locks_freed(const void *mem_from, unsigned long mem_len)
 }
 EXPORT_SYMBOL_GPL(debug_check_no_locks_freed);
 
-static void print_held_locks_bug(struct task_struct *curr)
+static void print_held_locks_bug(struct task_struct *curr, const char *msg)
 {
 	if (!debug_locks_off())
 		return;
@@ -4099,10 +4099,10 @@ static void print_held_locks_bug(struct task_struct *curr)
 
 	printk("\n");
 	printk("=====================================\n");
-	printk("[ BUG: lock held at task exit time! ]\n");
+	printk("[ BUG: %s! ]\n", msg);
 	print_kernel_ident();
 	printk("-------------------------------------\n");
-	printk("%s/%d is exiting with locks still held!\n",
+	printk("%s/%d still has locks held!\n",
 		curr->comm, task_pid_nr(curr));
 	lockdep_print_held_locks(curr);
 
@@ -4110,11 +4110,12 @@ static void print_held_locks_bug(struct task_struct *curr)
 	dump_stack();
 }
 
-void debug_check_no_locks_held(struct task_struct *task)
+void debug_check_no_locks_held(struct task_struct *task, const char *msg)
 {
 	if (unlikely(task->lockdep_depth > 0))
-		print_held_locks_bug(task);
+		print_held_locks_bug(task, msg);
 }
+EXPORT_SYMBOL_GPL(debug_check_no_locks_held);
 
 void debug_show_all_locks(void)
 {

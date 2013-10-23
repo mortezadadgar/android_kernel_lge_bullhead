@@ -68,6 +68,7 @@ enum ctype {
 	CT_NONE,
 	CT_PANIC,
 	CT_BUG,
+	CT_WARNING,
 	CT_EXCEPTION,
 	CT_LOOP,
 	CT_OVERFLOW,
@@ -77,6 +78,7 @@ enum ctype {
 	CT_WRITE_AFTER_FREE,
 	CT_SOFTLOCKUP,
 	CT_HARDLOCKUP,
+	CT_SPINLOCKUP,
 	CT_HUNG_TASK,
 };
 
@@ -95,6 +97,7 @@ static char* cp_name[] = {
 static char* cp_type[] = {
 	"PANIC",
 	"BUG",
+	"WARNING",
 	"EXCEPTION",
 	"LOOP",
 	"OVERFLOW",
@@ -104,6 +107,7 @@ static char* cp_type[] = {
 	"WRITE_AFTER_FREE",
 	"SOFTLOCKUP",
 	"HARDLOCKUP",
+	"SPINLOCKUP",
 	"HUNG_TASK",
 };
 
@@ -121,6 +125,7 @@ static enum cname cpoint = CN_INVALID;
 static enum ctype cptype = CT_NONE;
 static int count = DEFAULT_COUNT;
 static DEFINE_SPINLOCK(count_lock);
+static DEFINE_SPINLOCK(lock_me_up);
 
 module_param(recur_count, int, 0644);
 MODULE_PARM_DESC(recur_count, " Recursion level for the stack overflow test, "\
@@ -263,11 +268,17 @@ static int lkdtm_parse_commandline(void)
 	return -EINVAL;
 }
 
+#if defined(CONFIG_FRAME_WARN) && (CONFIG_FRAME_WARN > 0)
+#define SIZE_BUF_ON_STACK (CONFIG_FRAME_WARN - 64)
+#else
+#define SIZE_BUF_ON_STACK 1024
+#endif
+
 static int recursive_loop(int a)
 {
-	char buf[1024];
+	char buf[SIZE_BUF_ON_STACK];
 
-	memset(buf,0xFF,1024);
+	memset(buf, 0xFF, SIZE_BUF_ON_STACK);
 	recur_count--;
 	if (!recur_count)
 		return 0;
@@ -284,6 +295,9 @@ static void lkdtm_do_action(enum ctype which)
 	case CT_BUG:
 		BUG();
 		break;
+	case CT_WARNING:
+		WARN_ON(1);
+		break;
 	case CT_EXCEPTION:
 		*((int *) 0) = 0;
 		break;
@@ -295,10 +309,13 @@ static void lkdtm_do_action(enum ctype which)
 		(void) recursive_loop(0);
 		break;
 	case CT_CORRUPT_STACK: {
-		volatile u32 data[8];
-		volatile u32 *p = data;
+		/* Make sure the compiler creates and uses an 8 char array. */
+		volatile char data[8];
+		volatile char *p = data;
+		int i;
 
-		p[12] = 0x12345678;
+		for (i = 0; i < 64; i++)
+			p[i] = 0;
 		break;
 	}
 	case CT_UNALIGNED_LOAD_STORE_WRITE: {
@@ -339,6 +356,10 @@ static void lkdtm_do_action(enum ctype which)
 		local_irq_disable();
 		for (;;)
 			cpu_relax();
+		break;
+	case CT_SPINLOCKUP:
+		/* Must be called twice to trigger. */
+		spin_lock(&lock_me_up);
 		break;
 	case CT_HUNG_TASK:
 		set_current_state(TASK_UNINTERRUPTIBLE);

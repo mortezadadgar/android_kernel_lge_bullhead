@@ -112,7 +112,7 @@ int freeze_processes(void)
 {
 	int error;
 
-	error = __usermodehelper_disable(UMH_FREEZING);
+	error = usermodehelper_disable();
 	if (error)
 		return error;
 
@@ -124,7 +124,6 @@ int freeze_processes(void)
 	error = try_to_freeze_tasks(true);
 	if (!error) {
 		printk("done.");
-		__usermodehelper_set_disable_depth(UMH_DISABLED);
 		oom_killer_disable();
 	}
 	printk("\n");
