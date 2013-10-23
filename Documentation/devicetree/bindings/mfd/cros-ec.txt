@@ -17,6 +17,10 @@ Required properties (SPI):
 - compatible: "google,cros-ec-spi"
 - reg: SPI chip select
 
+Optional properties (SPI):
+- google,cros-ec-spi-msg-delay: This property is how long of a delay, in usecs,
+  to use on the last transfer of a message, to force time between transactions.
+
 Required properties (LPC):
 - compatible: "google,cros-ec-lpc"
 - reg: List of (IO address, size) pairs defining the interface uses
