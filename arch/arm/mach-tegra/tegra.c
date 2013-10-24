@@ -207,6 +207,7 @@ static void __init tegra_dt_init_late(void)
 	tegra_cpuidle_init();
 	tegra_powergate_debugfs_init();
 	tegra_pmc_init_late();
+	tegra_cpuquiet_init();
 
 	for (i = 0; i < ARRAY_SIZE(board_init_funcs); i++) {
 		if (of_machine_is_compatible(board_init_funcs[i].machine)) {
