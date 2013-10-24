@@ -1847,7 +1847,10 @@ static int intel_mid_dma_probe(struct pci_dev *pdev,
 	struct middma_device *device;
 	u32 base_addr, bar_size;
 	struct intel_mid_dma_probe_info *info;
-	int err,number_bin_ssp;
+	int err;
+#ifdef CONFIG_SND_BYT_AK4614
+	int number_bin_ssp;
+#endif
 
 	pr_debug("MDMA: probe for %x\n", pdev->device);
 	info = (void *)id->driver_data;
@@ -1953,12 +1956,15 @@ static int intel_mid_dma_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_dma;
 
+#ifdef CONFIG_SND_BYT_AK4614
 	//PCI container sharing.
 	number_bin_ssp = to_load_bin_ssp();
 	if(number_bin_ssp > 0)
 		intel_sst_probe(pci->dma_ctx, id);
-
 	intel_mid_i2s_probe(pdev, id);
+#elif defined CONFIG_SND_BYT_RT5642
+		intel_sst_probe(pci->dma_ctx, id);
+#endif
 
 	return 0;
 
