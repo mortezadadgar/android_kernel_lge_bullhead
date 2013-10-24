@@ -122,9 +122,9 @@ void tegra124_init_speedo_data(void)
 	tegra_cpu_speedo_value = cpu_speedo_0_value;
 
 	if (tegra_cpu_speedo_value == 0) {
-		tegra_cpu_speedo_value = 1900;
 		pr_warn("Tegra124: Warning: Speedo value not fused. PLEASE FIX!!!!!!!!!!!\n");
 		pr_warn("Tegra124: Warning: PLEASE USE BOARD WITH FUSED SPEEDO VALUE !!!!\n");
+		BUG();
 	}
 
 	rev_sku_to_speedo_ids(tegra_sku_id, &threshold);
