@@ -177,6 +177,19 @@ static struct notifier_block minmax_cpus_notifier = {
 	.notifier_call = minmax_cpus_notify,
 };
 
+#ifdef CONFIG_CPU_QUIET_STATS
+CPQ_SIMPLE_ATTRIBUTE(hotplug_timeout, 0644, ulong);
+
+static struct attribute *tegra_attrs[] = {
+	&hotplug_timeout_attr.attr,
+	NULL,
+};
+
+static struct attribute_group tegra_attrs_group = {
+	.attrs = tegra_attrs,
+};
+#endif /* CONFIG_CPU_QUIET_STATS */
+
 static int __init tegra_cpuquiet_probe(struct platform_device *pdev)
 {
 	int err;
@@ -212,6 +225,14 @@ static int __init tegra_cpuquiet_probe(struct platform_device *pdev)
 		return err;
 	}
 
+#ifdef CONFIG_CPU_QUIET_STATS
+	err = cpuquiet_register_attrs(&tegra_attrs_group);
+	if (err) {
+		cpuquiet_unregister_driver(&tegra_cpuquiet_driver);
+		destroy_workqueue(cpuquiet_wq);
+	}
+#endif
+
 	return err;
 }
 
@@ -219,6 +240,9 @@ static int tegra_cpuquiet_remove(struct platform_device *pdev)
 {
 	destroy_workqueue(cpuquiet_wq);
 	cpuquiet_unregister_driver(&tegra_cpuquiet_driver);
+#ifdef CONFIG_CPU_QUIET_STATS
+	cpuquiet_unregister_attrs(&tegra_attrs_group);
+#endif
 
 	return 0;
 }
