@@ -321,7 +321,11 @@ void intel_delayed_device_register(void *dev,
 extern void *byt_audio_platform_data(void *info);
 
 const struct devs_id __initconst platform_device_ids[] = {
+#ifdef CONFIG_SND_BYT_AK4614
 		{"byt_ak4614",SFI_DEV_TYPE_IPC, 1, &byt_audio_platform_data, NULL },
+#elif defined CONFIG_SND_BYT_RT5642
+		{"byt_rt5642",SFI_DEV_TYPE_IPC, 1, &byt_audio_platform_data, NULL },
+#endif
 		{},
 };
 
