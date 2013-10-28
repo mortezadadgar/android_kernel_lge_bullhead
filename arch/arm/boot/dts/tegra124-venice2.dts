@@ -929,8 +929,6 @@
 		no-1-8-v;
 		non-removable;
 		status = "okay";
-		vmmc-supply = <&vddio_1v8>;
-		sd-slot-supply = <&run_cam_2v8>;
 	};
 
 	backlight {
