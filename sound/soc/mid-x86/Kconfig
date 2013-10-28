@@ -29,7 +29,6 @@ config SND_MFLD_MACHINE_GI
 config SND_BYT_MACHINE
 	tristate "SOC Machine Audio driver for Intel Baytrail platform"
 	depends on X86
-	select SND_SOC_AK4614
 	select SND_SST_PLATFORM
 	select SND_INTEL_SST
 	default n
@@ -38,6 +37,29 @@ config SND_BYT_MACHINE
           used as alsa device in audio subsystem in Intel(R) MID devices
           Say Y if you have such a device
           If unsure select "N".
+
+#Select desired codec on Baytrail platform
+choice
+	prompt "Codec Selection"
+	depends on X86 && SND_BYT_MACHINE
+	default SND_BYT_AK4614
+
+config SND_BYT_AK4614
+	bool "AK4614 codec driver for Intel Baytrail LPE audio"
+	select SND_SOC_AK4614
+	help
+		This adds support for AK4614 codec driver for use with Intel(R) Baytrail platform.
+		Say Y if you have such a device
+		If unsure select "N".
+
+config SND_BYT_RT5642
+	bool "RT5642 codec driver for Intel Baytrail LPE audio"
+	select SND_SOC_RT5642
+	help
+		This adds support for RT5642 codec driver for use with Intel(R) Baytrail platform.
+		Say Y if you have such a device
+		If unsure select "N".
+endchoice
 
 config SND_INTEL_SST
        tristate

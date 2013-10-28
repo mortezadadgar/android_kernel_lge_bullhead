@@ -32,122 +32,21 @@
 #include <linux/slab.h>
 #include <linux/vlv2_plat_clock.h>
 #include <linux/acpi_gpio.h>
-#include <linux/extcon-mid.h>
 #include <asm/platform_byt_audio.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/jack.h>
-#include "../../codecs/rt5640.h"
+#include "../codecs/rt5640.h"
 
 #define BYT_PLAT_CLK_3_HZ	25000000
 
 static int debounce = 100;
 module_param(debounce, int, 0644);
 
-
 struct byt_mc_private {
 	struct snd_soc_jack jack;
 };
-
-static int byt_hp_detection(void);
-static struct snd_soc_jack_gpio hs_gpio = {
-		.name			= "byt-codec-int",
-		.report			= SND_JACK_HEADSET |
-					  SND_JACK_HEADPHONE |
-					  SND_JACK_BTN_0,
-		.debounce_time		= 100,
-		.jack_status_check	= byt_hp_detection,
-};
-
-static inline void byt_jack_report(int status)
-{
-	switch (status) {
-	case SND_JACK_HEADPHONE:
-		mid_extcon_headset_report(HEADSET_NO_MIC);
-		break;
-	case SND_JACK_HEADSET:
-		mid_extcon_headset_report(HEADSET_WITH_MIC);
-		break;
-	default:
-		mid_extcon_headset_report(HEADSET_PULL_OUT);
-		break;
-	}
-	pr_debug("%s: headset reported: 0x%x\n", __func__, status);
-}
-
-static void set_mic_bias(struct snd_soc_codec *codec,
-			 const char *bias_widget, bool enable)
-{
-	pr_debug("%s %s\n", enable ? "enable" : "disable", bias_widget);
-	if (enable)
-		snd_soc_dapm_force_enable_pin(&codec->dapm, bias_widget);
-	else
-		snd_soc_dapm_disable_pin(&codec->dapm, bias_widget);
-	snd_soc_dapm_sync(&codec->dapm);
-}
-
-static int byt_hp_detection(void)
-{
-	struct snd_soc_jack_gpio *gpio = &hs_gpio;
-	struct snd_soc_jack *jack = gpio->jack;
-	struct snd_soc_codec *codec = jack->codec;
-	int status, jack_type = 0;
-
-	pr_debug("Enter:%s", __func__);
-	status = rt5640_check_interrupt_event(codec);
-	switch (status) {
-	case RT5640_J_IN_EVENT:
-		pr_debug("Jack insert intr");
-		set_mic_bias(codec, "micbias1", true);
-		set_mic_bias(codec, "LDO2", true);
-		status = rt5640_headset_detect(codec, true);
-		if (status == RT5640_HEADPHO_DET)
-			jack_type = SND_JACK_HEADPHONE;
-		else if (status == RT5640_HEADSET_DET) {
-			jack_type = SND_JACK_HEADSET;
-			if (debounce)
-				gpio->debounce_time = debounce;
-			pr_debug("debounce = %d\n", gpio->debounce_time);
-		} else /* RT5640_NO_JACK */
-			jack_type = 0;
-
-		byt_jack_report(jack_type);
-
-		if (jack_type != SND_JACK_HEADSET) {
-			set_mic_bias(codec, "micbias1", false);
-			set_mic_bias(codec, "LDO2", false);
-		}
-
-		pr_debug("Jack type detected:%d", jack_type);
-		break;
-	case RT5640_J_OUT_EVENT:
-		pr_debug("Jack remove intr");
-		gpio->debounce_time = 100;
-		status = rt5640_headset_detect(codec, false);
-		jack_type = 0;
-		byt_jack_report(jack_type);
-		set_mic_bias(codec, "micbias1", false);
-		set_mic_bias(codec, "LDO2", false);
-		break;
-	case RT5640_BR_EVENT:
-		pr_debug("BR event received");
-		jack_type = SND_JACK_HEADSET;
-		break;
-	case RT5640_BP_EVENT:
-		pr_debug("BP event received");
-		jack_type = SND_JACK_HEADSET | SND_JACK_BTN_0;
-		break;
-	case RT5640_UN_EVENT:
-		pr_debug("Reported invalid/RT5640_UN_EVENT");
-		/* return previous status */
-		jack_type = jack->status;
-		break;
-	default:
-		pr_err("Error: Invalid event");
-	}
-	return jack_type;
-}
 
 static inline struct snd_soc_codec *byt_get_codec(struct snd_soc_card *card)
 {
@@ -324,25 +223,11 @@ static int byt_init(struct snd_soc_pcm_runtime *runtime)
 	struct snd_soc_codec *codec = runtime->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_card *card = runtime->card;
-	struct byt_mc_private *ctx = snd_soc_card_get_drvdata(runtime->card);
 
 	pr_debug("Enter:%s", __func__);
 	/* Set codec bias level */
 	byt_set_bias_level(card, dapm, SND_SOC_BIAS_OFF);
 	card->dapm.idle_bias_off = true;
-
-	ret = snd_soc_jack_new(codec, "Intel MID Audio Jack",
-			       SND_JACK_HEADSET | SND_JACK_HEADPHONE | SND_JACK_BTN_0,
-			       &ctx->jack);
-	if (ret) {
-		pr_err("jack creation failed\n");
-		return ret;
-	}
-	ret = snd_soc_jack_add_gpios(&ctx->jack, 1, &hs_gpio);
-	if (ret) {
-		pr_err("adding jack GPIO failed\n");
-		return ret;
-	}
 
 	ret = snd_soc_add_card_controls(card, byt_mc_controls,
 					ARRAY_SIZE(byt_mc_controls));
@@ -396,24 +281,23 @@ static struct snd_soc_ops byt_aif2_ops = {
 };
 
 static struct snd_soc_dai_link byt_dailink[] = {
-	[BYT_AUD_AIF1] = {
+	{
 		.name = "Baytrail Audio",
 		.stream_name = "Audio",
-		.cpu_dai_name = "Headset-cpu-dai",
+		.cpu_dai_name = "Front-cpu-dai",
 		.codec_dai_name = "rt5640-aif1",
-		.codec_name = "rt5640.2-001c",
+		.codec_name = "rt5640.0-001c",
 		.platform_name = "sst-platform",
 		.init = byt_init,
 		.ignore_suspend = 1,
 		.ops = &byt_aif1_ops,
-		.playback_count = 2,
 	},
-	[BYT_AUD_AIF2] = {
+	{
 		.name = "Baytrail Voice",
 		.stream_name = "Voice",
-		.cpu_dai_name = "Voice-cpu-dai",
+		.cpu_dai_name = "Mic1-cpu-dai",
 		.codec_dai_name = "rt5640-aif2",
-		.codec_name = "rt5640.2-001c",
+		.codec_name = "rt5640.0-001c",
 		.platform_name = "sst-platform",
 		.init = NULL,
 		.ignore_suspend = 1,
@@ -461,7 +345,6 @@ static int snd_byt_mc_probe(struct platform_device *pdev)
 {
 	int ret_val = 0;
 	struct byt_mc_private *drv;
-	struct byt_audio_platform_data *pdata = pdev->dev.platform_data;
 
 	pr_debug("Entry %s\n", __func__);
 
@@ -471,13 +354,6 @@ static int snd_byt_mc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	pdata->codec_gpio = acpi_get_gpio("\\_SB.GPO2", 4); /* GPIO_SUS4 */
-	pdata->hsdet_gpio = acpi_get_gpio("\\_SB.GPO2", 28); /* GPIO_SUS28 */
-	pdata->dock_hs_gpio = acpi_get_gpio("\\_SB.GPO2", 27); /* GPIO_SUS27 */
-	pr_info("%s: GPIOs - codec %d, hsdet %d, dock_hs %d", __func__,
-		pdata->codec_gpio, pdata->hsdet_gpio, pdata->dock_hs_gpio);
-
-	hs_gpio.gpio = pdata->codec_gpio;
 	/* register the soc card */
 	snd_soc_card_byt.dev = &pdev->dev;
 	snd_soc_card_set_drvdata(&snd_soc_card_byt, drv);
@@ -494,10 +370,8 @@ static int snd_byt_mc_probe(struct platform_device *pdev)
 static int snd_byt_mc_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
-	struct byt_mc_private *drv = snd_soc_card_get_drvdata(soc_card);
 
 	pr_debug("In %s\n", __func__);
-	snd_soc_jack_free_gpios(&drv->jack, 1, &hs_gpio);
 	snd_soc_card_set_drvdata(soc_card, NULL);
 	snd_soc_unregister_card(soc_card);
 	platform_set_drvdata(pdev, NULL);
@@ -506,11 +380,7 @@ static int snd_byt_mc_remove(struct platform_device *pdev)
 
 static void snd_byt_mc_shutdown(struct platform_device *pdev)
 {
-	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
-	struct byt_mc_private *drv = snd_soc_card_get_drvdata(soc_card);
-
 	pr_debug("In %s\n", __func__);
-	snd_soc_jack_free_gpios(&drv->jack, 1, &hs_gpio);
 }
 
 const struct dev_pm_ops snd_byt_mc_pm_ops = {
@@ -519,18 +389,11 @@ const struct dev_pm_ops snd_byt_mc_pm_ops = {
 	.poweroff = snd_byt_poweroff,
 };
 
-static const struct acpi_device_id byt_mc_acpi_ids[] = {
-	{ "AMCR0F28", 0 },
-	{},
-};
-MODULE_DEVICE_TABLE(acpi, byt_mc_acpi_ids);
-
 static struct platform_driver snd_byt_mc_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = "byt_rt5642",
 		.pm = &snd_byt_mc_pm_ops,
-		.acpi_match_table = ACPI_PTR(byt_mc_acpi_ids),
 	},
 	.probe = snd_byt_mc_probe,
 	.remove = snd_byt_mc_remove,
