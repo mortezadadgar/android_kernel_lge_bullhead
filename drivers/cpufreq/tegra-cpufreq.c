@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
+ * Copyright (c) 2013, NVIDIA Corporation.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -22,25 +23,16 @@
 #include <linux/err.h>
 #include <linux/clk.h>
 #include <linux/suspend.h>
+#include <linux/cpu.h>
+#include <linux/platform_device.h>
+#include <linux/of.h>
 
-static struct cpufreq_frequency_table freq_table[] = {
-	{ .frequency = 216000 },
-	{ .frequency = 312000 },
-	{ .frequency = 456000 },
-	{ .frequency = 608000 },
-	{ .frequency = 760000 },
-	{ .frequency = 816000 },
-	{ .frequency = 912000 },
-	{ .frequency = 1000000 },
-	{ .frequency = CPUFREQ_TABLE_END },
-};
+#include "tegra-cpufreq.h"
 
 #define MAX_CPUS	4
 
-static struct clk *cpu_clk;
-static struct clk *pll_x_clk;
-static struct clk *pll_p_clk;
-static struct clk *emc_clk;
+static struct tegra_cpufreq_data *tegra_data;
+static const struct tegra_cpufreq_config *soc_config;
 
 static unsigned long target_cpu_speed[MAX_CPUS];
 static DEFINE_MUTEX(tegra_cpu_lock);
@@ -48,51 +40,15 @@ static bool is_suspended;
 
 static int tegra_verify_speed(struct cpufreq_policy *policy)
 {
-	return cpufreq_frequency_table_verify(policy, freq_table);
+	return cpufreq_frequency_table_verify(policy, tegra_data->freq_table);
 }
 
 static unsigned int tegra_getspeed(unsigned int cpu)
 {
 	unsigned long rate;
 
-	rate = clk_get_rate(cpu_clk) / 1000;
+	rate = clk_get_rate(tegra_data->cpu_clk) / 1000;
 	return rate;
-}
-
-static int tegra_cpu_clk_set_rate(unsigned long rate)
-{
-	int ret;
-
-	/*
-	 * Take an extra reference to the main pll so it doesn't turn
-	 * off when we move the cpu off of it
-	 */
-	clk_prepare_enable(pll_x_clk);
-
-	ret = clk_set_parent(cpu_clk, pll_p_clk);
-	if (ret) {
-		pr_err("Failed to switch cpu to clock pll_p\n");
-		goto out;
-	}
-
-	if (rate == clk_get_rate(pll_p_clk))
-		goto out;
-
-	ret = clk_set_rate(pll_x_clk, rate);
-	if (ret) {
-		pr_err("Failed to change pll_x to %lu\n", rate);
-		goto out;
-	}
-
-	ret = clk_set_parent(cpu_clk, pll_x_clk);
-	if (ret) {
-		pr_err("Failed to switch cpu to clock pll_x\n");
-		goto out;
-	}
-
-out:
-	clk_disable_unprepare(pll_x_clk);
-	return ret;
 }
 
 static int tegra_update_cpu_speed(struct cpufreq_policy *policy,
@@ -111,12 +67,8 @@ static int tegra_update_cpu_speed(struct cpufreq_policy *policy,
 	 * Vote on memory bus frequency based on cpu frequency
 	 * This sets the minimum frequency, display or avp may request higher
 	 */
-	if (rate >= 816000)
-		clk_set_rate(emc_clk, 600000000); /* cpu 816 MHz, emc max */
-	else if (rate >= 456000)
-		clk_set_rate(emc_clk, 300000000); /* cpu 456 MHz, emc 150Mhz */
-	else
-		clk_set_rate(emc_clk, 100000000);  /* emc 50Mhz */
+	if (soc_config->emc_clk_set_rate)
+		soc_config->emc_clk_set_rate(rate);
 
 	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
 
@@ -125,7 +77,7 @@ static int tegra_update_cpu_speed(struct cpufreq_policy *policy,
 	       freqs.old, freqs.new);
 #endif
 
-	ret = tegra_cpu_clk_set_rate(freqs.new * 1000);
+	ret = soc_config->cpu_clk_set_rate(freqs.new * 1000);
 	if (ret) {
 		pr_err("cpu-tegra: Failed to set cpu frequency to %d kHz\n",
 			freqs.new);
@@ -151,6 +103,7 @@ static int tegra_target(struct cpufreq_policy *policy,
 		       unsigned int target_freq,
 		       unsigned int relation)
 {
+	struct cpufreq_frequency_table *freq_table = tegra_data->freq_table;
 	unsigned int idx;
 	unsigned int freq;
 	int ret = 0;
@@ -179,6 +132,8 @@ out:
 static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 	void *dummy)
 {
+	struct cpufreq_frequency_table *freq_table = tegra_data->freq_table;
+
 	mutex_lock(&tegra_cpu_lock);
 	if (event == PM_SUSPEND_PREPARE) {
 		struct cpufreq_policy *policy = cpufreq_cpu_get(0);
@@ -201,11 +156,11 @@ static struct notifier_block tegra_cpu_pm_notifier = {
 
 static int tegra_cpu_init(struct cpufreq_policy *policy)
 {
-	clk_prepare_enable(emc_clk);
-	clk_prepare_enable(cpu_clk);
+	if (soc_config->cpufreq_clk_init)
+		soc_config->cpufreq_clk_init();
 
-	cpufreq_frequency_table_cpuinfo(policy, freq_table);
-	cpufreq_frequency_table_get_attr(freq_table, policy->cpu);
+	cpufreq_frequency_table_cpuinfo(policy, tegra_data->freq_table);
+	cpufreq_frequency_table_get_attr(tegra_data->freq_table, policy->cpu);
 	policy->cur = tegra_getspeed(policy->cpu);
 	target_cpu_speed[policy->cpu] = policy->cur;
 
@@ -222,8 +177,9 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 
 static int tegra_cpu_exit(struct cpufreq_policy *policy)
 {
-	cpufreq_frequency_table_cpuinfo(policy, freq_table);
-	clk_disable_unprepare(emc_clk);
+	cpufreq_frequency_table_cpuinfo(policy, tegra_data->freq_table);
+	if (soc_config->cpufreq_clk_exit)
+		soc_config->cpufreq_clk_exit();
 	return 0;
 }
 
@@ -242,27 +198,75 @@ static struct cpufreq_driver tegra_cpufreq_driver = {
 	.attr		= tegra_cpufreq_attr,
 };
 
-int __init tegra_cpufreq_init(void)
+static struct {
+	char *compat;
+	int (*init)(struct tegra_cpufreq_data *,
+			const struct tegra_cpufreq_config **);
+} tegra_init_funcs[] = {
+	{ "nvidia,tegra20", tegra20_cpufreq_init },
+};
+
+static int tegra_cpufreq_probe(struct platform_device *pdev)
 {
-	cpu_clk = clk_get_sys(NULL, "cclk");
-	if (IS_ERR(cpu_clk))
-		return PTR_ERR(cpu_clk);
+	int i;
+	int ret = -EINVAL;
 
-	pll_x_clk = clk_get_sys(NULL, "pll_x");
-	if (IS_ERR(pll_x_clk))
-		return PTR_ERR(pll_x_clk);
-
-	pll_p_clk = clk_get_sys(NULL, "pll_p");
-	if (IS_ERR(pll_p_clk))
-		return PTR_ERR(pll_p_clk);
-
-	emc_clk = clk_get_sys("cpu", "emc");
-	if (IS_ERR(emc_clk)) {
-		clk_put(cpu_clk);
-		return PTR_ERR(emc_clk);
+	tegra_data = devm_kzalloc(&pdev->dev,
+			sizeof(*tegra_data), GFP_KERNEL);
+	if (!tegra_data) {
+		ret = -ENOMEM;
+		goto out;
 	}
 
-	return cpufreq_register_driver(&tegra_cpufreq_driver);
+	tegra_data->dev = &pdev->dev;
+
+	for (i = 0; i < ARRAY_SIZE(tegra_init_funcs); i++) {
+		if (of_machine_is_compatible(tegra_init_funcs[i].compat)) {
+			ret = tegra_init_funcs[i].init(tegra_data, &soc_config);
+			if (!ret)
+				break;
+			else
+				goto out;
+		}
+	}
+	if (i == ARRAY_SIZE(tegra_init_funcs))
+		goto out;
+
+	ret = cpufreq_register_driver(&tegra_cpufreq_driver);
+	if (ret) {
+		dev_err(tegra_data->dev,
+			"%s: failed to register cpufreq driver\n", __func__);
+		goto out;
+	}
+
+	return 0;
+out:
+	return ret;
+}
+
+static int tegra_cpufreq_remove(struct platform_device *pdev)
+{
+	cpufreq_unregister_driver(&tegra_cpufreq_driver);
+	return 0;
+}
+
+static struct platform_driver tegra_cpufreq_platdrv = {
+	.driver = {
+		.name	= "tegra-cpufreq",
+		.owner	= THIS_MODULE,
+	},
+	.probe		= tegra_cpufreq_probe,
+	.remove		= tegra_cpufreq_remove,
+};
+module_platform_driver(tegra_cpufreq_platdrv);
+
+int __init tegra_cpufreq_init(void)
+{
+	struct platform_device_info devinfo = { .name = "tegra-cpufreq", };
+
+	platform_device_register_full(&devinfo);
+
+	return 0;
 }
 EXPORT_SYMBOL(tegra_cpufreq_init);
 
