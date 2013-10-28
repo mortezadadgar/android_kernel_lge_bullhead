@@ -2768,6 +2768,179 @@ err_out:
 }
 
 #endif		/* CONFIG_DEBUG_FS */
+
+/*
+ * Interface for the thermal reaction driver and thermal zone
+ */
+
+/**
+ * tegra124_dfll_update_thermal_index - tell the DFLL how hot it is
+ * @pdev: DFLL instance
+ * @new_idx: current DFLL temperature index (into therm_floors)
+ *
+ * Update the DFLL driver's sense of what temperature the DFLL is
+ * running at.  @new_idx is an index into td->therm_floors - provided
+ * earlier to the thermal cooling driver.  Intended to be called by
+ * the function supplied to the struct
+ * thermal_cooling_device_ops.set_cur_state function pointer.  Returns
+ * 0 upon success or -ERANGE if @new_idx is out of range.
+ */
+int tegra124_dfll_update_thermal_index(struct platform_device *pdev,
+				       unsigned long new_idx)
+{
+	unsigned long flags;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+
+	if (new_idx > td->therm_floors_num)
+		return -ERANGE;
+
+	spin_lock_irqsave(&td->lock, flags);
+
+	td->therm_floors_idx = new_idx;
+	set_dvco_rate_min(pdev);
+	if (td->mode == TEGRA_DFLL_CLOSED_LOOP)
+		reprogram_last_request(pdev);
+
+	spin_unlock_irqrestore(&td->lock, flags);
+
+	return 0;
+}
+EXPORT_SYMBOL(tegra124_dfll_update_thermal_index);
+
+/**
+ * tegra124_dfll_get_thermal_index - return the DFLL's current thermal state
+ * @pdev: DFLL instance
+ *
+ * Return the DFLL driver's copy of the DFLL's current temperature
+ * index, set by tegra124_dfll_update_thermal_index().  Intended to be
+ * called by the function supplied to the struct
+ * thermal_cooling_device_ops.get_cur_state function pointer.
+ */
+int tegra124_dfll_get_thermal_index(struct platform_device *pdev)
+{
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	return td->therm_floors_idx;
+}
+EXPORT_SYMBOL(tegra124_dfll_get_thermal_index);
+
+/**
+ * tegra124_dfll_count_therm_floors - return the number of thermal floors
+ * @pdev: DFLL instance
+ *
+ * Return the number of thermal floors passed into the DFLL driver
+ * from the DT data.  Intended to be called by the function supplied
+ * to the struct thermal_cooling_device_ops.get_max_state function
+ * pointer, and by the integration code that binds a thermal zone to
+ * the DFLL thermal reaction driver.
+ */
+int tegra124_dfll_count_therm_floors(struct platform_device *pdev)
+{
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	return td->therm_floors_num;
+}
+EXPORT_SYMBOL(tegra124_dfll_count_therm_floors);
+
+/**
+ * tegra124_dfll_get_therm_floor_temp - return the floor temp at @index
+ * @pdev: DFLL instance
+ * @index: index into the therm_floors array (zero-based)
+ *
+ * Return the temperature corresponding to @index from the
+ * therm_floors array.  Intended to be called by integration code
+ * binding a thermal zone to the DFLL thermal reaction driver.
+ * Returns -ERANGE if @index would result in an access off the end of
+ * the array, or returns the temperature corresponding to @index in
+ * degrees Celsius.
+ */
+int tegra124_dfll_get_therm_floor_temp(struct platform_device *pdev,
+				       unsigned long index)
+{
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	if (index >= td->therm_floors_num)
+		return -ERANGE;
+
+	return td->therm_floors[index].temp;
+}
+EXPORT_SYMBOL(tegra124_dfll_get_therm_floor_temp);
+
+/**
+ * tegra124_dfll_attach_thermal - attach the "cooling device" @cdev to @pdev
+ * @pdev: DFLL instance
+ * @cdev: DFLL "cooling device" instance
+ *
+ * Attach a thermal reaction "cooling device" to the DFLL instance
+ * @pdev.  As long as a thermal reaction driver is attached, the DFLL
+ * driver can't be unbound from the DFLL device.  Returns -EINVAL if
+ * the DFLL instance hasn't been initialized yet, -EBUSY if a thermal
+ * driver is already associated with @pdev, or 0 upon success.
+ */
+int tegra124_dfll_attach_thermal(struct platform_device *pdev,
+				 struct thermal_cooling_device *cdev)
+{
+	unsigned long flags;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	int ret = -EINVAL;
+
+	spin_lock_irqsave(&td->lock, flags);
+
+	if (td->mode == TEGRA_DFLL_UNINITIALIZED) {
+		dev_err(&pdev->dev, "DFLL not yet initialized\n");
+		ret = -EINVAL;
+		goto tdat_out;
+	}
+
+	if (td->cdev) {
+		dev_err(&pdev->dev,
+			"DFLL already bound to a thermal driver\n");
+		ret = -EBUSY;
+		goto tdat_out;
+	}
+
+	td->cdev = cdev;
+	ret = 0;
+
+tdat_out:
+	spin_unlock_irqrestore(&td->lock, flags);
+
+	return ret;
+}
+EXPORT_SYMBOL(tegra124_dfll_attach_thermal);
+
+/**
+ * tegra124_dfll_detach_thermal - detach the "cooling device" @cdev from @pdev
+ * @pdev: DFLL instance
+ * @cdev: DFLL "cooling device" instance
+ *
+ * Detach a thermal reaction "cooling device" from the DFLL instance
+ * @pdev.  Returns -EINVAL if @cdev isn't currently associated with
+ * the DFLL instance, or 0 upon success.
+ */
+int tegra124_dfll_detach_thermal(struct platform_device *pdev,
+				 struct thermal_cooling_device *cdev)
+{
+	unsigned long flags;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	int ret = -EINVAL;
+
+	spin_lock_irqsave(&td->lock, flags);
+
+	if (td->cdev != cdev) {
+		dev_err(&pdev->dev, "cooling device mismatch\n");
+		ret = -EINVAL;
+		goto tddt_out;
+	}
+
+	td->cdev = NULL;
+	td->therm_floors_idx = 0;
+	ret = 0;
+
+tddt_out:
+	spin_unlock_irqrestore(&td->lock, flags);
+
+	return ret;
+}
+EXPORT_SYMBOL(tegra124_dfll_detach_thermal);
+
 /*
  * Interface to lock and unlock DFLL loop
  */

@@ -23,6 +23,7 @@
 
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
+#include <linux/thermal.h>
 
 /* Function prototypes */
 
@@ -46,5 +47,17 @@ static inline int tegra124_dfll_get_fv_table(int *num_freqs,
 		unsigned long **freqs, int **millivolts)
 {return -EPERM; }
 #endif
+
+/* Thermal interface */
+extern int tegra124_dfll_update_thermal_index(struct platform_device *pdev,
+					      unsigned long new_idx);
+extern int tegra124_dfll_get_thermal_index(struct platform_device *pdev);
+extern int tegra124_dfll_count_therm_floors(struct platform_device *pdev);
+extern int tegra124_dfll_get_therm_floor_temp(struct platform_device *pdev,
+					      unsigned long index);
+extern int tegra124_dfll_attach_thermal(struct platform_device *pdev,
+					struct thermal_cooling_device *cdev);
+extern int tegra124_dfll_detach_thermal(struct platform_device *pdev,
+					struct thermal_cooling_device *cdev);
 
 #endif
