@@ -320,6 +320,14 @@
 			"pll_m_ud", "pll_c2", "pll_c3";
 	};
 
+	sdhci@700b0600 {
+		compatible = "nvidia,tegra124-sdhci", "nvidia,tegra114-sdhci";
+		reg = <0x700b0600 0x200>;
+		interrupts = <0 31 0x04>;
+		clocks = <&tegra_car 15>;
+		status = "disabled";
+	};
+
 	sdhci@700b0000 {
 		compatible = "nvidia,tegra124-sdhci", "nvidia,tegra114-sdhci";
 		reg = <0x700b0000 0x200>;
@@ -341,14 +349,6 @@
 		reg = <0x700b0400 0x200>;
 		interrupts = <0 19 0x04>;
 		clocks = <&tegra_car 69>;
-		status = "disabled";
-	};
-
-	sdhci@700b0600 {
-		compatible = "nvidia,tegra124-sdhci", "nvidia,tegra114-sdhci";
-		reg = <0x700b0600 0x200>;
-		interrupts = <0 31 0x04>;
-		clocks = <&tegra_car 15>;
 		status = "disabled";
 	};
 
