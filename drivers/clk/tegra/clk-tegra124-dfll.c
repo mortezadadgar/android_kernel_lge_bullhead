@@ -44,6 +44,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/suspend.h>
+#include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/platform_device.h>
@@ -2450,6 +2451,324 @@ rdc_err:
 }
 
 /*
+ * Debugfs interface
+ */
+
+#ifdef CONFIG_DEBUG_FS
+
+static int enable_get(void *data, u64 *val)
+{
+	struct platform_device *pdev = data;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	*val = (td->mode == TEGRA_DFLL_CLOSED_LOOP ||
+	      td->mode == TEGRA_DFLL_OPEN_LOOP);
+	return 0;
+}
+static int enable_set(void *data, u64 val)
+{
+	struct platform_device *pdev = data;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+
+	if (val)
+		clk_prepare_enable(td->dfll_clk);
+	else
+		clk_disable_unprepare(td->dfll_clk);
+
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(enable_fops, enable_get, enable_set, "%llu\n");
+
+static int lock_get(void *data, u64 *val)
+{
+	struct platform_device *pdev = data;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	*val = td->mode == TEGRA_DFLL_CLOSED_LOOP;
+	return 0;
+}
+static int lock_set(void *data, u64 val)
+{
+	struct platform_device *pdev = data;
+	int r;
+
+	if (val)
+		r = tegra_dfll_lock(pdev);
+	else
+		r = tegra_dfll_unlock(pdev);
+
+	if (r)
+		dev_err(&pdev->dev, "lock_set %llu returned %d\n", val, r);
+
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(lock_fops, lock_get, lock_set, "%llu\n");
+
+static int monitor_get(void *data, u64 *val)
+{
+	u32 v, s;
+	unsigned long flags;
+	struct platform_device *pdev = data;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+
+	clk_enable(td->soc_clk);
+
+	spin_lock_irqsave(&td->lock, flags);
+
+	v = dfll_readl(td, DFLL_MONITOR_DATA) & DFLL_MONITOR_DATA_VAL_MASK;
+
+	if (dfll_readl(td, DFLL_MONITOR_CTRL) == DFLL_MONITOR_CTRL_FREQ) {
+		v = GET_MONITORED_RATE(v, td->ref_rate);
+		s = dfll_readl(td, DFLL_FREQ_REQ);
+		s = (s & DFLL_FREQ_REQ_SCALE_MASK) >> DFLL_FREQ_REQ_SCALE_SHIFT;
+		*val = (u64)v * (s + 1) / 256;
+	} else {
+		*val = v;
+	}
+
+	spin_unlock_irqrestore(&td->lock, flags);
+
+	clk_disable(td->soc_clk);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(monitor_fops, monitor_get, NULL, "%llu\n");
+
+static int target_rate_get(void *data, u64 *val)
+{
+	struct platform_device *pdev = data;
+
+	*val = tegra_dfll_request_get(pdev);
+	return 0;
+}
+static int target_rate_set(void *data, u64 val)
+{
+	struct platform_device *pdev = data;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+
+	return clk_set_rate(td->dfll_clk, val);
+}
+DEFINE_SIMPLE_ATTRIBUTE(target_rate_fops, target_rate_get, target_rate_set,
+			"%llu\n");
+
+static int vmin_get(void *data, u64 *val)
+{
+	struct platform_device *pdev = data;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+
+	*val = td->out_map[td->lut_min]->reg_uv / 1000;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(vmin_fops, vmin_get, NULL, "%llu\n");
+
+static int tune_high_mv_get(void *data, u64 *val)
+{
+	struct platform_device *pdev = data;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	*val = td->tune_high_min_mv;
+	return 0;
+}
+static int tune_high_mv_set(void *data, u64 val)
+{
+	unsigned long flags;
+	struct platform_device *pdev = data;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	int r, ret;
+
+	spin_lock_irqsave(&td->lock, flags);
+
+	td->tune_high_min_mv = val;
+	r = dfll_init_output_thresholds(pdev);
+	if (r) {
+		dev_err(&pdev->dev, "could not set output thresholds\n");
+		ret = -EINVAL;
+		goto thms_err;
+	}
+
+	if (td->mode == TEGRA_DFLL_CLOSED_LOOP)
+		reprogram_last_request(pdev);
+
+	ret = 0;
+thms_err:
+	spin_unlock_irqrestore(&td->lock, flags);
+
+	return ret;
+}
+DEFINE_SIMPLE_ATTRIBUTE(tune_high_mv_fops, tune_high_mv_get, tune_high_mv_set,
+			"%llu\n");
+
+static int fmin_get(void *data, u64 *val)
+{
+	struct platform_device *pdev = data;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	*val = td->dvco_rate_min;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(dvco_rate_min_fops, fmin_get, NULL, "%llu\n");
+
+static int calibr_delay_get(void *data, u64 *val)
+{
+	struct platform_device *pdev = data;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+
+	*val = jiffies_to_msecs(td->calibration_delay);
+	return 0;
+}
+static int calibr_delay_set(void *data, u64 val)
+{
+	unsigned long flags;
+	struct platform_device *pdev = data;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+
+	spin_lock_irqsave(&td->lock, flags);
+	td->calibration_delay = msecs_to_jiffies(val);
+	spin_unlock_irqrestore(&td->lock, flags);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(calibr_delay_fops, calibr_delay_get, calibr_delay_set,
+			"%llu\n");
+
+static int cl_register_show(struct seq_file *s, void *data)
+{
+	unsigned long flags;
+	u32 offs;
+	struct platform_device *pdev = s->private;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+
+	clk_enable(td->soc_clk);
+
+	spin_lock_irqsave(&td->lock, flags);
+
+	seq_puts(s, "CONTROL REGISTERS:\n");
+	for (offs = 0; offs <= DFLL_MONITOR_DATA; offs += 4)
+		seq_printf(s, "[0x%02x] = 0x%08x\n",
+			   offs, dfll_readl(td, offs));
+
+	seq_puts(s, "\nI2C and INTR REGISTERS:\n");
+	for (offs = DFLL_I2C_CFG; offs <= DFLL_I2C_STS; offs += 4)
+		seq_printf(s, "[0x%02x] = 0x%08x\n",
+			   offs, dfll_readl(td, offs));
+
+	offs = DFLL_INTR_STS;
+	seq_printf(s, "[0x%02x] = 0x%08x\n", offs, dfll_readl(td, offs));
+	offs = DFLL_INTR_EN;
+	seq_printf(s, "[0x%02x] = 0x%08x\n", offs, dfll_readl(td, offs));
+	offs = DFLL_I2C_CLK_DIVISOR;
+	seq_printf(s, "[0x%02x] = 0x%08x\n", offs, dfll_readl(td, offs));
+
+	seq_puts(s, "\nLUT:\n");
+	for (offs = DFLL_OUTPUT_LUT;
+	     offs < DFLL_OUTPUT_LUT + 4 * MAX_DFLL_VOLTAGES;
+	     offs += 4)
+		seq_printf(s, "[0x%02x] = 0x%08x\n",
+			   offs, dfll_readl(td, offs));
+
+	spin_unlock_irqrestore(&td->lock, flags);
+
+	clk_disable(td->soc_clk);
+	return 0;
+}
+
+static int cl_register_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cl_register_show, inode->i_private);
+}
+
+static ssize_t cl_register_write(struct file *file,
+				 const char __user *userbuf, size_t count,
+				 loff_t *ppos)
+{
+	struct platform_device *pdev = file->f_path.dentry->d_inode->i_private;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	char buf[80];
+	u32 offs, val;
+
+	if (sizeof(buf) <= count)
+		return -EINVAL;
+
+	if (copy_from_user(buf, userbuf, count))
+		return -EFAULT;
+
+	/*
+	 * terminate buffer and trim - white spaces may be appended at
+	 * the end when invoked from shell command line
+	 */
+	buf[count] = '\0';
+	strim(buf);
+
+	if (sscanf(buf, "[0x%x] = 0x%x", &offs, &val) != 2)
+		return -1;
+
+	clk_enable(td->soc_clk);
+	dfll_writel(td, val, offs & (~0x3));
+	clk_disable(td->soc_clk);
+	return count;
+}
+
+static const struct file_operations cl_register_fops = {
+	.open		= cl_register_open,
+	.read		= seq_read,
+	.write		= cl_register_write,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int tegra_dfll_debug_init(struct platform_device *pdev)
+{
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	int ret;
+
+	if (!td || (td->mode == TEGRA_DFLL_UNINITIALIZED))
+		return 0;
+
+	td->dent = debugfs_create_dir(DRIVER_NAME, NULL);
+	if (!td->dent)
+		return -ENOMEM;
+
+	ret = -ENOMEM;
+
+	if (!debugfs_create_file("enable", S_IRUGO | S_IWUSR,
+				 td->dent, pdev, &enable_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("lock", S_IRUGO | S_IWUSR,
+				 td->dent, pdev, &lock_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("monitor", S_IRUGO,
+				 td->dent, pdev, &monitor_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("target_rate", S_IRUGO,
+				 td->dent, pdev, &target_rate_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("vmin_mv", S_IRUGO,
+				 td->dent, pdev, &vmin_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("tune_high_mv", S_IRUGO, td->dent, pdev,
+				 &tune_high_mv_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("dvco_min", S_IRUGO, td->dent, pdev,
+				 &dvco_rate_min_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("calibr_delay", S_IRUGO, td->dent, pdev,
+				 &calibr_delay_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("registers", S_IRUGO | S_IWUSR,
+				 td->dent, pdev, &cl_register_fops))
+		goto err_out;
+
+	return 0;
+
+err_out:
+	debugfs_remove_recursive(td->dent);
+	return ret;
+}
+
+#endif		/* CONFIG_DEBUG_FS */
+/*
  * Interface to lock and unlock DFLL loop
  */
 
@@ -3239,6 +3558,10 @@ static int tegra_dfll_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "DFLL clk registration failed\n");
 		goto tdp_err;
 	}
+
+#ifdef CONFIG_DEBUG_FS
+	tegra_dfll_debug_init(pdev);
+#endif
 
 	dev_info(&pdev->dev, "Tegra T124 DFLL clock driver initialized\n");
 
