@@ -53,10 +53,10 @@ config SND_BYT_AK4614
 		If unsure select "N".
 
 config SND_BYT_RT5642
-	bool "RT5642 codec driver for Intel Baytrail LPE audio"
-	select SND_SOC_RT5642
+	bool "RT564x codec driver for Intel Baytrail LPE audio"
+	select SND_SOC_RT5640
 	help
-		This adds support for RT5642 codec driver for use with Intel(R) Baytrail platform.
+		This adds support for RT564x codec driver for use with Intel(R) Baytrail platform.
 		Say Y if you have such a device
 		If unsure select "N".
 endchoice
