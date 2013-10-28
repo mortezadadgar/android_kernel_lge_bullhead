@@ -20,6 +20,8 @@
 #include <linux/pwm.h>
 #include <linux/pwm_backlight.h>
 #include <linux/slab.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
 
 struct pwm_bl_data {
 	struct pwm_device	*pwm;
@@ -27,6 +29,8 @@ struct pwm_bl_data {
 	unsigned int		period;
 	unsigned int		lth_brightness;
 	unsigned int		*levels;
+	int			enable_gpio;
+	bool			gpio_invert;
 	int			(*notify)(struct device *,
 					  int brightness);
 	void			(*notify_after)(struct device *,
@@ -34,6 +38,19 @@ struct pwm_bl_data {
 	int			(*check_fb)(struct device *, struct fb_info *);
 	void			(*exit)(struct device *);
 };
+
+static void pwm_backlight_gpio_set(struct pwm_bl_data *pb, bool enable)
+{
+	int val;
+
+	if (gpio_is_valid(pb->enable_gpio)) {
+		if (enable)
+			val = !pb->gpio_invert;
+		else
+			val = pb->gpio_invert;
+		gpio_direction_output(pb->enable_gpio, val);
+	}
+}
 
 static int pwm_backlight_update_status(struct backlight_device *bl)
 {
@@ -52,6 +69,7 @@ static int pwm_backlight_update_status(struct backlight_device *bl)
 	if (brightness == 0) {
 		pwm_config(pb->pwm, 0, pb->period);
 		pwm_disable(pb->pwm);
+		pwm_backlight_gpio_set(pb, false);
 	} else {
 		int duty_cycle;
 
@@ -66,6 +84,7 @@ static int pwm_backlight_update_status(struct backlight_device *bl)
 		     (duty_cycle * (pb->period - pb->lth_brightness) / max);
 		pwm_config(pb->pwm, duty_cycle, pb->period);
 		pwm_enable(pb->pwm);
+		pwm_backlight_gpio_set(pb, true);
 	}
 
 	if (pb->notify_after)
@@ -102,6 +121,7 @@ static int pwm_backlight_parse_dt(struct device *dev,
 	int length;
 	u32 value;
 	int ret;
+	enum of_gpio_flags flags;
 
 	if (!node)
 		return -ENODEV;
@@ -138,11 +158,10 @@ static int pwm_backlight_parse_dt(struct device *dev,
 		data->max_brightness--;
 	}
 
-	/*
-	 * TODO: Most users of this driver use a number of GPIOs to control
-	 *       backlight power. Support for specifying these needs to be
-	 *       added.
-	 */
+	data->enable_gpio = of_get_named_gpio_flags(node, "enable-gpio", 0,
+							&flags);
+	if (gpio_is_valid(data->enable_gpio) && (flags & OF_GPIO_ACTIVE_LOW))
+		data->gpio_invert = true;
 
 	return 0;
 }
@@ -199,6 +218,17 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 		pb->levels = data->levels;
 	} else
 		max = data->max_brightness;
+
+	if (gpio_is_valid(data->enable_gpio)) {
+		ret = devm_gpio_request(&pdev->dev, data->enable_gpio,
+					"pwm-bl-en");
+		if (ret) {
+			dev_err(&pdev->dev, "unable to request enable GPIO\n");
+			goto err_alloc;
+		}
+		pb->enable_gpio = data->enable_gpio;
+		pb->gpio_invert = data->gpio_invert;
+	}
 
 	pb->notify = data->notify;
 	pb->notify_after = data->notify_after;
@@ -269,6 +299,7 @@ static int pwm_backlight_remove(struct platform_device *pdev)
 	backlight_device_unregister(bl);
 	pwm_config(pb->pwm, 0, pb->period);
 	pwm_disable(pb->pwm);
+	pwm_backlight_gpio_set(pb, false);
 	if (pb->exit)
 		pb->exit(&pdev->dev);
 	return 0;
@@ -284,6 +315,7 @@ static int pwm_backlight_suspend(struct device *dev)
 		pb->notify(pb->dev, 0);
 	pwm_config(pb->pwm, 0, pb->period);
 	pwm_disable(pb->pwm);
+	pwm_backlight_gpio_set(pb, false);
 	if (pb->notify_after)
 		pb->notify_after(pb->dev, 0);
 	return 0;
