@@ -30,4 +30,13 @@ int tegra_get_cpu_speedo_value(void);
 int tegra_get_gpu_speedo_value(void);
 int tegra_get_cpu_iddq_value(void);
 
+#ifdef CONFIG_ARM_TEGRA_CPUFREQ
+int tegra_cpufreq_init(void);
+#else
+static inline int tegra_cpufreq_init(void)
+{
+	return -EINVAL;
+}
+#endif
+
 #endif /* __LINUX_TEGRA_SOC_H_ */

@@ -25,6 +25,7 @@
 #include <linux/irqchip.h>
 #include <linux/clk/tegra.h>
 #include <linux/clk-provider.h>
+#include <linux/tegra-soc.h>
 
 #include <asm/hardware/cache-l2x0.h>
 
@@ -109,6 +110,7 @@ void __init tegra_init_early(void)
 
 void __init tegra_init_late(void)
 {
+	tegra_cpufreq_init();
 	tegra_init_suspend();
 	tegra_cpuidle_init();
 	tegra_powergate_debugfs_init();
