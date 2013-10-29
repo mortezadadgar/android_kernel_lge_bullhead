@@ -43,6 +43,7 @@
 static int tegra_num_powerdomains;
 static int tegra_num_cpu_domains;
 static const u8 *tegra_cpu_domains;
+static struct powergate *powergate;
 
 static const u8 tegra30_cpu_domains[] = {
 	TEGRA_POWERGATE_CPU,
@@ -190,7 +191,7 @@ int __init tegra_powergate_init(void)
 {
 	switch (tegra_chip_id) {
 	case TEGRA20:
-		tegra_num_powerdomains = 7;
+		powergate = tegra20_powergate_init();
 		break;
 	case TEGRA30:
 		tegra_num_powerdomains = 14;
@@ -206,6 +207,12 @@ int __init tegra_powergate_init(void)
 		/* Unknown Tegra variant. Disable powergating */
 		tegra_num_powerdomains = 0;
 		break;
+	}
+
+	if (powergate) {
+		tegra_num_powerdomains = powergate->num_powerdomains;
+		tegra_num_cpu_domains = powergate->num_cpu_domains;
+		tegra_cpu_domains = powergate->cpu_domain_map;
 	}
 
 	return 0;
