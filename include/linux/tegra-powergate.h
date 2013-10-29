@@ -45,6 +45,63 @@ struct clk;
 
 #define TEGRA_POWERGATE_3D0	TEGRA_POWERGATE_3D
 
+#define MAX_CLK_EN_NUM	9
+
+/**
+ * struct partition_clk_info - clock infomation needed by power partition
+ *
+ * @clk_name: name of the clock
+ * @clk_ptr: pointer to the clock
+ */
+struct partition_clk_info {
+	const char *clk_name;
+	struct clk *clk_ptr;
+};
+
+/**
+ * struct powergate_partition_info - power partition information
+ *
+ * @name: name of the power domain
+ * @clk_info: clock information needed by the power partition
+ */
+struct powergate_partition_info {
+	const char *name;
+	struct partition_clk_info clk_info[MAX_CLK_EN_NUM];
+};
+
+/**
+ * struct powergate_ops - callback of SoC specific power operations
+ *
+ * get_powergate_lock: retrieve the lock for power partition control
+ * get_powergate_domain_name: get the domain name
+ * powergate_partition: shut off parition , only needed by Tegra114 or later
+ * unpowergate_partition: power on partition, only needed by Tegra114 or later
+ */
+struct powergate_ops {
+	const char *(*get_powergate_domain_name)(int id);
+	int (*powergate_partition)(int id);
+	int (*unpowergate_partition)(int id);
+};
+
+/**
+ * struct powergate - SoC powergate manager
+ *
+ * @soc_name: name of the SoC
+ * @num_powerdomains: number of power domains supported in this SoC
+ * @num_cpu_domains: number of cpu domains supported in this SoC
+ * @cpu_domain_map: map from the physical cpu to the cpu domain id
+ * @ops: SoC specific operations for power domain
+ */
+struct powergate {
+	const char *soc_name;
+
+	int num_powerdomains;
+	int num_cpu_domains;
+	const u8 *cpu_domain_map;
+
+	struct powergate_ops *ops;
+};
+
 int tegra_powergate_is_powered(int id);
 int tegra_powergate_power_on(int id);
 int tegra_powergate_power_off(int id);
