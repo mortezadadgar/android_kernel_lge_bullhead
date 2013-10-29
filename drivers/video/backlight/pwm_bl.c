@@ -226,9 +226,9 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "unable to request enable GPIO\n");
 			goto err_alloc;
 		}
-		pb->enable_gpio = data->enable_gpio;
-		pb->gpio_invert = data->gpio_invert;
 	}
+	pb->enable_gpio = data->enable_gpio;
+	pb->gpio_invert = data->gpio_invert;
 
 	pb->notify = data->notify;
 	pb->notify_after = data->notify_after;
