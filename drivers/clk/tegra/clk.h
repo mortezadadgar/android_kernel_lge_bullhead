@@ -20,6 +20,9 @@
 #include <linux/clk-provider.h>
 #include <linux/clkdev.h>
 
+#define RST_DFLL_DVCO			0x2F4
+#define DVFS_DFLL_RESET_SHIFT		0
+
 /**
  * struct tegra_clk_sync_source - external clock source from codec
  *
@@ -649,6 +652,9 @@ void tegra114_clock_tune_cpu_trimmers_low(void);
 void tegra114_clock_tune_cpu_trimmers_init(void);
 void tegra114_clock_assert_dfll_dvco_reset(void);
 void tegra114_clock_deassert_dfll_dvco_reset(void);
+
+void tegra124_clock_assert_dfll_dvco_reset(void);
+void tegra124_clock_deassert_dfll_dvco_reset(void);
 
 typedef void (*tegra_clk_apply_init_table_func)(void);
 extern tegra_clk_apply_init_table_func tegra_clk_apply_init_table;

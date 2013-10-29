@@ -28,13 +28,9 @@
 #include "clk.h"
 #include "clk-id.h"
 
-#define RST_DFLL_DVCO			0x2F4
 #define CPU_FINETRIM_SELECT		0x4d4	/* override default prop dlys */
 #define CPU_FINETRIM_DR			0x4d8	/* rise->rise prop dly A */
 #define CPU_FINETRIM_R			0x4e4	/* rise->rise prop dly inc A */
-
-/* RST_DFLL_DVCO bitfields */
-#define DVFS_DFLL_RESET_SHIFT		0
 
 /* CPU_FINETRIM_SELECT and CPU_FINETRIM_DR bitfields */
 #define CPU_FINETRIM_1_FCPU_1		BIT(0)	/* fcpu0 */
