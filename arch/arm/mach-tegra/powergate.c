@@ -45,13 +45,6 @@ static int tegra_num_cpu_domains;
 static const u8 *tegra_cpu_domains;
 static struct powergate *powergate;
 
-static const u8 tegra30_cpu_domains[] = {
-	TEGRA_POWERGATE_CPU,
-	TEGRA_POWERGATE_CPU1,
-	TEGRA_POWERGATE_CPU2,
-	TEGRA_POWERGATE_CPU3,
-};
-
 static const u8 tegra114_cpu_domains[] = {
 	TEGRA_POWERGATE_CPU0,
 	TEGRA_POWERGATE_CPU1,
@@ -194,9 +187,7 @@ int __init tegra_powergate_init(void)
 		powergate = tegra20_powergate_init();
 		break;
 	case TEGRA30:
-		tegra_num_powerdomains = 14;
-		tegra_num_cpu_domains = 4;
-		tegra_cpu_domains = tegra30_cpu_domains;
+		powergate = tegra30_powergate_init();
 		break;
 	case TEGRA114:
 		tegra_num_powerdomains = 23;

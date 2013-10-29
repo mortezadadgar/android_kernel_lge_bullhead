@@ -117,4 +117,11 @@ static inline struct powergate * __init tegra20_powergate_init(void)
 { return NULL; }
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_3x_SOC
+struct powergate * __init tegra30_powergate_init(void);
+#else
+static inline struct powergate * __init tegra30_powergate_init(void)
+{ return NULL; }
+#endif
+
 #endif /* _MACH_TEGRA_POWERGATE_H_ */
