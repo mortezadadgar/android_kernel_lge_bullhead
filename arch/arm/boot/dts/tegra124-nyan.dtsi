@@ -1777,12 +1777,12 @@
 	};
 
 	sdhci@700b0400 {
+		power-gpios = <&gpio 136 0>; /* gpio PR0 */
 		cd-gpios = <&gpio 170 0>; /* gpio PV2 */
 		no-1-8-v;
 		bus-width = <4>;
 		status = "okay";
 		vmmc-supply = <&vddio_sdmmc3>;
-		sd-slot-supply = <&en_vdd_sd_reg>;
 	};
 
 	sdhci@700b0600 {
@@ -1883,17 +1883,6 @@
 			compatible = "regulator-fixed";
 			reg = <0>;
 			regulator-name = "floating";
-		};
-
-		en_vdd_sd_reg: regulator@1 {
-			compatible = "regulator-fixed";
-			reg = <1>;
-			regulator-name = "en_vdd_sd";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
-			enable-active-high;
-			regulator-boot-on;
-			gpio = <&gpio 136 0>; /* GPIO PR0 */
 		};
 
 		usb1_vbus_reg: regulator@2 {
