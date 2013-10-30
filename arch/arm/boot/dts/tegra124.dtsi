@@ -21,6 +21,101 @@
 		serial3 = &uartd;
 	};
 
+	host1x@50000000 {
+		compatible = "nvidia,tegra124-host1x", "simple-bus";
+		reg = <0x50000000 0x00034000>;
+		interrupts = <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>,	/* mpcore syncpt */
+			     <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;	/* mpcore general */
+		clocks = <&tegra_car TEGRA124_CLK_HOST1X>,
+			 <&tegra_car TEGRA124_CLK_ACTMON>;
+		clock-names = "host1x", "actmon";
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(HC)>;
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		ranges = <0x54000000 0x54000000 0x0c000000>;
+
+		dc@54200000 {
+			compatible = "nvidia,tegra124-dc";
+			reg = <0x54200000 0x00040000>,
+			      <0x54540000 0x00040000>,
+			      <0x545c0000 0x00040000>;
+			reg-names = "dc", "sor", "dpaux";
+			interrupts = <GIC_SPI 73 IRQ_TYPE_LEVEL_HIGH>,
+				     <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "dc", "dp";
+			clocks = <&tegra_car TEGRA124_CLK_DISP1>,
+				 <&tegra_car TEGRA124_CLK_DISP1_EMC>,
+				 <&tegra_car TEGRA124_CLK_SOR0>,
+				 <&tegra_car TEGRA124_CLK_CLK_M>,
+				 <&tegra_car TEGRA124_CLK_PLL_DP>,
+				 <&tegra_car TEGRA124_CLK_DPAUX>;
+			clock-names = "dc", "emc", "sor0", "clk_m", "pll_dp", "dpaux";
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(DC)>;
+		};
+
+		dc@54240000 {
+			compatible = "nvidia,tegra124-dc";
+			reg = <0x54240000 0x00040000>,
+			      <0x54280000 0x00040000>;
+			reg-names = "dc", "hdmi";
+			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&tegra_car TEGRA124_CLK_DISP2>,
+				 <&tegra_car TEGRA124_CLK_DISP2_EMC>,
+				 <&tegra_car TEGRA124_CLK_HDMI>;
+			clock-names = "dc", "emc", "hdmi";
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(DCB)>;
+		};
+
+		vic@54340000 {
+			compatible = "nvidia,tegra124-vic";
+			reg = <0x54340000 0x00040000>;
+			clocks = <&tegra_car TEGRA124_CLK_VIC03>,
+				 <&tegra_car TEGRA124_CLK_VIC03_EMC>;
+			clock-names = "vic03", "emc";
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(VIC)>;
+		};
+
+		msenc@544c0000 {
+			compatible = "nvidia,tegra124-msenc";
+			reg = <0x544c0000 0x00040000>;
+			interrupts = <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&tegra_car TEGRA124_CLK_MSENC>,
+				 <&tegra_car TEGRA124_CLK_MSENC_EMC>;
+			clock-names = "msenc", "emc";
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(MSENC)>;
+		};
+
+		/*
+		 * Host1x driver registers ispb device, so we don't
+		 * define ispb here.
+		 */
+		isp@54600000 {
+			compatible = "nvidia,tegra124-isp";
+			reg = <0x54600000 0x00040000>;
+			interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&tegra_car TEGRA124_CLK_ISP>,
+				 <&tegra_car TEGRA124_CLK_ISPA_EMC>;
+			clock-names = "isp", "emc";
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(ISP)
+					TEGRA_SWGROUP_CELLS(ISP2B)>;
+		};
+
+		gk20a@57000000 {
+			compatible = "nvidia,tegra124-gk20a";
+			reg = <0x57000000 0x01000000	/* BAR0 */
+			       0x58000000 0x01000000>;	/* BAR1 */
+			interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>,	/* INT_GPU */
+				     <GIC_SPI 126 IRQ_TYPE_LEVEL_HIGH>;	/* INT_GPU_NONSTALL */
+			clocks = <&tegra_car TEGRA124_CLK_GPU>,
+				 <&tegra_car TEGRA124_CLK_PLL_P_OUT5>,
+				 <&tegra_car TEGRA124_CLK_GK20A_EMC>;
+			clock-names = "gpu", "pwr", "emc";
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(GPUB)>;
+		};
+	};
+
 	gic: interrupt-controller@50041000 {
 		compatible = "arm,cortex-a15-gic";
 		#interrupt-cells = <3>;
