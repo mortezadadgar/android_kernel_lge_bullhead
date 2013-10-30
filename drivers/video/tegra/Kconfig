@@ -55,6 +55,81 @@ config TEGRA_GRHOST_GK20A_PHYS_PAGE_TABLES
 	  Use physical addressing for gk20a page tables. If this is off, we
 	  use SMMU translation.
 
+config TEGRA_DC
+	tristate "Tegra Display Contoller"
+	depends on ARCH_TEGRA && TEGRA_GRHOST
+	select BACKLIGHT_CLASS_DEVICE
+	select FB_MODE_HELPERS
+	select I2C
+	help
+	  Tegra display controller support.
+
+config TEGRA_DC_CMU
+	bool
+	default y
+
+config TEGRA_MIPI_CAL
+	bool
+	default y
+
+config TEGRA_DC_SCAN_COLUMN
+	bool
+	default y
+
+config TEGRA_DC_BLENDER_GEN2
+	bool
+	default y if ARCH_TEGRA_124_SOC
+	default n
+
+config TEGRA_DC_BLENDER_DEPTH
+	bool
+	default y if ARCH_TEGRA_124_SOC
+	default n
+
+config TEGRA_DC_BLOCK_LINEAR
+	bool
+	default y if ARCH_TEGRA_124_SOC
+	default n
+
+config TEGRA_DC_INTERLACE
+	bool
+	default y if ARCH_TEGRA_124_SOC
+	default n
+
+config TEGRA_DC_LOW_LATENCY_CURSOR
+	bool
+	default y if ARCH_TEGRA_124_SOC
+	default n
+
+config TEGRA_DC_CLOCK_GEN2
+	bool
+	default y if ARCH_TEGRA_124_SOC
+	default n
+	help
+	  T12x redefined pll usages for pll_d and pll_d2.
+
+config TEGRA_DC_TEMPORAL_DITHER
+	bool
+	default y if ARCH_TEGRA_124_SOC
+	default n
+
+config FB_TEGRA
+	tristate "Tegra Framebuffer driver"
+	depends on TEGRA_DC && FB = y
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	default FB
+	help
+	  Framebuffer device support for the Tegra display controller.
+
+config TEGRA_DC_EXTENSIONS
+	bool "Tegra Display Controller Extensions"
+	depends on TEGRA_DC
+	default y
+	help
+	  This exposes support for extended capabilities of the Tegra display
+
 config TEGRA_NVMAP
 	bool "Tegra GPU memory management driver (nvmap)"
 	select ARM_DMA_USE_IOMMU if IOMMU_API
@@ -231,6 +306,41 @@ config NVMAP_HANDLE_MARSHAL
 	  the handle id to user/kernel clients. The marshalling
 	  would allow sharing a 64-bit handle id as 32-bit id to
 	  user space when kernel is 64-bit and user space is 32-bit.
+
+config TEGRA_DSI
+	bool "Enable DSI panel."
+	default n
+	help
+	  Say Y here to enable the DSI panel.
+
+config TEGRA_DSI2EDP_TC358767
+	bool "Enable DSI2EDP TC358767 bridge."
+	default n
+	help
+	  Say Y here to enable the DSI2EDP TOSHIBA 358767 adapter.
+
+config TEGRA_DSI2EDP_SN65DSI86
+	bool "Enable DSI2EDP SN65DSI86 bridge."
+	default n
+	help
+	  Say Y here to enable the DSI2EDP TI SN65DSI86 adapter.
+
+config TEGRA_DP
+	bool "Enable eDP panel."
+	default  n
+	help
+	  Say Y here to enable eDP panel.
+
+config TEGRA_LVDS
+	bool "Enable LVDS panel."
+	default  n
+
+config TEGRA_NVHDCP
+	bool "Support NVHDCP content protection on HDMI"
+	default n
+	help
+	  Say Y here to support NVHDCP upstream and downstream protocols, this
+	  requires a correctly fused chip to negotiate keys.
 
 config TEGRA_GK20A_PMU
 	bool "Support GK20A PMU"
