@@ -45,13 +45,6 @@ static int tegra_num_cpu_domains;
 static const u8 *tegra_cpu_domains;
 static struct powergate *powergate;
 
-static const u8 tegra114_cpu_domains[] = {
-	TEGRA_POWERGATE_CPU0,
-	TEGRA_POWERGATE_CPU1,
-	TEGRA_POWERGATE_CPU2,
-	TEGRA_POWERGATE_CPU3,
-};
-
 static DEFINE_SPINLOCK(tegra_powergate_lock);
 
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
@@ -190,9 +183,7 @@ int __init tegra_powergate_init(void)
 		powergate = tegra30_powergate_init();
 		break;
 	case TEGRA114:
-		tegra_num_powerdomains = 23;
-		tegra_num_cpu_domains = 4;
-		tegra_cpu_domains = tegra114_cpu_domains;
+		powergate = tegra114_powergate_init();
 		break;
 	default:
 		/* Unknown Tegra variant. Disable powergating */
