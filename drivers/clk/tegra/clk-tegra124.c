@@ -1009,6 +1009,20 @@ static struct tegra_devclk devclks[] __initdata = {
 	{ .con_id = "pclk", .dt_id = TEGRA124_CLK_PCLK },
 	{ .dev_id = "rtc-tegra", .dt_id = TEGRA124_CLK_RTC },
 	{ .dev_id = "timer", .dt_id = TEGRA124_CLK_TIMER },
+	{ .con_id = "isp",  .dt_id = TEGRA124_CLK_ISP },
+	{ .con_id = "ispb", .dt_id = TEGRA124_CLK_ISPB },
+	{ .con_id = "vde", .dt_id = TEGRA124_CLK_VDE },
+	{ .con_id = "msenc", .dt_id = TEGRA124_CLK_MSENC },
+	{ .con_id = "vi", .dt_id = TEGRA124_CLK_VI},
+	{ .con_id = "csi", .dt_id = TEGRA124_CLK_CSI},
+	{ .con_id = "disp1", .dt_id = TEGRA124_CLK_DISP1},
+	{ .con_id = "disp2", .dt_id = TEGRA124_CLK_DISP2},
+	{ .con_id = "sor0", .dt_id = TEGRA124_CLK_SOR0},
+	{ .con_id = "dsia", .dt_id = TEGRA124_CLK_DSIA},
+	{ .con_id = "dsib", .dt_id = TEGRA124_CLK_DSIB},
+	{ .con_id = "hdmi", .dt_id = TEGRA124_CLK_HDMI},
+	{ .con_id = "mipi-cal", .dt_id = TEGRA124_CLK_MIPI_CAL},
+	{ .con_id = "dpaux", .dt_id = TEGRA124_CLK_DPAUX},
 };
 
 static struct clk **clks;
