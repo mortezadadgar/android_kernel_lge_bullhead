@@ -292,7 +292,7 @@ static int clkchange_delay = 100;
 static int last_round_idx;
 static u32 tegra_dram_dev_num;
 static u32 tegra_dram_type = -1;
-static bool tegra_emc_ready;
+static bool tegra_emc_init_done;
 static void __iomem *tegra_emc_base;
 static void __iomem *tegra_emc_base_channel[TEGRA_EMC_CHANNEL];
 static void __iomem *tegra_clk_base;
@@ -397,7 +397,7 @@ void tegra114_emc_timing_invalidate(void)
 
 bool tegra114_emc_is_ready(void)
 {
-	return tegra_emc_ready;
+	return tegra_emc_init_done;
 }
 EXPORT_SYMBOL(tegra114_emc_is_ready);
 
@@ -409,7 +409,7 @@ unsigned long tegra114_predict_emc_rate(int millivolts)
 	if (!emc_enable)
 		return -ENODEV;
 
-	if (!tegra_emc_ready || !tegra_emc_table_size)
+	if (!tegra_emc_init_done || !tegra_emc_table_size)
 		return -EINVAL;
 
 	for (i = 0; i < tegra_emc_table_size; i++) {
@@ -434,7 +434,7 @@ unsigned long tegra114_emc_get_rate(void)
 	if (!emc_enable)
 		return -ENODEV;
 
-	if (!tegra_emc_ready || !tegra_emc_table_size)
+	if (!tegra_emc_init_done || !tegra_emc_table_size)
 		return -EINVAL;
 
 	val = clk_cfg_readl();
@@ -457,7 +457,7 @@ long tegra114_emc_round_rate(unsigned long rate)
 	if (!emc_enable)
 		return 0;
 
-	if (!tegra_emc_ready || !tegra_emc_table_size)
+	if (!tegra_emc_init_done || !tegra_emc_table_size)
 		return 0;
 
 	i = get_start_idx(rate);
@@ -820,7 +820,7 @@ int tegra114_emc_set_rate(unsigned long rate)
 	if (!emc_enable)
 		return -ENODEV;
 
-	if (!tegra_emc_ready || !tegra_emc_table_size)
+	if (!tegra_emc_init_done || !tegra_emc_table_size)
 		return -EINVAL;
 
 	if (rate == tegra114_emc_get_rate())
@@ -1261,7 +1261,7 @@ out:
 	if (car_np)
 		of_node_put(car_np);
 
-	tegra_emc_ready = true;
+	tegra_emc_init_done = true;
 	return ret;
 }
 
@@ -1324,6 +1324,9 @@ static const struct file_operations emc_stats_fops = {
 static int __init tegra_emc_debug_init(void)
 {
 	struct dentry *emc_debugfs_root;
+
+	if (!tegra_emc_init_done)
+		return -ENODEV;
 
 	emc_debugfs_root = debugfs_create_dir("tegra_emc", NULL);
 	if (!emc_debugfs_root)
