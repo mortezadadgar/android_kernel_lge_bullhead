@@ -895,6 +895,15 @@
 		};
 	};
 
+	spi@7000da00 {
+		status = "okay";
+		spidev@0 {
+			compatible = "spidev";
+			reg = <0>;
+			spi-max-frequency = <25000000>;
+		};
+	};
+
 	pmc {
 		nvidia,invert-interrupt;
 		nvidia,suspend-mode = <1>;
