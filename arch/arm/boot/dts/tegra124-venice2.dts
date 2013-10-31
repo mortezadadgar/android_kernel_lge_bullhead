@@ -1034,5 +1034,61 @@
 			regulator-boot-on;
 			gpio = <&gpio 136 0>; /* GPIO PR0 */
 		};
+
+		usb1_vbus_reg: regulator@3 {
+			compatible = "regulator-fixed";
+			reg = <3>;
+			regulator-name = "usb1_vbus";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			enable-active-high;
+			gpio = <&gpio 108 0>; /* GPIO PN4 */
+			gpio-open-drain;
+			regulator-boot-on;
+		};
+
+		usb3_vbus_reg: regulator@4 {
+			compatible = "regulator-fixed";
+			reg = <4>;
+			regulator-name = "usb3_vbus";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			enable-active-high;
+			gpio = <&gpio 109 0>; /* GPIO PN5 */
+			gpio-open-drain;
+			regulator-boot-on;
+		};
+	};
+
+	/*
+	 * TODO: USB1 port doesn't work if we enable all ports.
+	 *       USB1 port works if we only enable it.
+	 *	 It will be enabled once we are ready.
+	 */
+	usb-phy@7d000000 {
+		status = "disabled";
+		vbus-supply = <&usb1_vbus_reg>;
+	};
+
+	usb@7d000000 {
+		status = "disabled";
+	};
+
+	usb-phy@7d004000 {
+		status = "okay";
+		vbus-supply = <&run_cam_2v8>;
+	};
+
+	usb@7d004000 {
+		status = "okay";
+	};
+
+	usb-phy@7d008000 {
+		status = "okay";
+		vbus-supply = <&usb3_vbus_reg>;
+	};
+
+	usb@7d008000 {
+		status = "okay";
 	};
 };
