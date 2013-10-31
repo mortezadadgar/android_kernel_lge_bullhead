@@ -42,6 +42,8 @@
 #define DEFAULT_BACKLIGHT_PWM_FREQ   200
 #define BACKLIGHT_REFCLK_DIVISOR     128
 
+#define VLV_DEFAULT_BACKLIGHT_MOD_FREQ  0x0f42
+
 void
 intel_fixed_panel_mode(const struct drm_display_mode *fixed_mode,
 		       struct drm_display_mode *adjusted_mode)
@@ -385,6 +387,22 @@ static u32 i915_read_blc_pwm_ctl(struct drm_device *dev, enum pipe pipe)
 			val = dev_priv->regfile.saveBLC_PWM_CTL2;
 			I915_WRITE(BLC_PWM_PCH_CTL2, val);
 		}
+	} else if (IS_VALLEYVIEW(dev)) {
+		val = I915_READ(VLV_BLC_PWM_CTL(pipe));
+		if (dev_priv->regfile.saveBLC_PWM_CTL == 0) {
+			dev_priv->regfile.saveBLC_PWM_CTL = val;
+			dev_priv->regfile.saveBLC_PWM_CTL2 =
+				I915_READ(VLV_BLC_PWM_CTL2(pipe));
+		} else if (val == 0) {
+			val = dev_priv->regfile.saveBLC_PWM_CTL;
+			I915_WRITE(VLV_BLC_PWM_CTL(pipe), val);
+			I915_WRITE(VLV_BLC_PWM_CTL2(pipe),
+				   dev_priv->regfile.saveBLC_PWM_CTL2);
+		}
+
+		if (!val)
+			val = (VLV_DEFAULT_BACKLIGHT_MOD_FREQ << 16) |
+			       VLV_DEFAULT_BACKLIGHT_MOD_FREQ;
 	} else {
 		val = I915_READ(BLC_PWM_CTL);
 		if (dev_priv->regfile.saveBLC_PWM_CTL == 0) {
@@ -399,9 +417,6 @@ static u32 i915_read_blc_pwm_ctl(struct drm_device *dev, enum pipe pipe)
 				I915_WRITE(BLC_PWM_CTL2,
 					   dev_priv->regfile.saveBLC_PWM_CTL2);
 		}
-
-		if (IS_VALLEYVIEW(dev) && !val)
-			val = 0x0f42ffff;
 	}
 
 	return val;
@@ -475,13 +490,19 @@ static u32 intel_panel_get_backlight(struct drm_device *dev,
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 val;
 	unsigned long flags;
+	int reg;
 
 	spin_lock_irqsave(&dev_priv->backlight.lock, flags);
 
 	if (HAS_PCH_SPLIT(dev)) {
 		val = I915_READ(BLC_PWM_CPU_CTL) & BACKLIGHT_DUTY_CYCLE_MASK;
 	} else {
-		val = I915_READ(BLC_PWM_CTL) & BACKLIGHT_DUTY_CYCLE_MASK;
+		if (IS_VALLEYVIEW(dev))
+			reg = VLV_BLC_PWM_CTL(pipe);
+		else
+			reg = BLC_PWM_CTL;
+
+		val = I915_READ(reg) & BACKLIGHT_DUTY_CYCLE_MASK;
 		if (INTEL_INFO(dev)->gen < 4)
 			val >>= 1;
 
@@ -513,6 +534,7 @@ static void intel_panel_actually_set_backlight(struct drm_device *dev,
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	u32 tmp;
+	int reg;
 
 	DRM_DEBUG_DRIVER("set backlight PWM = %d\n", level);
 	level = intel_panel_compute_brightness(dev, pipe, level);
@@ -533,11 +555,16 @@ static void intel_panel_actually_set_backlight(struct drm_device *dev,
 		pci_write_config_byte(dev->pdev, PCI_LBPC, lbpc);
 	}
 
-	tmp = I915_READ(BLC_PWM_CTL);
+	if (IS_VALLEYVIEW(dev))
+		reg = VLV_BLC_PWM_CTL(pipe);
+	else
+		reg = BLC_PWM_CTL;
+
+	tmp = I915_READ(reg);
 	if (INTEL_INFO(dev)->gen < 4)
 		level <<= 1;
 	tmp &= ~BACKLIGHT_DUTY_CYCLE_MASK;
-	I915_WRITE(BLC_PWM_CTL, tmp | level);
+	I915_WRITE(reg, tmp | level);
 }
 
 /* set backlight brightness to level in range [0..max] */
@@ -608,7 +635,12 @@ static void intel_panel_disable_backlight(struct intel_connector *connector)
 	if (INTEL_INFO(dev)->gen >= 4) {
 		uint32_t reg, tmp;
 
-		reg = HAS_PCH_SPLIT(dev) ? BLC_PWM_CPU_CTL2 : BLC_PWM_CTL2;
+		if (HAS_PCH_SPLIT(dev))
+			reg = BLC_PWM_CPU_CTL2;
+		else if (IS_VALLEYVIEW(dev))
+			reg = VLV_BLC_PWM_CTL2(pipe);
+		else
+			reg = BLC_PWM_CTL2;
 
 		I915_WRITE(reg, I915_READ(reg) & ~BLM_PWM_ENABLE);
 
@@ -652,8 +684,12 @@ static void intel_panel_enable_backlight(struct intel_connector *connector)
 	if (INTEL_INFO(dev)->gen >= 4) {
 		uint32_t reg, tmp;
 
-		reg = HAS_PCH_SPLIT(dev) ? BLC_PWM_CPU_CTL2 : BLC_PWM_CTL2;
-
+		if (HAS_PCH_SPLIT(dev))
+			reg = BLC_PWM_CPU_CTL2;
+		else if (IS_VALLEYVIEW(dev))
+			reg = VLV_BLC_PWM_CTL2(pipe);
+		else
+			reg = BLC_PWM_CTL2;
 
 		tmp = I915_READ(reg);
 
@@ -705,9 +741,20 @@ static void intel_panel_init_backlight_regs(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	if (IS_VALLEYVIEW(dev)) {
-		u32 cur_val = I915_READ(BLC_PWM_CTL) &
-			BACKLIGHT_DUTY_CYCLE_MASK;
-		I915_WRITE(BLC_PWM_CTL, (0xf42 << 16) | cur_val);
+		enum pipe pipe;
+
+		for_each_pipe(pipe) {
+			u32 cur_val = I915_READ(VLV_BLC_PWM_CTL(pipe));
+
+			/* Skip if the modulation freq is already set */
+			if (cur_val & ~BACKLIGHT_DUTY_CYCLE_MASK)
+				continue;
+
+			cur_val &= BACKLIGHT_DUTY_CYCLE_MASK;
+			I915_WRITE(VLV_BLC_PWM_CTL(pipe),
+				   (VLV_DEFAULT_BACKLIGHT_MOD_FREQ << 16) |
+				   cur_val);
+		}
 	}
 }
 
