@@ -759,56 +759,6 @@ int hid_parse_report(struct hid_device *hid, __u8 *start, unsigned size)
 }
 EXPORT_SYMBOL_GPL(hid_parse_report);
 
-static const char * const hid_report_names[] = {
-	"HID_INPUT_REPORT",
-	"HID_OUTPUT_REPORT",
-	"HID_FEATURE_REPORT",
-};
-/**
- * hid_validate_report - validate existing device report
- *
- * @device: hid device
- * @type: which report type to examine
- * @id: which report ID to examine (0 for first)
- * @fields: expected number of fields
- * @report_counts: expected number of values per field
- *
- * Validate the report details after parsing.
- */
-struct hid_report *hid_validate_report(struct hid_device *hid,
-				       unsigned int type, unsigned int id,
-				       unsigned int fields,
-				       unsigned int report_counts)
-{
-	struct hid_report *report;
-	unsigned int i;
-
-	if (type > HID_FEATURE_REPORT) {
-		hid_err(hid, "invalid HID report %u\n", type);
-		return NULL;
-	}
-
-	report = hid->report_enum[type].report_id_hash[id];
-	if (!report) {
-		hid_err(hid, "missing %s %u\n", hid_report_names[type], id);
-		return NULL;
-	}
-	if (report->maxfield < fields) {
-		hid_err(hid, "not enough fields in %s %u\n",
-			hid_report_names[type], id);
-		return NULL;
-	}
-	for (i = 0; i < fields; i++) {
-		if (report->field[i]->report_count < report_counts) {
-			hid_err(hid, "not enough values in %s %u fields\n",
-				hid_report_names[type], id);
-			return NULL;
-		}
-	}
-	return report;
-}
-EXPORT_SYMBOL_GPL(hid_validate_report);
-
 /**
  * hid_open_report - open a driver-specific device report
  *
