@@ -13,6 +13,8 @@ snd-soc-byt-ak-machine-objs := byt_bin_ak4614.o byt_ia_ak4614.o
 obj-$(CONFIG_SND_BYT_AK4614) += snd-soc-byt-ak-machine.o
 snd-soc-byt-rt-machine-objs := byt_bl_rt5642.o
 obj-$(CONFIG_SND_BYT_RT5642) += snd-soc-byt-rt-machine.o
+snd-soc-byt-rambi-machine-objs := byt_rambi_max98090.o
+obj-$(CONFIG_SND_BYT_MAX98090) += snd-soc-byt-rambi-machine.o
 
 # SST Compress framework driver
 snd-compress-sst-objs := compress_sst.o

@@ -1964,6 +1964,8 @@ static int intel_mid_dma_probe(struct pci_dev *pdev,
 	intel_mid_i2s_probe(pdev, id);
 #elif defined CONFIG_SND_BYT_RT5642
 		intel_sst_probe(pci->dma_ctx, id);
+#elif defined CONFIG_SND_BYT_MAX98090
+	intel_sst_probe(pci->dma_ctx, id);
 #endif
 
 	return 0;

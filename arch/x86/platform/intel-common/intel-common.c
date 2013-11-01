@@ -325,6 +325,8 @@ const struct devs_id __initconst platform_device_ids[] = {
 		{"byt_ak4614",SFI_DEV_TYPE_IPC, 1, &byt_audio_platform_data, NULL },
 #elif defined CONFIG_SND_BYT_RT5642
 		{"byt_rt5642",SFI_DEV_TYPE_IPC, 1, &byt_audio_platform_data, NULL },
+#elif defined CONFIG_SND_BYT_MAX98090
+		{"byt_max98090",SFI_DEV_TYPE_IPC, 1, &byt_audio_platform_data, NULL },
 #endif
 		{},
 };

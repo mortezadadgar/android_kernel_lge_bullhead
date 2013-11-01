@@ -59,7 +59,32 @@ config SND_BYT_RT5642
 		This adds support for RT564x codec driver for use with Intel(R) Baytrail platform.
 		Say Y if you have such a device
 		If unsure select "N".
+
+config SND_BYT_MAX98090
+	bool "MAX98090 codec driver for Intel Baytrail LPE audio"
+	select SND_SOC_MAX98090
+	select SND_SST_PLATFORM
+	select SND_INTEL_SST
+	help
+		This adds support for MAX98090 codec driver for use with
+		Intel(R) Baytrail platform.
+		Say Y if you have such a device
+		If unsure select "N".
 endchoice
+
+if SND_BYT_MAX98090
+config SND_BYT_MAX98090_I2C_BUSNUM
+	int "MAX98090 I2C bus number"
+	default 1
+	help
+	  The I2C bus number to which the Maxim 98090 codec is connected.  Note
+	  that this number varies depending on timing, BIOS version, BIOS
+	  configuration, etc.  This setting should be removed in the future in
+	  favor of ACPI table describing the platform topology or a way to
+	  query the platform to find the proper codec connection.
+
+endif # SND_BYT_MAX90890
+
 
 config SND_INTEL_SST
        tristate
