@@ -101,7 +101,7 @@ static u8 cdc_ncm_setup(struct cdc_ncm_ctx *ctx)
 			      sizeof(ctx->ncm_parm));
 	if (err < 0) {
 		pr_debug("failed GET_NTB_PARAMETERS\n");
-		return 1;
+		return err; /* GET_NTB_PARAMETERS is required */
 	}
 
 	/* read correct set of parameters according to device mode */
