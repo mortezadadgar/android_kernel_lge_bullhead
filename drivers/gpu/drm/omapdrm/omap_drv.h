@@ -220,12 +220,9 @@ struct drm_gem_object *omap_gem_new(struct drm_device *dev,
 int omap_gem_new_handle(struct drm_device *dev, struct drm_file *file,
 		union omap_gem_size gsize, uint32_t flags, uint32_t *handle);
 void omap_gem_free_object(struct drm_gem_object *obj);
-int omap_gem_init_object(struct drm_gem_object *obj);
 void *omap_gem_vaddr(struct drm_gem_object *obj);
 int omap_gem_dumb_map_offset(struct drm_file *file, struct drm_device *dev,
 		uint32_t handle, uint64_t *offset);
-int omap_gem_dumb_destroy(struct drm_file *file, struct drm_device *dev,
-		uint32_t handle);
 int omap_gem_dumb_create(struct drm_file *file, struct drm_device *dev,
 		struct drm_mode_create_dumb *args);
 int omap_gem_mmap(struct file *filp, struct vm_area_struct *vma);

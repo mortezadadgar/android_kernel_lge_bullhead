@@ -131,7 +131,7 @@ static int psb_gamma_ioctl(struct drm_device *dev, void *data,
 static int psb_dpst_bl_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *file_priv);
 
-static struct drm_ioctl_desc psb_ioctls[] = {
+static const struct drm_ioctl_desc psb_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(GMA_ADB, psb_adb_ioctl, DRM_AUTH),
 	DRM_IOCTL_DEF_DRV(GMA_MODE_OPERATION, psb_mode_operation_ioctl,
 		      DRM_AUTH),
@@ -359,7 +359,7 @@ static int psb_driver_load(struct drm_device *dev, unsigned long chipset)
 
 	drm_irq_install(dev);
 
-	dev->vblank_disable_allowed = 1;
+	dev->vblank_disable_allowed = true;
 
 	dev->max_vblank_count = 0xffffff; /* only 24 bits of frame count */
 
@@ -622,7 +622,6 @@ static const struct file_operations psb_gem_fops = {
 	.unlocked_ioctl = psb_unlocked_ioctl,
 	.mmap = drm_gem_mmap,
 	.poll = drm_poll,
-	.fasync = drm_fasync,
 	.read = drm_read,
 };
 
@@ -647,12 +646,11 @@ static struct drm_driver driver = {
 	.preclose = psb_driver_preclose,
 	.postclose = psb_driver_close,
 
-	.gem_init_object = psb_gem_init_object,
 	.gem_free_object = psb_gem_free_object,
 	.gem_vm_ops = &psb_gem_vm_ops,
 	.dumb_create = psb_gem_dumb_create,
 	.dumb_map_offset = psb_gem_dumb_map_gtt,
-	.dumb_destroy = psb_gem_dumb_destroy,
+	.dumb_destroy = drm_gem_dumb_destroy,
 	.fops = &psb_gem_fops,
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
