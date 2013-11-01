@@ -72,11 +72,11 @@ MODULE_PARM_DESC(i915_enable_rc6,
 		"For example, 3 would enable rc6 and deep rc6, and 7 would enable everything. "
 		"default: -1 (use per-chip default)");
 
-int i915_enable_fbc __read_mostly = -1;
+int i915_enable_fbc __read_mostly = 1;
 module_param_named(i915_enable_fbc, i915_enable_fbc, int, 0600);
 MODULE_PARM_DESC(i915_enable_fbc,
 		"Enable frame buffer compression for power savings "
-		"(default: -1 (use per-chip default))");
+		"(default: true)");
 
 unsigned int i915_lvds_downclock __read_mostly = 1;
 module_param_named(lvds_downclock, i915_lvds_downclock, int, 0400);
