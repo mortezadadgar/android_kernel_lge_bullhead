@@ -165,6 +165,24 @@ err_power:
 }
 EXPORT_SYMBOL(tegra_powergate_sequence_power_up);
 
+int tegra_powergate_partition(int id)
+{
+	if (id < 0 || id >= tegra_num_powerdomains)
+		return -EINVAL;
+
+	return powergate->ops->powergate_partition(id);
+}
+EXPORT_SYMBOL(tegra_powergate_partition);
+
+int tegra_unpowergate_partition(int id)
+{
+	if (id < 0 || id >= tegra_num_powerdomains)
+		return -EINVAL;
+
+	return powergate->ops->unpowergate_partition(id);
+}
+EXPORT_SYMBOL(tegra_unpowergate_partition);
+
 int tegra_cpu_powergate_id(int cpuid)
 {
 	if (cpuid > 0 && cpuid < tegra_num_cpu_domains)

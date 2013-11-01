@@ -112,6 +112,9 @@ int tegra_powergate_remove_clamping(int id);
 /* Must be called with clk disabled, and returns with clk enabled */
 int tegra_powergate_sequence_power_up(int id, struct clk *clk);
 
+int tegra_powergate_partition(int id);
+int tegra_unpowergate_partition(int id);
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 struct powergate * __init tegra20_powergate_init(void);
 #else
