@@ -411,13 +411,6 @@ int cdc_ncm_bind_common(struct usbnet *dev, struct usb_interface *intf, u8 data_
 
 			ctx->ether_desc =
 					(const struct usb_cdc_ether_desc *)buf;
-			dev->hard_mtu =
-				le16_to_cpu(ctx->ether_desc->wMaxSegmentSize);
-
-			if (dev->hard_mtu < CDC_NCM_MIN_DATAGRAM_SIZE)
-				dev->hard_mtu =	CDC_NCM_MIN_DATAGRAM_SIZE;
-			else if (dev->hard_mtu > CDC_NCM_MAX_DATAGRAM_SIZE)
-				dev->hard_mtu =	CDC_NCM_MAX_DATAGRAM_SIZE;
 			break;
 
 		case USB_CDC_NCM_TYPE:
@@ -505,6 +498,8 @@ advance:
 	dev->out = usb_sndbulkpipe(dev->udev,
 		ctx->out_ep->desc.bEndpointAddress & USB_ENDPOINT_NUMBER_MASK);
 	dev->status = ctx->status_ep;
+	/* usbnet use these values for sizing tx/rx queues */
+	dev->hard_mtu = ctx->tx_max;
 	dev->rx_urb_size = ctx->rx_max;
 
 	/* cdc_ncm_setup will override dwNtbOutMaxSize if it is
