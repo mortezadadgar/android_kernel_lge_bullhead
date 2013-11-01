@@ -37,11 +37,13 @@ struct clk;
 #define TEGRA_POWERGATE_CPU0	14
 #define TEGRA_POWERGATE_C0NC	15
 #define TEGRA_POWERGATE_C1NC	16
+#define TEGRA_POWERGATE_SOR	17
 #define TEGRA_POWERGATE_DIS	18
 #define TEGRA_POWERGATE_DISB	19
 #define TEGRA_POWERGATE_XUSBA	20
 #define TEGRA_POWERGATE_XUSBB	21
 #define TEGRA_POWERGATE_XUSBC	22
+#define TEGRA_POWERGATE_VIC	23
 
 #define TEGRA_POWERGATE_3D0	TEGRA_POWERGATE_3D
 
@@ -128,6 +130,13 @@ static inline struct powergate * __init tegra30_powergate_init(void)
 struct powergate * __init tegra114_powergate_init(void);
 #else
 static inline struct powergate * __init tegra114_powergate_init(void)
+{ return NULL; }
+#endif
+
+#ifdef CONFIG_ARCH_TEGRA_124_SOC
+struct powergate * __init tegra124_powergate_init(void);
+#else
+static inline struct powergate * __init tegra124_powergate_init(void)
 { return NULL; }
 #endif
 

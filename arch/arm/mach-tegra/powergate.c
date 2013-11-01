@@ -185,6 +185,9 @@ int __init tegra_powergate_init(void)
 	case TEGRA114:
 		powergate = tegra114_powergate_init();
 		break;
+	case TEGRA124:
+		powergate = tegra124_powergate_init();
+		break;
 	default:
 		/* Unknown Tegra variant. Disable powergating */
 		tegra_num_powerdomains = 0;
