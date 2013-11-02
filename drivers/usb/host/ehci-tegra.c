@@ -42,6 +42,10 @@
 #define TEGRA_USB2_BASE			0xC5004000
 #define TEGRA_USB3_BASE			0xC5008000
 
+#define USB_TXFILLTUNING		0x154
+#define   USB_FIFO_TXFILL_THRES(x)	(((x) & 0x3f) << 16)
+#define   USB_FIFO_TXFILL_THRES_MASK	0x3f0000
+
 #define PORT_WAKE_BITS (PORT_WKOC_E|PORT_WKDISC_E|PORT_WKCONN_E)
 
 #define TEGRA_USB_DMA_ALIGN 32
@@ -497,6 +501,26 @@ static void tegra_ehci_hcd_shutdown(struct platform_device *pdev)
 		hcd->driver->shutdown(hcd);
 }
 
+static int tegra_ehci_setup(struct usb_hcd *hcd)
+{
+	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
+	int retval;
+	u32 val;
+
+	retval = ehci_setup(hcd);
+	if (retval)
+		return retval;
+
+	if (ehci->has_hostpc) {
+		val = ehci_readl(ehci, &ehci->regs->txfill_tuning);
+		val &= ~USB_FIFO_TXFILL_THRES_MASK;
+		val |= USB_FIFO_TXFILL_THRES(0x10);
+		ehci_writel(ehci, val, &ehci->regs->txfill_tuning);
+	}
+
+	return 0;
+}
+
 static struct platform_driver tegra_ehci_driver = {
 	.probe		= tegra_ehci_probe,
 	.remove		= tegra_ehci_remove,
@@ -534,6 +558,7 @@ static int __init ehci_tegra_init(void)
 	tegra_ehci_hc_driver.map_urb_for_dma = tegra_ehci_map_urb_for_dma;
 	tegra_ehci_hc_driver.unmap_urb_for_dma = tegra_ehci_unmap_urb_for_dma;
 	tegra_ehci_hc_driver.hub_control = tegra_ehci_hub_control;
+	tegra_ehci_hc_driver.reset = tegra_ehci_setup;
 
 	return platform_driver_register(&tegra_ehci_driver);
 }
