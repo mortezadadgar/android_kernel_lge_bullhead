@@ -28,9 +28,11 @@ static inline void tegra114_mc_writel(u32 val, u32 offs) {}
 #ifdef CONFIG_TEGRA124_MC
 u32 tegra124_mc_readl(u32 offs);
 void tegra124_mc_writel(u32 val, u32 offs);
+bool tegra124_mc_is_ready(void);
 #else
 static inline u32 tegra124_mc_readl(u32 offs) { return -ENODEV; }
 static inline void tegra124_mc_writel(u32 val, u32 offs) {}
+static inline bool tegra124_mc_is_ready(void) { return false; }
 #endif
 
 #endif
