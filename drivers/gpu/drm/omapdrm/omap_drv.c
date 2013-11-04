@@ -404,7 +404,7 @@ static int ioctl_gem_info(struct drm_device *dev, void *data,
 	return ret;
 }
 
-static struct drm_ioctl_desc ioctls[DRM_COMMAND_END - DRM_COMMAND_BASE] = {
+static const struct drm_ioctl_desc ioctls[DRM_COMMAND_END - DRM_COMMAND_BASE] = {
 	DRM_IOCTL_DEF_DRV(OMAP_GET_PARAM, ioctl_get_param, DRM_UNLOCKED|DRM_AUTH),
 	DRM_IOCTL_DEF_DRV(OMAP_SET_PARAM, ioctl_set_param, DRM_UNLOCKED|DRM_AUTH|DRM_MASTER|DRM_ROOT_ONLY),
 	DRM_IOCTL_DEF_DRV(OMAP_GEM_NEW, ioctl_gem_new, DRM_UNLOCKED|DRM_AUTH),
@@ -583,7 +583,6 @@ static const struct file_operations omapdriver_fops = {
 		.release = drm_release,
 		.mmap = omap_gem_mmap,
 		.poll = drm_poll,
-		.fasync = drm_fasync,
 		.read = drm_read,
 		.llseek = noop_llseek,
 };
@@ -613,12 +612,11 @@ static struct drm_driver omap_drm_driver = {
 		.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
 		.gem_prime_export = omap_gem_prime_export,
 		.gem_prime_import = omap_gem_prime_import,
-		.gem_init_object = omap_gem_init_object,
 		.gem_free_object = omap_gem_free_object,
 		.gem_vm_ops = &omap_gem_vm_ops,
 		.dumb_create = omap_gem_dumb_create,
 		.dumb_map_offset = omap_gem_dumb_map_offset,
-		.dumb_destroy = omap_gem_dumb_destroy,
+		.dumb_destroy = drm_gem_dumb_destroy,
 		.ioctls = ioctls,
 		.num_ioctls = DRM_OMAP_NUM_IOCTLS,
 		.fops = &omapdriver_fops,
