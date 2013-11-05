@@ -46,6 +46,7 @@ int tegra_cpu_speedo_value;
 int tegra_gpu_speedo_value;
 int tegra_cpu_iddq_value;
 enum tegra_revision tegra_revision;
+static u32 fuse_vp8_enable;
 
 static int tegra_fuse_spare_bit;
 static void (*tegra_init_speedo_data)(void);
@@ -145,9 +146,11 @@ void tegra_init_fuse(void)
 		break;
 	case TEGRA114:
 		tegra_init_speedo_data = &tegra114_init_speedo_data;
+		fuse_vp8_enable = tegra_fuse_readl(FUSE_VP8_ENABLE_0);
 		break;
 	case TEGRA124:
 		tegra_init_speedo_data = &tegra124_init_speedo_data;
+		fuse_vp8_enable = tegra_fuse_readl(FUSE_VP8_ENABLE_0);
 		break;
 	default:
 		pr_warn("Tegra: unknown chip id %d\n", tegra_chip_id);
@@ -210,6 +213,11 @@ int tegra_get_gpu_speedo_value(void)
 int tegra_get_cpu_iddq_value(void)
 {
 	return tegra_cpu_iddq_value;
+}
+
+u32 tegra_get_vp8_enable(void)
+{
+	return fuse_vp8_enable;
 }
 
 unsigned long long tegra_chip_uid(void)

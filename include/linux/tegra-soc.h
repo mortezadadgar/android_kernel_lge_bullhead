@@ -29,6 +29,7 @@ int tegra_get_gpu_speedo_id(void);
 int tegra_get_cpu_speedo_value(void);
 int tegra_get_gpu_speedo_value(void);
 int tegra_get_cpu_iddq_value(void);
+u32 tegra_get_vp8_enable(void);
 
 #ifdef CONFIG_ARCH_TEGRA_124_SOC
 int tegra124_get_core_speedo_mv(void);

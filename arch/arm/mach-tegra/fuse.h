@@ -31,6 +31,8 @@
 #define TEGRA114	0x35
 #define TEGRA124	0x40
 
+#define FUSE_VP8_ENABLE_0	0x1c4
+
 #ifndef __ASSEMBLY__
 enum tegra_revision {
 	TEGRA_REVISION_UNKNOWN = 0,
