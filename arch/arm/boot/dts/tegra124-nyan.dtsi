@@ -1,4 +1,4 @@
-/include/ "tegra124.dtsi"
+#include "tegra124.dtsi"
 
 / {
 	compatible = "google,nyan", "nvidia,tegra124";

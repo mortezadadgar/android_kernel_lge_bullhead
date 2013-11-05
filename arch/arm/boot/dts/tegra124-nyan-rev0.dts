@@ -1,7 +1,7 @@
 /dts-v1/;
 
-/include/ "tegra124.dtsi"
-/include/ "tegra124-nyan.dtsi"
+#include "tegra124.dtsi"
+#include "tegra124-nyan.dtsi"
 
 / {
 	model = "Google Nyan Rev 0";

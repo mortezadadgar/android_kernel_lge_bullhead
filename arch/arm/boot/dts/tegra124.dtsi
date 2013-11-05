@@ -1,6 +1,6 @@
-/include/ "skeleton.dtsi"
-/include/ "tegra124-cvb.dtsi"
-/include/ "tegra124-dfll.dtsi"
+#include "skeleton.dtsi"
+#include "tegra124-cvb.dtsi"
+#include "tegra124-dfll.dtsi"
 
 / {
 	compatible = "nvidia,tegra124";
