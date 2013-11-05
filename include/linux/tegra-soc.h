@@ -30,6 +30,13 @@ int tegra_get_cpu_speedo_value(void);
 int tegra_get_gpu_speedo_value(void);
 int tegra_get_cpu_iddq_value(void);
 
+#ifdef CONFIG_ARCH_TEGRA_124_SOC
+int tegra124_get_core_speedo_mv(void);
+#else
+static inline int tegra124_get_core_speedo_mv(void)
+{ return -EINVAL; }
+#endif
+
 #ifdef CONFIG_ARM_TEGRA_CPUFREQ
 int tegra_cpufreq_init(void);
 #else

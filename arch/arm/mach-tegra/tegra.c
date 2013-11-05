@@ -35,6 +35,7 @@
 #include <linux/usb/tegra_usb_phy.h>
 #include <linux/clk/tegra.h>
 #include <linux/regulator/machine.h>
+#include <linux/tegra-dvfs.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -81,6 +82,7 @@ static void __init tegra_dt_init(void)
 	 */
 out:
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, parent);
+	tegra_dvfs_init();
 }
 
 static void __init trimslice_init(void)

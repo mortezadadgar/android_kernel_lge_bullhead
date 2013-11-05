@@ -153,3 +153,14 @@ void tegra124_init_speedo_data(void)
 	pr_info("Tegra124: GPU Speedo ID=%d, Speedo Value=%d\n",
 			tegra_gpu_speedo_id, tegra_gpu_speedo_value);
 }
+
+int tegra124_get_core_speedo_mv(void)
+{
+	switch (tegra_soc_speedo_id) {
+	case 0:
+	case 1:
+		return 1150;
+	default:
+		BUG();
+	}
+}

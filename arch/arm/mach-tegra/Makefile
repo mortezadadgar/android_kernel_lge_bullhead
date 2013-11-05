@@ -51,3 +51,5 @@ endif
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-harmony-pcie.o
 
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)		+= board-paz00.o
+obj-$(CONFIG_TEGRA_DVFS)		+= tegra-dvfs.o
+obj-$(CONFIG_TEGRA_124_DVFS)		+= tegra124-dvfs.o
