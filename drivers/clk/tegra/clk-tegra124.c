@@ -1025,6 +1025,22 @@ static struct tegra_devclk devclks[] __initdata = {
 	{ .con_id = "mipi-cal", .dt_id = TEGRA124_CLK_MIPI_CAL},
 	{ .con_id = "dpaux", .dt_id = TEGRA124_CLK_DPAUX},
 	{ .dev_id = "emc", .dt_id = TEGRA124_CLK_EMC },
+	{ .con_id = "vic03", .dt_id = TEGRA124_CLK_VIC03 },
+	{ .con_id = "tsec", .dt_id = TEGRA124_CLK_TSEC },
+	{ .con_id = "se", .dt_id = TEGRA124_CLK_SE },
+	{ .con_id = "host1x", .dt_id = TEGRA124_CLK_HOST1X },
+	{ .con_id = "sbc1", .dt_id = TEGRA124_CLK_SBC1 },
+	{ .con_id = "sbc2", .dt_id = TEGRA124_CLK_SBC2 },
+	{ .con_id = "sbc3", .dt_id = TEGRA124_CLK_SBC3 },
+	{ .con_id = "sbc4", .dt_id = TEGRA124_CLK_SBC4 },
+	{ .con_id = "sbc5", .dt_id = TEGRA124_CLK_SBC5 },
+	{ .con_id = "sbc6", .dt_id = TEGRA124_CLK_SBC6 },
+	{ .con_id = "sdmmc1", .dt_id = TEGRA124_CLK_SDMMC1 },
+	{ .con_id = "sdmmc3", .dt_id = TEGRA124_CLK_SDMMC3 },
+	{ .con_id = "sdmmc4", .dt_id = TEGRA124_CLK_SDMMC4 },
+	{ .con_id = "nor", .dt_id = TEGRA124_CLK_NOR },
+	{ .con_id = "pciex", .dt_id = TEGRA124_CLK_PCIE },
+	{ .con_id = "gbus", .dt_id = TEGRA124_CLK_GPU },
 };
 
 static struct clk **clks;
