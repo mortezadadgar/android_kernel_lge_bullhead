@@ -34,6 +34,7 @@ obj-$(CONFIG_PLAT_SAMSUNG)	+= samsung/
 obj-$(CONFIG_X86)		+= x86/
 
 # Chip specific
+obj-$(CONFIG_COMMON_CLK_AS3722) += clk-as3722.o
 obj-$(CONFIG_COMMON_CLK_AXI_CLKGEN) += clk-axi-clkgen.o
 obj-$(CONFIG_COMMON_CLK_WM831X) += clk-wm831x.o
 obj-$(CONFIG_COMMON_CLK_MAX77686) += clk-max77686.o
