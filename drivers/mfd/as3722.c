@@ -324,21 +324,6 @@ const struct regmap_config as3722_regmap_config = {
 	.volatile_table = &as3722_volatile_table,
 };
 
-static struct as3722 *as3722_dev;
-static void as3722_power_off(void)
-{
-	int ret;
-
-	if (!as3722_dev)
-		return;
-
-	ret = as3722_update_bits(as3722_dev, AS3722_RESET_CONTROL_REG,
-		AS3722_POWER_OFF, AS3722_POWER_OFF);
-	if (ret)
-		pr_err("%s: Unable to write to AS3722_POWER_OFF: %d\n",
-				__func__, ret);
-}
-
 static int as3722_i2c_of_probe(struct i2c_client *i2c,
 			struct as3722 *as3722)
 {
@@ -360,8 +345,6 @@ static int as3722_i2c_of_probe(struct i2c_client *i2c,
 					"ams,enable-internal-int-pullup");
 	as3722->en_intern_i2c_pullup = of_property_read_bool(np,
 					"ams,enable-internal-i2c-pullup");
-	as3722->use_power_off = of_property_read_bool(np,
-				"ams,system-power-controller");
 	as3722->irq_flags = irqd_get_trigger_type(irq_data);
 	dev_dbg(&i2c->dev, "IRQ flags are 0x%08lx\n", as3722->irq_flags);
 	return 0;
@@ -417,11 +400,6 @@ static int as3722_i2c_probe(struct i2c_client *i2c,
 		dev_err(as3722->dev, "Failed to add MFD devices: %d\n", ret);
 		goto scrub;
 	}
-
-	if (as3722->use_power_off && !pm_power_off)
-		pm_power_off = as3722_power_off;
-
-	as3722_dev = as3722;
 
 	dev_dbg(as3722->dev, "AS3722 core driver initialized successfully\n");
 	return 0;

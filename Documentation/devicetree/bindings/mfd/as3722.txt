@@ -12,11 +12,6 @@ Required properties:
   The second cell is the flags, encoded as the trigger masks from binding document
 	interrupts.txt, using dt-bindings/irq.
 
-Optional properties:
--------------------
-- ams,system-power-controller: Telling whether or not this pmic is controlling
-			      the system power.
-
 Optional submodule and their properties:
 ---------------------------------------
 

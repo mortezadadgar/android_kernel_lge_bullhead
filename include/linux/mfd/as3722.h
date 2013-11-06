@@ -385,7 +385,6 @@ struct as3722 {
 	unsigned long irq_flags;
 	bool en_intern_int_pullup;
 	bool en_intern_i2c_pullup;
-	bool use_power_off;
 	struct regmap_irq_chip_data *irq_data;
 };
 
