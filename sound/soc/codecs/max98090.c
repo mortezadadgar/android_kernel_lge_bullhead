@@ -2098,6 +2098,7 @@ static void max98090_jack_work(struct work_struct *work)
 	snd_soc_dapm_sync(dapm);
 }
 
+#if 0
 static irqreturn_t max98090_interrupt(int irq, void *data)
 {
 	struct snd_soc_codec *codec = data;
@@ -2160,6 +2161,7 @@ static irqreturn_t max98090_interrupt(int irq, void *data)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 /**
  * max98090_mic_detect - Enable microphone detection via the MAX98090 IRQ
@@ -2310,13 +2312,15 @@ static int max98090_probe(struct snd_soc_codec *codec)
 	/* Register for interrupts */
 	dev_dbg(codec->dev, "irq = %d\n", max98090->irq);
 
-	ret = request_threaded_irq(max98090->irq, NULL,
-		max98090_interrupt, IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-		"max98090_interrupt", codec);
-	if (ret < 0) {
-		dev_err(codec->dev, "request_irq failed: %d\n",
-			ret);
-	}
+	// TODO:  Figure out why request_threaded_irq is failing and fix it
+	// properly instead of just removing it.
+	// ret = request_threaded_irq(max98090->irq, NULL,
+	// 	max98090_interrupt, IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+	// 	"max98090_interrupt", codec);
+	// if (ret < 0) {
+	// 	dev_err(codec->dev, "request_irq failed: %d\n",
+	// 		ret);
+	// }
 
 	/*
 	 * Clear any old interrupts.
