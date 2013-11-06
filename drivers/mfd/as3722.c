@@ -305,7 +305,7 @@ static const struct regmap_access_table as3722_writable_table = {
 };
 
 static const struct regmap_range as3722_cacheable_ranges[] = {
-	regmap_reg_range(AS3722_SD0_VOLTAGE_REG, AS3722_LDO11_VOLTAGE_REG),
+	regmap_reg_range(AS3722_SD1_VOLTAGE_REG, AS3722_LDO11_VOLTAGE_REG),
 	regmap_reg_range(AS3722_SD_CONTROL_REG, AS3722_LDOCONTROL1_REG),
 };
 
