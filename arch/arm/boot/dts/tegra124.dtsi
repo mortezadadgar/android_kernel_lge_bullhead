@@ -7,6 +7,8 @@
 #include "tegra124-dfll.dtsi"
 #include "tegra124-throttle.dtsi"
 
+#include <dt-bindings/memory/tegra-swgroup.h>
+
 / {
 	compatible = "nvidia,tegra124";
 	interrupt-parent = <&gic>;
@@ -84,6 +86,11 @@
 			     <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&tegra_car TEGRA124_CLK_APBDMA>;
+	};
+
+	ahb: ahb {
+		compatible = "nvidia,tegra124-ahb", "nvidia,tegra114-ahb", "nvidia,tegra30-ahb";
+		reg = <0x6000c004 0x14c>;
 	};
 
 	gpio: gpio {
@@ -311,6 +318,14 @@
 		reg = <0x70019000 0x1000>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+	};
+
+	smmu: iommu {
+		compatible = "nvidia,tegra124-smmu", "nvidia,tegra114-smmu", "nvidia,tegra30-smmu";
+		reg = <0x70019000 0x1000>;
+		nvidia,#asids = <128>;
+		dma-window = <0 0x40000000>;
+		#iommu-cells = <2>;
 	};
 
 	memory-controller@7001b000 {
