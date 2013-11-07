@@ -1865,6 +1865,7 @@
 
 	dfll@70110000 {
 		vdd-supply = <&vdd_cpu>;
+		board-params = <&{/cpu_dfll_board_params}>;
 		status = "okay";
 	};
 
@@ -2030,5 +2031,16 @@
 		i2c-controller-id = <4>;
 		poweroff-reg-addr = <0x36>;
 		poweroff-reg-data = <0x2>;
+	};
+
+	cpu_dfll_board_params {
+		sample-rate = <12500>;
+		fixed-output-forcing;
+		cf = <10>;
+		ci = <0>;
+		cg = <2>;
+		droop-cut-value = <0xf>;
+		droop-restore-ramp = <0x0>;
+		scale-out-ramp = <0x0>;
 	};
 };
