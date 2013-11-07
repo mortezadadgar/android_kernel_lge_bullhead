@@ -1,0 +1,28 @@
+/ {
+	cpu_dfll_tuning {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		characterization@0 {
+			speedo-id = <0>;
+
+			tune0-low-voltage-range = <0x005020FF>;
+			tune0-high-voltage-range = <0x005040FF>;
+			tune1 = <0x00000060>;
+			droop-rate-min = <1000000>;
+			tune_high_min_millivolts = <900>;
+			min-millivolts = <800>;
+		};
+
+		characterization@1 {
+			speedo-id = <1>;
+
+			tune0-low-voltage-range = <0x005020FF>;
+			tune0-high-voltage-range = <0x005040FF>;
+			tune1 = <0x00000060>;
+			droop-rate-min = <1000000>;
+			tune_high_min_millivolts = <900>;
+			min-millivolts = <800>;
+		};
+	};
+};

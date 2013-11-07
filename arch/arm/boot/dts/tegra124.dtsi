@@ -1,4 +1,5 @@
 /include/ "skeleton.dtsi"
+/include/ "tegra124-dfll.dtsi"
 
 / {
 	compatible = "nvidia,tegra124";
@@ -448,6 +449,7 @@
 		reg = <0x70110000 0x400>;
 		clocks = <&tegra_car 265>, <&tegra_car 264>, <&tegra_car 47>;
 		clock-names = "soc", "ref", "i2c";
+		tuning = <&{/cpu_dfll_tuning}>;
 		status = "disabled";
 	};
 
