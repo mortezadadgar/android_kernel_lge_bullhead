@@ -400,6 +400,7 @@ struct tegra_clk_periph_gate {
 #define TEGRA_PERIPH_WAR_1005168 BIT(3)
 #define TEGRA_PERIPH_NO_CLK BIT(4)
 #define TEGRA_PERIPH_NO_DIV BIT(5)
+#define TEGRA_PERIPH_NO_GATE BIT(6)
 
 void tegra_periph_reset(struct tegra_clk_periph_gate *gate, bool assert);
 extern const struct clk_ops tegra_clk_periph_gate_ops;
