@@ -39,6 +39,7 @@
 #include <linux/tegra-dvfs.h>
 #include <linux/irqchip.h>
 #include <linux/tegra-soc.h>
+#include <linux/nvmap.h>
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/mach-types.h>
@@ -111,6 +112,56 @@ static void __init tegra_dt_init_irq(void)
 	tegra_legacy_irq_syscore_init();
 }
 
+#ifdef CONFIG_TEGRA_NVMAP
+static struct nvmap_platform_carveout venice_carveouts[] = {
+	[0] = {
+		.name		= "iram",
+		.usage_mask	= NVMAP_HEAP_CARVEOUT_IRAM,
+		.base		= TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE,
+		.size		= TEGRA_IRAM_SIZE - TEGRA_RESET_HANDLER_SIZE,
+		.buddy_size	= 0, /* no buddy allocation for IRAM */
+	},
+	[1] = {
+		.name		= "generic-0",
+		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
+		.base		= 0, /* Filled in by venice_panel_init() */
+		.size		= 0, /* Filled in by venice_panel_init() */
+		.buddy_size	= SZ_32K,
+	},
+	[2] = {
+		.name		= "vpr",
+		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
+		.base		= 0, /* Filled in by venice_panel_init() */
+		.size		= 0, /* Filled in by venice_panel_init() */
+		.buddy_size	= SZ_32K,
+	},
+};
+
+static struct nvmap_platform_data venice_nvmap_data = {
+	.carveouts	= venice_carveouts,
+	.nr_carveouts	= ARRAY_SIZE(venice_carveouts),
+};
+
+static struct platform_device venice_nvmap_device = {
+	.name	= "tegra-nvmap",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &venice_nvmap_data,
+	},
+};
+#endif
+
+static void __init venice2_init(void)
+{
+#ifdef CONFIG_TEGRA_NVMAP
+	int err;
+
+	err = platform_device_register(&venice_nvmap_device);
+	if (err)
+		pr_err("nvmap device registration failed: %d\n", err);
+#endif
+}
+
 static void __init tegra_dt_init(void)
 {
 	struct soc_device_attribute *soc_dev_attr;
@@ -153,6 +204,10 @@ out:
 
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, parent);
 	tegra_dvfs_init();
+
+	if (of_machine_is_compatible("nvidia,venice2") ||
+	    of_machine_is_compatible("nvidia,norrin"))
+		venice2_init();
 }
 
 static void __init trimslice_init(void)
