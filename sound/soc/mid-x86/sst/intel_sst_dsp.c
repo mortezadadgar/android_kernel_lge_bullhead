@@ -223,7 +223,36 @@ int parse_module_byt(struct fw_module_header *module)
 		 * issue in writing (copy by byte, movsb and slow). So we use
 		 * __memcpy here which is optimized (copy by 4-byte, movsl and fast)
 		 */
-		__memcpy(ram + block->ram_offset, (void *)block + sizeof(*block), block->size);
+		/*
+		 * Testing in 64-bit chromeos environment shows that memcpy
+		 * does not land the correct values at least for some of the
+		 * destination memory types.  Accordingly, we do a loop of
+		 * 4-byte assignments to try to preserve correct 'write'
+		 * functionality at the expense of speed.
+		 *
+		 * If there are any bytes left over, we do copy-by-byte and
+		 * hope that works.
+		 */
+		{
+			int i;
+			u32 *src = (u32 *)((void *)block + sizeof(*block));
+			u32 *dst = (u32 *)(ram + block->ram_offset);
+			int num_u32s = block->size / sizeof(u32);
+			int bytes_left;
+			unsigned char *src_b;
+			unsigned char *dst_b;
+
+			for (i = 0; i < num_u32s; i++)
+				dst[i] = src[i];
+			bytes_left = block->size % sizeof(u32);
+			WARN((bytes_left),
+				"Warning - non %d byte multiple block\n",
+				sizeof(u32));
+			src_b = (unsigned char *)&src[num_u32s];
+			dst_b = (unsigned char *)&dst[num_u32s];
+			for (i = 0; i < bytes_left; i++)
+				dst_b[i] = src_b[i];
+		}
 
 #ifdef SST_FW_DOWNLOAD_DEBUG
 		void *src = (void *)block + sizeof(*block);
