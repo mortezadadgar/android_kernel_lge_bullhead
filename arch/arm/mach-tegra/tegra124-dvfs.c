@@ -21,6 +21,7 @@
 #include <linux/tegra-soc.h>
 #include <linux/tegra-dvfs.h>
 #include <linux/clk/tegra124-dfll.h>
+#include <linux/platform_data/tegra_thermal.h>
 
 #define KHZ		1000
 #define MHZ		1000000
@@ -30,6 +31,13 @@ static bool tegra_dvfs_cpu_disabled;
 static bool tegra_dvfs_core_disabled;
 static int cpu_millivolts[MAX_DVFS_FREQS];
 static int cpu_dfll_millivolts[MAX_DVFS_FREQS];
+
+static int vdd_core_therm_trips_table[MAX_THERMAL_LIMITS] = { 20, };
+static int vdd_core_therm_floors_table[MAX_THERMAL_LIMITS] = { 900, };
+
+static struct tegra_cooling_device core_vmin_cdev = {
+	.cdev_type = "core_cold",
+};
 
 static struct dvfs_rail tegra124_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
@@ -48,6 +56,7 @@ static struct dvfs_rail tegra124_dvfs_rail_vdd_core = {
 	.min_millivolts = 800,
 	.step = VDD_SAFE_STEP,
 	.step_up = 1400,
+	.vmin_cdev = &core_vmin_cdev,
 };
 
 static struct dvfs_rail *tegra124_dvfs_rails[] = {
@@ -426,6 +435,10 @@ int tegra124_init_dvfs(void)
 		}
 	}
 	BUG_ON(i == ARRAY_SIZE(cpu_fv_dvfs_table));
+
+	/* Init core thermal profile */
+	tegra_dvfs_rail_init_vmin_thermal_profile(vdd_core_therm_trips_table,
+		vdd_core_therm_floors_table, &tegra124_dvfs_rail_vdd_core);
 
 	/* Init rail structures and dependencies */
 	tegra_dvfs_init_rails(tegra124_dvfs_rails,

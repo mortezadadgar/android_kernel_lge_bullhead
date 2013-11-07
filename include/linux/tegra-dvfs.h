@@ -20,6 +20,7 @@
 #define MAX_DVFS_FREQS		40
 #define DVFS_RAIL_STATS_TOP_BIN	100
 #define DVFS_RAIL_STATS_BIN	12500
+#define MAX_THERMAL_LIMITS	8
 
 /*
  * dvfs_relationship between to rails, "from" and "to"
@@ -93,6 +94,12 @@ struct dvfs_rail {
 
 	struct rail_alignment alignment;
 	struct rail_stats stats;
+
+	const int *therm_mv_floors;
+	int therm_mv_floors_num;
+
+	int therm_floor_idx;
+	struct tegra_cooling_device *vmin_cdev;
 };
 
 enum dfll_range {
@@ -168,6 +175,8 @@ void tegra_dvfs_rail_disable(struct dvfs_rail *rail);
 int tegra_dvfs_predict_millivolts(struct clk *c, unsigned long rate);
 bool tegra_dvfs_is_dfll_range(struct clk *c, unsigned long rate);
 int tegra_dvfs_set_dfll_range(struct clk *c, int range);
+void tegra_dvfs_rail_init_vmin_thermal_profile(int *therm_trips_table,
+		int *therm_floors_table, struct dvfs_rail *rail);
 #else
 static inline int tegra_dvfs_init(void)
 { return 0; }
@@ -201,6 +210,10 @@ static inline bool tegra_dvfs_is_dfll_range(struct clk *c, unsigned long rate)
 { return false; }
 static inline int tegra_dvfs_set_dfll_range(struct clk *c, int range)
 { return -EINVAL; }
+static inline void tegra_dvfs_rail_init_vmin_thermal_profile(
+		int *therm_trips_table, int *therm_floors_table,
+		struct dvfs_rail *rail)
+{ return; }
 #endif
 
 #ifdef CONFIG_TEGRA_124_DVFS

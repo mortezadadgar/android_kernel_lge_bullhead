@@ -40,4 +40,10 @@ struct thermal_trip_info {
 	char *cdev_type;
 };
 
+struct tegra_cooling_device {
+	char *cdev_type;
+	int *trip_temperatures;
+	int trip_temperatures_num;
+};
+
 #endif /* _TEGRA_THERMAL_H */

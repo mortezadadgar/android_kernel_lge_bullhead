@@ -33,6 +33,8 @@
 #include <linux/reboot.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
+#include <linux/thermal.h>
+#include <linux/platform_data/tegra_thermal.h>
 #include <linux/tegra-dvfs.h>
 
 struct dvfs_rail *tegra_cpu_rail;
@@ -71,6 +73,19 @@ void tegra_dvfs_add_relationships(struct dvfs_relationship *rels, int n)
 	mutex_unlock(&dvfs_lock);
 }
 
+/* Make sure there is a matching cooling device for thermal limit profile. */
+static void dvfs_validate_cdevs(struct dvfs_rail *rail)
+{
+	if (!rail->therm_mv_floors != !rail->therm_mv_floors_num) {
+		rail->therm_mv_floors_num = 0;
+		rail->therm_mv_floors = NULL;
+		pr_warn("%s: not matching thermal floors/num\n", rail->reg_id);
+	}
+
+	if (rail->therm_mv_floors && !rail->vmin_cdev)
+		pr_warn("%s: missing vmin cooling device\n", rail->reg_id);
+}
+
 int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
 {
 	int i, mv;
@@ -101,6 +116,8 @@ int tegra_dvfs_init_rails(struct dvfs_rail *rails[], int n)
 			tegra_cpu_rail = rails[i];
 		else if (!strcmp("vdd_core", rails[i]->reg_id))
 			tegra_core_rail = rails[i];
+
+		dvfs_validate_cdevs(rails[i]);
 	}
 
 	mutex_unlock(&dvfs_lock);
@@ -276,6 +293,12 @@ out:
 static inline int dvfs_rail_apply_limits(struct dvfs_rail *rail, int millivolts)
 {
 	int min_mv = rail->min_millivolts;
+
+	if (rail->therm_mv_floors) {
+		int i = rail->therm_floor_idx;
+		if (i < rail->therm_mv_floors_num)
+			min_mv = rail->therm_mv_floors[i];
+	}
 
 	if (rail->override_millivolts)
 		millivolts = rail->override_millivolts;
@@ -923,6 +946,121 @@ int tegra_dvfs_get_dfll_threshold(struct clk *c, unsigned long *rate)
 }
 EXPORT_SYMBOL(tegra_dvfs_get_dfll_threshold);
 
+#ifdef CONFIG_THERMAL
+/* Cooling device limits minimum rail voltage at cold temperature in pll mode */
+static int tegra_dvfs_rail_get_vmin_cdev_max_state(
+	struct thermal_cooling_device *cdev, unsigned long *max_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	*max_state = rail->vmin_cdev->trip_temperatures_num;
+	return 0;
+}
+
+static int tegra_dvfs_rail_get_vmin_cdev_cur_state(
+	struct thermal_cooling_device *cdev, unsigned long *cur_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+	*cur_state = rail->therm_floor_idx;
+	return 0;
+}
+
+static int tegra_dvfs_rail_set_vmin_cdev_state(
+	struct thermal_cooling_device *cdev, unsigned long cur_state)
+{
+	struct dvfs_rail *rail = (struct dvfs_rail *)cdev->devdata;
+
+	mutex_lock(&dvfs_lock);
+	if (rail->therm_floor_idx != cur_state) {
+		rail->therm_floor_idx = cur_state;
+		dvfs_rail_update(rail);
+	}
+	mutex_unlock(&dvfs_lock);
+	return 0;
+}
+
+static struct thermal_cooling_device_ops tegra_dvfs_vmin_cooling_ops = {
+	.get_max_state = tegra_dvfs_rail_get_vmin_cdev_max_state,
+	.get_cur_state = tegra_dvfs_rail_get_vmin_cdev_cur_state,
+	.set_cur_state = tegra_dvfs_rail_set_vmin_cdev_state,
+};
+
+static void tegra_dvfs_rail_register_vmin_cdev(struct dvfs_rail *rail)
+{
+	if (!rail->vmin_cdev)
+		return;
+
+	/* just report error - initialized for cold temperature, anyway */
+	if (IS_ERR(thermal_cooling_device_register(
+		rail->vmin_cdev->cdev_type, (void *)rail,
+		&tegra_dvfs_vmin_cooling_ops)))
+		pr_err("tegra cooling device %s failed to register\n",
+		       rail->vmin_cdev->cdev_type);
+}
+#else
+static inline void tegra_dvfs_rail_register_vmin_cdev(struct dvfs_rail *rail)
+{ return; }
+#endif
+
+/*
+ * Validate rail thermal profile, and get its size. Valid profile:
+ * - voltage limits are descending with temperature increasing
+ * - the lowest limit is above rail minimum voltage in pll and
+ *   in dfll mode (if applicable)
+ * - the highest limit is below rail nominal voltage
+ */
+static int get_thermal_profile_size(
+	int *trips_table, int *limits_table,
+	struct dvfs_rail *rail)
+{
+	int i;
+
+	for (i = 0; i < MAX_THERMAL_LIMITS - 1; i++) {
+		if (!limits_table[i + 1])
+			break;
+
+		if ((trips_table[i] >= trips_table[i + 1]) ||
+		    (limits_table[i] < limits_table[i + 1])) {
+			pr_warn("%s: not ordered profile\n", rail->reg_id);
+			return -EINVAL;
+		}
+	}
+
+	if (limits_table[i] < rail->min_millivolts) {
+		pr_warn("%s: thermal profile below Vmin\n", rail->reg_id);
+		return -EINVAL;
+	}
+
+	if (limits_table[0] > rail->nominal_millivolts) {
+		pr_warn("%s: thermal profile above Vmax\n", rail->reg_id);
+		return -EINVAL;
+	}
+
+	return i + 1;
+}
+
+void tegra_dvfs_rail_init_vmin_thermal_profile(
+	int *therm_trips_table, int *therm_floors_table,
+	struct dvfs_rail *rail)
+{
+	int i = get_thermal_profile_size(therm_trips_table,
+					 therm_floors_table, rail);
+	if (i <= 0) {
+		rail->vmin_cdev = NULL;
+		pr_warn("%s: invalid Vmin thermal profile\n", rail->reg_id);
+		return;
+	}
+
+	/* Install validated thermal floors */
+	rail->therm_mv_floors = therm_floors_table;
+	rail->therm_mv_floors_num = i;
+
+	/* Setup trip-points if applicable */
+	if (rail->vmin_cdev) {
+		rail->vmin_cdev->trip_temperatures_num = i;
+		rail->vmin_cdev->trip_temperatures = therm_trips_table;
+	}
+}
+
 static int tegra_config_dvfs(struct dvfs_rail *rail)
 {
 	int i;
@@ -1011,6 +1149,8 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 	mutex_lock(&dvfs_lock);
 
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
+		int thermal_mv_floor = 0;
+
 		seq_printf(s, "%s %d mV%s:\n", rail->reg_id,
 			   rail->stats.off ? 0 : rail->millivolts,
 			   rail->dfll_mode ? " dfll mode" :
@@ -1020,6 +1160,13 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 				rel->from->reg_id, rel->from->millivolts,
 				dvfs_solve_relationship(rel));
 		}
+
+		if (rail->therm_mv_floors) {
+			int i = rail->therm_floor_idx;
+			if (i < rail->therm_mv_floors_num)
+				thermal_mv_floor = rail->therm_mv_floors[i];
+		}
+		seq_printf(s, "   thermal    %-7d mV\n", thermal_mv_floor);
 
 		list_sort(NULL, &rail->dvfs, dvfs_tree_sort_cmp);
 
@@ -1217,6 +1364,7 @@ static struct {
 static int tegra_dvfs_probe(struct platform_device *pdev)
 {
 	int i;
+	struct dvfs_rail *rail;
 	int ret = -EINVAL;
 
 	for (i = 0; i < ARRAY_SIZE(dvfs_init_funcs); i++) {
@@ -1234,6 +1382,10 @@ static int tegra_dvfs_probe(struct platform_device *pdev)
 	ret = tegra_dvfs_regulator_init();
 	if (ret)
 		goto out;
+
+	list_for_each_entry(rail, &dvfs_rail_list, node) {
+		tegra_dvfs_rail_register_vmin_cdev(rail);
+	}
 
 #ifdef CONFIG_DEBUG_FS
 	dvfs_debugfs_init();
