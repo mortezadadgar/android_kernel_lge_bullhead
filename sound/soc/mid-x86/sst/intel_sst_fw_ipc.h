@@ -363,7 +363,7 @@ struct snd_sst_tstamp {
 	u64 bytes_copied;		/* Read Only Variable for Firmware. Updated by driver with number of bytes copied in ring buffer */ 
 	u32 sampling_frequency;
 	u32 channel_peak[8];            /* T-stamp support 7.1 channels place-holder */
-};
+} __packed;
 #else
 struct snd_sst_tstamp {
 	u32 ring_buffer_counter;	/* PB/CP: Bytes copied from/to DDR. */
@@ -374,7 +374,7 @@ struct snd_sst_tstamp {
 	u32 sampling_frequency;
 	u32 left_channel_peak;
 	u32 right_channel_peak;
-};
+} __packed;
 #endif /* SST_DRV_BYT */
 
 /* SST to IA memory read debug message  */
@@ -434,14 +434,14 @@ struct snd_sst_lib_download {
 	struct module_info lib_info; /* library info type, capabilities etc */
 	struct lib_slot_info slot_info; /* slot info to be downloaded */
 	u32 mod_entry_pt;
-};
+} __packed;
 
 struct snd_sst_lib_download_info {
 	struct snd_sst_lib_download dload_lib;
 	u16 result;	/* Result used for acknowledgment */
 	u8 pvt_id; /* Private ID */
 	u8 reserved;  /* for alignment */
-};
+} __packed;
 
 #ifdef SST_DRV_BYT
 
@@ -461,12 +461,12 @@ struct snd_sst_alloc_params_byt {
 	struct snd_sst_str_type str_type;
 	struct snd_sst_stream_params_byt stream_params;
 	struct snd_sst_frames_info frame_info;
-};
+} __packed;
 
 struct snd_sst_fw_get_stream_params_byt {
 	struct snd_sst_stream_params_byt codec_params;
 	struct snd_sst_pmic_config pcm_params;
-};
+} __packed;
 
 struct snd_sst_start_stream_params {
 	u32 byte_offset;
@@ -489,13 +489,13 @@ struct snd_sst_alloc_params {
 struct snd_sst_fw_get_stream_params {
 	struct snd_sst_stream_params codec_params;
 	struct snd_sst_pmic_config pcm_params;
-};
+} __packed;
 
 /* Alloc stream response message */
 struct snd_sst_alloc_response {
 	struct snd_sst_str_type str_type; /* Stream type for allocation */
 	struct snd_sst_lib_download lib_dnld; /* Valid only for codec dnld */
-};
+} __packed;
 
 /* Drop response message
  * number of bytes played for the current play frame from driver
@@ -503,13 +503,13 @@ struct snd_sst_alloc_response {
 struct snd_sst_drop_response {
 	u32 result;
 	u32 bytes;     /* Bytes used */
-};
+} __packed;
 
 /* CSV Voice call routing structure */
 struct snd_sst_control_routing {
 	u8 control; /* 0=start, 1=Stop */
 	u8 reserved[3];	/* Reserved- for 32 bit alignment */
-};
+} __packed;
 
 
 struct ipc_post {
@@ -520,7 +520,7 @@ struct ipc_post {
 #endif /* SST_DRV_BYT */
 	union ipc_header_mrfld mrfld_header;
 	char *mailbox_data;
-};
+} __packed;
 
 
 struct snd_sst_ctxt_params {
@@ -533,7 +533,7 @@ struct snd_sst_ctxt_params {
 	u32 address; /* Physical Address in DDR where the context is stored */
 	u32 size; /* size of the context */
 #endif
-};
+} __packed;
 
 
 #endif /* __INTEL_SST_FW_IPC_H__ */
