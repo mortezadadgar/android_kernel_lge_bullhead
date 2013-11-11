@@ -131,6 +131,7 @@ int tegra20_cpufreq_init(struct tegra_cpufreq_data *data,
 
 	data->cpu_clk = cpu_clk;
 	data->freq_table = freq_table;
+	data->suspend_index = 0;
 	*soc_config = &tegra20_cpufreq_config;
 
 	return 0;

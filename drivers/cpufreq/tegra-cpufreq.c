@@ -139,8 +139,9 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 		struct cpufreq_policy *policy = cpufreq_cpu_get(0);
 		is_suspended = true;
 		pr_info("Tegra cpufreq suspend: setting frequency to %d kHz\n",
-			freq_table[0].frequency);
-		tegra_update_cpu_speed(policy, freq_table[0].frequency);
+			freq_table[tegra_data->suspend_index].frequency);
+		tegra_update_cpu_speed(policy,
+			freq_table[tegra_data->suspend_index].frequency);
 		cpufreq_cpu_put(policy);
 	} else if (event == PM_POST_SUSPEND) {
 		is_suspended = false;

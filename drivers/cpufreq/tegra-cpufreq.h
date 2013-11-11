@@ -28,6 +28,7 @@ struct tegra_cpufreq_data {
 	struct device	*dev;
 	struct clk	*cpu_clk;
 	struct cpufreq_frequency_table	*freq_table;
+	int suspend_index;
 };
 
 #ifdef CONFIG_ARM_TEGRA20_CPUFREQ
