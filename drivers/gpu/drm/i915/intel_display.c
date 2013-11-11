@@ -771,6 +771,9 @@ void intel_wait_for_vblank(struct drm_device *dev, int pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int pipestat_reg = PIPESTAT(pipe);
+	struct drm_crtc *crtc = dev_priv->pipe_to_crtc_mapping[pipe];
+	int timeout = crtc->hwmode.vrefresh ?
+		DIV_ROUND_UP(1000, crtc->hwmode.vrefresh) : 50;
 
 	if (INTEL_INFO(dev)->gen >= 5) {
 		ironlake_wait_for_vblank(dev, pipe);
@@ -796,7 +799,7 @@ void intel_wait_for_vblank(struct drm_device *dev, int pipe)
 	/* Wait for vblank interrupt bit to set */
 	if (wait_for(I915_READ(pipestat_reg) &
 		     PIPE_VBLANK_INTERRUPT_STATUS,
-		     50))
+		     timeout))
 		DRM_DEBUG_KMS("vblank wait timed out\n");
 }
 
@@ -4319,12 +4322,12 @@ static int intel_crtc_compute_config(struct intel_crtc *crtc,
 		 * otherwise pipe A only.
 		 */
 		if ((crtc->pipe == PIPE_A || IS_I915G(dev)) &&
-		    adjusted_mode->crtc_clock > clock_limit * 9 / 10) {
+		    adjusted_mode->crtc_clock > clock_limit * 17 / 20) {
 			clock_limit *= 2;
 			pipe_config->double_wide = true;
 		}
 
-		if (adjusted_mode->crtc_clock > clock_limit * 9 / 10)
+		if (adjusted_mode->crtc_clock > clock_limit * 17 / 20)
 			return -EINVAL;
 	}
 
@@ -5437,6 +5440,14 @@ static void ironlake_init_pch_refclk(struct drm_device *dev)
 	}
 
 	BUG_ON(val != final);
+
+	/*
+	 * On resume, the PPT PCH doesn't seem to work right away, and
+	 * sometimes ignores register read/writes until it's completely up.
+	 * Waiting 60ms seems to be long enough to avoid this.
+	 */
+	if (dev_priv->pch_id == INTEL_PCH_PPT_DEVICE_ID_TYPE)
+		msleep(60);
 }
 
 static void lpt_reset_fdi_mphy(struct drm_i915_private *dev_priv)
@@ -7883,7 +7894,7 @@ static void do_intel_finish_page_flip(struct drm_device *dev,
 
 	wake_up_all(&dev_priv->pending_flip_queue);
 
-	queue_work(dev_priv->wq, &work->work);
+	queue_work(dev_priv->flip_unpin_wq, &work->work);
 
 	trace_i915_flip_complete(intel_crtc->plane, work->pending_flip_obj);
 }
@@ -8253,7 +8264,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	spin_unlock_irqrestore(&dev->event_lock, flags);
 
 	if (atomic_read(&intel_crtc->unpin_work_count) >= 2)
-		flush_workqueue(dev_priv->wq);
+		flush_workqueue(dev_priv->flip_unpin_wq);
 
 	ret = i915_mutex_lock_interruptible(dev);
 	if (ret)
@@ -8301,6 +8312,60 @@ free_work:
 	kfree(work);
 
 	return ret;
+}
+
+static void intel_sanitize_modesetting(struct drm_device *dev,
+				       int pipe, int plane)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	u32 reg, val;
+	int i;
+
+	/* Clear any frame start delays used for debugging left by the BIOS */
+	for_each_pipe(i) {
+		reg = PIPECONF(i);
+		I915_WRITE(reg, I915_READ(reg) & ~PIPECONF_FRAME_START_DELAY_MASK);
+	}
+
+	if (HAS_PCH_SPLIT(dev))
+		return;
+
+	/* Who knows what state these registers were left in by the BIOS or
+	 * grub?
+	 *
+	 * If we leave the registers in a conflicting state (e.g. with the
+	 * display plane reading from the other pipe than the one we intend
+	 * to use) then when we attempt to teardown the active mode, we will
+	 * not disable the pipes and planes in the correct order -- leaving
+	 * a plane reading from a disabled pipe and possibly leading to
+	 * undefined behaviour.
+	 */
+
+	reg = DSPCNTR(plane);
+	val = I915_READ(reg);
+
+	if ((val & DISPLAY_PLANE_ENABLE) == 0)
+		return;
+	if (!!(val & DISPPLANE_SEL_PIPE_MASK) == pipe)
+		return;
+
+	/* This display plane is active and attached to the other CPU pipe. */
+	pipe = !pipe;
+
+	/* Disable the plane and wait for it to stop reading from the pipe. */
+	intel_disable_primary_plane(dev_priv, plane, pipe);
+	intel_disable_pipe(dev_priv, pipe);
+}
+
+static void intel_crtc_reset(struct drm_crtc *crtc)
+{
+	struct drm_device *dev = crtc->dev;
+	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
+
+	/* We need to fix up any BIOS configuration that conflicts with
+	 * our expectations.
+	 */
+	intel_sanitize_modesetting(dev, intel_crtc->pipe, intel_crtc->plane);
 }
 
 static struct drm_crtc_helper_funcs intel_helper_funcs = {
@@ -9612,6 +9677,7 @@ out_config:
 }
 
 static const struct drm_crtc_funcs intel_crtc_funcs = {
+	.reset = intel_crtc_reset,
 	.cursor_set = intel_crtc_cursor_set,
 	.cursor_move = intel_crtc_cursor_move,
 	.gamma_set = intel_crtc_gamma_set,
@@ -10533,26 +10599,6 @@ static void intel_enable_pipe_a(struct drm_device *dev)
 
 }
 
-static bool
-intel_check_plane_mapping(struct intel_crtc *crtc)
-{
-	struct drm_device *dev = crtc->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	u32 reg, val;
-
-	if (INTEL_INFO(dev)->num_pipes == 1)
-		return true;
-
-	reg = DSPCNTR(!crtc->plane);
-	val = I915_READ(reg);
-
-	if ((val & DISPLAY_PLANE_ENABLE) &&
-	    (!!(val & DISPPLANE_SEL_PIPE_MASK) == crtc->pipe))
-		return false;
-
-	return true;
-}
-
 static void intel_sanitize_crtc(struct intel_crtc *crtc)
 {
 	struct drm_device *dev = crtc->base.dev;
@@ -10562,37 +10608,6 @@ static void intel_sanitize_crtc(struct intel_crtc *crtc)
 	/* Clear any frame start delays used for debugging left by the BIOS */
 	reg = PIPECONF(crtc->config.cpu_transcoder);
 	I915_WRITE(reg, I915_READ(reg) & ~PIPECONF_FRAME_START_DELAY_MASK);
-
-	/* We need to sanitize the plane -> pipe mapping first because this will
-	 * disable the crtc (and hence change the state) if it is wrong. Note
-	 * that gen4+ has a fixed plane -> pipe mapping.  */
-	if (INTEL_INFO(dev)->gen < 4 && !intel_check_plane_mapping(crtc)) {
-		struct intel_connector *connector;
-		bool plane;
-
-		DRM_DEBUG_KMS("[CRTC:%d] wrong plane connection detected!\n",
-			      crtc->base.base.id);
-
-		/* Pipe has the wrong plane attached and the plane is active.
-		 * Temporarily change the plane mapping and disable everything
-		 * ...  */
-		plane = crtc->plane;
-		crtc->plane = !plane;
-		dev_priv->display.crtc_disable(&crtc->base);
-		crtc->plane = plane;
-
-		/* ... and break all links. */
-		list_for_each_entry(connector, &dev->mode_config.connector_list,
-				    base.head) {
-			if (connector->encoder->base.crtc != &crtc->base)
-				continue;
-
-			intel_connector_break_all_links(connector);
-		}
-
-		WARN_ON(crtc->active);
-		crtc->base.enabled = false;
-	}
 
 	if (dev_priv->quirks & QUIRK_PIPEA_FORCE &&
 	    crtc->pipe == PIPE_A && !crtc->active) {
@@ -10848,9 +10863,15 @@ void intel_modeset_setup_hw_state(struct drm_device *dev,
 		for_each_pipe(pipe) {
 			struct drm_crtc *crtc =
 				dev_priv->pipe_to_crtc_mapping[pipe];
+			struct intel_crtc *intel_crtc;
 
 			__intel_set_mode(crtc, &crtc->mode, crtc->x, crtc->y,
 					 crtc->fb);
+
+			/* Force-cycle the cursor */
+			intel_crtc = to_intel_crtc(crtc);
+			intel_crtc->cursor_visible = false;
+			intel_crtc_update_cursor(crtc, true);
 		}
 	} else {
 		intel_modeset_update_staged_output_state(dev);

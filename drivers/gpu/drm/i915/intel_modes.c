@@ -126,3 +126,4 @@ intel_attach_broadcast_rgb_property(struct drm_connector *connector)
 
 	drm_object_attach_property(&connector->base, prop, 0);
 }
+
