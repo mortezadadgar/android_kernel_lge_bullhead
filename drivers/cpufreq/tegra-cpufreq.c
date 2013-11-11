@@ -65,9 +65,9 @@ static int tegra_update_cpu_speed(struct cpufreq_policy *policy,
 
 	/*
 	 * Vote on memory bus frequency based on cpu frequency
-	 * This sets the minimum frequency, display or avp may request higher
+	 * If cpu frequency is increasing, boost memory bandwidth first
 	 */
-	if (soc_config->emc_clk_set_rate)
+	if (soc_config->emc_clk_set_rate && freqs.new > freqs.old)
 		soc_config->emc_clk_set_rate(rate);
 
 	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
@@ -83,6 +83,13 @@ static int tegra_update_cpu_speed(struct cpufreq_policy *policy,
 			freqs.new);
 		freqs.new = freqs.old;
 	}
+
+	/*
+	 * Vote on memory bus frequency based on cpu frequency
+	 * If cpu frequency is decreasing, lower memory bandwidth later
+	 */
+	if (soc_config->emc_clk_set_rate && freqs.new < freqs.old)
+		soc_config->emc_clk_set_rate(rate);
 
 	cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
 
