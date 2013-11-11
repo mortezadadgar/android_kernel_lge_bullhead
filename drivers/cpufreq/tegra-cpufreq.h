@@ -40,4 +40,13 @@ static inline int tegra20_cpufreq_init(struct tegra_cpufreq_data *data,
 { return -EINVAL; }
 #endif
 
+#ifdef CONFIG_ARM_TEGRA124_CPUFREQ
+int tegra124_cpufreq_init(struct tegra_cpufreq_data *data,
+		const struct tegra_cpufreq_config **config);
+#else
+static inline int tegra124_cpufreq_init(struct tegra_cpufreq_data *data,
+		const struct tegra_cpufreq_config **config)
+{ return -EINVAL; }
+#endif
+
 #endif /* __LINUX_TEGRA_CPUFREQ_H_ */

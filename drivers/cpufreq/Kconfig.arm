@@ -167,3 +167,11 @@ config ARM_TEGRA20_CPUFREQ
 	  This adds the CPUFreq driver for NVIDIA TEGRA20 SoC.
 
 	  If in doubt, say N.
+
+config ARM_TEGRA124_CPUFREQ
+	bool "NVIDIA TEGRA124"
+	depends on ARM_TEGRA_CPUFREQ && ARCH_TEGRA_124_SOC
+	help
+	  This adds the CPUFreq driver for NVIDIA TEGRA124 SoC.
+
+	  If in doubt, say N.

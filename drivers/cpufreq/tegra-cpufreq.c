@@ -216,6 +216,7 @@ static struct {
 			const struct tegra_cpufreq_config **);
 } tegra_init_funcs[] = {
 	{ "nvidia,tegra20", tegra20_cpufreq_init },
+	{ "nvidia,tegra124", tegra124_cpufreq_init },
 };
 
 static int tegra_cpufreq_probe(struct platform_device *pdev)
