@@ -133,10 +133,10 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 	void *dummy)
 {
 	struct cpufreq_frequency_table *freq_table = tegra_data->freq_table;
+	struct cpufreq_policy *policy = cpufreq_cpu_get(0);
 
 	mutex_lock(&tegra_cpu_lock);
 	if (event == PM_SUSPEND_PREPARE) {
-		struct cpufreq_policy *policy = cpufreq_cpu_get(0);
 		is_suspended = true;
 		pr_info("Tegra cpufreq suspend: setting frequency to %d kHz\n",
 			freq_table[tegra_data->suspend_index].frequency);
@@ -145,6 +145,10 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 		cpufreq_cpu_put(policy);
 	} else if (event == PM_POST_SUSPEND) {
 		is_suspended = false;
+		tegra_update_cpu_speed(policy, policy->max);
+		pr_info("Tegra cpufreq resume: restore frequency to %u kHz\n",
+				policy->max);
+		cpufreq_cpu_put(policy);
 	}
 	mutex_unlock(&tegra_cpu_lock);
 
