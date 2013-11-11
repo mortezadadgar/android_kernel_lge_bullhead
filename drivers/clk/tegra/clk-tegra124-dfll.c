@@ -2377,14 +2377,7 @@ static long tegra_dfll_clk_round_rate(struct clk_hw *hw, unsigned long rate,
 	if (r)
 		return r;
 
-	dvco_rate = calc_dfll_request_rate(pdev, &req);
-	if (dvco_rate > LONG_MAX) {
-		dev_err(&pdev->dev, "rate %lu can't fit into a signed long\n",
-			dvco_rate);
-		return -ERANGE;
-	}
-
-	return dvco_rate;
+	return calc_dfll_request_rate(pdev, &req);
 }
 
 static int tegra_dfll_clk_set_rate(struct clk_hw *hw, unsigned long rate,
