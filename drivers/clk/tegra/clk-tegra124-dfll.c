@@ -3783,7 +3783,7 @@ static int tegra_dfll_remove(struct platform_device *pdev)
  * be updated via dfll cooling device interface during resume of temperature
  * sensor.
  */
-int tegra_dfll_suspend(struct platform_device *pdev)
+int tegra124_dfll_suspend(struct platform_device *pdev)
 {
 	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
 	unsigned long flags;
