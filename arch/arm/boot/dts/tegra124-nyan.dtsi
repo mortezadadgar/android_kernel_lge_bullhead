@@ -1920,6 +1920,39 @@
 			gpio = <&ams3722 5 0>;
 			regulator-always-on;
 		};
+
+		avdd_lcd: regulator@5 {
+			compatible = "regulator-fixed";
+			reg = <5>;
+			regulator-name = "avdd-lcd";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			enable-active-high;
+			regulator-boot-on;
+			gpio = <&ams3722 4 0>; /* AS3722 GPIO 4 */
+		};
+
+		vdd_lcd_bl: regulator@6 {
+			compatible = "regulator-fixed";
+			reg = <6>;
+			regulator-name = "vdd-lcd-bl";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			enable-active-high;
+			regulator-boot-on;
+			gpio = <&gpio 122 0>; /* GPIO PP2 */
+		};
+
+		lcd_bl_en: regulator@7 {
+			compatible = "regulator-fixed";
+			reg = <7>;
+			regulator-name = "lcd-bl-en";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			enable-active-high;
+			regulator-boot-on;
+			gpio = <&gpio 58 0>; /* GPIO PH2 */
+		};
 	};
 
 	/*
