@@ -52,6 +52,7 @@ obj-$(CONFIG_SAMSUNG_Q10)	+= samsung-q10.o
 obj-$(CONFIG_APPLE_GMUX)	+= apple-gmux.o
 obj-$(CONFIG_ACPI_CHROMEOS)	+= chromeos_acpi.o
 obj-$(CONFIG_CHROMEOS_LAPTOP)	+= chromeos_laptop.o
+obj-$(CONFIG_CHROMEOS_PSTORE)	+= chromeos_pstore.o
 
 obj-$(CONFIG_PVPANIC)           += pvpanic.o
 
