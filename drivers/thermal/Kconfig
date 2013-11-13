@@ -176,4 +176,13 @@ config TEGRA_SOCTHERM
         help
           Enables use of soc_therm for thermal management.
 
+config TEGRA_124_DFLL_COOLING
+	tristate "Tegra124 DFLL thermal reaction driver"
+	depends on THERMAL && CLK_TEGRA_T124_DFLL
+	help
+	  Enable this to add the ability to automatically adjust the
+	  DFLL's minimum voltage floor, based on the SoC temperature.
+	  As the SoC temperature increases, the minimum voltage floor
+	  can decrease, reducing energy consumption.
+
 endif

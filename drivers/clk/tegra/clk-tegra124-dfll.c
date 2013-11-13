@@ -2874,6 +2874,9 @@ int tegra124_dfll_attach_thermal(struct platform_device *pdev,
 	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
 	int ret = -EINVAL;
 
+	if (!td)
+		return ret;
+
 	spin_lock_irqsave(&td->lock, flags);
 
 	if (td->mode == TEGRA_DFLL_UNINITIALIZED) {
