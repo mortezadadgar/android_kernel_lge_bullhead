@@ -293,7 +293,8 @@ static int as3722_pinctrl_gpio_set_direction(struct pinctrl_dev *pctldev,
 	if (as_pci->gpio_control[offset].enable_gpio_invert)
 		mode |= AS3722_GPIO_INV;
 
-	return as3722_write(as3722, AS3722_GPIOn_CONTROL_REG(offset), mode);
+	return as3722_update_bits(as3722, AS3722_GPIOn_CONTROL_REG(offset),
+				  AS3722_GPIO_MODE_MASK, mode);
 }
 
 static struct pinmux_ops as3722_pinmux_ops = {
