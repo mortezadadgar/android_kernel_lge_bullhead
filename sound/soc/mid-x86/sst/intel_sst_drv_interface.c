@@ -90,7 +90,7 @@ static void sst_restore_fw_context(void)
 	memcpy( (u8 *) msg->mailbox_data + sizeof(u32), (u8 *) &fw_context, sizeof(fw_context));
 #else
 	msg->header.part.data = sizeof(fw_context) + sizeof(u32);
-	fw_context.address = virt_to_phys((void *)sst_drv_ctx->fw_cntx);
+	fw_context.address = (u32)sst_drv_ctx->fw_cntx_handle;
 	fw_context.size = sst_drv_ctx->fw_cntx_size;
 	memcpy(msg->mailbox_data, &msg->header, sizeof(u32));
 	memcpy(msg->mailbox_data + sizeof(u32),

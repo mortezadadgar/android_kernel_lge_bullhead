@@ -806,7 +806,8 @@ void sst_process_reply_byt(struct work_struct *work)
 		if (msg_data)
 			sst_drv_ctx->fw_cntx_size = 0;
 		else
-			sst_drv_ctx->fw_cntx_size = *sst_drv_ctx->fw_cntx;
+			sst_drv_ctx->fw_cntx_size =
+				*(unsigned int *)sst_drv_ctx->fw_cntx;
 		pr_debug("fw copied data %x\n", sst_drv_ctx->fw_cntx_size);
 		sst_wake_up_alloc_block(
 			sst_drv_ctx, str_id, msg_data, NULL);

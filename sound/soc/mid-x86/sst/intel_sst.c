@@ -433,7 +433,9 @@ int intel_sst_probe(struct pci_dev *pdev,
 		u32 clkctl;
 
 		/*allocate mem for fw context save during suspend*/
-		sst_drv_ctx->fw_cntx = kzalloc(FW_CONTEXT_MEM, GFP_KERNEL);
+		sst_drv_ctx->fw_cntx = dma_zalloc_coherent(&pdev->dev,
+			FW_CONTEXT_MEM, &sst_drv_ctx->fw_cntx_handle,
+			GFP_DMA32 | GFP_KERNEL);
 		if (!sst_drv_ctx->fw_cntx) {
 			ret = -ENOMEM;
 			goto do_free_misc;
@@ -477,13 +479,17 @@ int intel_sst_probe(struct pci_dev *pdev,
 	sst_drv_ctx->qos = kzalloc(sizeof(struct pm_qos_request),
 				GFP_KERNEL);
 	if (!sst_drv_ctx->qos)
-		goto do_free_misc;
+		goto do_free_dma;
 	pm_qos_add_request(sst_drv_ctx->qos, PM_QOS_CPU_DMA_LATENCY,
 				PM_QOS_DEFAULT_VALUE);
 	pr_info("%s successfully done!\n", __func__);
 
 	return ret;
 
+do_free_dma:
+	if (sst_drv_ctx->fw_cntx)
+		dma_free_coherent(&pdev->dev, FW_CONTEXT_MEM,
+			sst_drv_ctx->fw_cntx, sst_drv_ctx->fw_cntx_handle);
 do_free_misc:
 	misc_deregister(&lpe_ctrl);
 do_free_irq:
@@ -547,7 +553,8 @@ static void __exit intel_sst_remove(struct pci_dev *pci)
 	iounmap(sst_drv_ctx->iram);
 	iounmap(sst_drv_ctx->mailbox);
 	iounmap(sst_drv_ctx->shim);
-	kfree(sst_drv_ctx->fw_cntx);
+	dma_free_coherent(&pci->dev, FW_CONTEXT_MEM,
+		sst_drv_ctx->fw_cntx, sst_drv_ctx->fw_cntx_handle);
 #ifndef SST_DRV_BYT
 	kfree(sst_drv_ctx->runtime_param.param.addr);
 #endif /* SST_DRV_BYT */
@@ -624,7 +631,7 @@ static void sst_save_dsp_context(void)
 #else
 	sst_fill_header(&msg->header, IPC_IA_GET_FW_CTXT, 1, pvt_id);
 	msg->header.part.data = sizeof(fw_context) + sizeof(u32);
-	fw_context.address = virt_to_phys((void *)sst_drv_ctx->fw_cntx);
+	fw_context.address = (u32)sst_drv_ctx->fw_cntx_handle;
 	fw_context.size = FW_CONTEXT_MEM;
 	memcpy(msg->mailbox_data, &msg->header, sizeof(u32));
 	memcpy(msg->mailbox_data + sizeof(u32),

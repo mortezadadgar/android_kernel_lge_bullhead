@@ -474,6 +474,9 @@ struct sst_debugfs {
  * @audio_start : audio status
  * @max_streams : max streams allowed
  * @qos		: PM Qos struct
+ * @fw_cntx	: CPU pointer to firmware-context save-resume block
+ * @fw_cntx_size : size of save-resume block in bytes
+ * @fw_cntx_handle : firmware 32-bit pointer to save-resume block
  */
 struct intel_sst_drv {
 	int			sst_state;
@@ -521,8 +524,9 @@ struct intel_sst_drv {
 	/* 1 - LPA stream(MP3 pb) in progress*/
 	unsigned int		audio_start;
 	unsigned int		max_streams;
-	unsigned int		*fw_cntx;
+	void			*fw_cntx;
 	unsigned int		fw_cntx_size;
+	dma_addr_t		fw_cntx_handle;
 	unsigned int		compressed_slot;
 #ifdef SST_DRV_BYT
 	u64                     csr_value;
