@@ -533,6 +533,20 @@
 				nvidia,tristate = <0>;
 				nvidia,enable-input = <1>;
 			};
+			wifi_en {
+				nvidia,pins = "gpio_x7_aud_px7";
+				nvidia,function = "rsvd4";
+				nvidia,pull = <0>;
+				nvidia,tristate = <0>;
+				nvidia,enable-input = <0>;
+			};
+			wifi_rst_l {
+				nvidia,pins = "clk2_req_pcc5";
+				nvidia,function = "dap";
+				nvidia,pull = <0>;
+				nvidia,tristate = <0>;
+				nvidia,enable-input = <0>;
+			};
 		};
 	};
 
@@ -657,7 +671,7 @@
 				gpio5 {
 					pins = "gpio5";
 					function = "clk32k-out";
-					bias-pull-up;
+					bias-pull-down;
 				};
 			};
 
@@ -2001,6 +2015,15 @@
 			gpio = <&gpio 109 0>; /* GPIO PN5 */
 			gpio-open-drain;
 			regulator-boot-on;
+		};
+
+		wifi_clk32k_reg: regulator@5 {
+			compatible = "regulator-fixed";
+			reg = <5>;
+			regulator-name = "wifi-clk32k";
+			enable-active-high;
+			gpio = <&ams3722 5 0>;
+			regulator-always-on;
 		};
 	};
 
