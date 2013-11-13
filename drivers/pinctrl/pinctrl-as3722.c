@@ -275,16 +275,6 @@ static int as3722_pinctrl_gpio_get_mode(unsigned gpio_mode_prop, bool input)
 	return AS3722_GPIO_MODE_OUTPUT_VDDH;
 }
 
-static int as3722_pinctrl_gpio_request_enable(struct pinctrl_dev *pctldev,
-		struct pinctrl_gpio_range *range, unsigned offset)
-{
-	struct as3722_pctrl_info *as_pci = pinctrl_dev_get_drvdata(pctldev);
-
-	if (as_pci->gpio_control[offset].io_function)
-		return -EBUSY;
-	return 0;
-}
-
 static int as3722_pinctrl_gpio_set_direction(struct pinctrl_dev *pctldev,
 		struct pinctrl_gpio_range *range, unsigned offset, bool input)
 {
@@ -311,7 +301,6 @@ static struct pinmux_ops as3722_pinmux_ops = {
 	.get_function_name	= as3722_pinctrl_get_func_name,
 	.get_function_groups	= as3722_pinctrl_get_func_groups,
 	.enable			= as3722_pinctrl_enable,
-	.gpio_request_enable	= as3722_pinctrl_gpio_request_enable,
 	.gpio_set_direction	= as3722_pinctrl_gpio_set_direction,
 };
 
