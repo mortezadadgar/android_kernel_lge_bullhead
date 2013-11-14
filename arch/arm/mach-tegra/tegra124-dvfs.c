@@ -22,6 +22,7 @@
 #include <linux/tegra-dvfs.h>
 #include <linux/clk/tegra124-dfll.h>
 #include <linux/platform_data/tegra_thermal.h>
+#include <linux/platform_data/tegra_emc.h>
 
 #define KHZ		1000
 #define MHZ		1000000
@@ -384,6 +385,23 @@ static int get_core_nominal_mv_index(int speedo_id)
 	return i - 1;
 }
 
+static void adjust_emc_dvfs_table(struct dvfs *d)
+{
+	unsigned long rate;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(core_millivolts); i++) {
+		if (core_millivolts[i] == 0)
+			return;
+
+		rate = tegra124_predict_emc_rate(core_millivolts[i]);
+		if (rate < 0)
+			return;
+
+		d->freqs[i] = rate;
+	}
+}
+
 int tegra124_init_dvfs(void)
 {
 	int cpu_speedo_id = tegra_get_cpu_speedo_id();
@@ -454,6 +472,14 @@ int tegra124_init_dvfs(void)
 			d->process_id, soc_speedo_id, core_process_id))
 			continue;
 		init_dvfs_one(d, core_nominal_mv_index);
+
+		/*
+		 * EMC dvfs is board dependent, the EMC scaling frequencies are
+		 * determined by the Tegra BCT and the board specific EMC DFS
+		 * table owned by EMC driver.
+		 */
+		if (!strcmp(d->clk_name, "emc") && tegra124_emc_is_ready())
+			adjust_emc_dvfs_table(d);
 	}
 
 	/*
