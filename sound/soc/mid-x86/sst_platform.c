@@ -162,7 +162,7 @@ static void sst_fill_frame_info(struct snd_pcm_substream *substream,
 	u32 buffer_addr;
 
 	buffer_bytes = snd_pcm_lib_buffer_bytes(substream);
-	buffer_addr = virt_to_phys(substream->dma_buffer.area);
+	buffer_addr = substream->dma_buffer.addr;
 
 	channels = substream->runtime->channels;
 	period_size = substream->runtime->period_size;
@@ -709,14 +709,14 @@ static int sst_pcm_new(struct snd_soc_pcm_runtime *rtd)
 		{
 			case 2:
 				retval = snd_pcm_lib_preallocate_pages_for_all(pcm,
-					SNDRV_DMA_TYPE_CONTINUOUS,
-					snd_dma_continuous_data(GFP_KERNEL | GFP_DMA32),
+					SNDRV_DMA_TYPE_DEV,
+					NULL,
 					SST_MAX_BUFFER_STEREO, SST_MAX_BUFFER_STEREO);
 				break;
 			case 8:
 				retval = snd_pcm_lib_preallocate_pages_for_all(pcm,
-					SNDRV_DMA_TYPE_CONTINUOUS,
-					snd_dma_continuous_data(GFP_KERNEL | GFP_DMA32),
+					SNDRV_DMA_TYPE_DEV,
+					NULL,
 					SST_MAX_BUFFER_TDM, SST_MAX_BUFFER_TDM);
 				break;
 			default :
