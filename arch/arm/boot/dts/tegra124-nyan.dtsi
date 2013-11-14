@@ -486,6 +486,14 @@
 			interrupts = <82 0>; /* GPIO PK2 */
 			wakeup-source;
 		};
+
+		touchscreen-bootloader {
+			compatible = "atmel,atmel_mxt_ts";
+			reg = <0x26>;
+			interrupt-parent = <&gpio>;
+			interrupts = <82 0>; /* GPIO PK2 */
+			wakeup-source;
+		};
 	};
 
 	i2c@7000c500 {
