@@ -1,0 +1,49 @@
+/dts-v1/;
+
+/include/ "tegra124.dtsi"
+/include/ "tegra124-nyan.dtsi"
+
+/ {
+	model = "Google Nyan Rev 1";
+
+	compatible = "google,nyan-rev1", "google,nyan", "nvidia,norrin",
+			"nvidia,tegra124";
+
+	pinmux {
+		pinmux@0 {
+			hp_det_l {
+				nvidia,pins = "pi7";
+				nvidia,function = "rsvd1";
+				nvidia,pull = <0>;
+				nvidia,tristate = <0>;
+				nvidia,enable-input = <1>;
+			};
+		};
+	};
+
+	i2c@7000c400 {
+		trackpad {
+			compatible = "cypress,cyapa";
+			reg = <0x67>;
+			interrupt-parent = <&gpio>;
+			interrupts = <179 0>; /* GPIO PW3 */
+			wakeup-source;
+		};
+	};
+
+	i2c@7000d000 {
+		pmic@40 {
+			pinctrl@0 {
+				gpio6 {
+					pins = "gpio6";
+					function = "clk32k-out";
+					bias-pull-down;
+				};
+			};
+		};
+	};
+
+	sdhci@700b0400 {
+		cd-inverted;
+	};
+};
