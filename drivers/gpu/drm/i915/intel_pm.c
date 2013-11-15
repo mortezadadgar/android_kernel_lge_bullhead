@@ -4025,7 +4025,8 @@ static void valleyview_enable_rps(struct drm_device *dev)
 				      VLV_MEDIA_RC6_COUNT_EN |
 				      VLV_RENDER_RC6_COUNT_EN));
 	if (intel_enable_rc6(dev) & INTEL_RC6_ENABLE)
-		rc6_mode = GEN7_RC_CTL_TO_MODE;
+		rc6_mode = GEN7_RC_CTL_TO_MODE | VLV_RC_CTL_CTX_RST_PARALLEL;
+
 	I915_WRITE(GEN6_RC_CONTROL, rc6_mode);
 
 	val = vlv_punit_read(dev_priv, PUNIT_REG_GPU_FREQ_STS);
