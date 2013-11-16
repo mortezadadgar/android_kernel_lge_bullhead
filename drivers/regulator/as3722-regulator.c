@@ -604,6 +604,27 @@ static int as3722_sd016_set_current_limit(struct regulator_dev *rdev,
 	return as3722_update_bits(as3722, reg, mask, val);
 }
 
+static bool as3722_sd0_is_low_voltage(struct as3722_regulators *as3722_regs)
+{
+	int err;
+	unsigned val;
+
+	/*
+	 * SD0 low voltage mode should be determined by AS3722_FUSE7[4],
+	 * but AMS says this is unreliable and that the NCELL field of
+	 * AS3722_FUSE15 should be used instead.
+	 */
+	err = as3722_read(as3722_regs->as3722, AS3722_FUSE15_REG, &val);
+	if (err < 0) {
+		dev_err(as3722_regs->dev, "Reg 0x%02x read failed: %d\n",
+			AS3722_FUSE15_REG, err);
+		return false;
+	}
+	if ((val & AS3722_FUSE15_NCELL_MASK) == AS3722_FUSE15_SD0_LOW_VOLTAGE)
+		return true;
+	return false;
+}
+
 static const struct regulator_linear_range as3722_sd2345_ranges[] = {
 	regulator_lin_range(0x01, 0x40,  612500, 12500),
 	regulator_lin_range(0x41, 0x70, 1425000, 25000),
@@ -829,7 +850,11 @@ static int as3722_regulator_probe(struct platform_device *pdev)
 				ops = &as3722_sd016_extcntrl_ops;
 			else
 				ops = &as3722_sd016_ops;
-			as3722_regs->desc[id].min_uV = 610000;
+			if (id == AS3722_REGULATOR_ID_SD0 &&
+			    as3722_sd0_is_low_voltage(as3722_regs))
+				as3722_regs->desc[id].min_uV = 410000;
+			else
+				as3722_regs->desc[id].min_uV = 610000;
 			as3722_regs->desc[id].uV_step = 10000;
 			as3722_regs->desc[id].linear_min_sel = 1;
 			break;
