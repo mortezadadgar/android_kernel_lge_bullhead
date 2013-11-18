@@ -132,69 +132,78 @@
 			    _clk_num, _gate_flags, _clk_id)	\
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset,\
 			30, MASK(2), 0, 0, 8, 1, 0, \
-			_clk_num,  _gate_flags, _clk_id, _parents##_idx, 0)
+			_clk_num,  _gate_flags, _clk_id, _parents##_idx, 0,\
+			NULL)
 
 #define MUX_FLAGS(_name, _parents, _offset,\
 			    _clk_num, _gate_flags, _clk_id, flags)\
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset,\
 			30, MASK(2), 0, 0, 8, 1, 0, _clk_num,	\
-			_gate_flags, _clk_id, _parents##_idx, flags)
+			_gate_flags, _clk_id, _parents##_idx, flags,\
+			NULL)
 
 #define MUX8(_name, _parents, _offset, \
 			     _clk_num, _gate_flags, _clk_id)	\
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset,\
 			29, MASK(3), 0, 0, 8, 1, 0, _clk_num,	\
-			_gate_flags, _clk_id, _parents##_idx, 0)
+			_gate_flags, _clk_id, _parents##_idx, 0,\
+			NULL)
 
 #define INT(_name, _parents, _offset,	\
 			    _clk_num, _gate_flags, _clk_id)	\
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset,\
 			30, MASK(2), 0, 0, 8, 1, TEGRA_DIVIDER_INT,\
-			_clk_num, _gate_flags, _clk_id, _parents##_idx, 0)
+			_clk_num, _gate_flags, _clk_id, _parents##_idx, 0,\
+			NULL)
 
 #define INT_FLAGS(_name, _parents, _offset,\
 			    _clk_num, _gate_flags, _clk_id, flags)\
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset,\
 			30, MASK(2), 0, 0, 8, 1, TEGRA_DIVIDER_INT,\
-			_clk_num,  _gate_flags, _clk_id, _parents##_idx, flags)
+			_clk_num,  _gate_flags, _clk_id, _parents##_idx, flags,\
+			NULL)
 
 #define INT8(_name, _parents, _offset,\
 			    _clk_num, _gate_flags, _clk_id)	\
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset,\
 			29, MASK(3), 0, 0, 8, 1, TEGRA_DIVIDER_INT,\
-			_clk_num, _gate_flags, _clk_id, _parents##_idx, 0)
+			_clk_num, _gate_flags, _clk_id, _parents##_idx, 0,\
+			NULL)
 
 #define UART(_name, _parents, _offset,\
 			     _clk_num, _clk_id)			\
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset,\
 			30, MASK(2), 0, 0, 16, 1, TEGRA_DIVIDER_UART,\
-			_clk_num, 0, _clk_id, _parents##_idx, 0)
+			_clk_num, 0, _clk_id, _parents##_idx, 0,\
+			NULL)
 
 #define I2C(_name, _parents, _offset,\
 			     _clk_num, _clk_id)			\
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset,\
 			30, MASK(2), 0, 0, 16, 0, 0, _clk_num,	\
-			0, _clk_id, _parents##_idx, 0)
+			0, _clk_id, _parents##_idx, 0, NULL)
 
 #define XUSB(_name, _parents, _offset, \
 			     _clk_num, _gate_flags, _clk_id)	 \
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset, \
 			29, MASK(3), 0, 0, 8, 1, TEGRA_DIVIDER_INT,\
-			_clk_num, _gate_flags, _clk_id, _parents##_idx, 0)
+			_clk_num, _gate_flags, _clk_id, _parents##_idx, 0,\
+			NULL)
 
 #define AUDIO(_name, _offset,  _clk_num,\
 				 _gate_flags, _clk_id)		\
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, mux_d_audio_clk,	\
 			_offset, 16, 0xE01F, 0, 0, 8, 1, 0, _clk_num, \
-			_gate_flags , _clk_id,	mux_d_audio_clk_idx, 0)
+			_gate_flags , _clk_id,	mux_d_audio_clk_idx, 0,\
+			NULL)
 
 #define NODIV(_name, _parents, _offset, \
 			      _mux_shift, _mux_mask, _clk_num, \
-			      _gate_flags, _clk_id)			\
+			      _gate_flags, _clk_id, _lock)		\
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset,\
 			_mux_shift, _mux_mask, 0, 0, 0, 0, 0,\
 			_clk_num, (_gate_flags) | TEGRA_PERIPH_NO_DIV,\
-			_clk_id, _parents##_idx, 0)
+			_clk_id, _parents##_idx, 0, _lock)
 
 #define GATE(_name, _parent_name,	\
 			     _clk_num, _gate_flags,  _clk_id, _flags)	\
@@ -203,7 +212,7 @@
 		.clk_id = _clk_id,					\
 		.p.parent_name = _parent_name,				\
 		.periph = TEGRA_CLK_PERIPH(0, 0, 0, 0, 0, 0, 0,		\
-				_clk_num, _gate_flags, 0),		\
+				_clk_num, _gate_flags, 0, NULL),	\
 		.flags = _flags						\
 	}
 
@@ -470,8 +479,8 @@ static struct tegra_periph_init_data periph_clks[] = {
 	MUX8("clk72mhz", mux_pllp3_pllc_clkm, CLK_SOURCE_CLK72MHZ, 177, TEGRA_PERIPH_NO_RESET, tegra_clk_clk72Mhz),
 	MUX8("sor0", mux_pllp_pllm_plld_plla_pllc_plld2_clkm, CLK_SOURCE_SOR0, 182, 0, tegra_clk_sor0),
 	MUX_FLAGS("csite", mux_pllp_pllc_pllm_clkm, CLK_SOURCE_CSITE, 73, TEGRA_PERIPH_ON_APB, tegra_clk_csite, CLK_IGNORE_UNUSED),
-	NODIV("disp1", mux_pllp_pllm_plld_plla_pllc_plld2_clkm, CLK_SOURCE_DISP1, 29, 7, 27, 0, tegra_clk_disp1),
-	NODIV("disp2", mux_pllp_pllm_plld_plla_pllc_plld2_clkm, CLK_SOURCE_DISP2, 29, 7, 26, 0, tegra_clk_disp2),
+	NODIV("disp1", mux_pllp_pllm_plld_plla_pllc_plld2_clkm, CLK_SOURCE_DISP1, 29, 7, 27, 0, tegra_clk_disp1, NULL),
+	NODIV("disp2", mux_pllp_pllm_plld_plla_pllc_plld2_clkm, CLK_SOURCE_DISP2, 29, 7, 26, 0, tegra_clk_disp2, NULL),
 	UART("uarta", mux_pllp_pllc_pllm_clkm, CLK_SOURCE_UARTA, 6, tegra_clk_uarta),
 	UART("uartb", mux_pllp_pllc_pllm_clkm, CLK_SOURCE_UARTB, 7, tegra_clk_uartb),
 	UART("uartc", mux_pllp_pllc_pllm_clkm, CLK_SOURCE_UARTC, 55, tegra_clk_uartc),

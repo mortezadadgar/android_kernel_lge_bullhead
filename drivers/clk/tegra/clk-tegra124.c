@@ -1206,7 +1206,7 @@ static void tegra124_utmi_param_configure(void __iomem *clk_base)
 }
 
 static struct tegra_clk_periph tegra_emc_periph =
-	TEGRA_CLK_PERIPH(29, 7, 0, 0, 8, 1, 0, TEGRA124_CLK_EMC, 0, NULL);
+	TEGRA_CLK_PERIPH(29, 7, 0, 0, 8, 1, 0, TEGRA124_CLK_EMC, 0, NULL, NULL);
 
 static __init void tegra124_emc_clk_init(void __iomem *clk_base)
 {
