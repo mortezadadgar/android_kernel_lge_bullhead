@@ -1,0 +1,13 @@
+* Tegra124 VDD_CPU EDP Management
+
+.. CPU EDP node required properties:
+
+- compatible : "nvidia,tegra124-cpu-edp".
+- regulator-ma: maximum cpu current support, in milliampere.
+
+Example:
+
+cpu_edp {
+	compatible = "nvidia,tegra124-cpu-edp";
+	regulator-ma = <8000>;
+};
