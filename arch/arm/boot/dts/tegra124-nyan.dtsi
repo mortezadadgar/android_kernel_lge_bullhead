@@ -2015,4 +2015,9 @@
 
 		nvidia,memory-clients = <14 24>;
 	};
+
+	cpu_edp {
+		compatible = "nvidia,tegra124-cpu-edp";
+		regulator-ma = <8000>;
+	};
 };
