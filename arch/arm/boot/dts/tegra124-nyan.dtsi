@@ -2020,4 +2020,10 @@
 		compatible = "nvidia,tegra124-cpu-edp";
 		regulator-ma = <8000>;
 	};
+
+	cpu_edp_cdev_action {
+		compatible = "nvidia,tegra124-cpu-edp-cdev-action";
+		act-dev = <&{/cpu_edp}>;
+		cdev-cap-type = "CPU-EDP-cap";
+        };
 };
