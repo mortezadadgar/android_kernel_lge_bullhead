@@ -719,6 +719,8 @@ static int soctherm_bind(struct thermal_zone_device *thz,
 		}
 	}
 
+	thermal_zone_device_update(thz);
+
 	return 0;
 }
 

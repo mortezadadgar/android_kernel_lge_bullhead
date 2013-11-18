@@ -13,6 +13,10 @@
 - poweroff-reg-addr : pmu poweroff register address.
 - poweroff-reg-data : pmu poweroff register data.
 
+** Optional properties:
+- cpu-edp-cdev: handle of the cpu-edp thermal recation node,
+which will be bound with this soc_therm thermal zone.
+
 Example soc_therm node:
 
 soc_therm {
@@ -25,4 +29,6 @@ soc_therm {
 	i2c-controller-id = <4>;
 	poweroff-reg-addr = <0x36>;
 	poweroff-reg-data = <0x2>;
+
+	cpu-edp-cdev = <&{/cpu_edp_cdev_action}>;
 };

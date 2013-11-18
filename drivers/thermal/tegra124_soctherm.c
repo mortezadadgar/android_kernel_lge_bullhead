@@ -18,6 +18,7 @@
 #include <linux/of_platform.h>
 #include <linux/thermal.h>
 #include <linux/platform_data/tegra_thermal.h>
+#include <linux/platform_data/tegra_edp.h>
 #include <linux/tegra-soc.h>
 
 #include "tegra_soctherm.h"
@@ -43,6 +44,8 @@ static struct soctherm_tsensor_pmu_data t124_pmu_data;
 static struct thermal_zone_params t124_soctherm_therm_cpu_tzp = {
 	.governor_name = "pid_thermal_gov",
 };
+
+static bool t124_cpu_edp_trips_done;
 
 static struct soctherm_platform_data t124_soctherm_data = {
 	.therm = {
@@ -329,14 +332,74 @@ static int tegra124_soctherm_fuse_get_tsensor_calib(void)
 	return 0;
 }
 
+static int tegra124_soctherm_parse_cdev(struct device_node *soctherm_dn,
+					char *property_name,
+					const char **cdev_cap_type,
+					const char **cdev_floor_type,
+					struct platform_device **pdev)
+{
+	struct device_node *dn_cdev, *dn;
+	const __be32 *prop;
+	int ret = 0;
+
+	dn_cdev = NULL;
+	dn = NULL;
+
+	prop = of_get_property(soctherm_dn, property_name, NULL);
+	if (!prop) {
+		ret = -EINVAL;
+		goto error;
+	}
+	dn_cdev = of_find_node_by_phandle(be32_to_cpup(prop));
+	if (!dn_cdev) {
+		ret = -ENOENT;
+		goto error;
+	}
+
+	*cdev_cap_type = of_get_property(dn_cdev, "cdev-cap-type", NULL);
+	*cdev_floor_type = of_get_property(dn_cdev, "cdev-floor-type", NULL);
+	if (IS_ERR_OR_NULL(*cdev_floor_type) &&
+	    IS_ERR_OR_NULL(*cdev_cap_type)) {
+		ret = -EINVAL;
+		goto error;
+	}
+
+	prop = of_get_property(dn_cdev, "act-dev", NULL);
+	if (!prop) {
+		ret = -EINVAL;
+		goto error;
+	}
+	dn = of_find_node_by_phandle(be32_to_cpup(prop));
+	if (!dn) {
+		ret = -ENOENT;
+		goto error;
+	}
+
+	*pdev = of_find_device_by_node(dn);
+	if (!*pdev) {
+		ret = -ENOENT;
+		goto error;
+	}
+
+error:
+	if (dn)
+		of_node_put(dn);
+	if (dn_cdev)
+		of_node_put(dn_cdev);
+
+	return ret;
+}
+
 int tegra124_soctherm_init(struct device_node *soctherm_dn)
 {
-	struct platform_device *pdev;
+	struct platform_device *pdev, *pdev_cdev;
 	struct soctherm_platform_data *pdata;
 	struct device_node *dn;
 	void __iomem *base;
 	struct thermal_trip_info *trips;
 	int *num_trips;
+	const char *cdev_cap_type, *cdev_floor_type;
+	int err;
 
 	pdev = of_find_device_by_node(soctherm_dn);
 	if (!pdev) {
@@ -363,6 +426,33 @@ int tegra124_soctherm_init(struct device_node *soctherm_dn)
 
 	trips = pdata->therm[THERM_CPU].trips;
 	num_trips = &pdata->therm[THERM_CPU].num_trips;
+
+	/* add trips of cpu edp */
+	if (!t124_cpu_edp_trips_done) {
+		err = tegra124_soctherm_parse_cdev(soctherm_dn, "cpu-edp-cdev",
+						   &cdev_cap_type,
+						   &cdev_floor_type,
+						   &pdev_cdev);
+		if (err || IS_ERR_OR_NULL(cdev_cap_type)) {
+			dev_warn(&pdev->dev, "Can't find cpu-edp node\n");
+			goto ignore_cpu_edp;
+		}
+
+		/* edp temperature margin is 8000 */
+		err = tegra_cpu_edp_init_trips(pdev_cdev,
+					       trips,
+					       num_trips,
+					       (char *)cdev_cap_type,
+					       8000);
+		if (err == -EPROBE_DEFER)
+			return err;
+		else if (err)
+			goto ignore_cpu_edp;
+		else
+			t124_cpu_edp_trips_done = true;
+	}
+
+ignore_cpu_edp:
 
 	/* get soctherm base address */
 	base = of_iomap(soctherm_dn, 0);
