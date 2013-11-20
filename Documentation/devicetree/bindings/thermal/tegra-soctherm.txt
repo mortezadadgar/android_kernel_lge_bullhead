@@ -4,6 +4,7 @@
 
 - compatible : "nvidia,tegra124-soctherm" or "nvidia,tegra114-soctherm".
 - reg : address range of the thermal sensor registers;
+- interrupts : irq for soc_therm.
 - clocks : clocks for soc_therm.
 - clock-names : clock names for soc_therm.
 - pmu-16bit-ops : 16bit ops.

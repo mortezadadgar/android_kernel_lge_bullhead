@@ -26,6 +26,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
+#include <linux/of_irq.h>
 #include <linux/platform_data/tegra_thermal.h>
 #include <linux/platform_device.h>
 #include <linux/tegra-soc.h>
@@ -1508,7 +1509,7 @@ static int soctherm_init_platform_data(struct platform_device *pdev)
 static int soctherm_suspend(struct device *dev)
 {
 	soctherm_writel((u32)-1, INTR_DIS);
-	disable_irq(INT_THERMAL);
+	disable_irq(plat_data->thermal_irq);
 	soctherm_clk_enable(false);
 	return 0;
 }
@@ -1520,7 +1521,7 @@ static int soctherm_resume(struct device *dev)
 	soctherm_clk_enable(true);
 	soctherm_init_platform_data(pdev);
 	soctherm_update();
-	enable_irq(INT_THERMAL);
+	enable_irq(plat_data->thermal_irq);
 
 	return 0;
 }
@@ -1545,8 +1546,14 @@ static int soctherm_platform_init(struct platform_device *pdev)
 	if (soctherm_init_platform_data(pdev) < 0)
 		return -EINVAL;
 
+	plat_data->thermal_irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
+	if (plat_data->thermal_irq <= 0) {
+		dev_err(&pdev->dev, "Failed to map thermal IRQ\n");
+		return -EINVAL;
+	}
+
 	/* enable threaded interrupts */
-	err = devm_request_threaded_irq(&pdev->dev, INT_THERMAL,
+	err = devm_request_threaded_irq(&pdev->dev, plat_data->thermal_irq,
 					soctherm_thermal_isr,
 					soctherm_thermal_work_func,
 					IRQF_ONESHOT,

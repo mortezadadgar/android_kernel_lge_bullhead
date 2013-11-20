@@ -17,11 +17,6 @@
 #ifndef __TEGRA_SOCTHERM_H
 #define __TEGRA_SOCTHERM_H
 
-#define INT_GIC_BASE	0
-#define INT_PRI_BASE	(INT_GIC_BASE + 32)
-#define INT_SEC_BASE	(INT_PRI_BASE + 32)
-#define INT_THERMAL	(INT_SEC_BASE + 16)
-
 /* This order must match the soc_therm HW register spec */
 enum soctherm_sense {
 	TSENSE_CPU0 = 0,
@@ -122,6 +117,8 @@ struct soctherm_platform_data {
 	struct soctherm_throttle throttle[THROTTLE_SIZE];
 	struct soctherm_tsensor_pmu_data *tshut_pmu_trip_data;
 	struct soctherm_fuse_calib_data *fuse_calib_data;
+
+	unsigned int thermal_irq;
 
 	void __iomem *soctherm_base;
 	void __iomem *pmc_base;
