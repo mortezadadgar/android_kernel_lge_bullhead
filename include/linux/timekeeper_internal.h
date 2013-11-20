@@ -66,6 +66,8 @@ struct timekeeper {
 	struct timespec		raw_time;
 	/* The current UTC to TAI offset in seconds */
 	s32			tai_offset;
+	/* Offset clock monotonic -> clock tai */
+	ktime_t			offs_tai;
 
 };
 
