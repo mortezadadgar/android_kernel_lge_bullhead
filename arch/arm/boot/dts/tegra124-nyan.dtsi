@@ -1944,6 +1944,7 @@
 	soc_therm {
 		compatible = "nvidia,tegra124-soctherm";
 		reg = <0x700e2000 0x1000>;
+		interrupts = <0 48 0>;
 		clocks = <&tegra_car 78>, <&tegra_car 100>;
 		clock-names = "soc_therm", "tsensor";
 		pmu-16bit-ops = <0>;
