@@ -1040,6 +1040,24 @@ enum {
 	NUM_OF_STATIC_MAPS,
 };
 
+int tegra_smmu_get_asid(struct device *dev)
+{
+	int err;
+	unsigned long swgroups[2];
+
+	err = smmu_of_get_swgroups(dev, swgroups);
+	if (err) {
+		WARN(1, "Get asid for device: %s failed.\n", dev_name(dev));
+		return -ENODEV;
+	}
+
+	if (test_bit(TEGRA_SWGROUP_PPCS, swgroups))
+		return SYSTEM_PROTECTED;
+
+	return SYSTEM_DEFAULT;
+}
+EXPORT_SYMBOL(tegra_smmu_get_asid);
+
 static int smmu_iommu_bound_driver(struct device *dev)
 {
 	int err;
