@@ -791,7 +791,7 @@ static struct tegra_clk tegra124_clks[tegra_clk_max] __initdata = {
 	[tegra_clk_emc] = { .dt_id = TEGRA124_CLK_EMC, .present = true },
 	[tegra_clk_usb2] = { .dt_id = TEGRA124_CLK_USB2, .present = true },
 	[tegra_clk_usb3] = { .dt_id = TEGRA124_CLK_USB3, .present = true },
-	[tegra_clk_vde] = { .dt_id = TEGRA124_CLK_VDE, .present = true },
+	[tegra_clk_vde_8] = { .dt_id = TEGRA124_CLK_VDE, .present = true },
 	[tegra_clk_bsea] = { .dt_id = TEGRA124_CLK_BSEA, .present = true },
 	[tegra_clk_bsev] = { .dt_id = TEGRA124_CLK_BSEV, .present = true },
 	[tegra_clk_uartd] = { .dt_id = TEGRA124_CLK_UARTD, .present = true },
