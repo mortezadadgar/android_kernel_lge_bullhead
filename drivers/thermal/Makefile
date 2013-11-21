@@ -32,3 +32,8 @@ endif
 # platform thermally-reactive drivers
 obj-$(CONFIG_TEGRA_124_DFLL_COOLING)	+= tegra124_dfll_action.o
 obj-$(CONFIG_TEGRA_CPU_EDP_LIMITS)	+= tegra_cpu_edp_action.o
+
+obj-$(CONFIG_TEGRA_THERMAL_THROTTLE)	+= tegra_throttle.o
+ifeq ($(CONFIG_TEGRA_THERMAL_THROTTLE),y)
+obj-$(CONFIG_ARCH_TEGRA_124_SOC)        += tegra124_throttle.o
+endif

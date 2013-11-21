@@ -185,4 +185,15 @@ config TEGRA_124_DFLL_COOLING
 	  As the SoC temperature increases, the minimum voltage floor
 	  can decrease, reducing energy consumption.
 
+config TEGRA_THERMAL_THROTTLE
+	bool "Enable throttling of Tegra CPU speed on overtemp"
+	depends on THERMAL
+	depends on (ARCH_TEGRA_114_SOC || ARCH_TEGRA_124_SOC)
+	default y
+	help
+	  Enable this to add Tegra thermal governors that alter the
+	  CPU/GPU speed and the rates of c3bus, sclk, and emc clocks.
+	  This keeps the temperature and performance stable and prevents
+	  overheating.
+
 endif

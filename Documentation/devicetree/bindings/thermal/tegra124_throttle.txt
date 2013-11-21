@@ -1,0 +1,51 @@
+tegra124 thermal throttle devicetree bindings
+
+This device is used for thermal throttle, and has number of properties.
+
+Required properties:
+ - compatible:		we now support "nvidia,tegra124-tj-throttle".
+ - clocks:		core shared clocks, we now support:
+			cap.throttle.c3bus, cap.throttle.sclk, cap.throttl.emc
+ - cpu-balanced-states	phandle of the cpu balanced throttle state.
+
+====throttle state====
+Required properties:
+ - cpu-freq:		the limit of cpu freq in this throttle state.
+Optional properties:
+ - gpu-freq:		the limit of gpu freq in this throttle state.
+			if omitted, it mean no limits for it.
+ - c3bus-freq:		the limit of c3bus freq in this throttle state.
+			if omitted, it mean no limits for it.
+ - sclk-freq:		the limit of sclk freq in this throttle state.
+			if omitted, it mean no limits for it.
+ - emc-freq:		the limit of emc freq in this throttle state.
+			if omitted, it mean no limits for it.
+
+Example:
+tj-temperature-throttling {
+	compatible = "nvidia,tegra124-tj-throttle";
+	clocks = <&tegra_car 418>, <&tegra_car 429>, <&tegra_car 459>;
+	clock-names = "cap.throttle.c3bus", "cap.throttle.sclk", "cap.throttle.emc";
+	cpu-balanced-states = <&{/cpu-throttling-state}>;
+};
+
+cpu-throttling-state {
+	throt-state@0 {
+		cpu-freq = <739500>;
+		gpu-freq = <550000>;
+	};
+	throt-state@1 {
+		cpu-freq = <714000>;
+		c2bus-freq = <555000>;
+	};
+};
+
+gpu-throttling-state {
+	throt-state@0 {
+		cpu-freq = <2295000>;
+		gpu-freq = <782800>;
+		c3bus-freq = <756000>;
+		sclk-freq = <384000>;
+		emc-freq = <924000>;
+	};
+};
