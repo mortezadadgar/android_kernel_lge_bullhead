@@ -47,6 +47,8 @@ static inline bool is_lp_cluster(void)
 int tegra_switch_cluster(int new_cluster);
 int tegra_cluster_control_init(void);
 int tegra124_get_core_speedo_mv(void);
+struct tegra_cooling_device *tegra_get_gpu_vmin_cdev(void);
+struct tegra_cooling_device *tegra_get_gpu_vts_cdev(void);
 #else
 static inline int tegra_switch_cluster(int new_cluster)
 {
@@ -58,6 +60,10 @@ static inline int tegra_cluster_control_init(void)
 }
 static inline int tegra124_get_core_speedo_mv(void)
 { return -EINVAL; }
+static inline struct tegra_cooling_device *tegra_get_gpu_vmin_cdev(void)
+{ return ERR_PTR(-EINVAL); }
+static inline struct tegra_cooling_device *tegra_get_gpu_vts_cdev(void)
+{ return ERR_PTR(-EINVAL); }
 #endif
 
 #ifdef CONFIG_ARM_TEGRA_CPUFREQ
@@ -86,5 +92,12 @@ struct gpu_info {
 };
 
 void tegra_gpu_get_info(struct gpu_info *pinfo);
+
+#if defined(CONFIG_TEGRA_GK20A) && defined(CONFIG_ARCH_TEGRA_124_SOC)
+int tegra_gpu_set_speed_cap(unsigned int *speed_cap);
+#else
+static inline int tegra_gpu_set_speed_cap(unsigned int *speed_cap)
+{ return -EINVAL; }
+#endif
 
 #endif /* __LINUX_TEGRA_SOC_H_ */

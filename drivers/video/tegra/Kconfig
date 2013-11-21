@@ -1,5 +1,60 @@
 if ARCH_TEGRA
 
+comment "NVIDIA Tegra Display Driver options"
+
+config TEGRA_GRHOST
+	tristate "Tegra graphics host driver"
+	select PM_GENERIC_DOMAINS
+	help
+	  Driver for the Tegra graphics host hardware.
+
+config ARCH_TEGRA_VIC
+        bool "Tegra Video Image Compositor present"
+        default y
+        help
+          Say Y here if the SOC supports the Tegra Video Image Compositor.
+          Note that this not the same as the ARM Vectored Interrupt Controller.
+
+config TEGRA_GRHOST_USE_NVMAP
+	bool "Use nvmap as graphics memory manager"
+	default y if TEGRA_NVMAP
+	help
+	  Use nvmap as the graphics memory manager.
+
+config TEGRA_GRHOST_FORCE_NVMAP
+	bool "Force nvmap as graphics memory manager"
+	default n
+	help
+	  Force using nvmap instead of dma mapping API
+
+config TEGRA_GRHOST_USE_DMABUF
+	bool "Support dmabuf buffers"
+	default y
+	select DMA_SHARED_BUFFER
+	help
+	  Support dmabuf buffers.
+
+config TEGRA_GRHOST_DEFAULT_TIMEOUT
+	depends on TEGRA_GRHOST
+	int "Default timeout for submits"
+	default 10000
+	help
+	  Default timeout for jobs in milliseconds. Set to zero for no timeout.
+
+config TEGRA_GK20A
+        bool "Enable the GK20A graphics engine"
+        depends on ARCH_TEGRA_124_SOC
+        default y
+        help
+          Enable support for the GK20A graphics engine
+
+config TEGRA_GRHOST_GK20A_PHYS_PAGE_TABLES
+	bool "Use physical addressing for gk20a page tables"
+	default n
+	help
+	  Use physical addressing for gk20a page tables. If this is off, we
+	  use SMMU translation.
+
 config TEGRA_NVMAP
 	bool "Tegra GPU memory management driver (nvmap)"
 	select ARM_DMA_USE_IOMMU if IOMMU_API
@@ -176,5 +231,46 @@ config NVMAP_HANDLE_MARSHAL
 	  the handle id to user/kernel clients. The marshalling
 	  would allow sharing a 64-bit handle id as 32-bit id to
 	  user space when kernel is 64-bit and user space is 32-bit.
+
+config TEGRA_GK20A_PMU
+	bool "Support GK20A PMU"
+	depends on TEGRA_GK20A
+	default n
+	help
+	  Say Y here to enable GK20A PMU features.
+
+choice
+	depends on TEGRA_GK20A
+	prompt "Enable GK20A frequency scaling"
+	default TEGRA_GK20A_PERFMON
+	optional
+	help
+		Select this entry to enable gk20a scaling
+
+config TEGRA_GK20A_PERFMON
+	bool "Use Perfmon"
+	help
+	  Select this to enable built-in perfmon scaling.
+	  The built-in scaling option uses simplistic
+	  scaling mechanism (if busy, increase frequency and
+	  decrease frequency if idle).
+
+config TEGRA_GK20A_DEVFREQ
+	bool "Use Devfreq"
+	help
+	  Select this to use devfreq based scaling.
+	  Devfreq is a common framework that allows using
+	  variety of different governors and changing
+	  between governors on the fly. By default, no
+	  governor is selected.
+
+endchoice
+
+config TEGRA_GPU_CYCLE_STATS
+	bool "Support GK20A GPU CYCLE STATS"
+	depends on TEGRA_GK20A
+	default y
+	help
+	  Say Y here to enable the cycle stats debugging features.
 
 endif
