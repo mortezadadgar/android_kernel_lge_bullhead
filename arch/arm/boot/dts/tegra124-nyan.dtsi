@@ -631,6 +631,7 @@
 					regulator-name = "vddio_hsic";
 					regulator-min-microvolt = <1200000>;
 					regulator-max-microvolt = <1200000>;
+					regulator-always-on;
 				};
 
 				lp0_vdd_rtc_1v0: ldo3 {
