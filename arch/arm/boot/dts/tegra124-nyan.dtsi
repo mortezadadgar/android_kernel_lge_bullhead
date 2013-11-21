@@ -627,10 +627,11 @@
 					regulator-always-on;
 				};
 
-				sd6 {
+				vdd_gpu: sd6 {
 					regulator-name = "vdd_gpu";
 					regulator-min-microvolt = <800000>;
 					regulator-max-microvolt = <1200000>;
+					regulator-boot-on;
 				};
 
 				run_avdd_1v05: ldo0 {
@@ -1993,6 +1994,12 @@
 
 	usb@7d008000 {
 		status = "okay";
+	};
+
+	host1x@50000000 {
+		gk20a@57000000 {
+			vddgpu-supply = <&vdd_gpu>;
+		};
 	};
 
 	soc_therm {
