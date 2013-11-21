@@ -161,4 +161,9 @@
 	sdhci@700b0000 {
 		reset-gpios = <&gpio 229 0>; /* GPIO PCC5 */
 	};
+
+	sound {
+		nvidia,hp-det-gpios = <&gpio 114 0>; /* GPIO PO2 */
+		nvidia,mic-det-gpios = <&gpio 143 0>; /* GPIO PR7 */
+	};
 };

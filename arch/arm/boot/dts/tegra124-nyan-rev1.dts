@@ -57,4 +57,9 @@
 	pmc {
 		nvidia,reset-gpio = <&gpio 69 0x1>;
 	};
+
+	sound {
+		nvidia,hp-det-gpios = <&gpio 71 0>; /* GPIO PI7 */
+		nvidia,mic-det-gpios = <&gpio 143 0>; /* GPIO PR7 */
+	};
 };

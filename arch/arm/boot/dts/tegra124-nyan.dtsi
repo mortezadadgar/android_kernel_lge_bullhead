@@ -195,6 +195,13 @@
 				nvidia,tristate = <0>;
 				nvidia,enable-input = <1>;
 			};
+			mic_det_l {
+				nvidia,pins = "kb_row7_pr7";
+				nvidia,function = "rsvd2";
+				nvidia,pull = <2>;
+				nvidia,tristate = <0>;
+				nvidia,enable-input = <1>;
+			};
 			kb_row10_ps2 {
 				nvidia,pins = "kb_row10_ps2";
 				nvidia,function = "uarta";
@@ -1995,6 +2002,8 @@
 		nvidia,audio-routing =
 			"Headphone Jack", "HPR",
 			"Headphone Jack", "HPL",
+			"IN12", "Int Mic",
+			"IN34", "Mic Jack",
 			"Speakers", "SPKR",
 			"Speakers", "SPKL";
 
