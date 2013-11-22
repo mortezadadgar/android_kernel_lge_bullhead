@@ -47,6 +47,7 @@ struct bq24735 {
 	struct power_supply	charger;
 	struct i2c_client	*client;
 	struct bq24735_platform	*pdata;
+	bool			configured;
 };
 
 static inline struct bq24735 *to_bq24735(struct power_supply *psy)
@@ -178,10 +179,15 @@ static irqreturn_t bq24735_charger_isr(int irq, void *devid)
 	struct power_supply *psy = devid;
 	struct bq24735 *charger = to_bq24735(psy);
 
-	if (bq24735_charger_is_present(charger))
+	if (bq24735_charger_is_present(charger)) {
+		if (!charger->configured) {
+			bq24735_config_charger(charger);
+			charger->configured = true;
+		}
 		bq24735_enable_charging(charger);
-	else
+	} else {
 		bq24735_disable_charging(charger);
+	}
 
 	power_supply_changed(psy);
 
@@ -290,33 +296,10 @@ static int bq24735_charger_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, charger);
 
-	ret = bq24735_read_word(client, BQ24735_MANUFACTURER_ID);
-	if (ret < 0) {
-		dev_err(&client->dev, "Failed to read manufacturer id : %d\n",
-			ret);
-		goto err_free_name;
-	} else if (ret != 0x0040) {
-		dev_err(&client->dev,
-			"manufacturer id mismatch. 0x0040 != 0x%04x\n", ret);
-		ret = -ENODEV;
-		goto err_free_name;
-	}
-
-	ret = bq24735_read_word(client, BQ24735_DEVICE_ID);
-	if (ret < 0) {
-		dev_err(&client->dev, "Failed to read device id : %d\n", ret);
-		goto err_free_name;
-	} else if (ret != 0x000B) {
-		dev_err(&client->dev,
-			"device id mismatch. 0x000b != 0x%04x\n", ret);
-		ret = -ENODEV;
-		goto err_free_name;
-	}
-
 	if (gpio_is_valid(charger->pdata->status_gpio)) {
-		ret = devm_gpio_request(&client->dev,
-					charger->pdata->status_gpio,
-					name);
+		ret = devm_gpio_request_one(&client->dev,
+						charger->pdata->status_gpio,
+						GPIOF_IN, name);
 		if (ret) {
 			dev_err(&client->dev,
 				"Failed GPIO request for GPIO %d: %d\n",
@@ -326,14 +309,48 @@ static int bq24735_charger_probe(struct i2c_client *client,
 		charger->pdata->status_gpio_valid = !ret;
 	}
 
-	ret = bq24735_config_charger(charger);
-	if (ret < 0) {
-		dev_err(&client->dev, "failed in configuring charger");
-		goto err_free_name;
+	/*
+	 * If we have an AC-detect GPIO and we know the charger is not
+	 * present, don't bother with trying to access it over I2C as it
+	 * may not resopnd.
+	 */
+	if (!charger->pdata->status_gpio_valid ||
+		bq24735_charger_is_present(charger)) {
+		ret = bq24735_read_word(client, BQ24735_MANUFACTURER_ID);
+		if (ret < 0) {
+			dev_err(&client->dev,
+				"Failed to read manufacturer id : %d\n", ret);
+			goto err_free_name;
+		} else if (ret != 0x0040) {
+			dev_err(&client->dev,
+				"manufacturer id mismatch. 0x0040 != 0x%04x\n",
+				ret);
+			ret = -ENODEV;
+			goto err_free_name;
+		}
+
+		ret = bq24735_read_word(client, BQ24735_DEVICE_ID);
+		if (ret < 0) {
+			dev_err(&client->dev, "Failed to read device id : %d\n",
+				ret);
+			goto err_free_name;
+		} else if (ret != 0x000B) {
+			dev_err(&client->dev,
+				"device id mismatch. 0x000b != 0x%04x\n", ret);
+			ret = -ENODEV;
+			goto err_free_name;
+		}
 	}
 
 	/* check for AC adapter presence */
 	if (bq24735_charger_is_present(charger)) {
+		ret = bq24735_config_charger(charger);
+		if (ret < 0) {
+			dev_err(&client->dev, "failed in configuring charger");
+			goto err_free_name;
+		}
+		charger->configured = true;
+
 		ret = bq24735_enable_charging(charger);
 		if (ret < 0) {
 			dev_err(&client->dev, "Failed to enable charging\n");
