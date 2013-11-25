@@ -213,6 +213,7 @@ enum clk_id {
 	tegra_clk_vfir,
 	tegra_clk_vi,
 	tegra_clk_vi_8,
+	tegra_clk_vi_9,
 	tegra_clk_vic03,
 	tegra_clk_vim2_clk,
 	tegra_clk_vimclk_sync,
