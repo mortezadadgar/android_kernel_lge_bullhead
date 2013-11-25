@@ -266,8 +266,11 @@ static struct div_nmp pllcx_nmp = {
 static struct pdiv_map pllc_p[] = {
 	{ .pdiv = 1, .hw_val = 0 },
 	{ .pdiv = 2, .hw_val = 1 },
+	{ .pdiv = 3, .hw_val = 2 },
 	{ .pdiv = 4, .hw_val = 3 },
+	{ .pdiv = 6, .hw_val = 4 },
 	{ .pdiv = 8, .hw_val = 5 },
+	{ .pdiv = 12, .hw_val = 6 },
 	{ .pdiv = 16, .hw_val = 7 },
 	{ .pdiv = 0, .hw_val = 0 },
 };
