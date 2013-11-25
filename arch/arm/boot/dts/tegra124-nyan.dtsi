@@ -653,6 +653,7 @@
 					regulator-min-microvolt = <800000>;
 					regulator-max-microvolt = <1200000>;
 					regulator-boot-on;
+					regulator-always-on;
 				};
 
 				run_avdd_1v05: ldo0 {
