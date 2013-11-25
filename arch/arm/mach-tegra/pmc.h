@@ -45,5 +45,6 @@ void tegra_pmc_restart(char mode, const char *cmd);
 
 void tegra_pmc_init_irq(void);
 void tegra_pmc_init(void);
+void tegra_pmc_init_late(void);
 
 #endif

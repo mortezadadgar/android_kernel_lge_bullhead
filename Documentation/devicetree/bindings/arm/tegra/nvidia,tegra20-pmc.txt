@@ -29,6 +29,7 @@ Optional properties:
 - nvidia,combined-power-req : Boolean, combined power request for CPU & Core
 - nvidia,cpu-pwr-good-en : Boolean, CPU power good signal (from PMIC to PMC)
 			   is enabled.
+- nvidia,reset-gpio : GPIO that can be used to warm reset the system.
 
 Required properties when nvidia,suspend-mode is specified:
 - nvidia,cpu-pwr-good-time : CPU power good time in uS.

@@ -20,6 +20,9 @@
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
+#include <linux/delay.h>
 #include <linux/tegra-powergate.h>
 
 #include "flowctrl.h"
@@ -69,6 +72,8 @@ struct pmc_pm_data {
 	u32 lp0_vec_phy_addr;	/* The phy addr of LP0 warm boot code */
 	u32 lp0_vec_size;	/* The size of LP0 warm boot code */
 	enum tegra_suspend_mode suspend_mode;
+	int reset_gpio;		/* GPIO to assert to reset the system */
+	bool reset_active_low;	/* Reset GPIO is active-low */
 };
 static struct pmc_pm_data pmc_pm_data;
 
@@ -164,6 +169,17 @@ int tegra_pmc_cpu_remove_clamping(int cpuid)
 void tegra_pmc_restart(char mode, const char *cmd)
 {
 	u32 val;
+
+	/*
+	 * If there's a reset GPIO, attempt to use that first and then fall
+	 * back to PMC reset if that fails.
+	 */
+	if (gpio_is_valid(pmc_pm_data.reset_gpio)) {
+		val = pmc_pm_data.reset_active_low ? 0 : 1;
+		gpio_direction_output(pmc_pm_data.reset_gpio, val);
+		udelay(100);
+		pr_err("GPIO reset failed; using PMC reset...\n");
+	}
 
 	val = tegra_pmc_readl(0);
 	val |= 0x10;
@@ -386,4 +402,28 @@ void __init tegra_pmc_init(void)
 	pmc_pm_data.lp0_vec_size = lp0_vec[1];
 
 	pmc_pm_data.suspend_mode = suspend_mode;
+}
+
+void __init tegra_pmc_init_late(void)
+{
+	struct device_node *np;
+	enum of_gpio_flags flags;
+	int ret;
+
+	np = of_find_matching_node(NULL, matches);
+	if (!np)
+		return;
+
+	pmc_pm_data.reset_gpio = of_get_named_gpio_flags(np,
+						"nvidia,reset-gpio", 0, &flags);
+	if (gpio_is_valid(pmc_pm_data.reset_gpio)) {
+		ret = gpio_request_one(pmc_pm_data.reset_gpio,
+				       GPIOF_OUT_INIT_HIGH, "soc-warm-reset");
+		if (ret) {
+			pr_err("Failed to request reset GPIO: %d\n", ret);
+			pmc_pm_data.reset_gpio = -1;
+		}
+		if (flags & OF_GPIO_ACTIVE_LOW)
+			pmc_pm_data.reset_active_low = true;
+	}
 }
