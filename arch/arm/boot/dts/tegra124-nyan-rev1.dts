@@ -18,6 +18,13 @@
 				nvidia,tristate = <0>;
 				nvidia,enable-input = <1>;
 			};
+			soc_warm_reset_l {
+				nvidia,pins = "pi5";
+				nvidia,function = "gmi";
+				nvidia,pull = <2>;
+				nvidia,tristate = <0>;
+				nvidia,enable-input = <0>;
+			};
 		};
 	};
 
@@ -45,5 +52,9 @@
 
 	sdhci@700b0400 {
 		cd-inverted;
+	};
+
+	pmc {
+		nvidia,reset-gpio = <&gpio 69 0x1>;
 	};
 };
