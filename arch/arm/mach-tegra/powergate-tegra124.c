@@ -681,6 +681,23 @@ static struct powergate t124_powergate = {
 
 struct powergate * __init tegra124_powergate_init(void)
 {
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_DIS)) {
+		atomic_inc(&ref_count_dispa);
+		atomic_inc(&ref_count_sor);
+	}
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_DISB)) {
+		atomic_inc(&ref_count_dispb);
+		atomic_inc(&ref_count_dispa);
+		atomic_inc(&ref_count_sor);
+	}
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_VENC)) {
+		atomic_inc(&ref_count_venc);
+		atomic_inc(&ref_count_dispa);
+		atomic_inc(&ref_count_sor);
+	}
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_SOR))
+		atomic_inc(&ref_count_sor);
+
 	return &t124_powergate;
 }
 
