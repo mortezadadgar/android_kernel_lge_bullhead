@@ -1880,7 +1880,7 @@
 
 		en_vdd_sd_reg: regulator@1 {
 			compatible = "regulator-fixed";
-			reg = <2>;
+			reg = <1>;
 			regulator-name = "en_vdd_sd";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
@@ -1889,9 +1889,9 @@
 			gpio = <&gpio 136 0>; /* GPIO PR0 */
 		};
 
-		usb1_vbus_reg: regulator@3 {
+		usb1_vbus_reg: regulator@2 {
 			compatible = "regulator-fixed";
-			reg = <3>;
+			reg = <2>;
 			regulator-name = "usb1_vbus";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
@@ -1901,9 +1901,9 @@
 			regulator-boot-on;
 		};
 
-		usb3_vbus_reg: regulator@4 {
+		usb3_vbus_reg: regulator@3 {
 			compatible = "regulator-fixed";
-			reg = <4>;
+			reg = <3>;
 			regulator-name = "usb3_vbus";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
@@ -1913,9 +1913,9 @@
 			regulator-boot-on;
 		};
 
-		wifi_clk32k_reg: regulator@5 {
+		wifi_clk32k_reg: regulator@4 {
 			compatible = "regulator-fixed";
-			reg = <5>;
+			reg = <4>;
 			regulator-name = "wifi-clk32k";
 			enable-active-high;
 			gpio = <&ams3722 5 0>;
