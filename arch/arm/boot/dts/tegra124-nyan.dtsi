@@ -2030,4 +2030,11 @@
 		act-dev = <&{/cpu_edp}>;
 		cdev-cap-type = "CPU-EDP-cap";
         };
+
+	tj-temperature-throttling {
+		compatible = "nvidia,tegra124-tj-throttle";
+		clocks = <&tegra_car 418>, <&tegra_car 429>, <&tegra_car 459>;
+		clock-names = "cap.throttle.c3bus", "cap.throttle.sclk", "cap.throttle.emc";
+		cpu-balanced-states = <&{/cpu-throttling-state}>;
+	};
 };

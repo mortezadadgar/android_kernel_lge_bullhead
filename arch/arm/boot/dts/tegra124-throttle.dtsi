@@ -1,0 +1,1010 @@
+/ {
+	cpu-throttling-state {
+		throt-state@0 {
+			cpu-freq = <2295000>;
+		};
+		throt-state@1 {
+			cpu-freq = <2269500>;
+		};
+		throt-state@2 {
+			cpu-freq = <2244000>;
+		};
+		throt-state@3 {
+			cpu-freq = <2218500>;
+		};
+		throt-state@4 {
+			cpu-freq = <2193000>;
+		};
+		throt-state@5 {
+			cpu-freq = <2167500>;
+		};
+		throt-state@6 {
+			cpu-freq = <2142000>;
+		};
+		throt-state@7 {
+			cpu-freq = <2116500>;
+		};
+		throt-state@8 {
+			cpu-freq = <2091000>;
+		};
+		throt-state@9 {
+			cpu-freq = <2065500>;
+		};
+		throt-state@10 {
+			cpu-freq = <2040000>;
+		};
+		throt-state@11 {
+			cpu-freq = <2014500>;
+		};
+		throt-state@12 {
+			cpu-freq = <1989000>;
+		};
+		throt-state@13 {
+			cpu-freq = <1963500>;
+		};
+		throt-state@14 {
+			cpu-freq = <1938000>;
+		};
+		throt-state@15 {
+			cpu-freq = <1912500>;
+		};
+		throt-state@16 {
+			cpu-freq = <1887000>;
+		};
+		throt-state@17 {
+			cpu-freq = <1861500>;
+		};
+		throt-state@18 {
+			cpu-freq = <1836000>;
+		};
+		throt-state@19 {
+			cpu-freq = <1810500>;
+		};
+		throt-state@20 {
+			cpu-freq = <1785000>;
+		};
+		throt-state@21 {
+			cpu-freq = <1759500>;
+		};
+		throt-state@22 {
+			cpu-freq = <1734000>;
+		};
+		throt-state@23 {
+			cpu-freq = <1708500>;
+		};
+		throt-state@24 {
+			cpu-freq = <1683000>;
+		};
+		throt-state@25 {
+			cpu-freq = <1657500>;
+		};
+		throt-state@26 {
+			cpu-freq = <1632000>;
+		};
+		throt-state@27 {
+			cpu-freq = <1606500>;
+			gpu-freq = <790000>;
+		};
+		throt-state@28 {
+			cpu-freq = <1581000>;
+			gpu-freq = <776000>;
+		};
+		throt-state@29 {
+			cpu-freq = <1555500>;
+			gpu-freq = <762000>;
+		};
+		throt-state@30 {
+			cpu-freq = <1530000>;
+			gpu-freq = <749000>;
+		};
+		throt-state@31 {
+			cpu-freq = <1504500>;
+			gpu-freq = <735000>;
+		};
+		throt-state@32 {
+			cpu-freq = <1479000>;
+			gpu-freq = <721000>;
+		};
+		throt-state@33 {
+			cpu-freq = <1453500>;
+			gpu-freq = <707000>;
+		};
+		throt-state@34 {
+			cpu-freq = <1428000>;
+			gpu-freq = <693000>;
+		};
+		throt-state@35 {
+			cpu-freq = <1402500>;
+			gpu-freq = <679000>;
+		};
+		throt-state@36 {
+			cpu-freq = <1377000>;
+			gpu-freq = <666000>;
+		};
+		throt-state@37 {
+			cpu-freq = <1351500>;
+			gpu-freq = <652000>;
+		};
+		throt-state@38 {
+			cpu-freq = <1326000>;
+			gpu-freq = <638000>;
+		};
+		throt-state@39 {
+			cpu-freq = <1300500>;
+			gpu-freq = <624000>;
+		};
+		throt-state@40 {
+			cpu-freq = <1275000>;
+			gpu-freq = <610000>;
+		};
+		throt-state@41 {
+			cpu-freq = <1249500>;
+			gpu-freq = <596000>;
+		};
+		throt-state@42 {
+			cpu-freq = <1224000>;
+			gpu-freq = <582000>;
+			emc-freq = <792000>;
+		};
+		throt-state@43 {
+			cpu-freq = <1198500>;
+			gpu-freq = <569000>;
+			emc-freq = <792000>;
+		};
+		throt-state@44 {
+			cpu-freq = <1173000>;
+			gpu-freq = <555000>;
+			sclk-freq = <360000>;
+			emc-freq = <792000>;
+		};
+		throt-state@45 {
+			cpu-freq = <1147500>;
+			gpu-freq = <541000>;
+			sclk-freq = <360000>;
+			emc-freq = <792000>;
+		};
+		throt-state@46 {
+			cpu-freq = <1122000>;
+			gpu-freq = <527000>;
+			c3bus-freq = <684000>;
+			sclk-freq = <360000>;
+			emc-freq = <792000>;
+		};
+		throt-state@47 {
+			cpu-freq = <1096500>;
+			gpu-freq = <513000>;
+			c3bus-freq = <684000>;
+			sclk-freq = <360000>;
+			emc-freq = <792000>;
+		};
+		throt-state@48 {
+			cpu-freq = <1071000>;
+			gpu-freq = <499000>;
+			c3bus-freq = <684000>;
+			sclk-freq = <360000>;
+			emc-freq = <792000>;
+		};
+		throt-state@49 {
+			cpu-freq = <1045500>;
+			gpu-freq = <486000>;
+			c3bus-freq = <684000>;
+			sclk-freq = <360000>;
+			emc-freq = <792000>;
+		};
+		throt-state@50 {
+			cpu-freq = <1020000>;
+			gpu-freq = <472000>;
+			c3bus-freq = <684000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@51 {
+			cpu-freq = <994500>;
+			gpu-freq = <458000>;
+			c3bus-freq = <684000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@52 {
+			cpu-freq = <969000>;
+			gpu-freq = <444000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@53 {
+			cpu-freq = <943500>;
+			gpu-freq = <430000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@54 {
+			cpu-freq = <918000>;
+			gpu-freq = <416000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@55 {
+			cpu-freq = <892500>;
+			gpu-freq = <402000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@56 {
+			cpu-freq = <867000>;
+			gpu-freq = <389000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@57 {
+			cpu-freq = <841500>;
+			gpu-freq = <375000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <288000>;
+			emc-freq = <792000>;
+		};
+		throt-state@58 {
+			cpu-freq = <816000>;
+			gpu-freq = <361000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <288000>;
+			emc-freq = <792000>;
+		};
+		throt-state@59 {
+			cpu-freq = <790500>;
+			gpu-freq = <347000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <288000>;
+			emc-freq = <792000>;
+		};
+		throt-state@60 {
+			cpu-freq = <765000>;
+			gpu-freq = <333000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <288000>;
+			emc-freq = <792000>;
+		};
+		throt-state@61 {
+			cpu-freq = <739500>;
+			gpu-freq = <319000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <288000>;
+			emc-freq = <792000>;
+		};
+		throt-state@62 {
+			cpu-freq = <714000>;
+			gpu-freq = <306000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <288000>;
+			emc-freq = <624000>;
+		};
+		throt-state@63 {
+			cpu-freq = <688500>;
+			gpu-freq = <292000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <288000>;
+			emc-freq = <624000>;
+		};
+		throt-state@64 {
+			cpu-freq = <663000>;
+			gpu-freq = <278000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <288000>;
+			emc-freq = <624000>;
+		};
+		throt-state@65 {
+			cpu-freq = <637500>;
+			gpu-freq = <264000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <288000>;
+			emc-freq = <624000>;
+		};
+		throt-state@66 {
+			cpu-freq = <612000>;
+			gpu-freq = <250000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@67 {
+			cpu-freq = <586500>;
+			gpu-freq = <236000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@68 {
+			cpu-freq = <561000>;
+			gpu-freq = <222000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@69 {
+			cpu-freq = <535500>;
+			gpu-freq = <209000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@70 {
+			cpu-freq = <510000>;
+			gpu-freq = <195000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@71 {
+			cpu-freq = <484500>;
+			gpu-freq = <181000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@72 {
+			cpu-freq = <459000>;
+			gpu-freq = <167000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@73 {
+			cpu-freq = <433500>;
+			gpu-freq = <153000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@74 {
+			cpu-freq = <408000>;
+			gpu-freq = <139000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@75 {
+			cpu-freq = <382500>;
+			gpu-freq = <126000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@76 {
+			cpu-freq = <357000>;
+			gpu-freq = <112000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@77 {
+			cpu-freq = <331500>;
+			gpu-freq = <98000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@78 {
+			cpu-freq = <306000>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@79 {
+			cpu-freq = <280500>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@80 {
+			cpu-freq = <255000>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@81 {
+			cpu-freq = <229500>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@82 {
+			cpu-freq = <204000>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+	};
+
+	gpu-throttling-state {
+		throt-state@0 {
+			cpu-freq = <2295000>;
+			gpu-freq = <782800>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@1 {
+			cpu-freq = <2269500>;
+			gpu-freq = <772200>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@2 {
+			cpu-freq = <2244000>;
+			gpu-freq = <761600>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@3 {
+			cpu-freq = <2218500>;
+			gpu-freq = <751100>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@4 {
+			cpu-freq = <2193000>;
+			gpu-freq = <740500>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@5 {
+			cpu-freq = <2167500>;
+			gpu-freq = <729900>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@6 {
+			cpu-freq = <2142000>;
+			gpu-freq = <719300>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@7 {
+			cpu-freq = <2116500>;
+			gpu-freq = <708700>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@8 {
+			cpu-freq = <2091000>;
+			gpu-freq = <698100>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@9 {
+			cpu-freq = <2065500>;
+			gpu-freq = <687500>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@10 {
+			cpu-freq = <2040000>;
+			gpu-freq = <676900>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@11 {
+			cpu-freq = <2014500>;
+			gpu-freq = <666000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@12 {
+			cpu-freq = <1989000>;
+			gpu-freq = <656000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@13 {
+			cpu-freq = <1963500>;
+			gpu-freq = <645000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@14 {
+			cpu-freq = <1938000>;
+			gpu-freq = <635000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@15 {
+			cpu-freq = <1912500>;
+			gpu-freq = <624000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@16 {
+			cpu-freq = <1887000>;
+			gpu-freq = <613000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@17 {
+			cpu-freq = <1861500>;
+			gpu-freq = <603000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@18 {
+			cpu-freq = <1836000>;
+			gpu-freq = <592000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@19 {
+			cpu-freq = <1810500>;
+			gpu-freq = <582000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@20 {
+			cpu-freq = <1785000>;
+			gpu-freq = <571000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@21 {
+			cpu-freq = <1759500>;
+			gpu-freq = <560000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@22 {
+			cpu-freq = <1734000>;
+			gpu-freq = <550000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@23 {
+			cpu-freq = <1708500>;
+			gpu-freq = <539000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@24 {
+			cpu-freq = <1683000>;
+			gpu-freq = <529000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@25 {
+			cpu-freq = <1657500>;
+			gpu-freq = <518000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@26 {
+			cpu-freq = <1632000>;
+			gpu-freq = <508000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@27 {
+			cpu-freq = <1606500>;
+			gpu-freq = <497000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@28 {
+			cpu-freq = <1581000>;
+			gpu-freq = <486000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@29 {
+			cpu-freq = <1555500>;
+			gpu-freq = <476000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@30 {
+			cpu-freq = <1530000>;
+			gpu-freq = <465000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@31 {
+			cpu-freq = <1504500>;
+			gpu-freq = <455000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@32 {
+			cpu-freq = <1479000>;
+			gpu-freq = <444000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@33 {
+			cpu-freq = <1453500>;
+			gpu-freq = <433000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@34 {
+			cpu-freq = <1428000>;
+			gpu-freq = <423000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@35 {
+			cpu-freq = <1402500>;
+			gpu-freq = <412000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@36 {
+			cpu-freq = <1377000>;
+			gpu-freq = <402000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@37 {
+			cpu-freq = <1351500>;
+			gpu-freq = <391000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@38 {
+			cpu-freq = <1326000>;
+			gpu-freq = <380000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@39 {
+			cpu-freq = <1300500>;
+			gpu-freq = <370000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@40 {
+			cpu-freq = <1275000>;
+			gpu-freq = <359000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@41 {
+			cpu-freq = <1249500>;
+			gpu-freq = <349000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@42 {
+			cpu-freq = <1224000>;
+			gpu-freq = <338000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <792000>;
+		};
+		throt-state@43 {
+			cpu-freq = <1198500>;
+			gpu-freq = <328000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <384000>;
+			emc-freq = <792000>;
+		};
+		throt-state@44 {
+			cpu-freq = <1173000>;
+			gpu-freq = <317000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <360000>;
+			emc-freq = <792000>;
+		};
+		throt-state@45 {
+			cpu-freq = <1147500>;
+			gpu-freq = <306000>;
+			c3bus-freq = <756000>;
+			sclk-freq = <360000>;
+			emc-freq = <792000>;
+		};
+		throt-state@46 {
+			cpu-freq = <1122000>;
+			gpu-freq = <296000>;
+			c3bus-freq = <684000>;
+			sclk-freq = <360000>;
+			emc-freq = <792000>;
+		};
+		throt-state@47 {
+			cpu-freq = <1096500>;
+			gpu-freq = <285000>;
+			c3bus-freq = <684000>;
+			sclk-freq = <360000>;
+			emc-freq = <792000>;
+		};
+		throt-state@48 {
+			cpu-freq = <1071000>;
+			gpu-freq = <275000>;
+			c3bus-freq = <684000>;
+			sclk-freq = <360000>;
+			emc-freq = <792000>;
+		};
+		throt-state@49 {
+			cpu-freq = <1045500>;
+			gpu-freq = <264000>;
+			c3bus-freq = <684000>;
+			sclk-freq = <360000>;
+			emc-freq = <792000>;
+		};
+		throt-state@50 {
+			cpu-freq = <1020000>;
+			gpu-freq = <253000>;
+			c3bus-freq = <684000>;
+			sclk-freq = <384000>;
+			emc-freq = <924000>;
+		};
+		throt-state@51 {
+			cpu-freq = <994500>;
+			gpu-freq = <253000>;
+			c3bus-freq = <684000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@52 {
+			cpu-freq = <969000>;
+			gpu-freq = <232000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@53 {
+			cpu-freq = <943500>;
+			gpu-freq = <222000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@54 {
+			cpu-freq = <918000>;
+			gpu-freq = <211000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@55 {
+			cpu-freq = <892500>;
+			gpu-freq = <200000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@56 {
+			cpu-freq = <867000>;
+			gpu-freq = <190000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <324000>;
+			emc-freq = <792000>;
+		};
+		throt-state@57 {
+			cpu-freq = <841500>;
+			gpu-freq = <179000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <288000>;
+			emc-freq = <792000>;
+		};
+		throt-state@58 {
+			cpu-freq = <816000>;
+			gpu-freq = <169000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <288000>;
+			emc-freq = <792000>;
+		};
+		throt-state@59 {
+			cpu-freq = <790500>;
+			gpu-freq = <158000>;
+			c3bus-freq = <600000>;
+			sclk-freq = <288000>;
+			emc-freq = <792000>;
+		};
+		throt-state@60 {
+			cpu-freq = <765000>;
+			gpu-freq = <148000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <288000>;
+			emc-freq = <792000>;
+		};
+		throt-state@61 {
+			cpu-freq = <739500>;
+			gpu-freq = <137000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <288000>;
+			emc-freq = <792000>;
+		};
+		throt-state@62 {
+			cpu-freq = <714000>;
+			gpu-freq = <126000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <288000>;
+			emc-freq = <624000>;
+		};
+		throt-state@63 {
+			cpu-freq = <688500>;
+			gpu-freq = <116000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <288000>;
+			emc-freq = <624000>;
+		};
+		throt-state@64 {
+			cpu-freq = <663000>;
+			gpu-freq = <105000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <288000>;
+			emc-freq = <624000>;
+		};
+		throt-state@65 {
+			cpu-freq = <637500>;
+			gpu-freq = <95000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <288000>;
+			emc-freq = <624000>;
+		};
+		throt-state@66 {
+			cpu-freq = <612000>;
+			gpu-freq = <84000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@67 {
+			cpu-freq = <586500>;
+			gpu-freq = <84000>;
+			c3bus-freq = <504000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@68 {
+			cpu-freq = <561000>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@69 {
+			cpu-freq = <535500>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@70 {
+			cpu-freq = <510000>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@71 {
+			cpu-freq = <484500>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@72 {
+			cpu-freq = <459000>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <624000>;
+		};
+		throt-state@73 {
+			cpu-freq = <433500>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@74 {
+			cpu-freq = <408000>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@75 {
+			cpu-freq = <382500>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@76 {
+			cpu-freq = <357000>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@77 {
+			cpu-freq = <331500>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@78 {
+			cpu-freq = <306000>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@79 {
+			cpu-freq = <280500>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@80 {
+			cpu-freq = <255000>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@81 {
+			cpu-freq = <229500>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+		throt-state@82 {
+			cpu-freq = <204000>;
+			gpu-freq = <84000>;
+			c3bus-freq = <420000>;
+			sclk-freq = <252000>;
+			emc-freq = <396000>;
+		};
+	};
+};
