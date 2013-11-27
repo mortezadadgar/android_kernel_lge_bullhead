@@ -177,6 +177,8 @@ struct clk *tegra_clk_register_emc(const char *name, const char **parent_names,
 	emc->hw.init = &init;
 	emc->periph = periph;
 	emc->emc_ops = emc_ops;
+	emc->num_parents = num_parents;
+	emc->parents = parent_names;
 	clk = clk_register(NULL, &emc->hw);
 	if (IS_ERR(clk)) {
 		kfree(emc);
@@ -189,3 +191,47 @@ struct clk *tegra_clk_register_emc(const char *name, const char **parent_names,
 
 	return clk;
 }
+
+#if defined(CONFIG_PM_SLEEP)
+void tegra_clk_emc_resume(struct clk *clk)
+{
+	u8 val;
+	struct clk_hw *hw = __clk_get_hw(clk);
+	struct tegra_clk_emc *emc = to_clk_emc(hw);
+	struct clk *parent, *new_parent;
+
+	/*
+	 * Since EMC clock is not restored, and may not preserve parent across
+	 * suspend, reparent if necessary.
+	 */
+
+	parent = clk_get_parent(clk);
+	if (IS_ERR(parent)) {
+		WARN_ON(1);
+		return;
+	}
+
+	val = clk_emc_get_parent(hw);
+	if (val > (emc->num_parents - 1)) {
+		WARN_ON(1);
+		return;
+	}
+
+	new_parent = __clk_lookup(emc->parents[val]);
+	if (IS_ERR(new_parent)) {
+		WARN_ON(1);
+		return;
+	}
+
+	if (parent != new_parent) {
+		pr_debug("EMC parent(refcount) across suspend: %s(%d):%s(%d)",
+			__clk_get_name(parent),
+			__clk_get_enable_count(parent),
+			__clk_get_name(new_parent),
+			__clk_get_enable_count(new_parent));
+		clk_prepare_enable(new_parent);
+		__clk_reparent(clk, new_parent);
+		clk_disable_unprepare(parent);
+	}
+}
+#endif
