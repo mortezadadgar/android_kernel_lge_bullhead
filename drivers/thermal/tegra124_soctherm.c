@@ -19,6 +19,7 @@
 #include <linux/thermal.h>
 #include <linux/platform_data/tegra_thermal.h>
 #include <linux/platform_data/tegra_edp.h>
+#include <linux/tegra-dvfs.h>
 #include <linux/tegra-soc.h>
 
 #include "tegra_soctherm.h"
@@ -397,6 +398,7 @@ int tegra124_soctherm_init(struct device_node *soctherm_dn)
 	struct device_node *dn;
 	void __iomem *base;
 	struct thermal_trip_info *trips;
+	struct tegra_cooling_device *tegra_cdev;
 	int *num_trips;
 	const char *cdev_cap_type, *cdev_floor_type;
 	int err;
@@ -426,6 +428,17 @@ int tegra124_soctherm_init(struct device_node *soctherm_dn)
 
 	trips = pdata->therm[THERM_CPU].trips;
 	num_trips = &pdata->therm[THERM_CPU].num_trips;
+
+	/* add trips of core_cold */
+	tegra_cdev = tegra_dvfs_get_core_vmin_cdev();
+	if (PTR_ERR(tegra_cdev) == -EPROBE_DEFER) {
+		dev_warn(&pdev->dev, "The core cdev is not ready.\n");
+		return PTR_ERR(tegra_cdev);
+	} else if (IS_ERR(tegra_cdev)) {
+		dev_warn(&pdev->dev, "Can't get the core cdev, ignore it.\n");
+	} else {
+		soctherm_add_trip_points(pdev, trips, num_trips, tegra_cdev);
+	}
 
 	/* add trips of cpu edp */
 	if (!t124_cpu_edp_trips_done) {

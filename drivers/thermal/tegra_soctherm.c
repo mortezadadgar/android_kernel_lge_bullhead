@@ -1843,6 +1843,46 @@ static int soctherm_debug_init(struct platform_device *pdev)
 }
 #endif
 
+void soctherm_add_trip_points(struct platform_device *pdev,
+			      struct thermal_trip_info *trips,
+			      int *num_trips,
+			      struct tegra_cooling_device *cdev_data)
+{
+	int i, num;
+	struct thermal_trip_info *trip_state;
+
+	if (!trips || !num_trips || !cdev_data)
+		return;
+
+	num = cdev_data->trip_temperatures_num;
+	if (*num_trips + num > THERMAL_MAX_TRIPS) {
+		dev_warn(&pdev->dev, "cdev %s has too many trips\n",
+			 cdev_data->cdev_type);
+		return;
+	}
+
+	for (i = 0; i < (*num_trips); i++) {
+		trip_state = &trips[i];
+		if (!strcmp(trip_state->cdev_type, cdev_data->cdev_type)) {
+			dev_warn(&pdev->dev, "cdev %s trips already added\n",
+				 cdev_data->cdev_type);
+			return;
+		}
+	}
+
+	for (i = 0; i < num; i++) {
+		trip_state = &trips[*num_trips];
+
+		trip_state->cdev_type = cdev_data->cdev_type;
+		trip_state->trip_temp = cdev_data->trip_temperatures[i] * 1000;
+		trip_state->trip_type = THERMAL_TRIP_ACTIVE;
+		trip_state->upper = trip_state->lower = i + 1;
+		trip_state->hysteresis = 1000;
+
+		(*num_trips)++;
+	}
+}
+
 int soctherm_parse_pmu_dt(struct platform_device *pdev)
 {
 	struct soctherm_platform_data *pdata = platform_get_drvdata(pdev);

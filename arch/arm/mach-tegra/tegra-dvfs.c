@@ -1035,6 +1035,13 @@ static inline void tegra_dvfs_rail_register_vmin_cdev(struct dvfs_rail *rail)
 { return; }
 #endif
 
+struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void)
+{
+	if (tegra_core_rail)
+		return tegra_core_rail->vmin_cdev;
+	return ERR_PTR(-EPROBE_DEFER);
+}
+
 /*
  * Validate rail thermal profile, and get its size. Valid profile:
  * - voltage limits are descending with temperature increasing

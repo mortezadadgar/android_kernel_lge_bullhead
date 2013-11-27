@@ -138,6 +138,10 @@ void soctherm_init_sensor(struct platform_device *pdev,
 void soctherm_init_clk_rate(struct platform_device *pdev,
 			    unsigned long scotherm_clk_rate,
 			    unsigned long tsensor_clk_rate);
+void soctherm_add_trip_points(struct platform_device *pdev,
+			      struct thermal_trip_info *trips,
+			      int *num_trips,
+			      struct tegra_cooling_device *cdev_data);
 
 #ifdef CONFIG_ARCH_TEGRA_114_SOC
 int tegra114_soctherm_init(struct device_node *soctherm_dn);
