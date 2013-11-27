@@ -93,6 +93,13 @@
 				nvidia,tristate = <0>;
 				nvidia,enable-input = <0>;
 			};
+			spdif_in_pk6 {
+				nvidia,pins = "spdif_in_pk6";
+				nvidia,function = "spdif";
+				nvidia,pull = <1>;
+				nvidia,tristate = <0>;
+				nvidia,enable-input = <0>;
+			};
 			pk7 {
 				nvidia,pins = "pk7";
 				nvidia,function = "uartd";
@@ -608,6 +615,8 @@
 					regulator-name = "avdd-hdmi-pex";
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
+					regulator-boot-on;
+					regulator-always-on;
 				};
 
 				vddio_1v8: sd5 {
