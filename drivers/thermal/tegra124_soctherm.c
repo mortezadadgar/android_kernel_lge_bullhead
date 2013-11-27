@@ -13,6 +13,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+#include <linux/gfp.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
@@ -21,6 +23,8 @@
 #include <linux/platform_data/tegra_edp.h>
 #include <linux/tegra-dvfs.h>
 #include <linux/tegra-soc.h>
+#include <linux/clk-provider.h>
+#include <linux/clk/tegra124-dfll.h>
 
 #include "tegra_soctherm.h"
 
@@ -391,6 +395,79 @@ error:
 	return ret;
 }
 
+static int tegra124_soctherm_parse_dfll_cdev(struct device_node *soctherm_dn,
+					struct platform_device *pdev,
+					struct thermal_trip_info *trips,
+					int *num_trips)
+{
+	struct platform_device *pdev_cdev;
+	struct tegra_cooling_device dfll_cdev;
+	int err, i, num, *trip_temp;
+	struct clk *cpu_dfll_clk;
+	const char *cdev_cap_type, *cdev_floor_type;
+
+	err = tegra124_soctherm_parse_cdev(soctherm_dn, "dfll-cdev",
+					   &cdev_cap_type,
+					   &cdev_floor_type,
+					   &pdev_cdev);
+	if (err) {
+		dev_warn(&pdev->dev, "Can't find dfll cdev node\n");
+		return 0;
+	}
+
+	cpu_dfll_clk = devm_clk_get(&pdev->dev, "dfllCPU_out");
+	if (IS_ERR(cpu_dfll_clk)) {
+		dev_info(&pdev->dev, "DFLL not ready\n");
+		return  -EPROBE_DEFER;
+	}
+
+	/* add floor trips of dfll cdev */
+	if (IS_ERR_OR_NULL(cdev_floor_type))
+		goto ignore_dfll_floor_cdev;
+
+	dfll_cdev.cdev_type = (char *)cdev_floor_type;
+	num = tegra124_dfll_count_therm_states(pdev_cdev,
+					       TEGRA_DFLL_THERM_FLOOR);
+	dfll_cdev.trip_temperatures_num = num;
+
+	trip_temp = devm_kzalloc(&pdev->dev, sizeof(int) * num, GFP_KERNEL);
+	if (!trip_temp)
+		return -ENOMEM;
+
+	dfll_cdev.trip_temperatures = trip_temp;
+	for (i = 0; i < num; i++) {
+		dfll_cdev.trip_temperatures[i] =
+				tegra124_dfll_get_therm_state_temp(
+					pdev_cdev, TEGRA_DFLL_THERM_FLOOR, i);
+	}
+	soctherm_add_trip_points(pdev, trips, num_trips, &dfll_cdev);
+
+ignore_dfll_floor_cdev:
+
+	/* add cap trips of dfll cdev */
+	if (IS_ERR_OR_NULL(cdev_cap_type))
+		return 0;
+
+	dfll_cdev.cdev_type = (char *)cdev_cap_type;
+	num = tegra124_dfll_count_therm_states(pdev_cdev,
+					       TEGRA_DFLL_THERM_CAP);
+	dfll_cdev.trip_temperatures_num = num;
+
+	trip_temp = devm_kzalloc(&pdev->dev, sizeof(int) * num, GFP_KERNEL);
+	if (!trip_temp)
+		return -ENOMEM;
+
+	dfll_cdev.trip_temperatures = trip_temp;
+	for (i = 0; i < num; i++) {
+		dfll_cdev.trip_temperatures[i] =
+				tegra124_dfll_get_therm_state_temp(
+					pdev_cdev, TEGRA_DFLL_THERM_CAP, i);
+	}
+	soctherm_add_trip_points(pdev, trips, num_trips, &dfll_cdev);
+
+	return 0;
+}
+
 int tegra124_soctherm_init(struct device_node *soctherm_dn)
 {
 	struct platform_device *pdev, *pdev_cdev;
@@ -439,6 +516,12 @@ int tegra124_soctherm_init(struct device_node *soctherm_dn)
 	} else {
 		soctherm_add_trip_points(pdev, trips, num_trips, tegra_cdev);
 	}
+
+	/* add trips of dfll cdev */
+	err = tegra124_soctherm_parse_dfll_cdev(soctherm_dn, pdev,
+						trips, num_trips);
+	if (err == -EPROBE_DEFER)
+		return err;
 
 	/* add trips of cpu edp */
 	if (!t124_cpu_edp_trips_done) {
