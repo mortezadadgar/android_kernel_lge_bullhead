@@ -627,7 +627,6 @@ error:
 	hwmon->hwmon = NULL;
 	return ret;
 #else
-	hwmon->hwmon = NULL;
 	return 0;
 #endif
 }
