@@ -518,6 +518,20 @@ int tegra124_soctherm_init(struct device_node *soctherm_dn)
 		pdata->fuse_calib_data = &t124_calib_data;
 	}
 
+	trips = pdata->therm[THERM_GPU].trips;
+	num_trips = &pdata->therm[THERM_GPU].num_trips;
+
+	/* add trips of gpu_cold */
+	tegra_cdev = tegra_get_gpu_vmin_cdev();
+	if (PTR_ERR(tegra_cdev) == -EPROBE_DEFER) {
+		dev_warn(&pdev->dev, "The gpu cdev is not ready.\n");
+		return PTR_ERR(tegra_cdev);
+	} else if (IS_ERR(tegra_cdev)) {
+		dev_warn(&pdev->dev, "Can't get the gpu cdev, ignore it.\n");
+	} else {
+		soctherm_add_trip_points(pdev, trips, num_trips, tegra_cdev);
+	}
+
 	trips = pdata->therm[THERM_CPU].trips;
 	num_trips = &pdata->therm[THERM_CPU].num_trips;
 
