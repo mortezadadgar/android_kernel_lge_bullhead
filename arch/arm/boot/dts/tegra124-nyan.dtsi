@@ -1967,6 +1967,7 @@
 		poweroff-reg-data = <0x2>;
 
 		cpu-edp-cdev = <&{/cpu_edp_cdev_action}>;
+		dfll-cdev = <&{/dfll_cdev_action}>;
 	};
 
 	cpu_dfll_board_params {
