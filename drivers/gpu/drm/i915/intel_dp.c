@@ -557,7 +557,7 @@ intel_dp_aux_native_write(struct intel_dp *intel_dp,
 		return -E2BIG;
 
 	intel_dp_check_edp(intel_dp);
-	msg[0] = AUX_NATIVE_WRITE << 4;
+	msg[0] = DP_AUX_NATIVE_WRITE << 4;
 	msg[1] = address >> 8;
 	msg[2] = address & 0xff;
 	msg[3] = send_bytes - 1;
@@ -567,9 +567,10 @@ intel_dp_aux_native_write(struct intel_dp *intel_dp,
 		ret = intel_dp_aux_ch(intel_dp, msg, msg_bytes, &ack, 1);
 		if (ret < 0)
 			return ret;
-		if ((ack & AUX_NATIVE_REPLY_MASK) == AUX_NATIVE_REPLY_ACK)
+		ack >>= 4;
+		if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_ACK)
 			break;
-		else if ((ack & AUX_NATIVE_REPLY_MASK) == AUX_NATIVE_REPLY_DEFER)
+		else if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_DEFER)
 			udelay(100);
 		else
 			return -EIO;
@@ -606,7 +607,7 @@ intel_dp_aux_native_read(struct intel_dp *intel_dp,
 		return -E2BIG;
 
 	intel_dp_check_edp(intel_dp);
-	msg[0] = AUX_NATIVE_READ << 4;
+	msg[0] = DP_AUX_NATIVE_READ << 4;
 	msg[1] = address >> 8;
 	msg[2] = address & 0xff;
 	msg[3] = recv_bytes - 1;
@@ -621,12 +622,12 @@ intel_dp_aux_native_read(struct intel_dp *intel_dp,
 			return -EPROTO;
 		if (ret < 0)
 			return ret;
-		ack = reply[0];
-		if ((ack & AUX_NATIVE_REPLY_MASK) == AUX_NATIVE_REPLY_ACK) {
+		ack = reply[0] >> 4;
+		if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_ACK) {
 			memcpy(recv, reply + 1, ret - 1);
 			return ret - 1;
 		}
-		else if ((ack & AUX_NATIVE_REPLY_MASK) == AUX_NATIVE_REPLY_DEFER)
+		else if ((ack & DP_AUX_NATIVE_REPLY_MASK) == DP_AUX_NATIVE_REPLY_DEFER)
 			udelay(100);
 		else
 			return -EIO;
@@ -655,12 +656,12 @@ intel_dp_i2c_aux_ch(struct i2c_adapter *adapter, int mode,
 	intel_dp_check_edp(intel_dp);
 	/* Set up the command byte */
 	if (mode & MODE_I2C_READ)
-		msg[0] = AUX_I2C_READ << 4;
+		msg[0] = DP_AUX_I2C_READ << 4;
 	else
-		msg[0] = AUX_I2C_WRITE << 4;
+		msg[0] = DP_AUX_I2C_WRITE << 4;
 
 	if (!(mode & MODE_I2C_STOP))
-		msg[0] |= AUX_I2C_MOT << 4;
+		msg[0] |= DP_AUX_I2C_MOT << 4;
 
 	msg[1] = address >> 8;
 	msg[2] = address;
@@ -697,16 +698,16 @@ intel_dp_i2c_aux_ch(struct i2c_adapter *adapter, int mode,
 			return ret;
 		}
 
-		switch (reply[0] & AUX_NATIVE_REPLY_MASK) {
-		case AUX_NATIVE_REPLY_ACK:
+		switch ((reply[0] >> 4) & DP_AUX_NATIVE_REPLY_MASK) {
+		case DP_AUX_NATIVE_REPLY_ACK:
 			/* I2C-over-AUX Reply field is only valid
 			 * when paired with AUX ACK.
 			 */
 			break;
-		case AUX_NATIVE_REPLY_NACK:
+		case DP_AUX_NATIVE_REPLY_NACK:
 			DRM_DEBUG_KMS("aux_ch native nack\n");
 			return -EREMOTEIO;
-		case AUX_NATIVE_REPLY_DEFER:
+		case DP_AUX_NATIVE_REPLY_DEFER:
 			/*
 			 * For now, just give more slack to branch devices. We
 			 * could check the DPCD for I2C bit rate capabilities,
@@ -726,16 +727,16 @@ intel_dp_i2c_aux_ch(struct i2c_adapter *adapter, int mode,
 			return -EREMOTEIO;
 		}
 
-		switch (reply[0] & AUX_I2C_REPLY_MASK) {
-		case AUX_I2C_REPLY_ACK:
+		switch ((reply[0] >> 4) & DP_AUX_I2C_REPLY_MASK) {
+		case DP_AUX_I2C_REPLY_ACK:
 			if (mode == MODE_I2C_READ) {
 				*read_byte = reply[1];
 			}
 			return reply_bytes - 1;
-		case AUX_I2C_REPLY_NACK:
+		case DP_AUX_I2C_REPLY_NACK:
 			DRM_DEBUG_KMS("aux_i2c nack\n");
 			return -EREMOTEIO;
-		case AUX_I2C_REPLY_DEFER:
+		case DP_AUX_I2C_REPLY_DEFER:
 			DRM_DEBUG_KMS("aux_i2c defer\n");
 			udelay(100);
 			break;
