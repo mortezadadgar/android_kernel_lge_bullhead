@@ -101,6 +101,12 @@ extern struct nouveau_oclass *nvaf_fb_oclass;
 extern struct nouveau_oclass *nvc0_fb_oclass;
 extern struct nouveau_oclass *nve0_fb_oclass;
 
+#include <subdev/bios/ramcfg.h>
+
+struct nouveau_ram_data {
+	struct nvbios_ramcfg bios;
+};
+
 struct nouveau_ram {
 	struct nouveau_object base;
 	enum {
@@ -138,6 +144,9 @@ struct nouveau_ram {
 	u32 freq;
 	u32 mr[16];
 	u32 mr1_nuts;
+
+	struct nouveau_ram_data *next;
+	struct nouveau_ram_data target;
 };
 
 #endif
