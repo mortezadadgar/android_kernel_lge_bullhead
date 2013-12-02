@@ -105,6 +105,7 @@ extern struct nouveau_oclass *nve0_fb_oclass;
 
 struct nouveau_ram_data {
 	struct nvbios_ramcfg bios;
+	u32 freq;
 };
 
 struct nouveau_ram {
@@ -146,6 +147,8 @@ struct nouveau_ram {
 	u32 mr1_nuts;
 
 	struct nouveau_ram_data *next;
+	struct nouveau_ram_data former;
+	struct nouveau_ram_data xition;
 	struct nouveau_ram_data target;
 };
 
