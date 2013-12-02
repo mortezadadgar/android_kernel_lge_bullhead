@@ -1,0 +1,4 @@
+#
+# nvavp device drivers supported
+#
+source "drivers/media/video/tegra/Kconfig"

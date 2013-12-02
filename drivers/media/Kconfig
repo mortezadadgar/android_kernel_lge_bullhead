@@ -163,6 +163,9 @@ source "drivers/media/firewire/Kconfig"
 # Common driver options
 source "drivers/media/common/Kconfig"
 
+# Common video options
+source "drivers/media/video/Kconfig"
+
 comment "Media ancillary drivers (tuners, sensors, i2c, frontends)"
 
 #
