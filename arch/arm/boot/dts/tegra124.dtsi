@@ -32,7 +32,10 @@
 		clocks = <&tegra_car TEGRA124_CLK_HOST1X>,
 			 <&tegra_car TEGRA124_CLK_ACTMON>;
 		clock-names = "host1x", "actmon";
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(HC)>;
+		iommus = <&smmu
+			TEGRA_SWGROUP_MULT_CELLS(TEGRA_SWGROUP_BIT(EPP) |
+				TEGRA_SWGROUP_BIT(HC) |
+				TEGRA_SWGROUP_BIT(HDA))>;
 
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -119,6 +122,29 @@
 				 <&tegra_car TEGRA124_CLK_GK20A_EMC>;
 			clock-names = "gpu", "pwr", "emc";
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(GPUB)>;
+		};
+
+		nvavp {
+			compatible = "nvidia,tegra124-nvavp";
+			interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&tegra_car TEGRA124_CLK_VDE_CBUS>,
+				   <&tegra_car TEGRA124_CLK_AVP_SCLK>,
+				   <&tegra_car TEGRA124_CLK_BSEV>,
+				   <&tegra_car TEGRA124_CLK_AVP_EMC>,
+				   <&tegra_car TEGRA124_CLK_COP>,
+				   <&tegra_car TEGRA124_CLK_BSEA>,
+				   <&tegra_car TEGRA124_CLK_VCP>;
+			clock-names = "vde.cbus", "avp.sclk", "bsev", "avp.emc",
+					"cop", "bsea", "vcp";
+			nvidia,use-smmu;
+			nvidia,use-nvavp-audio;
+			iommus = <&smmu TEGRA_SWGROUP_MULT_CELLS(TEGRA_SWGROUP_BIT(AVPC) |
+					TEGRA_SWGROUP_BIT(A9AVP) | TEGRA_SWGROUP_BIT(VDE))>;
+		};
+
+		nvmap {
+			compatible = "nvidia,tegra124-nvmap";
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(HC)>;
 		};
 	};
 
@@ -435,7 +461,7 @@
 		compatible = "nvidia,tegra124-smmu", "nvidia,tegra114-smmu", "nvidia,tegra30-smmu";
 		reg = <0x0 0x70019000 0x1000>;
 		nvidia,#asids = <128>;
-		dma-window = <0 0x40000000>;
+		dma-window = <0x80000000 0x7ff00000>;
 		#iommu-cells = <2>;
 		#dma-address-cells = <1>;
 	};
