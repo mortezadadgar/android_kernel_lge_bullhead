@@ -33,6 +33,31 @@
 
 #define ENDPOINT_ALLOC_MAX	1 << 25 /* Max endpoint buffer size, 32 MB */
 
+/* Variable Length Array Macros **********************************************/
+#define vla_group(groupname) size_t groupname##__next = 0
+#define vla_group_size(groupname) groupname##__next
+
+#define vla_item(groupname, type, name, n) \
+	size_t groupname##_##name##__offset = ({			       \
+		size_t align_mask = __alignof__(type) - 1;		       \
+		size_t offset = (groupname##__next + align_mask) & ~align_mask;\
+		size_t size = (n) * sizeof(type);			       \
+		groupname##__next = offset + size;			       \
+		offset;							       \
+	})
+
+#define vla_item_with_sz(groupname, type, name, n) \
+	size_t groupname##_##name##__sz = (n) * sizeof(type);		       \
+	size_t groupname##_##name##__offset = ({			       \
+		size_t align_mask = __alignof__(type) - 1;		       \
+		size_t offset = (groupname##__next + align_mask) & ~align_mask;\
+		size_t size = groupname##_##name##__sz;			       \
+		groupname##__next = offset + size;			       \
+		offset;							       \
+	})
+
+#define vla_ptr(ptr, groupname, name) \
+	((void *) ((char *)ptr + groupname##_##name##__offset))
 
 /* Debugging ****************************************************************/
 
@@ -2164,30 +2189,34 @@ static int __ffs_data_got_strings(struct ffs_data *ffs,
 
 	/* Allocate everything in one chunk so there's less maintenance. */
 	{
-		struct {
-			struct usb_gadget_strings *stringtabs[lang_count + 1];
-			struct usb_gadget_strings stringtab[lang_count];
-			struct usb_string strings[lang_count*(needed_count+1)];
-		} *d;
 		unsigned i = 0;
+		vla_group(d);
+		vla_item(d, struct usb_gadget_strings *, stringtabs,
+			lang_count + 1);
+		vla_item(d, struct usb_gadget_strings, stringtab, lang_count);
+		vla_item(d, struct usb_string, strings,
+			lang_count*(needed_count+1));
 
-		d = kmalloc(sizeof *d, GFP_KERNEL);
-		if (unlikely(!d)) {
+		char *vlabuf = kmalloc(vla_group_size(d), GFP_KERNEL);
+
+		if (unlikely(!vlabuf)) {
 			kfree(_data);
 			return -ENOMEM;
 		}
 
-		stringtabs = d->stringtabs;
-		t = d->stringtab;
+		/* Initialize the VLA pointers */
+		stringtabs = vla_ptr(vlabuf, d, stringtabs);
+		t = vla_ptr(vlabuf, d, stringtab);
 		i = lang_count;
 		do {
 			*stringtabs++ = t++;
 		} while (--i);
 		*stringtabs = NULL;
 
-		stringtabs = d->stringtabs;
-		t = d->stringtab;
-		s = d->strings;
+		/* stringtabs = vlabuf = d_stringtabs for later kfree */
+		stringtabs = vla_ptr(vlabuf, d, stringtabs);
+		t = vla_ptr(vlabuf, d, stringtab);
+		s = vla_ptr(vlabuf, d, strings);
 		strings = s;
 	}
 
@@ -2472,17 +2501,17 @@ static int ffs_func_bind(struct usb_configuration *c,
 	int fs_len, hs_len, ret;
 
 	/* Make it a single chunk, less management later on */
-	struct {
-		struct ffs_ep eps[ffs->eps_count];
-		struct usb_descriptor_header
-			*fs_descs[full ? ffs->fs_descs_count + 1 : 0];
-		struct usb_descriptor_header
-			*hs_descs[high ? ffs->hs_descs_count + 1 : 0];
-		struct usb_descriptor_header
-			*ss_descs[super ? ffs->ss_descs_count + 1 : 0];
-		short inums[ffs->interfaces_count];
-		char raw_descs[ffs->raw_descs_length];
-	} *data;
+	vla_group(d);
+	vla_item_with_sz(d, struct ffs_ep, eps, ffs->eps_count);
+	vla_item_with_sz(d, struct usb_descriptor_header *, fs_descs,
+		full ? ffs->fs_descs_count + 1 : 0);
+	vla_item_with_sz(d, struct usb_descriptor_header *, hs_descs,
+		high ? ffs->hs_descs_count + 1 : 0);
+	vla_item_with_sz(d, struct usb_descriptor_header *, ss_descs,
+		super ? ffs->hs_descs_count + 1 : 0);
+	vla_item_with_sz(d, short, inums, ffs->interfaces_count);
+	vla_item_with_sz(d, char, raw_descs, ffs->raw_descs_length);
+	char *vlabuf;
 
 	ENTER();
 
@@ -2490,29 +2519,34 @@ static int ffs_func_bind(struct usb_configuration *c,
 	if (unlikely(!(full | high | super)))
 		return -ENOTSUPP;
 
-	/* Allocate */
-	data = kmalloc(sizeof *data, GFP_KERNEL);
-	if (unlikely(!data))
+	/* Allocate a single chunk, less management later on */
+	vlabuf = kmalloc(vla_group_size(d), GFP_KERNEL);
+	if (unlikely(!vlabuf))
 		return -ENOMEM;
 
 	/* Zero */
-	memset(data->eps, 0, sizeof data->eps);
+	memset(vla_ptr(vlabuf, d, eps), 0, d_eps__sz);
 	/* Copy only raw (hs,fs) descriptors (until ss_magic and ss_count) */
-	memcpy(data->raw_descs, ffs->raw_descs + 16,
-				ffs->raw_fs_hs_descs_length);
-	/* Copy SS descriptors */
+	memcpy(vla_ptr(vlabuf, d, raw_descs), ffs->raw_descs + 16,
+		ffs->raw_fs_hs_descs_length);
 	if (func->ffs->ss_descs_count)
-		memcpy(data->raw_descs + ffs->raw_fs_hs_descs_length,
-			ffs->raw_descs + ffs->raw_ss_descs_offset,
-			ffs->raw_ss_descs_length);
+		memcpy(vla_ptr(vlabuf, d, raw_descs) +
+				ffs->raw_fs_hs_descs_length,
+		       ffs->raw_descs + 16 + ffs->raw_fs_hs_descs_length + 8,
+		       ffs->raw_ss_descs_length);
+	memset(vla_ptr(vlabuf, d, inums), 0xff, d_inums__sz);
+	for (ret = ffs->eps_count; ret; --ret) {
+		struct ffs_ep *ptr;
 
-	memset(data->inums, 0xff, sizeof data->inums);
-	for (ret = ffs->eps_count; ret; --ret)
-		data->eps[ret].num = -1;
+		ptr = vla_ptr(vlabuf, d, eps);
+		ptr[ret].num = -1;
+	}
 
-	/* Save pointers */
-	func->eps             = data->eps;
-	func->interfaces_nums = data->inums;
+	/* Save pointers
+	 * d_eps == vlabuf, func->eps used to kfree vlabuf later
+	*/
+	func->eps             = vla_ptr(vlabuf, d, eps);
+	func->interfaces_nums = vla_ptr(vlabuf, d, inums);
 
 	/*
 	 * Go through all the endpoint descriptors and allocate
@@ -2520,10 +2554,10 @@ static int ffs_func_bind(struct usb_configuration *c,
 	 * numbers without worrying that it may be described later on.
 	 */
 	if (likely(full)) {
-		func->function.fs_descriptors = data->fs_descs;
+		func->function.fs_descriptors = vla_ptr(vlabuf, d, fs_descs);
 		fs_len = ffs_do_descs(ffs->fs_descs_count,
-				   data->raw_descs,
-				   sizeof(data->raw_descs),
+				   vla_ptr(vlabuf, d, raw_descs),
+				   d_raw_descs__sz,
 				   __ffs_func_bind_do_descs, func);
 		if (unlikely(fs_len < 0)) {
 			ret = fs_len;
@@ -2534,10 +2568,10 @@ static int ffs_func_bind(struct usb_configuration *c,
 	}
 
 	if (likely(high)) {
-		func->function.hs_descriptors = data->hs_descs;
+		func->function.hs_descriptors = vla_ptr(vlabuf, d, hs_descs);
 		hs_len = ffs_do_descs(ffs->hs_descs_count,
-				   data->raw_descs + fs_len,
-				   (sizeof(data->raw_descs)) - fs_len,
+				   vla_ptr(vlabuf, d, raw_descs) + fs_len,
+				   d_raw_descs__sz - fs_len,
 				   __ffs_func_bind_do_descs, func);
 		if (unlikely(hs_len < 0)) {
 			ret = hs_len;
@@ -2548,10 +2582,10 @@ static int ffs_func_bind(struct usb_configuration *c,
 	}
 
 	if (likely(super)) {
-		func->function.ss_descriptors = data->ss_descs;
+		func->function.ss_descriptors = vla_ptr(vlabuf, d, ss_descs);
 		ret = ffs_do_descs(ffs->ss_descs_count,
-				   data->raw_descs + fs_len + hs_len,
-				   (sizeof(data->raw_descs)) - fs_len - hs_len,
+				   vla_ptr(vlabuf, d, raw_descs) + fs_len + hs_len,
+				   d_raw_descs__sz - fs_len - hs_len,
 				   __ffs_func_bind_do_descs, func);
 		if (unlikely(ret < 0))
 			goto error;
@@ -2566,7 +2600,7 @@ static int ffs_func_bind(struct usb_configuration *c,
 	ret = ffs_do_descs(ffs->fs_descs_count +
 			   (high ? ffs->hs_descs_count : 0) +
 			   (super ? ffs->ss_descs_count : 0),
-			   data->raw_descs, sizeof(data->raw_descs),
+			   vla_ptr(vlabuf, d, raw_descs), d_raw_descs__sz,
 			   __ffs_func_bind_do_nums, func);
 	if (unlikely(ret < 0))
 		goto error;
