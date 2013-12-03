@@ -24,5 +24,16 @@
 			tune_high_min_millivolts = <900>;
 			min-millivolts = <800>;
 		};
+
+		characterization@2 {
+			speedo-id = <2>;
+
+			tune0-low-voltage-range = <0x005020FF>;
+			tune0-high-voltage-range = <0x005040FF>;
+			tune1 = <0x00000060>;
+			droop-rate-min = <1000000>;
+			tune_high_min_millivolts = <900>;
+			min-millivolts = <800>;
+		};
 	};
 };
