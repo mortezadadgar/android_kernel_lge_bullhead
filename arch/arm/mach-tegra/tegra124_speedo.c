@@ -79,12 +79,12 @@ static void rev_sku_to_speedo_ids(int sku, int *threshold)
 		/* Using the default */
 		break;
 
+	case 0x81:
 	case 0x83:
 		tegra_cpu_speedo_id = 2;
 		break;
 
 	case 0x07:
-	case 0x81:
 		tegra_cpu_speedo_id = 1;
 		tegra_soc_speedo_id = 1;
 		tegra_gpu_speedo_id = 1;
