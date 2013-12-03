@@ -160,6 +160,25 @@
 
 	sdhci@700b0000 {
 		reset-gpios = <&gpio TEGRA_GPIO(CC, 5) GPIO_ACTIVE_HIGH>;
+		trim-delay = <0x2>;
+		calib-3v3-offsets = <0x7676>;
+		calib-1v8-offsets = <0x7676>;
+		calib-1v8-offsets-uhs-modes = <0x08>; /* DDR50 */
+	};
+
+	sdhci@700b0400 {
+		trim-delay = <0x3>;
+		calib-3v3-offsets = <0x7676>;
+		calib-1v8-offsets = <0x7676>;
+		calib-1v8-offsets-uhs-modes = <0x08>; /* DDR50 */
+	};
+
+	sdhci@700b0600 {
+		trim-delay = <0x4>;
+		ddr-trim-delay = <0x4>;
+		calib-3v3-offsets = <0x0202>;
+		calib-1v8-offsets = <0x0202>;
+		calib-1v8-offsets-uhs-modes = <0x28>; /* DDR50 | HS200 */
 	};
 
 	sound {
