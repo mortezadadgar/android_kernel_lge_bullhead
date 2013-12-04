@@ -40,6 +40,7 @@
 #define PMC_CTRL			0x0
 #define PMC_CTRL_INTR_LOW		(1 << 17)
 #define PMC_DPD_ENABLE			0x24
+#define PMC_DPD_ENABLE_ON		0x1
 #define PMC_DPD_ENABLE_TSC_MULT_ENABLE	(1 << 1)
 #define PMC_PWRGATE_TOGGLE		0x30
 #define PMC_PWRGATE_TOGGLE_START	(1 << 8)
@@ -205,6 +206,10 @@ void tegra_tsc_resume(void)
 		u32 reg;
 		reg = tegra_pmc_readl(PMC_DPD_ENABLE);
 		reg &= ~PMC_DPD_ENABLE_TSC_MULT_ENABLE;
+		if (tegra_chip_id == TEGRA124) {
+			/* WAR to avoid PMC wake status getting cleared */
+			reg &= ~PMC_DPD_ENABLE_ON;
+		}
 		tegra_pmc_writel(reg, PMC_DPD_ENABLE);
 	}
 }
