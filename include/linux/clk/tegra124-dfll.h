@@ -25,6 +25,11 @@
 #include <linux/platform_device.h>
 #include <linux/thermal.h>
 
+enum tegra_dfll_therm_type {
+	TEGRA_DFLL_THERM_FLOOR = 0,
+	TEGRA_DFLL_THERM_CAP,
+};
+
 /* Function prototypes */
 
 #ifdef CONFIG_CLK_TEGRA_T124_DFLL
@@ -50,14 +55,20 @@ static inline int tegra124_dfll_get_fv_table(int *num_freqs,
 
 /* Thermal interface */
 extern int tegra124_dfll_update_thermal_index(struct platform_device *pdev,
+					      enum tegra_dfll_therm_type type,
 					      unsigned long new_idx);
-extern int tegra124_dfll_get_thermal_index(struct platform_device *pdev);
-extern int tegra124_dfll_count_therm_floors(struct platform_device *pdev);
-extern int tegra124_dfll_get_therm_floor_temp(struct platform_device *pdev,
+extern int tegra124_dfll_get_thermal_index(struct platform_device *pdev,
+					   enum tegra_dfll_therm_type type);
+extern int tegra124_dfll_count_therm_states(struct platform_device *pdev,
+					    enum tegra_dfll_therm_type type);
+extern int tegra124_dfll_get_therm_state_temp(struct platform_device *pdev,
+					      enum tegra_dfll_therm_type type,
 					      unsigned long index);
 extern int tegra124_dfll_attach_thermal(struct platform_device *pdev,
+					enum tegra_dfll_therm_type type,
 					struct thermal_cooling_device *cdev);
 extern int tegra124_dfll_detach_thermal(struct platform_device *pdev,
+					enum tegra_dfll_therm_type type,
 					struct thermal_cooling_device *cdev);
 
 #endif

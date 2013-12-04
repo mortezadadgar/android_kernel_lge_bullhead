@@ -259,6 +259,12 @@
 #define MAX_DFLL_VOLTAGES		33
 
 /*
+ * MAX_THERMAL_CAPS: maximum number of thermal cap (temperature,
+ * voltage) tuples that can be specified in the driver data.
+ */
+#define MAX_THERMAL_CAPS		8
+
+/*
  * MAX_THERMAL_FLOORS: maximum number of thermal floor (temperature,
  * voltage) tuples that can be specified in the driver data.
  */
@@ -275,6 +281,12 @@
  * in each CVB table entry
  */
 #define CVB_ROW_WIDTH			4
+
+/*
+ * THERM_CAPS_ROW_WIDTH: in the DT data, this represents the number
+ * of cells in each thermal cap table entry
+ */
+#define THERM_CAPS_ROW_WIDTH		2
 
 /*
  * THERM_FLOORS_ROW_WIDTH: in the DT data, this represents the number
@@ -405,12 +417,12 @@ struct tegra_dfll_cvb {
 };
 
 /**
- * struct tegra_dfll_therm_floors - thermally-sensitive voltage floors
+ * struct tegra_dfll_therm - thermally-sensitive voltage caps
  * @temp: maximum trip temperature
  * @output: PMIC voltage output at @temp or below
  * @mv: minimum voltage output, in millivolts, at @temp or below
  */
-struct tegra_dfll_therm_floors {
+struct tegra_dfll_therm {
 	u8 temp;
 	u8 output;
 	u16 mv;
@@ -472,6 +484,7 @@ struct tegra_dfll_dvfs_info {
  * @dvco_rate_min: @out_rate_min, rounded to (@ref_rate / 2)
  * @lut_min: LUT index of the minimum voltage to send to the PMIC
  * @lut_max: LUT index of the maximum voltage to send to the PMIC
+ * @therm_caps_idx: LUT index of the maximum volatage
  * @therm_floors_idx: LUT index of the minimum voltage (due to cold die effects)
  * @last_req: most recent closed-loop output frequency request
  * @tune_state: in closed-loop mode: is the DFLL in low- or high-voltage regime?
@@ -512,6 +525,8 @@ struct tegra_dfll_dvfs_info {
  * @vdd_step: linear step size between VSEL values (from regulator framework)
  * @dfll_min_microvolt: lowest voltage the DFLL should try to program (from DT)
  * @dfll_max_microvolt: highest voltage the DFLL should try to program (from DT)
+ * @therm_caps_num: number of entries in @therm_caps
+ * @therm_caps: maximum voltage caps at various temperatures
  * @therm_floors_num: number of entries in @therm_floors
  * @therm_floors: minimum voltage floors at various cold die temperatures
  * @calibration_timer: timer to periodically recalibrate dvco_min_rate
@@ -541,6 +556,8 @@ struct tegra_dfll {
 	u8				minimax_output;
 	u8				lut_min;
 	u8				lut_max;
+	u8				therm_caps_idx;
+	u8				therm_caps_num;
 	u8				therm_floors_idx;
 	u8				therm_floors_num;
 	u8				flags;
@@ -551,7 +568,8 @@ struct tegra_dfll {
 	struct tegra_dfll_dvfs_info *dvfs_info;
 	unsigned long			dvco_rate_min;
 
-	struct tegra_dfll_therm_floors	therm_floors[MAX_THERMAL_FLOORS];
+	struct tegra_dfll_therm		therm_caps[MAX_THERMAL_CAPS];
+	struct tegra_dfll_therm		therm_floors[MAX_THERMAL_FLOORS];
 	struct dfll_rate_req		last_req;
 	enum tegra_dfll_tune_state	tune_state;
 	enum tegra_dfll_ctrl_mode	mode;
@@ -608,7 +626,8 @@ struct tegra_dfll {
 	unsigned long			calibration_range_max;
 
 	struct tegra_dfll_clk_hw	dfll_clk_hw;
-	struct thermal_cooling_device	*cdev;
+	struct thermal_cooling_device	*cdev_floor;
+	struct thermal_cooling_device	*cdev_cap;
 	spinlock_t			lock;	/* see kerneldoc above */
 };
 
@@ -779,6 +798,26 @@ static void set_mode(struct platform_device *pdev,
 	td->mode = mode;
 	dfll_writel(td, mode - 1, DFLL_CTRL);
 	dfll_wmb(td);
+}
+
+/**
+ * get_output_cap - return LUT index of the maximum non-DFLL safe voltage
+ * @pdev: DFLL instance
+ *
+ * Return the LUT index of the maximum non-DFLL safe voltage, given
+ * the current temperature of the SoC.
+ */
+static u8 get_output_cap(struct platform_device *pdev,
+			 struct dfll_rate_req *req)
+{
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	u32 thermal_cap = td->dvfs_info->num_voltages - 1;
+
+	if (td->therm_caps_idx && (td->therm_caps_idx <= td->therm_caps_num))
+		thermal_cap = td->therm_caps[td->therm_caps_idx - 1].output;
+	if (req && (req->cap < thermal_cap))
+		return req->cap;
+	return thermal_cap;
 }
 
 /**
@@ -992,10 +1031,11 @@ static void set_cl_config(struct platform_device *pdev,
 {
 	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
 	u32 out_max, out_min;
+	u8 out_cap = get_output_cap(pdev, req);
 
 	switch (td->tune_state) {
 	case TEGRA_DFLL_TUNE_LOW:
-		if (req->cap > td->tune_high_out_start) {
+		if (out_cap > td->tune_high_out_start) {
 			set_tune_state(pdev, TEGRA_DFLL_TUNE_WAIT_DFLL);
 			mod_timer(&td->tune_timer, jiffies + td->tune_delay);
 		}
@@ -1004,7 +1044,7 @@ static void set_cl_config(struct platform_device *pdev,
 	case TEGRA_DFLL_TUNE_HIGH:
 	case TEGRA_DFLL_TUNE_WAIT_DFLL:
 	case TEGRA_DFLL_TUNE_WAIT_PMIC:
-		if (req->cap <= td->tune_high_out_start) {
+		if (out_cap <= td->tune_high_out_start) {
 			set_tune_state(pdev, TEGRA_DFLL_TUNE_LOW);
 			tune_low(pdev);
 		}
@@ -1014,8 +1054,8 @@ static void set_cl_config(struct platform_device *pdev,
 	}
 
 	out_min = get_output_min(pdev);
-	if (req->cap > out_min + 1)
-		req->output = req->cap - 1;
+	if (out_cap > out_min + 1)
+		req->output = out_cap - 1;
 	else
 		req->output = out_min + 1;
 	if (req->output == td->safe_output)
@@ -1205,6 +1245,32 @@ static u8 find_mv_out_cap(struct platform_device *pdev, int mv)
 			return cap;
 
 	return cap - 1;	/* maximum possible output */
+}
+
+/**
+ * find_mv_out_floor - find the largest out_map index with voltage < @mv
+ * @pdev: DFLL instance
+ * @mv: millivolts
+ *
+ * Find the largest out_map index with voltage lesser to @mv,
+ * and return it.  If all of the voltages in out_map are greater than
+ * @mv, then return the out_map index * corresponding to the minimum
+ * possible voltage, even though it's greater than @mv.
+ */
+static u8 find_mv_out_floor(struct platform_device *pdev, int mv)
+{
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	u8 floor;
+
+	for (floor = 0; floor < td->dvfs_info->num_voltages; floor++) {
+		if (td->out_map[floor]->reg_uv > mv * 1000) {
+			if (!floor)
+				/* minimum possible output */
+				return 0;
+			break;
+		}
+	}
+	return floor - 1;
 }
 
 /**
@@ -1548,6 +1614,53 @@ static void dfll_init_tuning_thresholds(struct platform_device *pdev)
 }
 
 /**
+ * dfll_init_hot_output_cap - set a thermally-sensitive maximum voltage cap
+ * @pdev: DFLL instance
+ *
+ * During DFLL driver initialization, map the temperature-dependent
+ * voltage caps from millivolts to output LUT indexes, and make sure
+ * there is room for regulation below the minimum thermal cap.  Must
+ * be called after the therm-caps property has been parsed from DT.
+ * Must be called after td->safe_output is first set by taking
+ * td->therm_caps[0] into consideration.  The voltage cap must
+ * monotonically decrease as temperatures monotonically increase.
+ * Returns 0 upon success, -EINVAL if the voltage cap data is in an
+ * invalid format, or -ENOSPC if there's no space to adjust the
+ * voltage above the minimum.
+ */
+static int __must_check dfll_init_hot_output_cap(struct platform_device *pdev)
+{
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	int i;
+	u8 output;
+
+	if (td->therm_caps_num == 0)
+		return 0;
+
+	for (i = 0; i < td->therm_caps_num; i++) {
+		if (i > 0 &&
+		    (td->therm_caps[i].mv >= td->therm_caps[i-1].mv ||
+		     td->therm_caps[i].temp <= td->therm_caps[i-1].temp)) {
+			dev_err(&pdev->dev,
+				"format error in thermal cap data\n");
+			return -EINVAL;
+		}
+
+		td->therm_caps[i].output =
+			find_mv_out_floor(pdev, td->therm_caps[i].mv);
+	}
+
+	output = td->therm_caps[td->therm_caps_num - 1].output;
+	if (output < td->minimax_output) {
+		dev_err(&pdev->dev,
+			"no space available for regulation below max\n");
+		return -ENOSPC;
+	}
+
+	return 0;
+}
+
+/**
  * dfll_init_cold_output_floor - set a thermally-sensitive minimum voltage floor
  * @pdev: DFLL instance
  *
@@ -1624,6 +1737,13 @@ static int __must_check dfll_init_output_thresholds(
 	td->safe_output = td->therm_floors[0].output ? : 1;
 	if (td->minimax_output <= td->safe_output)
 		td->minimax_output = td->safe_output + 1;
+
+	/* init caps after minimax output is determined */
+	r = dfll_init_hot_output_cap(pdev);
+	if (r) {
+		dev_err(&pdev->dev, "could not set hot output cap: %d\n", r);
+		return r;
+	}
 
 	return 0;
 }
@@ -1721,10 +1841,11 @@ static void dfll_init_i2c_if(struct platform_device *pdev)
 static void dfll_init_out_if(struct platform_device *pdev)
 {
 	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
-	u32 val;
+	u32 val, out_min, out_max;
 
 	/* Necessary for the call to get_output_min() */
 	td->tune_state = TEGRA_DFLL_TUNE_LOW;
+	td->therm_caps_idx = td->therm_caps_num;
 	td->therm_floors_idx = 0;
 	set_dvco_rate_min(pdev);
 
@@ -1734,14 +1855,14 @@ static void dfll_init_out_if(struct platform_device *pdev)
 	 * limits is used, because h/w does not support dynamic change
 	 * of index limits, but dynamic reload of LUT is fine).
 	 */
-	val = 0;
+	out_min = 0;
+	out_max = td->dvfs_info->num_voltages - 1;
 	td->lut_min = get_output_min(pdev);
-	td->lut_max = td->dvfs_info->num_voltages - 1;
+	td->lut_max = get_output_cap(pdev, NULL);
 
 	val = (td->safe_output << DFLL_OUTPUT_CFG_SAFE_SHIFT) |
-		((td->dvfs_info->num_voltages - 1) <<
-			DFLL_OUTPUT_CFG_MAX_SHIFT) |
-		(val << DFLL_OUTPUT_CFG_MIN_SHIFT);
+		(out_max << DFLL_OUTPUT_CFG_MAX_SHIFT) |
+		(out_min << DFLL_OUTPUT_CFG_MIN_SHIFT);
 	dfll_writel(td, val, DFLL_OUTPUT_CFG);
 	dfll_wmb(td);
 
@@ -2541,6 +2662,16 @@ static int target_rate_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(target_rate_fops, target_rate_get, target_rate_set,
 			"%llu\n");
 
+static int vmax_get(void *data, u64 *val)
+{
+	struct platform_device *pdev = data;
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+
+	*val = td->out_map[td->lut_max]->reg_uv / 1000;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(vmax_fops, vmax_get, NULL, "%llu\n");
+
 static int vmin_get(void *data, u64 *val)
 {
 	struct platform_device *pdev = data;
@@ -2733,6 +2864,10 @@ static int tegra_dfll_debug_init(struct platform_device *pdev)
 				 td->dent, pdev, &target_rate_fops))
 		goto err_out;
 
+	if (!debugfs_create_file("vmax_mv", S_IRUGO,
+				 td->dent, pdev, &vmax_fops))
+		goto err_out;
+
 	if (!debugfs_create_file("vmin_mv", S_IRUGO,
 				 td->dent, pdev, &vmin_fops))
 		goto err_out;
@@ -2769,6 +2904,7 @@ err_out:
 /**
  * tegra124_dfll_update_thermal_index - tell the DFLL how hot it is
  * @pdev: DFLL instance
+ * @type: type of thermal floor or cap
  * @new_idx: current DFLL temperature index (into therm_floors)
  *
  * Update the DFLL driver's sense of what temperature the DFLL is
@@ -2779,22 +2915,36 @@ err_out:
  * 0 upon success or -ERANGE if @new_idx is out of range.
  */
 int tegra124_dfll_update_thermal_index(struct platform_device *pdev,
+				       enum tegra_dfll_therm_type type,
 				       unsigned long new_idx)
 {
 	unsigned long flags;
 	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
 
-	if (new_idx > td->therm_floors_num)
-		return -ERANGE;
+	if (type == TEGRA_DFLL_THERM_FLOOR) {
+		if (new_idx > td->therm_floors_num)
+			return -ERANGE;
 
-	spin_lock_irqsave(&td->lock, flags);
+		spin_lock_irqsave(&td->lock, flags);
 
-	td->therm_floors_idx = new_idx;
-	set_dvco_rate_min(pdev);
-	if (td->mode == TEGRA_DFLL_CLOSED_LOOP)
-		reprogram_last_request(pdev);
+		td->therm_floors_idx = new_idx;
+		set_dvco_rate_min(pdev);
+		if (td->mode == TEGRA_DFLL_CLOSED_LOOP)
+			reprogram_last_request(pdev);
 
-	spin_unlock_irqrestore(&td->lock, flags);
+		spin_unlock_irqrestore(&td->lock, flags);
+	} else if (type == TEGRA_DFLL_THERM_CAP) {
+		if (new_idx > td->therm_caps_num)
+			return -ERANGE;
+
+		spin_lock_irqsave(&td->lock, flags);
+
+		td->therm_caps_idx = new_idx;
+		if (td->mode == TEGRA_DFLL_CLOSED_LOOP)
+			reprogram_last_request(pdev);
+
+		spin_unlock_irqrestore(&td->lock, flags);
+	}
 
 	return 0;
 }
@@ -2803,62 +2953,88 @@ EXPORT_SYMBOL(tegra124_dfll_update_thermal_index);
 /**
  * tegra124_dfll_get_thermal_index - return the DFLL's current thermal state
  * @pdev: DFLL instance
+ * @type: type of thermal floor or cap
  *
  * Return the DFLL driver's copy of the DFLL's current temperature
  * index, set by tegra124_dfll_update_thermal_index().  Intended to be
  * called by the function supplied to the struct
  * thermal_cooling_device_ops.get_cur_state function pointer.
  */
-int tegra124_dfll_get_thermal_index(struct platform_device *pdev)
+int tegra124_dfll_get_thermal_index(struct platform_device *pdev,
+				    enum tegra_dfll_therm_type type)
 {
 	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
-	return td->therm_floors_idx;
+
+	if (type == TEGRA_DFLL_THERM_FLOOR)
+		return td->therm_floors_idx;
+	else if (type == TEGRA_DFLL_THERM_CAP)
+		return td->therm_caps_idx;
+	else
+		return -EINVAL;
 }
 EXPORT_SYMBOL(tegra124_dfll_get_thermal_index);
 
 /**
- * tegra124_dfll_count_therm_floors - return the number of thermal floors
+ * tegra124_dfll_count_therm_states - return the number of thermal states
  * @pdev: DFLL instance
+ * @type: type of thermal floor or cap
  *
- * Return the number of thermal floors passed into the DFLL driver
+ * Return the number of thermal states passed into the DFLL driver
  * from the DT data.  Intended to be called by the function supplied
  * to the struct thermal_cooling_device_ops.get_max_state function
  * pointer, and by the integration code that binds a thermal zone to
  * the DFLL thermal reaction driver.
  */
-int tegra124_dfll_count_therm_floors(struct platform_device *pdev)
+int tegra124_dfll_count_therm_states(struct platform_device *pdev,
+				     enum tegra_dfll_therm_type type)
 {
 	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
-	return td->therm_floors_num;
+	if (type == TEGRA_DFLL_THERM_FLOOR)
+		return td->therm_floors_num;
+	else if (type == TEGRA_DFLL_THERM_CAP)
+		return td->therm_caps_num;
+	else
+		return -EINVAL;
 }
-EXPORT_SYMBOL(tegra124_dfll_count_therm_floors);
+EXPORT_SYMBOL(tegra124_dfll_count_therm_states);
 
 /**
- * tegra124_dfll_get_therm_floor_temp - return the floor temp at @index
+ * tegra124_dfll_get_therm_state_temp - return the state temp at @index
  * @pdev: DFLL instance
- * @index: index into the therm_floors array (zero-based)
+ * @type: type of thermal floor or cap
+ * @index: index into the therm_floors or therm_caps array (zero-based)
  *
- * Return the temperature corresponding to @index from the
- * therm_floors array.  Intended to be called by integration code
+ * Return the temperature corresponding to @index from the therm_floors or
+ * therm_caps array.  Intended to be called by integration code
  * binding a thermal zone to the DFLL thermal reaction driver.
  * Returns -ERANGE if @index would result in an access off the end of
  * the array, or returns the temperature corresponding to @index in
  * degrees Celsius.
  */
-int tegra124_dfll_get_therm_floor_temp(struct platform_device *pdev,
+int tegra124_dfll_get_therm_state_temp(struct platform_device *pdev,
+				       enum tegra_dfll_therm_type type,
 				       unsigned long index)
 {
 	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
-	if (index >= td->therm_floors_num)
-		return -ERANGE;
 
-	return td->therm_floors[index].temp;
+	if (type == TEGRA_DFLL_THERM_FLOOR) {
+		if (index >= td->therm_floors_num)
+			return -ERANGE;
+		return td->therm_floors[index].temp;
+	} else if (type == TEGRA_DFLL_THERM_CAP) {
+		if (index >= td->therm_caps_num)
+			return -ERANGE;
+		return td->therm_caps[index].temp;
+	} else {
+		return -EINVAL;
+	}
 }
-EXPORT_SYMBOL(tegra124_dfll_get_therm_floor_temp);
+EXPORT_SYMBOL(tegra124_dfll_get_therm_state_temp);
 
 /**
  * tegra124_dfll_attach_thermal - attach the "cooling device" @cdev to @pdev
  * @pdev: DFLL instance
+ * @type: type of thermal floor or cap
  * @cdev: DFLL "cooling device" instance
  *
  * Attach a thermal reaction "cooling device" to the DFLL instance
@@ -2868,6 +3044,7 @@ EXPORT_SYMBOL(tegra124_dfll_get_therm_floor_temp);
  * driver is already associated with @pdev, or 0 upon success.
  */
 int tegra124_dfll_attach_thermal(struct platform_device *pdev,
+				 enum tegra_dfll_therm_type type,
 				 struct thermal_cooling_device *cdev)
 {
 	unsigned long flags;
@@ -2885,15 +3062,29 @@ int tegra124_dfll_attach_thermal(struct platform_device *pdev,
 		goto tdat_out;
 	}
 
-	if (td->cdev) {
-		dev_err(&pdev->dev,
-			"DFLL already bound to a thermal driver\n");
-		ret = -EBUSY;
-		goto tdat_out;
-	}
+	if (type == TEGRA_DFLL_THERM_FLOOR) {
+		if (td->cdev_floor) {
+			dev_err(&pdev->dev,
+				"DFLL floor already bound to thermal driver\n");
+			ret = -EBUSY;
+			goto tdat_out;
+		}
 
-	td->cdev = cdev;
-	ret = 0;
+		td->cdev_floor = cdev;
+		ret = 0;
+	} else if (type == TEGRA_DFLL_THERM_CAP) {
+		if (td->cdev_cap) {
+			dev_err(&pdev->dev,
+				"DFLL cap already bound to thermal driver\n");
+			ret = -EBUSY;
+			goto tdat_out;
+		}
+
+		td->cdev_cap = cdev;
+		ret = 0;
+	} else {
+		ret = -EINVAL;
+	}
 
 tdat_out:
 	spin_unlock_irqrestore(&td->lock, flags);
@@ -2905,6 +3096,7 @@ EXPORT_SYMBOL(tegra124_dfll_attach_thermal);
 /**
  * tegra124_dfll_detach_thermal - detach the "cooling device" @cdev from @pdev
  * @pdev: DFLL instance
+ * @type: type of thermal floor or cap
  * @cdev: DFLL "cooling device" instance
  *
  * Detach a thermal reaction "cooling device" from the DFLL instance
@@ -2912,6 +3104,7 @@ EXPORT_SYMBOL(tegra124_dfll_attach_thermal);
  * the DFLL instance, or 0 upon success.
  */
 int tegra124_dfll_detach_thermal(struct platform_device *pdev,
+				 enum tegra_dfll_therm_type type,
 				 struct thermal_cooling_device *cdev)
 {
 	unsigned long flags;
@@ -2920,15 +3113,29 @@ int tegra124_dfll_detach_thermal(struct platform_device *pdev,
 
 	spin_lock_irqsave(&td->lock, flags);
 
-	if (td->cdev != cdev) {
-		dev_err(&pdev->dev, "cooling device mismatch\n");
-		ret = -EINVAL;
-		goto tddt_out;
-	}
+	if (type == TEGRA_DFLL_THERM_FLOOR) {
+		if (td->cdev_floor != cdev) {
+			dev_err(&pdev->dev, "floor cooling device mismatch\n");
+			ret = -EINVAL;
+			goto tddt_out;
+		}
 
-	td->cdev = NULL;
-	td->therm_floors_idx = 0;
-	ret = 0;
+		td->cdev_floor = NULL;
+		td->therm_floors_idx = 0;
+		ret = 0;
+	} else if (type == TEGRA_DFLL_THERM_CAP) {
+		if (td->cdev_cap != cdev) {
+			dev_err(&pdev->dev, "cap cooling device mismatch\n");
+			ret = -EINVAL;
+			goto tddt_out;
+		}
+
+		td->cdev_cap = NULL;
+		td->therm_caps_idx = 0;
+		ret = 0;
+	} else {
+		ret = -EINVAL;
+	}
 
 tddt_out:
 	spin_unlock_irqrestore(&td->lock, flags);
@@ -3467,6 +3674,54 @@ static int parse_of_cvb_table_meta(struct platform_device *pdev,
 }
 
 /**
+ * parse_of_therm_caps - parse the thermal voltage caps
+ * @pdev: DFLL instance
+ * @dn: struct device_node * of the "characterization" DT node
+ *
+ * Read the array of u32s from the 'therm-caps' property, under the
+ * DT device node @dn.  The first of the two values represents the
+ * trip point temperature in degrees Celsius.  The second value
+ * represents the maximum voltage cap for that temperature, and, if
+ * there are no lower temperatures specified, any temperatures below
+ * it.  Returns 0 if the 'therm-caps' property doesn't exist (it's
+ * optional) or if the data was read successfully, or -EINVAL if
+ * something is wrong with the DT data.
+ */
+static int parse_of_therm_caps(struct platform_device *pdev,
+				 struct device_node *dn)
+{
+	struct tegra_dfll *td = dev_get_drvdata(&pdev->dev);
+	struct property *prop;
+	const __be32 *p;
+	u32 u;
+	int i, j;
+
+	i = 0;
+	of_property_for_each_u32(dn, "therm-caps", prop, p, u) {
+		j = i / THERM_CAPS_ROW_WIDTH;
+		if (j >= MAX_THERMAL_CAPS)
+			break;
+
+		if (!(i % THERM_CAPS_ROW_WIDTH)) {
+			/* XXX Test u32 -> u8 overflow */
+			td->therm_caps[j].temp = u;
+		} else {
+			td->therm_caps[j].mv = u;
+		}
+		i++;
+	}
+
+	if (i % THERM_CAPS_ROW_WIDTH) {
+		dev_err(&pdev->dev, "therm-caps data format error\n");
+		return -EINVAL;
+	}
+
+	td->therm_caps_num = i / THERM_CAPS_ROW_WIDTH;
+
+	return 0;
+}
+
+/**
  * parse_of_therm_floors - parse the thermal voltage floors
  * @pdev: DFLL instance
  * @dn: struct device_node * of the "characterization" DT node
@@ -3558,6 +3813,12 @@ static int parse_of_cvb_table(struct platform_device *pdev,
 		if (!of_property_read_u32(dc_dn, "process-id", &process_id))
 			if (process_id != td->process_id)
 				continue;
+
+		if (parse_of_therm_caps(pdev, dc_dn)) {
+			dev_err(&pdev->dev, "missing %s in DT data\n",
+				"therm-caps");
+			return -EINVAL;
+		}
 
 		if (parse_of_therm_floors(pdev, dc_dn)) {
 			dev_err(&pdev->dev, "missing %s in DT data\n",
@@ -3762,7 +4023,7 @@ static int tegra_dfll_remove(struct platform_device *pdev)
 		return -EBUSY;
 	}
 
-	if (td->cdev) {
+	if (td->cdev_floor || td->cdev_cap) {
 		dev_err(&pdev->dev,
 			"must unload thermal driver before removing DFLL\n");
 		return -EBUSY;
@@ -3793,6 +4054,7 @@ int tegra124_dfll_suspend(struct platform_device *pdev)
 
 	spin_lock_irqsave(&td->lock, flags);
 
+	td->therm_caps_idx = td->therm_caps_num;
 	td->therm_floors_idx = 0;
 	set_dvco_rate_min(pdev);
 	if (td->mode == TEGRA_DFLL_CLOSED_LOOP) {

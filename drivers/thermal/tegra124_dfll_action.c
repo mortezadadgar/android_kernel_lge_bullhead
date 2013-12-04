@@ -53,7 +53,8 @@ tegra124_dfll_cdev_floor_get_max_state(struct thermal_cooling_device *cdev,
 				       unsigned long *max_state)
 {
 	struct platform_device *pdev = (struct platform_device *)cdev->devdata;
-	*max_state = tegra124_dfll_count_therm_floors(pdev);
+	*max_state = tegra124_dfll_count_therm_states(pdev,
+						      TEGRA_DFLL_THERM_FLOOR);
 	return 0;
 }
 
@@ -62,7 +63,8 @@ tegra124_dfll_cdev_floor_get_cur_state(struct thermal_cooling_device *cdev,
 				       unsigned long *cur_state)
 {
 	struct platform_device *pdev = (struct platform_device *)cdev->devdata;
-	*cur_state = tegra124_dfll_get_thermal_index(pdev);
+	*cur_state = tegra124_dfll_get_thermal_index(pdev,
+						     TEGRA_DFLL_THERM_FLOOR);
 	return 0;
 }
 
@@ -72,7 +74,9 @@ tegra124_dfll_cdev_floor_set_state(struct thermal_cooling_device *cdev,
 {
 	struct platform_device *pdev = (struct platform_device *)cdev->devdata;
 
-	return tegra124_dfll_update_thermal_index(pdev, cur_state);
+	return tegra124_dfll_update_thermal_index(pdev,
+						  TEGRA_DFLL_THERM_FLOOR,
+						  cur_state);
 }
 
 static struct thermal_cooling_device_ops tegra124_dfll_floor_cooling_ops = {
@@ -109,7 +113,9 @@ static int tegra124_dfll_register_therm_floor(struct platform_device *pdev,
 
 	tegra124_dfll_cdev_data.cdev_floor = tcd;
 	tegra124_dfll_cdev_data.dfll_pdev = dfll_pdev;
-	ret = tegra124_dfll_attach_thermal(dfll_pdev, tcd);
+	ret = tegra124_dfll_attach_thermal(dfll_pdev,
+					   TEGRA_DFLL_THERM_FLOOR,
+					   tcd);
 	if (ret) {
 		dev_err(dev,
 			"Tegra124 DFLL thermal reaction: failed to attach\n");
@@ -171,6 +177,7 @@ error:
 static int tegra124_dfll_cdev_remove(struct platform_device *pdev)
 {
 	tegra124_dfll_detach_thermal(tegra124_dfll_cdev_data.dfll_pdev,
+				     TEGRA_DFLL_THERM_FLOOR,
 				     tegra124_dfll_cdev_data.cdev_floor);
 	thermal_cooling_device_unregister(tegra124_dfll_cdev_data.cdev_floor);
 

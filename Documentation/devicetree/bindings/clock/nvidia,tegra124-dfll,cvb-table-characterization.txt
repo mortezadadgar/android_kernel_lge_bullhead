@@ -10,6 +10,12 @@ Required properties:
                  first of the two cells is the trip point temperature
                  in degrees Celsius.  The second cell is the minimum
                  voltage in millivolts.
+- therm-caps : list of two-cell arrays representing the maximum
+               voltage limitted on the DFLL voltage rail when the
+               temperature is at or above the trip point. The first
+               of the two cells is the trip point temperature in
+               degrees Celsius. The sencond cell is the maximum voltage
+               in millivolts.
 - cvb-max-millivolts : limit CVB starting voltages to this voltage.
 - cvb-speedo-scale : silicon characterization multiplier, from e-fuses
 - cvb-voltage-scale : CVB voltage scale factor (to microvolts)
@@ -36,6 +42,7 @@ cpu_dfll_cvb_table {
                 process-id = <0>;
 
                 therm-floors = < 20 1000>;
+                therm-caps = < 62 1230 72 1210 82 1180>;
                 cvb-max-millivolts = <1350>;
                 cvb-speedo-scale = <100>;
                 cvb-voltage-scale = <1000>;
