@@ -346,7 +346,7 @@
 						"usb_vbus_en2_pff1";
 				nvidia,function = "usb";
 				nvidia,pull = <2>;
-				nvidia,tristate = <0>;
+				nvidia,tristate = <1>;
 				nvidia,enable-input = <1>;
 				nvidia,lock = <0>;
 				nvidia,open-drain = <0>;
@@ -1903,9 +1903,6 @@
 			regulator-name = "usb1_vbus";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
-			enable-active-high;
-			gpio = <&gpio 108 0>; /* GPIO PN4 */
-			gpio-open-drain;
 			regulator-boot-on;
 		};
 
@@ -1915,9 +1912,6 @@
 			regulator-name = "usb3_vbus";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
-			enable-active-high;
-			gpio = <&gpio 109 0>; /* GPIO PN5 */
-			gpio-open-drain;
 			regulator-boot-on;
 		};
 
