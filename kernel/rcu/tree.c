@@ -948,7 +948,7 @@ static int rcu_implicit_dynticks_qs(struct rcu_data *rdp)
 
 static void record_gp_stall_check_time(struct rcu_state *rsp)
 {
-	unsigned long j = ACCESS_ONCE(jiffies);
+	unsigned long j = jiffies;
 	unsigned long j1;
 
 	rsp->gp_start = j;
@@ -1124,7 +1124,7 @@ static void check_cpu_stall(struct rcu_state *rsp, struct rcu_data *rdp)
 
 	if (rcu_cpu_stall_suppress)
 		return;
-	j = ACCESS_ONCE(jiffies);
+	j = jiffies;
 	gpnum = ACCESS_ONCE(rsp->gpnum);
 	js = ACCESS_ONCE(rsp->jiffies_stall);
 	rnp = rdp->mynode;
