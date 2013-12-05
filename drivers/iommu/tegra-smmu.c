@@ -184,8 +184,6 @@ enum {
 #define __smmu_client_enable_swgroups(c, m) __smmu_client_set_swgroups(c, m, 1)
 #define __smmu_client_disable_swgroups(c) __smmu_client_set_swgroups(c, 0, 0)
 
-#define SWGROUPS_ASID_REG(x) ((x) * sizeof(u32) + SMMU_ASID_BASE)
-
 /*
  * Per client for address space
  */
@@ -314,6 +312,23 @@ static inline void smmu_write(struct smmu_device *smmu, u32 val, size_t offs)
  */
 #define FLUSH_SMMU_REGS(smmu)	smmu_read(smmu, SMMU_CONFIG)
 
+static size_t smmu_get_asid_offset(int id)
+{
+	switch (id) {
+	case TEGRA_SWGROUP_DC14:
+		return 0x490;
+	case TEGRA_SWGROUP_DC12:
+		return 0xa88;
+	case TEGRA_SWGROUP_AFI...TEGRA_SWGROUP_ISP:
+	case TEGRA_SWGROUP_MPE...TEGRA_SWGROUP_PPCS1:
+		return (id - TEGRA_SWGROUP_AFI) * sizeof(u32) + SMMU_ASID_BASE;
+	case TEGRA_SWGROUP_SDMMC1A...63:
+		return (id - TEGRA_SWGROUP_SDMMC1A) * sizeof(u32) + 0xa94;
+	};
+
+	BUG();
+}
+
 static struct smmu_client *find_smmu_client(struct smmu_device *smmu,
 					    struct device_node *dev_node)
 {
@@ -416,7 +431,7 @@ static int __smmu_client_set_swgroups(struct smmu_client *c,
 		map = c->swgroups;
 
 	for_each_set_bit(i, map, TEGRA_SWGROUP_MAX) {
-		offs = SWGROUPS_ASID_REG(i);
+		offs = smmu_get_asid_offset(i);
 		val = smmu_read(smmu, offs);
 		if (on) {
 			if (val) {
