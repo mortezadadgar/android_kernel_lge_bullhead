@@ -92,10 +92,13 @@ enum {
 #define SMMU_TLB_FLUSH_VA_MATCH_ALL		0
 #define SMMU_TLB_FLUSH_VA_MATCH_SECTION		2
 #define SMMU_TLB_FLUSH_VA_MATCH_GROUP		3
-#define SMMU_TLB_FLUSH_ASID_SHIFT		29
+#define SMMU_TLB_FLUSH_ASID_SHIFT_BASE		31
 #define SMMU_TLB_FLUSH_ASID_MATCH_DISABLE	0
 #define SMMU_TLB_FLUSH_ASID_MATCH_ENABLE	1
 #define SMMU_TLB_FLUSH_ASID_MATCH_SHIFT		31
+
+#define SMMU_TLB_FLUSH_ASID_SHIFT(as)					\
+	(SMMU_TLB_FLUSH_ASID_SHIFT_BASE - __ffs((as)->smmu->num_as))
 
 #define SMMU_PTC_FLUSH				0x34
 #define SMMU_PTC_FLUSH_TYPE_ALL			0
@@ -563,7 +566,7 @@ static void flush_ptc_and_tlb(struct smmu_device *smmu,
 
 	val = tlb_flush_va |
 		SMMU_TLB_FLUSH_ASID_MATCH__ENABLE |
-		(as->asid << SMMU_TLB_FLUSH_ASID_SHIFT);
+		(as->asid << SMMU_TLB_FLUSH_ASID_SHIFT(as));
 	smmu_write(smmu, val, SMMU_TLB_FLUSH);
 	FLUSH_SMMU_REGS(smmu);
 }
@@ -730,7 +733,7 @@ static int alloc_pdir(struct smmu_as *as)
 
 	val = SMMU_TLB_FLUSH_VA_MATCH_ALL |
 		SMMU_TLB_FLUSH_ASID_MATCH__ENABLE |
-		(as->asid << SMMU_TLB_FLUSH_ASID_SHIFT);
+		(as->asid << SMMU_TLB_FLUSH_ASID_SHIFT(as));
 	smmu_write(smmu, val, SMMU_TLB_FLUSH);
 	FLUSH_SMMU_REGS(as->smmu);
 
