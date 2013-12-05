@@ -1988,6 +1988,7 @@
 		compatible = "nvidia,tegra124-dfll-cdev-action";
 		act-dev = <&{/dfll@70110000}>;
 		cdev-floor-type = "DFLL-floor";
+		cdev-cap-type = "DFLL-cap";
 	};
 
 	sound {
