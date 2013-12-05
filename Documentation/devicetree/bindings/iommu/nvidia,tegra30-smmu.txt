@@ -1,8 +1,8 @@
 NVIDIA Tegra 30 IOMMU H/W, SMMU (System Memory Management Unit)
 
 Required properties in the IOMMU node:
-- compatible : "nvidia,tegra30-smmu"
-- reg : Should contain 3 register banks(address and length) for each
+- compatible : "nvidia,tegra124-smmu", "nvidia,tegra30-smmu"
+- reg : Can contain multiple register banks(address and length) for each
   of the SMMU register blocks.
 - interrupts : Should contain MC General interrupt.
 - nvidia,#asids : # of ASIDs
