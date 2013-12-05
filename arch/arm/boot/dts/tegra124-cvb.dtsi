@@ -7,6 +7,7 @@
 			speedo-id = <0>;
 
 			therm-floors = < 20 900>;
+			therm-caps = < 62 1230 72 1210 82 1180>;
 			cvb-max-millivolts = <1260>;
 			cvb-speedo-scale = <100>;
 			cvb-voltage-scale = <1000>;
