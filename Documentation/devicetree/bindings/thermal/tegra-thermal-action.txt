@@ -5,6 +5,7 @@
 - compatible : "nvidia,tegra124-dfll-cdev-action".
 - act-dev: node of the device which will implement the real cooling action.
 - cdev-floor-type: name of the cooling device for thermal floor.
+- cdev-cap-type: name of the cooling device for thermal cap.
 
 Example node:
 
@@ -12,4 +13,5 @@ dfll_cdev_action {
 	compatible = "nvidia,tegra124-dfll-cdev-action";
 	act-dev = <&{/dfll@70110000}>;
 	cdev-floor-type = "DFLL-foor";
+	cdev-cap-type = "DFLL-cap";
 };

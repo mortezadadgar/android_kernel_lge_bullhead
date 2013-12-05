@@ -35,10 +35,12 @@
 /**
  * struct tegra124_dfll_cdev_data - DFLL cooling device info
  * @cdev_floor: pointer to floor cooling device, after thermal registration
+ * @cdev_cap: pointer to cap cooling device, after thermal registration
  * @dfll_pdev: pointer to the DFLL instance associated with this @cdev
  */
 struct tegra124_dfll_cdev_data {
 	struct thermal_cooling_device *cdev_floor;
+	struct thermal_cooling_device *cdev_cap;
 	struct platform_device *dfll_pdev;
 };
 
@@ -129,6 +131,87 @@ error:
 	return ret;
 }
 
+static int
+tegra124_dfll_cdev_cap_get_max_state(struct thermal_cooling_device *cdev,
+				     unsigned long *max_state)
+{
+	struct platform_device *pdev = (struct platform_device *)cdev->devdata;
+	*max_state = tegra124_dfll_count_therm_states(pdev,
+						      TEGRA_DFLL_THERM_CAP);
+	return 0;
+}
+
+static int
+tegra124_dfll_cdev_cap_get_cur_state(struct thermal_cooling_device *cdev,
+				     unsigned long *cur_state)
+{
+	struct platform_device *pdev = (struct platform_device *)cdev->devdata;
+	*cur_state = tegra124_dfll_get_thermal_index(pdev,
+						     TEGRA_DFLL_THERM_CAP);
+	return 0;
+}
+
+static int
+tegra124_dfll_cdev_cap_set_state(struct thermal_cooling_device *cdev,
+				 unsigned long cur_state)
+{
+	struct platform_device *pdev = (struct platform_device *)cdev->devdata;
+
+	return tegra124_dfll_update_thermal_index(pdev,
+						  TEGRA_DFLL_THERM_CAP,
+						  cur_state);
+}
+
+static struct thermal_cooling_device_ops tegra124_dfll_cap_cooling_ops = {
+	.get_max_state = tegra124_dfll_cdev_cap_get_max_state,
+	.get_cur_state = tegra124_dfll_cdev_cap_get_cur_state,
+	.set_cur_state = tegra124_dfll_cdev_cap_set_state,
+};
+
+static int tegra124_dfll_register_therm_cap(struct platform_device *pdev,
+					    struct platform_device *dfll_pdev)
+{
+	struct thermal_cooling_device *tcd;
+	struct device *dev = &pdev->dev;
+	const char *cdev_type;
+	int ret;
+
+	/* just report error - initialized at WC temperature, anyway */
+	cdev_type = of_get_property(dev->of_node, "cdev-cap-type", NULL);
+	if (IS_ERR_OR_NULL(cdev_type)) {
+		dev_err(dev,
+			"Tegra124 DFLL thermal reaction: missing cap type\n");
+		ret = -EINVAL;
+		goto error;
+	}
+	tcd = thermal_cooling_device_register((char *)cdev_type,
+					      (void *)dfll_pdev,
+					      &tegra124_dfll_cap_cooling_ops);
+	if (IS_ERR(tcd)) {
+		dev_err(dev,
+			"Tegra124 DFLL thermal reaction: failed to register\n");
+		ret = PTR_ERR(tcd);
+		goto error;
+	}
+
+	tegra124_dfll_cdev_data.cdev_cap = tcd;
+	tegra124_dfll_cdev_data.dfll_pdev = dfll_pdev;
+	ret = tegra124_dfll_attach_thermal(dfll_pdev,
+					   TEGRA_DFLL_THERM_CAP,
+					   tcd);
+	if (ret) {
+		dev_err(dev,
+			"Tegra124 DFLL thermal reaction: failed to attach\n");
+		thermal_cooling_device_unregister(tcd);
+		goto error;
+	}
+
+	dev_info(dev, "Tegra124 DFLL 'cap cooling device' registered\n");
+
+error:
+	return ret;
+}
+
 static int tegra124_dfll_cdev_probe(struct platform_device *pdev)
 {
 	struct device_node *dn;
@@ -168,6 +251,17 @@ static int tegra124_dfll_cdev_probe(struct platform_device *pdev)
 	}
 
 	ret = tegra124_dfll_register_therm_floor(pdev, dfll_pdev);
+	if (ret)
+		goto error;
+
+	ret = tegra124_dfll_register_therm_cap(pdev, dfll_pdev);
+	if (ret) {
+		tegra124_dfll_detach_thermal(tegra124_dfll_cdev_data.dfll_pdev,
+					TEGRA_DFLL_THERM_FLOOR,
+					tegra124_dfll_cdev_data.cdev_floor);
+		thermal_cooling_device_unregister(
+					tegra124_dfll_cdev_data.cdev_floor);
+	}
 
 error:
 	of_node_put(dn);
@@ -180,6 +274,11 @@ static int tegra124_dfll_cdev_remove(struct platform_device *pdev)
 				     TEGRA_DFLL_THERM_FLOOR,
 				     tegra124_dfll_cdev_data.cdev_floor);
 	thermal_cooling_device_unregister(tegra124_dfll_cdev_data.cdev_floor);
+
+	tegra124_dfll_detach_thermal(tegra124_dfll_cdev_data.dfll_pdev,
+				     TEGRA_DFLL_THERM_CAP,
+				     tegra124_dfll_cdev_data.cdev_cap);
+	thermal_cooling_device_unregister(tegra124_dfll_cdev_data.cdev_cap);
 
 	return 0;
 }
