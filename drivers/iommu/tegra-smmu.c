@@ -500,7 +500,10 @@ static int smmu_setup_regs(struct smmu_device *smmu)
 
 	smmu_flush_regs(smmu, 1);
 
-	return tegra_ahb_enable_smmu(smmu->ahb);
+	if (smmu->ahb)
+		return tegra_ahb_enable_smmu(smmu->ahb);
+
+	return 0;
 }
 
 static void flush_ptc_and_tlb(struct smmu_device *smmu,
@@ -1286,9 +1289,6 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		return -EINVAL;
 
 	smmu->ahb = of_parse_phandle(dev->of_node, "nvidia,ahb", 0);
-	if (!smmu->ahb)
-		return -ENODEV;
-
 	smmu->iommu.dev = dev;
 	smmu->num_as = asids;
 	smmu->iovmm_base = base;
