@@ -1013,7 +1013,7 @@ static void check_cpu_stall(struct rcu_state *rsp, struct rcu_data *rdp)
 
 	if (rcu_cpu_stall_suppress)
 		return;
-	j = ACCESS_ONCE(jiffies);
+	j = jiffies;
 	gpnum = ACCESS_ONCE(rsp->gpnum);
 	js = ACCESS_ONCE(rsp->jiffies_stall);
 	rnp = rdp->mynode;
