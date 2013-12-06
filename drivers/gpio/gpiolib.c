@@ -1396,7 +1396,7 @@ static int gpiod_request(struct gpio_desc *desc, const char *label)
 	int			status = -EPROBE_DEFER;
 	unsigned long		flags;
 
-	if (!desc) {
+	if (!desc || !desc->chip) {
 		pr_warn("%s: invalid GPIO\n", __func__);
 		return -EINVAL;
 	}
@@ -1404,8 +1404,6 @@ static int gpiod_request(struct gpio_desc *desc, const char *label)
 	spin_lock_irqsave(&gpio_lock, flags);
 
 	chip = desc->chip;
-	if (chip == NULL)
-		goto done;
 
 	if (!try_module_get(chip->owner))
 		goto done;
@@ -1628,16 +1626,20 @@ static int gpiod_direction_input(struct gpio_desc *desc)
 	int			status = -EINVAL;
 	int			offset;
 
-	if (!desc) {
+	if (!desc || !desc->chip) {
 		pr_warn("%s: invalid GPIO\n", __func__);
 		return -EINVAL;
 	}
 
+	chip = desc->chip;
+	if (!chip->get || !chip->direction_input) {
+		pr_warn("%s: missing get() or direction_input() operations\n",
+			__func__);
+		return -EIO;
+	}
+
 	spin_lock_irqsave(&gpio_lock, flags);
 
-	chip = desc->chip;
-	if (!chip || !chip->get || !chip->direction_input)
-		goto fail;
 	status = gpio_ensure_requested(desc);
 	if (status < 0)
 		goto fail;
@@ -1689,7 +1691,7 @@ static int gpiod_direction_output(struct gpio_desc *desc, int value)
 	int			status = -EINVAL;
 	int offset;
 
-	if (!desc) {
+	if (!desc || !desc->chip) {
 		pr_warn("%s: invalid GPIO\n", __func__);
 		return -EINVAL;
 	}
@@ -1702,11 +1704,15 @@ static int gpiod_direction_output(struct gpio_desc *desc, int value)
 	if (!value && test_bit(FLAG_OPEN_SOURCE,  &desc->flags))
 		return gpiod_direction_input(desc);
 
+	chip = desc->chip;
+	if (!chip->set || !chip->direction_output) {
+		pr_warn("%s: missing set() or direction_output() operations\n",
+			__func__);
+		return -EIO;
+	}
+
 	spin_lock_irqsave(&gpio_lock, flags);
 
-	chip = desc->chip;
-	if (!chip || !chip->set || !chip->direction_output)
-		goto fail;
 	status = gpio_ensure_requested(desc);
 	if (status < 0)
 		goto fail;
@@ -1763,16 +1769,19 @@ static int gpiod_set_debounce(struct gpio_desc *desc, unsigned debounce)
 	int			status = -EINVAL;
 	int			offset;
 
-	if (!desc) {
+	if (!desc || !desc->chip) {
 		pr_warn("%s: invalid GPIO\n", __func__);
 		return -EINVAL;
 	}
 
-	spin_lock_irqsave(&gpio_lock, flags);
-
 	chip = desc->chip;
-	if (!chip || !chip->set || !chip->set_debounce)
-		goto fail;
+	if (!chip->set || !chip->set_debounce) {
+		pr_warn("%s: missing set() or set_debounce() operations\n",
+			__func__);
+		return -EIO;
+	}
+
+	spin_lock_irqsave(&gpio_lock, flags);
 
 	status = gpio_ensure_requested(desc);
 	if (status < 0)
