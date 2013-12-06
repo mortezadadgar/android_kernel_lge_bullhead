@@ -414,6 +414,7 @@ struct clk *tegra_clk_register_periph_gate(const char *name,
  * @mux_ops:	mux clock ops
  * @div_ops:	divider clock ops
  * @gate_ops:	gate clock ops
+ * @prepared:	clock is prepared or not
  */
 struct tegra_clk_periph {
 	u32			magic;
@@ -425,6 +426,7 @@ struct tegra_clk_periph {
 	const struct clk_ops	*mux_ops;
 	const struct clk_ops	*div_ops;
 	const struct clk_ops	*gate_ops;
+	bool			prepared;
 };
 
 #define to_clk_periph(_hw) container_of(_hw, struct tegra_clk_periph, hw)
