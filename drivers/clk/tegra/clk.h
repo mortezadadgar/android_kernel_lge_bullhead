@@ -362,6 +362,7 @@ struct tegra_clk_periph_regs {
  * @flags:		hardware-specific flags
  * @clk_num:		Clock number
  * @enable_refcnt:	array to maintain reference count of the clock
+ * @prepared:		clock is prepared or not
  *
  * Flags:
  * TEGRA_PERIPH_NO_RESET - This flag indicates that reset is not allowed
@@ -383,6 +384,7 @@ struct tegra_clk_periph_gate {
 	int			clk_num;
 	int			*enable_refcnt;
 	struct tegra_clk_periph_regs	*regs;
+	bool			prepared;
 };
 
 #define to_clk_periph_gate(_hw)					\
