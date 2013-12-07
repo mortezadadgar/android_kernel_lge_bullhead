@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Automatic Clock Management
  *
- * Copyright (c) 2010-2013, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -620,6 +620,11 @@ void nvhost_module_deinit(struct platform_device *dev)
 	struct kobj_attribute *attr = NULL;
 	struct nvhost_device_data *pdata = platform_get_drvdata(dev);
 
+	if (!pm_runtime_enabled(&dev->dev))
+		nvhost_module_disable_clk(&dev->dev);
+	else
+		pm_runtime_disable(&dev->dev);
+
 	nvhost_module_suspend(&dev->dev);
 	for (i = 0; i < pdata->num_clks; i++)
 		clk_put(pdata->clk[i]);
@@ -632,7 +637,6 @@ void nvhost_module_deinit(struct platform_device *dev)
 
 		kobject_put(pdata->power_kobj);
 	}
-
 }
 
 #ifdef CONFIG_PM
