@@ -47,6 +47,25 @@ static bool is_dfll_clk_enabled;
 static unsigned long dfll_mode_threshold;
 static struct cpufreq_frequency_table
 		tegra124_cpufreq_tables[CPU_FREQ_TABLE_MAX_SIZE];
+static unsigned int g_cpu_min_rate;
+static cpumask_t online_cpus;
+
+static DEFINE_MUTEX(tegra124_cpu_lock);
+
+static int tegra124_switch_cluster(unsigned int cluster)
+{
+	int ret;
+
+	pr_debug("Switching to cluster %u\n", cluster);
+
+	ret = tegra_switch_cluster(cluster);
+	if (is_lp_cluster())
+		cpu_clk = lpcpu_clk;
+	else
+		cpu_clk = fcpu_clk;
+
+	return ret;
+}
 
 static int tegra124_cpu_clk_dfll_on(struct clk *cpu_clk,
 		unsigned long new_rate, unsigned long old_rate)
@@ -224,25 +243,47 @@ static int tegra124_cpu_clk_set_rate(unsigned long new_rate)
 	int num_dfll_freqs = 0;
 	unsigned long old_rate = clk_get_rate(cpu_clk);
 	bool has_dfll = IS_ERR(cpu_dfll_clk) ? false : true;
+	int ret = 0;
 
 	if (tegra124_dfll_get_fv_table(&num_dfll_freqs, &freqs, &dfll_mv))
 		pr_err("Tegra124 cpufreq: Failed to get dfll fv_table\n");
 
-	/* DFLL is not supported so we set CPU rate on PLL. */
-	if (!has_dfll || !num_dfll_freqs)
-		return tegra124_set_rate_pll(new_rate, old_rate);
+	mutex_lock(&tegra124_cpu_lock);
 
-	/* DFLL is supported. */
+	/* Switch back to G cluster if we're in G range. */
+	if (is_lp_cluster() && new_rate >= g_cpu_min_rate) {
+		ret = tegra124_switch_cluster(TEGRA_CLUSTER_G);
+		if (ret)
+			goto out;
+	}
 
-	if (new_rate >= dfll_mode_threshold)
-		return tegra124_cpu_clk_dfll_on(cpu_clk, new_rate, old_rate);
+	if (!has_dfll || !num_dfll_freqs || is_lp_cluster()) {
+		/* DFLL is not supported so we set CPU rate on PLL. */
+		ret = tegra124_set_rate_pll(new_rate, old_rate);
+	} else {
+		/* DFLL is supported. */
+		if (new_rate >= dfll_mode_threshold)
+			ret = tegra124_cpu_clk_dfll_on(cpu_clk, new_rate,
+							old_rate);
+		else if (clk_get_parent(cpu_clk) == cpu_dfll_clk)
+			ret = tegra124_cpu_clk_dfll_off(cpu_clk, new_rate,
+							old_rate);
+		else
+			ret = tegra124_set_rate_pll(new_rate, old_rate);
+	}
+	if (ret < 0)
+		goto out;
 
-	/* New rate not in DFLL range. Check if currently using DFLL. */
-	if (clk_get_parent(cpu_clk) == cpu_dfll_clk)
-		return tegra124_cpu_clk_dfll_off(cpu_clk, new_rate, old_rate);
+	/* If only CPU0 is up and we're lower than G range, switch. */
+	if (cpumask_weight(&online_cpus) == 1 &&
+	    cpumask_first(&online_cpus) == 0 &&
+	    new_rate < g_cpu_min_rate)
+		ret = tegra124_switch_cluster(TEGRA_CLUSTER_LP);
 
-	/* Not currently running on DFLL, set pll. */
-	return tegra124_set_rate_pll(new_rate, old_rate);
+out:
+	mutex_unlock(&tegra124_cpu_lock);
+
+	return ret;
 }
 
 static void tegra124_cpufreq_clk_init(void)
@@ -292,7 +333,7 @@ static int tegra124_prepare_tables(struct tegra_cpufreq_data *data)
 				__func__);
 		return -EINVAL;
 	}
-
+	g_cpu_min_rate = g_vmin_freq;
 
 	/* Start with singular frequency */
 	i = 0;
@@ -371,6 +412,32 @@ out:
 	return ret;
 }
 
+static int tegra124_cpu_notifier(struct notifier_block *nb,
+					unsigned long action, void *cpu)
+{
+	int ret = NOTIFY_OK;
+
+	if (action != CPU_UP_PREPARE && action != CPU_DEAD)
+		return NOTIFY_OK;
+
+	mutex_lock(&tegra124_cpu_lock);
+	if (action == CPU_DEAD)
+		cpumask_clear_cpu((unsigned int)cpu, &online_cpus);
+	else {
+		cpumask_set_cpu((unsigned int)cpu, &online_cpus);
+		if (is_lp_cluster() &&
+		    tegra124_switch_cluster(TEGRA_CLUSTER_G) != 0)
+			ret = NOTIFY_BAD;
+	}
+	mutex_unlock(&tegra124_cpu_lock);
+
+	return ret;
+}
+
+static struct notifier_block tegra124_cpu_nb = {
+	.notifier_call = tegra124_cpu_notifier,
+};
+
 int tegra124_cpufreq_init(struct tegra_cpufreq_data *data,
 		const struct tegra_cpufreq_config **soc_config)
 {
@@ -413,6 +480,13 @@ int tegra124_cpufreq_init(struct tegra_cpufreq_data *data,
 	ret = tegra124_prepare_tables(data);
 	if (ret)
 		goto out;
+
+	ret = tegra_cluster_control_init();
+	if (ret)
+		goto out;
+
+	cpumask_copy(&online_cpus, cpu_online_mask);
+	register_cpu_notifier(&tegra124_cpu_nb);
 
 	data->cpu_clk = cpu_clk;
 	data->freq_table = tegra124_cpufreq_tables;
