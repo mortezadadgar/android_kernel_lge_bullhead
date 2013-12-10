@@ -420,6 +420,11 @@ static int mc_flush_done(int id)
 	return 0;
 }
 
+/**
+ * do_powergate - power gating routine
+ *
+ * @id: power partition
+ */
 static int do_powergate(int id)
 {
 	int ret;
@@ -450,12 +455,18 @@ err_power_off:
 	return ret;
 }
 
-static int do_unpowergate(int id)
+/**
+ * do_unpowergate - power ungating routine
+ *
+ * @id: power partition
+ * @reset_needed: reset or not when the power is already on
+ */
+static int do_unpowergate(int id, int reset_needed)
 {
 	int ret;
 
 	if (tegra_powergate_is_powered(id))
-		return reset_module(id);
+		return reset_needed ? reset_module(id) : 0;
 
 	ret = tegra_powergate_power_on(id);
 	if (ret)
@@ -594,13 +605,13 @@ static int do_group_unpowergate(int id)
 
 	ret = 0;
 	if (countsor > 0)
-		ret = do_unpowergate(TEGRA_POWERGATE_SOR);
+		ret = do_unpowergate(TEGRA_POWERGATE_SOR, 0);
 	if (counta > 0 && !ret)
-		ret = do_unpowergate(TEGRA_POWERGATE_DIS);
+		ret = do_unpowergate(TEGRA_POWERGATE_DIS, 0);
 	if (countb > 0 && !ret)
-		ret = do_unpowergate(TEGRA_POWERGATE_DISB);
+		ret = do_unpowergate(TEGRA_POWERGATE_DISB, 0);
 	if (countvenc > 0 && !ret)
-		ret = do_unpowergate(TEGRA_POWERGATE_VENC);
+		ret = do_unpowergate(TEGRA_POWERGATE_VENC, 0);
 
 	return ret;
 }
@@ -656,7 +667,7 @@ static int tegra124_unpowergate_partition(int id)
 		ret = do_group_unpowergate(id);
 		break;
 	default:
-		ret = do_unpowergate(id);
+		ret = do_unpowergate(id, 1);
 		break;
 	};
 
