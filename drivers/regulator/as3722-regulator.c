@@ -606,10 +606,19 @@ static bool as3722_sd0_is_low_voltage(struct as3722_regulators *as3722_regs)
 	int err;
 	unsigned val;
 
+	err = as3722_read(as3722_regs->as3722, AS3722_FUSE7_REG, &val);
+	if (err < 0) {
+		dev_err(as3722_regs->dev, "Reg 0x%02x read failed: %d\n",
+			AS3722_FUSE7_REG, err);
+		return false;
+	}
+	if (val & AS3722_FUSE7_SD0_LOW_VOLTAGE)
+		return true;
+
 	/*
 	 * SD0 low voltage mode should be determined by AS3722_FUSE7[4],
-	 * but AMS says this is unreliable and that the NCELL field of
-	 * AS3722_FUSE15 should be used instead.
+	 * but on earlier revisions of the PMIC this is unreliable, so AMS
+	 * suggests falling back to using the NCELL field of AS3722_FUSE15.
 	 */
 	err = as3722_read(as3722_regs->as3722, AS3722_FUSE15_REG, &val);
 	if (err < 0) {
