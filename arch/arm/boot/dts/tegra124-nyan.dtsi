@@ -342,7 +342,7 @@
 				nvidia,tristate = <0>;
 				nvidia,enable-input = <1>;
 				nvidia,lock = <0>;
-				nvidia,open-drain = <1>;
+				nvidia,open-drain = <0>;
 			};
 			drive_sdio1 {
 				nvidia,pins = "drive_sdio1";
