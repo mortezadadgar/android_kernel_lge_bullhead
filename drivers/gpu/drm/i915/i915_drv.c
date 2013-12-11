@@ -118,9 +118,9 @@ module_param_named(i915_enable_ppgtt, i915_enable_ppgtt, int, 0600);
 MODULE_PARM_DESC(i915_enable_ppgtt,
 		"Enable PPGTT (default: true)");
 
-int i915_enable_psr __read_mostly = 0;
+int i915_enable_psr __read_mostly = 1;
 module_param_named(enable_psr, i915_enable_psr, int, 0600);
-MODULE_PARM_DESC(enable_psr, "Enable PSR (default: false)");
+MODULE_PARM_DESC(enable_psr, "Enable PSR (default: true)");
 
 unsigned int i915_preliminary_hw_support __read_mostly = IS_ENABLED(CONFIG_DRM_I915_PRELIMINARY_HW_SUPPORT);
 module_param_named(preliminary_hw_support, i915_preliminary_hw_support, int, 0600);
