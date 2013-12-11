@@ -29,6 +29,7 @@
 #include <linux/oom.h>
 #include <linux/smpboot.h>
 #include "../time/tick-internal.h"
+#include <linux/spinlock.h>
 
 #ifdef CONFIG_RCU_BOOST
 
