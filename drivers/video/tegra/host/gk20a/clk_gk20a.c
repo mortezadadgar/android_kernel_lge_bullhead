@@ -32,6 +32,7 @@
 #include "gk20a.h"
 #include "gk20a_dvfs.h"
 #include "hw_trim_gk20a.h"
+#include "hw_timer_gk20a.h"
 
 #define nvhost_dbg_clk(fmt, arg...) \
 	nvhost_dbg(dbg_clk, fmt, ##arg)
@@ -255,7 +256,10 @@ int gk20a_init_clk_support(struct gk20a *g)
 	if (err)
 		return err;
 
-	gk20a_writel(g, 0x9080, 0x80000200);
+	gk20a_writel(g,
+		timer_pri_timeout_r(),
+		timer_pri_timeout_period_f(0x186A0) |
+		timer_pri_timeout_en_m());
 
 	return err;
 }
