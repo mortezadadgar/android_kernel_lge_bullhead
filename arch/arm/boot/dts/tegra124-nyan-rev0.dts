@@ -126,14 +126,14 @@
 			compatible = "isil,isl29018";
 			reg = <0x44>;
 			interrupt-parent = <&gpio>;
-			interrupts = <187 0>; /* GPIO X3 */
+			interrupts = <TEGRA_GPIO(X, 3) GPIO_ACTIVE_HIGH>;
 		};
 
 		trackpad {
 			compatible = "atmel,atmel_mxt_tp";
 			reg = <0x4b>;
 			interrupt-parent = <&gpio>;
-			interrupts = <179 0>; /* GPIO PW3 */
+			interrupts = <TEGRA_GPIO(W, 3) GPIO_ACTIVE_HIGH>;
 			wakeup-source;
 		};
 
@@ -141,7 +141,7 @@
 			compatible = "atmel,atmel_mxt_tp";
 			reg = <0x25>;
 			interrupt-parent = <&gpio>;
-			interrupts = <179 0>; /* GPIO PW3 */
+			interrupts = <TEGRA_GPIO(W, 3) GPIO_ACTIVE_HIGH>;
 			wakeup-source;
 		};
 	};
@@ -159,11 +159,12 @@
 	};
 
 	sdhci@700b0000 {
-		reset-gpios = <&gpio 229 0>; /* GPIO PCC5 */
+		reset-gpios = <&gpio TEGRA_GPIO(CC, 5) GPIO_ACTIVE_HIGH>;
 	};
 
 	sound {
-		nvidia,hp-det-gpios = <&gpio 114 0>; /* GPIO PO2 */
-		nvidia,mic-det-gpios = <&gpio 143 0>; /* GPIO PR7 */
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(O, 2) GPIO_ACTIVE_HIGH>;
+		nvidia,mic-det-gpios = <&gpio TEGRA_GPIO(R, 7)
+							GPIO_ACTIVE_HIGH>;
 	};
 };

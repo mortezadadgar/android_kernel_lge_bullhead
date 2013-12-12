@@ -482,14 +482,14 @@
 			compatible = "maxim,max98090";
 			reg = <0x10>;
 			interrupt-parent = <&gpio>;
-			interrupts = <60 0>; /* GPIO PH4 */
+			interrupts = <TEGRA_GPIO(H, 4) GPIO_ACTIVE_HIGH>;
 		};
 
 		temperature-sensor@4c {
 			compatible = "ti,tmp451";
 			reg = <0x4c>;
 			interrupt-parent = <&gpio>;
-			interrupts = <70 0x08>; /* GPIO PI6 */
+			interrupts = <TEGRA_GPIO(I, 6) IRQ_TYPE_LEVEL_LOW>;
 		};
 	};
 
@@ -501,14 +501,14 @@
 			compatible = "atmel,atmel_mxt_ts";
 			reg = <0x4a>;
 			interrupt-parent = <&gpio>;
-			interrupts = <82 0>; /* GPIO PK2 */
+			interrupts = <TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH>;
 		};
 
 		touchscreen-bootloader {
 			compatible = "atmel,atmel_mxt_ts";
 			reg = <0x26>;
 			interrupt-parent = <&gpio>;
-			interrupts = <82 0>; /* GPIO PK2 */
+			interrupts = <TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH>;
 		};
 	};
 
@@ -712,7 +712,7 @@
 			compatible = "google,cros-ec-spi";
 			spi-max-frequency = <4000000>;
 			interrupt-parent = <&gpio>;
-			interrupts = <23 0x08>; /* GPIO PC7 */
+			interrupts = <TEGRA_GPIO(C, 7) IRQ_TYPE_LEVEL_LOW>;
 			nvidia,pmc-wakeup = <&pmc 1 8 8>;
 			reg = <0>;
 
@@ -729,8 +729,11 @@
 					compatible = "ti,bq24735";
 					reg = <0x9>;
 					interrupt-parent = <&gpio>;
-					interrupts = <72 0>; /* GPIO PJ0 */
-					ti,ac-detect-gpios = <&gpio 72 0x0>;
+					interrupts = <TEGRA_GPIO(J, 0)
+							GPIO_ACTIVE_HIGH>;
+					ti,ac-detect-gpios = <&gpio
+							TEGRA_GPIO(J, 0)
+							GPIO_ACTIVE_HIGH>;
 				};
 
 				battery: smart-battery {
@@ -1778,7 +1781,7 @@
 	};
 
 	sdhci@700b0000 {
-		power-gpios = <&gpio 191 0>;
+		power-gpios = <&gpio TEGRA_GPIO(X, 7) GPIO_ACTIVE_HIGH>;
 		bus-width = <4>;
 		no-1-8-v;
 		non-removable;
@@ -1789,8 +1792,8 @@
 	};
 
 	sdhci@700b0400 {
-		power-gpios = <&gpio 136 0>; /* gpio PR0 */
-		cd-gpios = <&gpio 170 0>; /* gpio PV2 */
+		power-gpios = <&gpio TEGRA_GPIO(R, 0) GPIO_ACTIVE_HIGH>;
+		cd-gpios = <&gpio TEGRA_GPIO(V, 2) GPIO_ACTIVE_HIGH>;
 		no-1-8-v;
 		bus-width = <4>;
 		status = "okay";
@@ -1868,7 +1871,7 @@
 
 		lid {
 			label = "Lid";
-			gpios = <&gpio 140 1>; /*GPIO R4 */
+			gpios = <&gpio TEGRA_GPIO(R, 4) GPIO_ACTIVE_LOW>;
 			linux,input-type = <5>;
 			linux,code = <0>;
 			debounce-interval = <1>;
@@ -1878,7 +1881,7 @@
 
 		power {
 			label = "Power";
-			gpios = <&gpio 128 1>; /* GPIO Q0 */
+			gpios = <&gpio TEGRA_GPIO(Q, 0) GPIO_ACTIVE_LOW>;
 			linux,code = <116>;
 			debounce-interval = <10>;
 			gpio-key,wakeup;
@@ -1920,7 +1923,7 @@
 			reg = <4>;
 			regulator-name = "wifi-clk32k";
 			enable-active-high;
-			gpio = <&ams3722 5 0>;
+			gpio = <&ams3722 5 GPIO_ACTIVE_HIGH>;
 			regulator-always-on;
 		};
 
@@ -1932,7 +1935,7 @@
 			regulator-max-microvolt = <5000000>;
 			enable-active-high;
 			regulator-boot-on;
-			gpio = <&ams3722 4 0>; /* AS3722 GPIO 4 */
+			gpio = <&ams3722 4 GPIO_ACTIVE_HIGH>; /* AS3722 GPIO 4 */
 		};
 
 		vdd_lcd_bl: regulator@6 {
@@ -1943,7 +1946,7 @@
 			regulator-max-microvolt = <5000000>;
 			enable-active-high;
 			regulator-boot-on;
-			gpio = <&gpio 122 0>; /* GPIO PP2 */
+			gpio = <&gpio TEGRA_GPIO(P, 2) GPIO_ACTIVE_HIGH>;
 		};
 
 		lcd_bl_en: regulator@7 {
@@ -1954,7 +1957,7 @@
 			regulator-max-microvolt = <5000000>;
 			enable-active-high;
 			regulator-boot-on;
-			gpio = <&gpio 58 0>; /* GPIO PH2 */
+			gpio = <&gpio TEGRA_GPIO(H, 2) GPIO_ACTIVE_HIGH>;
 		};
 	};
 
