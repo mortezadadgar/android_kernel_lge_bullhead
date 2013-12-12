@@ -33,6 +33,7 @@
 #include <linux/of_platform.h>
 #include <linux/slab.h>
 #include <linux/syscore_ops.h>
+#include <linux/tegra-soc.h>
 
 #include "flowctrl.h"
 #include "fuse.h"
@@ -692,10 +693,15 @@ void tegra_pmc_pm_set(enum tegra_suspend_mode mode)
 		break;
 	default:
 		/* Turn off CRAIL */
-		csr_reg = flowctrl_read_cpu_csr(0);
-		csr_reg &= ~FLOW_CTRL_CSR_ENABLE_EXT_MASK;
-		csr_reg |= FLOW_CTRL_CSR_ENABLE_EXT_CRAIL;
-		flowctrl_write_cpu_csr(0, csr_reg);
+		if (mode != TEGRA_CLUSTER_SWITCH) {
+			csr_reg = flowctrl_read_cpu_csr(0);
+			csr_reg &= ~FLOW_CTRL_CSR_ENABLE_EXT_MASK;
+			if (is_lp_cluster())
+				csr_reg |= FLOW_CTRL_CSR_ENABLE_EXT_NCPU;
+			else
+				csr_reg |= FLOW_CTRL_CSR_ENABLE_EXT_CRAIL;
+			flowctrl_write_cpu_csr(0, csr_reg);
+		}
 		break;
 	}
 
