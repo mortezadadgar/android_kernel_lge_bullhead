@@ -1774,6 +1774,7 @@
 		no-1-8-v;
 		non-removable;
 		status = "okay";
+		nvidia,no-runtime-suspend;
 	};
 
 	sdhci@700b0400 {
