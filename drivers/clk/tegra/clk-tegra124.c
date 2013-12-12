@@ -27,6 +27,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/platform_data/tegra_emc.h>
 #include <linux/syscore_ops.h>
+#include <linux/tegra-powergate.h>
 #include <dt-bindings/clock/tegra124-car.h>
 
 #include "clk.h"
@@ -1469,6 +1470,22 @@ static void tegra124_disable_cpu_clock(u32 cpu)
 }
 
 #ifdef CONFIG_PM_SLEEP
+static bool tegra124_cpu_rail_off_ready(void)
+{
+	unsigned int cpu_rst_status;
+	int cpu_pwr_status;
+
+	cpu_rst_status = readl(clk_base + CLK_RST_CONTROLLER_CPU_CMPLX_STATUS);
+	cpu_pwr_status = tegra_powergate_is_powered(TEGRA_POWERGATE_CPU1) ||
+			 tegra_powergate_is_powered(TEGRA_POWERGATE_CPU2) ||
+			 tegra_powergate_is_powered(TEGRA_POWERGATE_CPU3);
+
+	if (((cpu_rst_status & 0xE) != 0xE) || cpu_pwr_status)
+		return false;
+
+	return true;
+}
+
 static void tegra124_cpu_clock_suspend(void)
 {
 	/* switch coresite to clk_m, save off original source */
@@ -1488,6 +1505,7 @@ static struct tegra_cpu_car_ops tegra124_cpu_car_ops = {
 	.wait_for_reset	= tegra124_wait_cpu_in_reset,
 	.disable_clock	= tegra124_disable_cpu_clock,
 #ifdef CONFIG_PM_SLEEP
+	.rail_off_ready	= tegra124_cpu_rail_off_ready,
 	.suspend	= tegra124_cpu_clock_suspend,
 	.resume		= tegra124_cpu_clock_resume,
 #endif
