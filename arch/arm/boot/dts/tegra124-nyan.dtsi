@@ -1994,7 +1994,8 @@
 		compatible = "nvidia,tegra124-soctherm";
 		reg = <0x700e2000 0x1000>;
 		interrupts = <0 48 0>;
-		clocks = <&tegra_car 78>, <&tegra_car 100>;
+		clocks = <&tegra_car TEGRA124_CLK_SOC_THERM>,
+			 <&tegra_car TEGRA124_CLK_TSENSOR>;
 		clock-names = "soc_therm", "tsensor";
 		pmu-16bit-ops = <0>;
 		pmu-i2c-addr = <0x40>;
@@ -2050,7 +2051,9 @@
 		nvidia,i2s-controller = <&tegra_i2s1>;
 		nvidia,audio-codec = <&max98090>;
 
-		clocks = <&tegra_car 216>, <&tegra_car 217>, <&tegra_car 120>;
+		clocks = <&tegra_car TEGRA124_CLK_PLL_A>,
+			 <&tegra_car TEGRA124_CLK_PLL_A_OUT0>,
+			 <&tegra_car TEGRA124_CLK_EXTERN1>;
 		clock-names = "pll_a", "pll_a_out0", "mclk";
 
 		nvidia,memory-clients = <14 24>;
@@ -2069,7 +2072,9 @@
 
 	tj-temperature-throttling {
 		compatible = "nvidia,tegra124-tj-throttle";
-		clocks = <&tegra_car 418>, <&tegra_car 429>, <&tegra_car 459>;
+		clocks = <&tegra_car TEGRA124_CLK_CAP_THROTTLE_C3BUS>,
+			 <&tegra_car TEGRA124_CLK_CAP_THROTTLE_SCLK>,
+			 <&tegra_car TEGRA124_CLK_CAP_THROTTLE_EMC>;
 		clock-names = "cap.throttle.c3bus", "cap.throttle.sclk", "cap.throttle.emc";
 		cpu-balanced-states = <&{/cpu-throttling-state}>;
 	};
