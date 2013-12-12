@@ -17,6 +17,7 @@
 
 #include <linux/kernel.h>
 #include <linux/clk.h>
+#include <linux/clk-provider.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
@@ -748,10 +749,10 @@ void tegra_pmc_pm_set(enum tegra_suspend_mode mode)
 		rate = 32768;
 		break;
 	case TEGRA_SUSPEND_LP2:
-		rate = clk_get_rate(tegra_pclk);
+		rate = __clk_get_rate(tegra_pclk);
 		break;
 	case TEGRA_CLUSTER_SWITCH:
-		rate = clk_get_rate(tegra_pclk);
+		rate = __clk_get_rate(tegra_pclk);
 		us_off = 2;
 		break;
 	default:
