@@ -1775,6 +1775,8 @@
 		non-removable;
 		status = "okay";
 		nvidia,no-runtime-suspend;
+		nvidia,host-off-card-on;
+		keep-power-in-suspend;
 	};
 
 	sdhci@700b0400 {
