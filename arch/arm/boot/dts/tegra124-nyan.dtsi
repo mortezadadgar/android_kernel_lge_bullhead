@@ -535,7 +535,7 @@
 			compatible = "ams,as3722";
 			reg = <0x40>;
 
-			interrupts = <0 86 0>;
+			interrupts = <GIC_SPI 86 IRQ_TYPE_NONE>;
 			interrupt-controller;
 			#interrupt-cells = <2>;
 			nvidia,pmc-wakeup = <&pmc 1 18 8>;
@@ -1993,7 +1993,7 @@
 	soc_therm {
 		compatible = "nvidia,tegra124-soctherm";
 		reg = <0x700e2000 0x1000>;
-		interrupts = <0 48 0>;
+		interrupts = <GIC_SPI 48 IRQ_TYPE_NONE>;
 		clocks = <&tegra_car TEGRA124_CLK_SOC_THERM>,
 			 <&tegra_car TEGRA124_CLK_TSENSOR>;
 		clock-names = "soc_therm", "tsensor";
