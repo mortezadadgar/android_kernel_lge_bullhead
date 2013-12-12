@@ -1,6 +1,6 @@
 NVIDIA Tegra 30 IOMMU H/W, SMMU (System Memory Management Unit)
 
-Required properties:
+Required properties in the IOMMU node:
 - compatible : "nvidia,tegra30-smmu"
 - reg : Should contain 3 register banks(address and length) for each
   of the SMMU register blocks.
@@ -8,9 +8,23 @@ Required properties:
 - nvidia,#asids : # of ASIDs
 - dma-window : IOVA start address and length.
 - nvidia,ahb : phandle to the ahb bus connected to SMMU.
+- iommus: phandle to an iommu device which a device is
+  attached to and indicates which swgroups a device belongs to(SWGROUP ID).
+  SWGROUP ID is from 0 to 63, and a device can belong to multiple SWGROUPS.
+- #iommu-cells. Should be 2. In client IOMMU specifiers, the two cells
+  represent a 64-bit bitmask of SWGROUP IDs under which the device
+  initiates transactions. The least significant word is first. See
+  <dt-bindings/memory/tegra-swgroup.h> for a list of valid values.
+
+Required properties in device nodes affected by the IOMMU:
+- iommus: A list of phandle plus specifier pairs for each IOMMU that
+  affects master transactions initiated by the device. The number of
+  cells in each specifier is defined by the #iommu-cells property in
+  the IOMMU node referred to by the phandle. The meaning of the
+  specifier cells is defined by the referenced IOMMU's binding.
 
 Example:
-	smmu {
+	smmu: iommu {
 		compatible = "nvidia,tegra30-smmu";
 		reg = <0x7000f010 0x02c
 		       0x7000f1f0 0x010
@@ -18,4 +32,16 @@ Example:
 		nvidia,#asids = <4>;		/* # of ASIDs */
 		dma-window = <0 0x40000000>;	/* IOVA start & length */
 		nvidia,ahb = <&ahb>;
+		#iommu-cells = <2>;
 	};
+
+	host1x {
+		compatible = "nvidia,tegra30-host1x", "simple-bus";
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(HC)>;
+		....
+		gr3d {
+			compatible = "nvidia,tegra30-gr3d";
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(NV)
+					TEGRA_SWGROUP_CELLS(NV2)>;
+			....
+		};
