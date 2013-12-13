@@ -1062,6 +1062,7 @@ u64 gk20a_vm_map(struct vm_gk20a *vm,
 			} else {
 				mapped_buffer->own_mem_ref = true;
 			}
+			mapped_buffer->memmgr = memmgr;
 		}
 		kref_get(&mapped_buffer->ref);
 
