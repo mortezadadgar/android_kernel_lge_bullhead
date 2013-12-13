@@ -636,6 +636,21 @@ static int nci_transceive(struct nfc_dev *nfc_dev, struct nfc_target *target,
 	return rc;
 }
 
+static int nci_enable_se(struct nfc_dev *nfc_dev, u32 se_idx)
+{
+	return 0;
+}
+
+static int nci_disable_se(struct nfc_dev *nfc_dev, u32 se_idx)
+{
+	return 0;
+}
+
+static int nci_discover_se(struct nfc_dev *nfc_dev)
+{
+	return 0;
+}
+
 static struct nfc_ops nci_nfc_ops = {
 	.dev_up = nci_dev_up,
 	.dev_down = nci_dev_down,
@@ -646,6 +661,9 @@ static struct nfc_ops nci_nfc_ops = {
 	.activate_target = nci_activate_target,
 	.deactivate_target = nci_deactivate_target,
 	.im_transceive = nci_transceive,
+	.enable_se = nci_enable_se,
+	.disable_se = nci_disable_se,
+	.discover_se = nci_discover_se,
 };
 
 /* ---- Interface to NCI drivers ---- */
@@ -658,7 +676,6 @@ static struct nfc_ops nci_nfc_ops = {
  */
 struct nci_dev *nci_allocate_device(struct nci_ops *ops,
 				    __u32 supported_protocols,
-				    __u32 supported_se,
 				    int tx_headroom, int tx_tailroom)
 {
 	struct nci_dev *ndev;
@@ -681,7 +698,6 @@ struct nci_dev *nci_allocate_device(struct nci_ops *ops,
 
 	ndev->nfc_dev = nfc_allocate_device(&nci_nfc_ops,
 					    supported_protocols,
-					    supported_se,
 					    tx_headroom + NCI_DATA_HDR_SIZE,
 					    tx_tailroom);
 	if (!ndev->nfc_dev)
