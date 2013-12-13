@@ -532,6 +532,17 @@ int tegra124_soctherm_init(struct device_node *soctherm_dn)
 		soctherm_add_trip_points(pdev, trips, num_trips, tegra_cdev);
 	}
 
+	/* add trips of gpu_scaling */
+	tegra_cdev = tegra_get_gpu_vts_cdev();
+	if (PTR_ERR(tegra_cdev) == -EPROBE_DEFER) {
+		dev_warn(&pdev->dev, "The gpu cdev is not ready.\n");
+		return PTR_ERR(tegra_cdev);
+	} else if (IS_ERR(tegra_cdev)) {
+		dev_warn(&pdev->dev, "Can't get the gpu cdev, ignore it.\n");
+	} else {
+		soctherm_add_trip_points(pdev, trips, num_trips, tegra_cdev);
+	}
+
 	trips = pdata->therm[THERM_CPU].trips;
 	num_trips = &pdata->therm[THERM_CPU].num_trips;
 
