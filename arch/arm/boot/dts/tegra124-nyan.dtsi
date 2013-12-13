@@ -2002,7 +2002,8 @@
 		nvidia,audio-routing =
 			"Headphone Jack", "HPR",
 			"Headphone Jack", "HPL",
-			"IN12", "Int Mic",
+			"DMICL", "Int Mic",
+			"DMICR", "Int Mic",
 			"IN34", "Mic Jack",
 			"Speakers", "SPKR",
 			"Speakers", "SPKL";
