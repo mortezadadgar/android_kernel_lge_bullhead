@@ -172,6 +172,12 @@ tegra124_powergate_partition_info[TEGRA124_POWERGATE_NUM] = {
 	[TEGRA_POWERGATE_XUSBC] = {
 		.name = "xusbc",
 	},
+	[TEGRA_POWERGATE_VIC] = {
+		.name = "vic",
+		.clk_info = {
+			[0] = { .clk_name = "vic03" },
+		},
+	},
 };
 
 static const char *tegra124_get_powerdomain_name(int id)
