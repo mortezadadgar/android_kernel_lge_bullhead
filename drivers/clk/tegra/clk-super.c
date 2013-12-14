@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include <linux/clk-provider.h>
 #include <linux/clk.h>
+#include <linux/tegra-dvfs.h>
 
 #include "clk.h"
 
@@ -122,9 +123,21 @@ out:
 	return err;
 }
 
+static int clk_super_prepare(struct clk_hw *hw)
+{
+	return tegra_dvfs_set_rate(hw->clk, clk_get_rate(hw->clk));
+}
+
+static void clk_super_unprepare(struct clk_hw *hw)
+{
+	tegra_dvfs_set_rate(hw->clk, 0);
+}
+
 const struct clk_ops tegra_clk_super_ops = {
 	.get_parent = clk_super_get_parent,
 	.set_parent = clk_super_set_parent,
+	.prepare = clk_super_prepare,
+	.unprepare = clk_super_unprepare,
 };
 
 struct clk *tegra_clk_register_super_mux(const char *name,
