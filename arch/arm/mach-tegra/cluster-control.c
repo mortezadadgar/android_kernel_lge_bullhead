@@ -142,6 +142,7 @@ static int tegra_cluster_control(unsigned int flags)
 		!(flags & TEGRA_POWER_CLUSTER_FORCE))
 		return -EEXIST;
 
+	enable_pllx_cluster_port();
 	local_irq_save(irq_flags);
 
 	if (num_online_cpus() > 1) {
@@ -171,11 +172,7 @@ static int tegra_cluster_control(unsigned int flags)
 	if (!timekeeping_suspended)
 		clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &cpu);
 
-	enable_pllx_cluster_port();
-
 	tegra_idle_power_down_last(0, flags);
-
-	disable_pllx_cluster_port();
 
 	if (!is_lp_cluster())
 		tegra_cluster_switch_restore_gic();
@@ -188,6 +185,7 @@ static int tegra_cluster_control(unsigned int flags)
 
 out:
 	local_irq_restore(irq_flags);
+	disable_pllx_cluster_port();
 
 	return err;
 }
@@ -236,7 +234,6 @@ int tegra_switch_cluster(int new_cluster)
 
 	err = tegra_cluster_control(flags);
 	if (err) {
-		clk_disable_unprepare(new_clk);
 		pr_err("%s: failed to switch to %s cluster\n", __func__,
 			new_cluster == TEGRA_CLUSTER_LP ? "LP" : "G");
 		goto abort;
