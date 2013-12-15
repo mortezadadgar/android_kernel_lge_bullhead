@@ -1100,6 +1100,8 @@ static struct tegra_devclk devclks[] __initdata = {
 	{ .con_id = "hdmi", .dt_id = TEGRA124_CLK_HDMI},
 	{ .con_id = "mipi-cal", .dt_id = TEGRA124_CLK_MIPI_CAL},
 	{ .con_id = "dpaux", .dt_id = TEGRA124_CLK_DPAUX},
+	{ .con_id = "disp1.emc", .dt_id = TEGRA124_CLK_DISP1_EMC},
+	{ .con_id = "disp2.emc", .dt_id = TEGRA124_CLK_DISP2_EMC},
 	{ .dev_id = "emc", .dt_id = TEGRA124_CLK_EMC },
 	{ .con_id = "vic03", .dt_id = TEGRA124_CLK_VIC03 },
 	{ .con_id = "tsec", .dt_id = TEGRA124_CLK_TSEC },
