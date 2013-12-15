@@ -40,6 +40,7 @@
 #include <linux/irqchip.h>
 #include <linux/tegra-soc.h>
 #include <linux/nvmap.h>
+#include <linux/memblock.h>
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/mach-types.h>
@@ -49,6 +50,7 @@
 
 #include "apbio.h"
 #include "board.h"
+#include "board-panel.h"
 #include "common.h"
 #include "cpuidle.h"
 #include "fuse.h"
@@ -58,6 +60,13 @@
 #include "pm.h"
 #include "reset.h"
 #include "sleep.h"
+
+unsigned long tegra_fb_start;
+unsigned long tegra_fb_size;
+unsigned long tegra_fb2_start;
+unsigned long tegra_fb2_size;
+unsigned long tegra_carveout_start;
+unsigned long tegra_carveout_size;
 
 /*
  * Storage for debug-macro.S's state.
@@ -156,11 +165,22 @@ static void __init venice2_init(void)
 #ifdef CONFIG_TEGRA_NVMAP
 	int err;
 
+	venice_carveouts[1].base = tegra_carveout_start;
+	venice_carveouts[1].size = tegra_carveout_size;
 	err = platform_device_register(&venice_nvmap_device);
 	if (err)
 		pr_err("nvmap device registration failed: %d\n", err);
 #endif
+
+	venice_panel_init();
 }
+
+static struct of_dev_auxdata tegra_auxdata_lookup[] __initdata = {
+	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", &venice_bl_data),
+	OF_DEV_AUXDATA("nvidia,tegra124-dc", 0x54200000, "tegradc.0", &venice_disp1_pdata),
+	OF_DEV_AUXDATA("nvidia,tegra124-dc", 0x54240000, "tegradc.1", &venice_disp2_pdata),
+	{}
+};
 
 static void __init tegra_dt_init(void)
 {
@@ -202,7 +222,8 @@ out:
 	tegra_pmc_lp0_wakeup_init();
 #endif
 
-	of_platform_populate(NULL, of_default_bus_match_table, NULL, parent);
+	of_platform_populate(NULL, of_default_bus_match_table,
+				tegra_auxdata_lookup, parent);
 	tegra_dvfs_init();
 
 	if (of_machine_is_compatible("nvidia,venice2") ||
@@ -272,6 +293,69 @@ static void __init tegra_dt_init_late(void)
 	}
 }
 
+static void __init tegra_reserve(unsigned long carveout_size,
+				 unsigned long fb_size,
+				 unsigned long fb2_size)
+{
+	if (carveout_size) {
+		tegra_carveout_start = memblock_end_of_DRAM() - carveout_size;
+		if (memblock_remove(tegra_carveout_start, carveout_size)) {
+			pr_err("Failed to remove carveout %08lx@%08lx from memory map\n",
+				carveout_size, tegra_carveout_start);
+			tegra_carveout_start = 0;
+			tegra_carveout_size = 0;
+		} else
+			tegra_carveout_size = carveout_size;
+	}
+
+	if (fb2_size) {
+		tegra_fb2_start = memblock_end_of_DRAM() - fb2_size;
+		if (memblock_remove(tegra_fb2_start, fb2_size)) {
+			pr_err("Failed to remove second framebuffer %08lx@%08lx from memory map\n",
+				fb2_size, tegra_fb2_start);
+			tegra_fb2_start = 0;
+			tegra_fb2_size = 0;
+		} else
+			tegra_fb2_size = fb2_size;
+	}
+
+	if (fb_size) {
+		tegra_fb_start = memblock_end_of_DRAM() - fb_size;
+		if (memblock_remove(tegra_fb_start, fb_size)) {
+			pr_err("Failed to remove framebuffer %08lx@%08lx from memory map\n",
+				fb_size, tegra_fb_start);
+			tegra_fb_start = 0;
+			tegra_fb_size = 0;
+		} else
+			tegra_fb_size = fb_size;
+	}
+
+	pr_info("Tegra reserved memory:\n"
+		"Framebuffer:	    %08lx - %08lx\n"
+		"2nd Framebuffer:	%08lx - %08lx\n"
+		"Carveout:	       %08lx - %08lx\n",
+		tegra_fb_start,
+		tegra_fb_size ?
+			tegra_fb_start + tegra_fb_size - 1 : 0,
+		tegra_fb2_start,
+		tegra_fb2_size ?
+			tegra_fb2_start + tegra_fb2_size - 1 : 0,
+		tegra_carveout_start,
+		tegra_carveout_size ?
+			tegra_carveout_start + tegra_carveout_size - 1 : 0);
+}
+
+static void __init tegra_board_reserve(void)
+{
+#if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
+	/* TODO: Need to find a way to distiguish Venice 2 & Norrin */
+	/* Reserve framebuffer, size: 2560*1700*4*2 */
+	tegra_reserve(0, SZ_32M + SZ_2M, SZ_16M);
+#else
+	tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_4M);
+#endif
+}
+
 static const char * const tegra_dt_board_compat[] = {
 	"nvidia,tegra124",
 	"nvidia,tegra114",
@@ -283,6 +367,7 @@ static const char * const tegra_dt_board_compat[] = {
 DT_MACHINE_START(TEGRA_DT, "NVIDIA Tegra SoC (Flattened Device Tree)")
 	.map_io		= tegra_map_common_io,
 	.smp		= smp_ops(tegra_smp_ops),
+	.reserve	= tegra_board_reserve,
 	.init_early	= tegra_init_early,
 	.init_irq	= tegra_dt_init_irq,
 	.init_time	= tegra_dt_init_time,

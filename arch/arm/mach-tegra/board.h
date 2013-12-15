@@ -50,4 +50,11 @@ static inline int harmony_pcie_init(void) { return 0; }
 
 void __init tegra_paz00_wifikill_init(void);
 
+extern unsigned long tegra_fb_start;
+extern unsigned long tegra_fb_size;
+extern unsigned long tegra_fb2_start;
+extern unsigned long tegra_fb2_size;
+extern unsigned long tegra_carveout_start;
+extern unsigned long tegra_carveout_size;
+
 #endif
