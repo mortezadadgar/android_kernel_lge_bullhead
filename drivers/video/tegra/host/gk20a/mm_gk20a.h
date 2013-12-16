@@ -308,7 +308,7 @@ void gk20a_mm_dump_vm(struct vm_gk20a *vm,
 int gk20a_mm_suspend(struct gk20a *g);
 
 phys_addr_t gk20a_get_phys_from_iova(struct device *d,
-				u64 dma_addr);
+				dma_addr_t dma_addr);
 
 int gk20a_get_sgtable(struct device *d, struct sg_table **sgt,
 			void *cpuva, u64 iova,

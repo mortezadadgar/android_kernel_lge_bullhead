@@ -1329,11 +1329,16 @@ void gk20a_gmmu_unmap(struct vm_gk20a *vm,
 }
 
 phys_addr_t gk20a_get_phys_from_iova(struct device *d,
-				u64 dma_addr)
+				dma_addr_t dma_addr)
 {
 	phys_addr_t phys;
-	struct dma_iommu_mapping *mapping = d->archdata.mapping;
-	u64 iova = dma_addr & PAGE_MASK;
+	dma_addr_t iova;
+
+	struct dma_iommu_mapping *mapping = to_dma_iommu_mapping(d);
+	if (!mapping)
+		return dma_addr;
+
+	iova = dma_addr & PAGE_MASK;
 	phys = iommu_iova_to_phys(mapping->domain, iova);
 	return phys;
 }
