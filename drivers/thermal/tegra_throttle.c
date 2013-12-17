@@ -164,6 +164,10 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 	tegra_b_throt->bthrot_speed = bthrot_speed;
 	cpufreq_update_policy(0);
 
+	bthrot_speed = cur_throt_freq.cap_freqs[CAP_GPU];
+	if (bthrot_speed != NO_CAP)
+		tegra_gpu_set_speed_cap(&bthrot_speed);
+
 	mutex_unlock(&bthrot_list_lock);
 
 	return 0;

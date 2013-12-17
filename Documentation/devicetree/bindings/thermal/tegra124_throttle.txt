@@ -7,6 +7,8 @@ Required properties:
  - clocks:		core shared clocks, we now support:
 			cap.throttle.c3bus, cap.throttle.sclk, cap.throttl.emc
  - cpu-balanced-states	phandle of the cpu balanced throttle state.
+Optional properties:
+ - gpu-balanced-states	phandle of the gpu balanced throttle state.
 
 ====throttle state====
 Required properties:
@@ -27,6 +29,7 @@ tj-temperature-throttling {
 	clocks = <&tegra_car 418>, <&tegra_car 429>, <&tegra_car 459>;
 	clock-names = "cap.throttle.c3bus", "cap.throttle.sclk", "cap.throttle.emc";
 	cpu-balanced-states = <&{/cpu-throttling-state}>;
+	gpu-balanced-states = <&{/gpu-throttling-state}>;
 };
 
 cpu-throttling-state {

@@ -40,6 +40,7 @@
 
 static struct tegra_balanced_throttle b_throt;
 static struct balanced_throttle_instance *cpu_throt;
+static struct balanced_throttle_instance *gpu_throt;
 
 static struct tegra_throttle_cap_data tegra124_cap_freqs_table[] = {
 	{ .cap_name = "cap.throttle.c3bus" },
@@ -168,6 +169,22 @@ static int tegra124_throttle_probe(struct platform_device *pdev)
 
 	balanced_throttle_register(cpu_throt, "cpu-balanced");
 
+	/* register gpu-balanced */
+	gpu_throt = devm_kzalloc(&pdev->dev,
+				 sizeof(*gpu_throt), GFP_KERNEL);
+	if (!gpu_throt) {
+		dev_warn(&pdev->dev, "Failed allocating gpu throttle table.\n");
+		goto end;
+	}
+
+	if (tegra124_throt_parse_dt(pdev, "gpu-balanced-states", gpu_throt)) {
+		dev_warn(&pdev->dev, "Parse gpu throttle table failed.\n");
+		goto end;
+	}
+
+	balanced_throttle_register(gpu_throt, "gpu-balanced");
+
+end:
 	dev_info(&pdev->dev,
 		 "Tegra junction temperature throttling initialized\n");
 
@@ -177,6 +194,7 @@ static int tegra124_throttle_probe(struct platform_device *pdev)
 static int tegra124_throttle_remove(struct platform_device *pdev)
 {
 	balanced_throttle_unregister(cpu_throt);
+	balanced_throttle_unregister(gpu_throt);
 
 	return 0;
 }
