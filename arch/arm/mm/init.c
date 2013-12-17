@@ -610,21 +610,19 @@ void __init mem_init(void)
 	for_each_bank(i, &meminfo) {
 		struct membank *bank = &meminfo.bank[i];
 		unsigned int pfn1, pfn2;
-		struct page *page, *end;
+		struct page *page;
 
 		pfn1 = bank_pfn_start(bank);
 		pfn2 = bank_pfn_end(bank);
 
-		page = pfn_to_page(pfn1);
-		end  = pfn_to_page(pfn2 - 1) + 1;
-
-		do {
+		while (pfn1 < pfn2) {
+			page = pfn_to_page(pfn1);
 			if (PageReserved(page))
 				reserved_pages++;
 			else if (!page_count(page))
 				free_pages++;
-			page++;
-		} while (page < end);
+			pfn1++;
+		}
 	}
 
 	/*
