@@ -61,7 +61,7 @@ static struct soctherm_platform_data t124_soctherm_data = {
 			.num_trips = 3,
 			.trips = {
 				{
-					.cdev_type = "tegra-balanced",
+					.cdev_type = "cpu-balanced",
 					.trip_temp = 86000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
