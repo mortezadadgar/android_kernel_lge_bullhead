@@ -544,10 +544,10 @@ int sst_request_fw(void)
 	char name[20];
 
 	if (!(sst_drv_ctx->pci_id == SST_MRFLD_PCI_ID))
-		snprintf(name, sizeof(name), "%s%04x%s", "fw_sst_",
+		snprintf(name, sizeof(name), "%s%04x%s", "intel/fw_sst_",
 				sst_drv_ctx->pci_id, ".bin");
 	else
-		snprintf(name, sizeof(name), "%s%04x", "fw_sst_",
+		snprintf(name, sizeof(name), "%s%04x", "intel/fw_sst_",
 				sst_drv_ctx->pci_id);
 
 	pr_debug("Requesting FW %s now...\n", name);
