@@ -1901,6 +1901,7 @@
 			 <&tegra_car TEGRA124_CLK_CAP_THROTTLE_EMC>;
 		clock-names = "cap.throttle.c3bus", "cap.throttle.sclk", "cap.throttle.emc";
 		cpu-balanced-states = <&{/cpu-throttling-state}>;
+		gpu-balanced-states = <&{/gpu-throttling-state}>;
 
 		#cooling-cells = <2>; /* min followed by max */
 	};
