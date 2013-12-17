@@ -541,7 +541,7 @@ static int sst_parse_fw_image(const void *sst_fw_in_mem, unsigned long size,
 int sst_request_fw(void)
 {
 	int retval = 0;
-	char name[20];
+	char name[30];
 
 	if (!(sst_drv_ctx->pci_id == SST_MRFLD_PCI_ID))
 		snprintf(name, sizeof(name), "%s%04x%s", "intel/fw_sst_",
