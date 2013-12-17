@@ -122,7 +122,6 @@
 
 #define UVC_CTRL_CONTROL_TIMEOUT	300
 #define UVC_CTRL_STREAMING_TIMEOUT	5000
-#define UVC_STATUS_START_TIMEOUT	100
 
 /* Maximum allowed number of control mappings per device */
 #define UVC_MAX_CONTROL_MAPPINGS	1024

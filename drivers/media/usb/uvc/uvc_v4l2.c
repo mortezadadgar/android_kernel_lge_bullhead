@@ -479,7 +479,6 @@ static int uvc_v4l2_open(struct file *file)
 {
 	struct uvc_streaming *stream;
 	struct uvc_fh *handle;
-	unsigned long timeout;
 	int ret = 0;
 
 	uvc_trace(UVC_TRACE_CALLS, "uvc_v4l2_open\n");
@@ -500,14 +499,7 @@ static int uvc_v4l2_open(struct file *file)
 	}
 
 	if (atomic_inc_return(&stream->dev->users) == 1) {
-		timeout = jiffies + msecs_to_jiffies(UVC_STATUS_START_TIMEOUT);
-		/* -EPERM means stop in progress, wait for completion */
-		do {
-			ret = uvc_status_start(stream->dev);
-			if (ret == -EPERM)
-				usleep_range(5000, 6000);
-		} while (ret == -EPERM && time_before(jiffies, timeout));
-
+		ret = uvc_status_start(stream->dev);
 		if (ret < 0) {
 			atomic_dec(&stream->dev->users);
 			usb_autopm_put_interface(stream->dev->intf);
