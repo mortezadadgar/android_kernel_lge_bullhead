@@ -252,7 +252,7 @@ u32 gk20a_clk_get_rate(struct gk20a *g)
  */
 int gk20a_clk_round_rate(struct gk20a *g, u32 rate)
 {
-	unsigned int speed_cap;
+	unsigned long speed_cap;
 
 	/* make sure the clock is available */
 	if (!gk20a_clk_get(g))
@@ -274,7 +274,7 @@ int gk20a_clk_round_rate(struct gk20a *g, u32 rate)
 int gk20a_clk_set_rate(struct gk20a *g, u32 rate)
 {
 	struct clk_gk20a *clk = &g->clk;
-	unsigned int speed_cap;
+	unsigned long speed_cap;
 
 	speed_cap = clk->speed_cap / KHZ;
 	if (speed_cap && rate > speed_cap)
@@ -297,7 +297,7 @@ int gk20a_suspend_clk_support(struct gk20a *g)
  *
  * If @speed_cap is a zero, that means frequency capping is disabled.
  */
-int tegra_gpu_set_speed_cap(unsigned int *speed_cap)
+int tegra_gpu_set_speed_cap(unsigned long *speed_cap)
 {
 	struct clk_gk20a *clk;
 
@@ -348,7 +348,7 @@ static int cap_get(void *data, u64 *val)
 }
 static int cap_set(void *data, u64 val)
 {
-	unsigned int rate = (u32)val * KHZ;
+	unsigned long rate = val * KHZ;
 	return tegra_gpu_set_speed_cap(&rate);
 }
 DEFINE_SIMPLE_ATTRIBUTE(cap_fops, cap_get, cap_set, "%llu\n");

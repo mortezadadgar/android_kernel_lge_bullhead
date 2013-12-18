@@ -94,9 +94,9 @@ struct gpu_info {
 void tegra_gpu_get_info(struct gpu_info *pinfo);
 
 #if defined(CONFIG_TEGRA_GK20A) && defined(CONFIG_ARCH_TEGRA_124_SOC)
-int tegra_gpu_set_speed_cap(unsigned int *speed_cap);
+int tegra_gpu_set_speed_cap(unsigned long *speed_cap);
 #else
-static inline int tegra_gpu_set_speed_cap(unsigned int *speed_cap)
+static inline int tegra_gpu_set_speed_cap(unsigned long *speed_cap)
 { return -EINVAL; }
 #endif
 
