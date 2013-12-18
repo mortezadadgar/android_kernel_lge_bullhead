@@ -2061,7 +2061,8 @@
 			 <&tegra_car TEGRA124_CLK_EXTERN1>;
 		clock-names = "pll_a", "pll_a_out0", "mclk";
 
-		nvidia,memory-clients = <14 24>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
+				TEGRA_SWGROUP_CELLS(PPCS1)>;
 	};
 
 	cpu_edp {
