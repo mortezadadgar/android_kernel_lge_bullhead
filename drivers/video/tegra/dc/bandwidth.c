@@ -27,6 +27,8 @@
 #include "dc_config.h"
 #include "dc_priv.h"
 
+#define EMC_LOW_FREQ_THRESHOLD	20400000
+
 static int use_dynamic_emc = 1;
 
 module_param_named(use_dynamic_emc, use_dynamic_emc, int, S_IRUGO | S_IWUSR);
@@ -143,8 +145,10 @@ void tegra_dc_clear_bandwidth(struct tegra_dc *dc)
 }
 
 /* bw in kByte/second. returns Hz for EMC frequency */
-static inline unsigned long tegra_dc_kbps_to_emc(unsigned long bw)
+static inline unsigned long tegra_dc_kbps_to_emc(struct tegra_dc *dc,
+						 unsigned long bw)
 {
+	struct clk *emc_master;
 	unsigned long freq;
 
 	if (bw == ULONG_MAX)
@@ -156,7 +160,18 @@ static inline unsigned long tegra_dc_kbps_to_emc(unsigned long bw)
 
 	if (WARN_ONCE((freq * 1000) < freq, "Bandwidth Overflow"))
 		return ULONG_MAX; /* should never occur because of above. */
-	return freq * 1000;
+
+	freq *= 1000;
+	emc_master = clk_get_parent(dc->emc_clk);
+	freq = clk_round_rate(emc_master, freq);
+	/*
+	 * tegra_emc_bw_to_freq_req() appears to underestimate the required
+	 * DRAM rate for low bandwidth requests.  If it results in a low DRAM
+	 * rate (<= 20.4Mhz), bump it up to the next available DRAM rate.
+	 */
+	if (freq <= EMC_LOW_FREQ_THRESHOLD)
+		freq = clk_round_rate(emc_master, freq + 1);
+	return freq;
 }
 
 /* use the larger of dc->bw_kbps or dc->new_bw_kbps, and copies
@@ -179,7 +194,7 @@ void tegra_dc_program_bandwidth(struct tegra_dc *dc, bool use_new)
 			!__clk_get_enable_count(dc->emc_clk))
 			clk_prepare_enable(dc->emc_clk);
 
-		emc_freq = tegra_dc_kbps_to_emc(bw);
+		emc_freq = tegra_dc_kbps_to_emc(dc, bw);
 		clk_set_rate(dc->emc_clk, emc_freq);
 
 		/* going from non-zero to 0 */
