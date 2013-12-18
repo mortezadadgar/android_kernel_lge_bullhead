@@ -110,8 +110,8 @@ static void dump_dma_reg(struct dma_chan *chan)
 		return;
 
 	pr_debug("<<<<<<<<<<<< DMA Dump Start >>>>>>>>>>>>");
-	pr_debug("DMA Dump for Channel id:%d & Chnl Base:%#x",
-					midc->ch_id, (unsigned int)midc->ch_regs);
+	pr_debug("DMA Dump for Channel id:%d & Chnl Base:0x%p",
+					midc->ch_id, midc->ch_regs);
 	/* dump common DMA registers */
 	pr_debug("PIMR:\t%#x", readl(mid->mask_reg) - 8);
 	pr_debug("ISRX:\t%#x", readl(mid->mask_reg));

@@ -176,10 +176,10 @@ static inline int sst_validate_fw_elf(const struct firmware *sst_fw)
 
 	if ((elf->e_ident[0] != 0x7F) || (elf->e_ident[1] != 'E') ||
 		(elf->e_ident[2] != 'L') || (elf->e_ident[3] != 'F')) {
-		pr_debug("ELF Header Not found!%d\n", sst_fw->size);
+		pr_debug("ELF Header Not found!%zd\n", sst_fw->size);
 		return -EINVAL;
 	}
-	pr_debug("Valid ELF Header...%d\n", sst_fw->size);
+	pr_debug("Valid ELF Header...%zd\n", sst_fw->size);
 
 	return 0;
 }
@@ -246,7 +246,7 @@ int parse_module_byt(struct fw_module_header *module)
 				dst[i] = src[i];
 			bytes_left = block->size % sizeof(u32);
 			WARN((bytes_left),
-				"Warning - non %d byte multiple block\n",
+				"Warning - non %lu byte multiple block\n",
 				sizeof(u32));
 			src_b = (unsigned char *)&src[num_u32s];
 			dst_b = (unsigned char *)&dst[num_u32s];
@@ -302,7 +302,7 @@ void sst_download_fw_byt(const void *fw_in_mem)
 	
 	/* Read the header information from the m_Data pointer */
 	header = (struct fw_header*)fw_in_mem;
-	pr_debug("header sign=%s size=%x modules=%x fmt=%x size=%x\n",
+	pr_debug("header sign=%s size=%x modules=%x fmt=%x size=%lx\n",
 			header->signature, header->file_size, header->modules,
 			header->file_format, sizeof(*header));
 
@@ -406,7 +406,7 @@ static int sst_parse_module(struct fw_module_header *module,
 		}
 		/*converting from physical to virtual because
 		scattergather list works on virtual pointers*/
-		ram = (int) phys_to_virt(ram);
+		ram = (unsigned long) phys_to_virt(ram);
 		retval = sst_fill_sglist(ram, block, &sg_src, &sg_dst);
 		if (retval) {
 			kfree(sg_src);
@@ -509,7 +509,7 @@ static int sst_parse_fw_image(const void *sst_fw_in_mem, unsigned long size,
 	pr_debug("%s\n", __func__);
 	/* Read the header information from the data pointer */
 	header = (struct fw_header *)sst_fw_in_mem;
-	pr_debug("header sign=%s size=%x modules=%x fmt=%x size=%x\n",
+	pr_debug("header sign=%s size=%x modules=%x fmt=%x size=%lx\n",
 			header->signature, header->file_size, header->modules,
 			header->file_format, sizeof(*header));
 	/* verify FW */
@@ -567,7 +567,7 @@ int sst_request_fw(void)
 		}
 	}
 
-	pr_debug("firmware size = %d\n",sst_drv_ctx->fw->size);
+	pr_debug("firmware size = %zd\n",sst_drv_ctx->fw->size);
 	sst_drv_ctx->fw_in_mem = kzalloc(sst_drv_ctx->fw->size, GFP_KERNEL);
 	if (!sst_drv_ctx->fw_in_mem) {
 		pr_err("%s unable to allocate memory\n", __func__);
