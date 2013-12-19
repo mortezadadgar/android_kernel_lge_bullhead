@@ -290,12 +290,11 @@ static void tegra124_cpufreq_clk_init(void)
 {
 	if (!IS_ERR(emc_clk))
 		clk_prepare_enable(emc_clk);
-	clk_prepare_enable(cpu_clk);
+	BUG_ON(!__clk_is_enabled(cpu_clk) && !__clk_is_prepared(cpu_clk));
 }
 
 static void tegra124_cpufreq_clk_exit(void)
 {
-	clk_disable_unprepare(cpu_clk);
 	if (!IS_ERR(emc_clk))
 		clk_disable_unprepare(emc_clk);
 }
