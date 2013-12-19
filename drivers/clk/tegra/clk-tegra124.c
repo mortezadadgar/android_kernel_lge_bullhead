@@ -1843,6 +1843,7 @@ static struct tegra_clk_init_table init_table[] __initdata = {
 	{TEGRA124_CLK_ISP, TEGRA124_CLK_PLL_C4, 0, 0},
 	{TEGRA124_CLK_VIC03, TEGRA124_CLK_PLL_P, 0, 0},
 	{TEGRA124_CLK_EMC, TEGRA124_CLK_CLK_MAX, 0, 1},
+	{TEGRA124_CLK_CCLK_G, TEGRA124_CLK_CLK_MAX, 0, 1},
 	/* This MUST be the last entry. */
 	{TEGRA124_CLK_CLK_MAX, TEGRA124_CLK_CLK_MAX, 0, 0},
 };
