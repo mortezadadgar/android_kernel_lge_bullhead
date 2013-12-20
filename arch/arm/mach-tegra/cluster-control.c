@@ -268,6 +268,7 @@ int tegra_cluster_control_init(void)
 {
 	int err = 0, num_lp_freqs;
 	unsigned long *freqs_lp;
+	struct clk *tmp_parent;
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *rootdir, *d = NULL;
 #endif
@@ -276,9 +277,10 @@ int tegra_cluster_control_init(void)
 	cclk_lp = clk_get(NULL, "cclk_lp");
 	dfll_clk = clk_get(NULL, "dfllCPU_out");
 	pll_x = clk_get(NULL, "pll_x");
+	tmp_parent = clk_get(NULL, "pll_p_out4");
 
 	if (IS_ERR(cclk_g) || IS_ERR(cclk_lp) || IS_ERR(dfll_clk) ||
-	    IS_ERR(pll_x)) {
+	    IS_ERR(pll_x) || IS_ERR(tmp_parent)) {
 		pr_err("%s: Failed to get CPU clocks\n", __func__);
 		err = -EPROBE_DEFER;
 		goto err;
@@ -291,11 +293,26 @@ int tegra_cluster_control_init(void)
 	}
 	lp_cpu_max_rate = freqs_lp[num_lp_freqs - 1];
 
-	err = clk_set_parent(cclk_lp, pll_x);
-	if (err) {
-		pr_err("%s: Failed to LP CPU parent: %d\n", __func__, err);
-		goto err;
+	/*
+	 * cclk_lp may initially be parented by pll_x_out0 (i.e. pll_x/2).
+	 * To bypass the divider, switch to a non-pll_x clock source and
+	 * then back to pll_x.
+	 */
+	if (clk_get_parent(cclk_lp) != pll_x) {
+		err = clk_set_parent(cclk_lp, tmp_parent);
+		if (err) {
+			pr_err("%s: Failed to LP CPU parent: %d\n", __func__,
+			       err);
+			goto err;
+		}
+		err = clk_set_parent(cclk_lp, pll_x);
+		if (err) {
+			pr_err("%s: Failed to LP CPU parent: %d\n", __func__,
+			       err);
+			goto err;
+		}
 	}
+	clk_put(tmp_parent);
 
 #ifdef CONFIG_DEBUG_FS
 	rootdir = debugfs_create_dir("tegra_cluster", NULL);
@@ -318,6 +335,8 @@ err:
 		clk_put(dfll_clk);
 	if (!IS_ERR(pll_x))
 		clk_put(pll_x);
+	if (!IS_ERR(tmp_parent))
+		clk_put(tmp_parent);
 
 	return err;
 }
