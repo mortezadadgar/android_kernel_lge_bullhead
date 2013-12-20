@@ -46,9 +46,22 @@ static int tegra_verify_speed(struct cpufreq_policy *policy)
 static unsigned int tegra_getspeed(unsigned int cpu)
 {
 	unsigned long rate;
+	int i;
 
 	rate = clk_get_rate(tegra_data->cpu_clk) / 1000;
-	return rate;
+	/*
+	 * Round to the neareset frequency.  The actual frequency generated
+	 * by the CPU clock may differ slightly from the rate in the table.
+	 */
+	for (i = 0;
+	     tegra_data->freq_table[i + 1].frequency != CPUFREQ_TABLE_END;
+	     i++) {
+		if (rate < (tegra_data->freq_table[i].frequency +
+			    tegra_data->freq_table[i + 1].frequency) / 2)
+			return tegra_data->freq_table[i].frequency;
+	}
+
+	return tegra_data->freq_table[i].frequency;
 }
 
 static int tegra_update_cpu_speed(struct cpufreq_policy *policy,
