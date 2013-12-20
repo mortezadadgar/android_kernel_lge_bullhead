@@ -1095,6 +1095,8 @@
 	};
 
 	memory-controller@7001b000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
 		emc-table@12750 {
 			compatible = "nvidia,tegra11-emc-table";
 			reg = <12750>;
