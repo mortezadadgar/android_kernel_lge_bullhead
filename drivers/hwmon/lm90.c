@@ -95,6 +95,8 @@
 #include <linux/mutex.h>
 #include <linux/sysfs.h>
 #include <linux/regulator/consumer.h>
+#include <linux/of.h>
+#include <linux/thermal.h>
 
 /*
  * Addresses to scan
@@ -117,6 +119,13 @@ static const unsigned short normal_i2c[] = {
 
 enum chips { lm90, adm1032, lm99, lm86, max6657, max6659, adt7461, max6680,
 	max6646, w83l771, max6696, sa56004, g781, tmp451 };
+
+enum sensor_id {
+	LOCAL = 0,
+	REMOTE,
+	REMOTE2,
+	SENSOR_ID_END,
+};
 
 /*
  * The LM90 registers
@@ -318,6 +327,7 @@ static const struct lm90_params lm90_params[] = {
 
 struct lm90_data {
 	struct device *hwmon_dev;
+	struct thermal_zone_device *tz[SENSOR_ID_END];
 	struct mutex update_lock;
 	struct regulator *lm90_reg;
 	char valid; /* zero until following fields are valid */
@@ -839,6 +849,24 @@ static ssize_t show_temp11(struct device *dev, struct device_attribute *devattr,
 	struct sensor_device_attribute_2 *attr = to_sensor_dev_attr_2(devattr);
 
 	return sprintf(buf, "%d\n", read_temp11(dev, attr->index));
+}
+
+static int lm90_read_local_temp(void *dev, long *temp)
+{
+	*temp = read_temp11(dev, 4);
+	return 0;
+}
+
+static int lm90_read_remote_temp(void *dev, long *temp)
+{
+	*temp = read_temp11(dev, 0);
+	return 0;
+}
+
+static int lm90_read_remote2_temp(void *dev, long *temp)
+{
+	*temp = read_temp11(dev, 5);
+	return 0;
 }
 
 static int write_temp11(struct device *dev, int nr, int index, long val)
@@ -1572,6 +1600,33 @@ static int lm90_probe(struct i2c_client *client,
 		goto exit_remove_files;
 	}
 
+	data->tz[LOCAL] = thermal_zone_of_sensor_register(&client->dev,
+							LOCAL,
+							&client->dev,
+							lm90_read_local_temp,
+							NULL);
+	if (IS_ERR(data->tz[LOCAL]))
+		data->tz[LOCAL] = NULL;
+
+	data->tz[REMOTE] = thermal_zone_of_sensor_register(&client->dev,
+							REMOTE,
+							&client->dev,
+							lm90_read_remote_temp,
+							NULL);
+	if (IS_ERR(data->tz[REMOTE]))
+		data->tz[REMOTE] = NULL;
+
+	if (data->flags & LM90_HAVE_TEMP3) {
+		data->tz[REMOTE2] = thermal_zone_of_sensor_register(
+							&client->dev,
+							REMOTE2,
+							&client->dev,
+							lm90_read_remote2_temp,
+							NULL);
+		if (IS_ERR(data->tz[REMOTE2]))
+			data->tz[REMOTE2] = NULL;
+	}
+
 	return 0;
 
 exit_remove_files:
@@ -1585,8 +1640,11 @@ exit_restore:
 
 static int lm90_remove(struct i2c_client *client)
 {
+	int i;
 	struct lm90_data *data = i2c_get_clientdata(client);
 
+	for (i = 0; i < SENSOR_ID_END; i++)
+		thermal_zone_of_sensor_unregister(&client->dev, data->tz[i]);
 	hwmon_device_unregister(data->hwmon_dev);
 	lm90_remove_files(client, data);
 	lm90_restore_conf(client, data);
