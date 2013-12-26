@@ -14,16 +14,16 @@
 			hp_det_l {
 				nvidia,pins = "pi7";
 				nvidia,function = "rsvd1";
-				nvidia,pull = <0>;
-				nvidia,tristate = <0>;
-				nvidia,enable-input = <1>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 			};
 			soc_warm_reset_l {
 				nvidia,pins = "pi5";
 				nvidia,function = "gmi";
-				nvidia,pull = <2>;
-				nvidia,tristate = <0>;
-				nvidia,enable-input = <0>;
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
 		};
 	};
