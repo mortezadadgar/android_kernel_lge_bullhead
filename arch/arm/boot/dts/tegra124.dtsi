@@ -72,8 +72,9 @@
 			compatible = "nvidia,tegra124-vic";
 			reg = <0x54340000 0x00040000>;
 			clocks = <&tegra_car TEGRA124_CLK_VIC03>,
-				 <&tegra_car TEGRA124_CLK_VIC03_EMC>;
-			clock-names = "vic03", "emc";
+				 <&tegra_car TEGRA124_CLK_VIC03_EMC>,
+				 <&tegra_car TEGRA124_CLK_VIC03_CBUS>;
+			clock-names = "vic03", "emc", "cbus";
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(VIC)>;
 		};
 
@@ -82,8 +83,9 @@
 			reg = <0x544c0000 0x00040000>;
 			interrupts = <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&tegra_car TEGRA124_CLK_MSENC>,
-				 <&tegra_car TEGRA124_CLK_MSENC_EMC>;
-			clock-names = "msenc", "emc";
+				 <&tegra_car TEGRA124_CLK_MSENC_EMC>,
+				 <&tegra_car TEGRA124_CLK_MSENC_CBUS>;
+			clock-names = "msenc", "emc", "cbus";
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(MSENC)>;
 		};
 
