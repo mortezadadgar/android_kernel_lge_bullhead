@@ -61,6 +61,7 @@
 			      <0x54280000 0x00040000>;
 			reg-names = "dc", "hdmi";
 			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "dc";
 			clocks = <&tegra_car TEGRA124_CLK_DISP2>,
 				 <&tegra_car TEGRA124_CLK_DISP2_EMC>,
 				 <&tegra_car TEGRA124_CLK_HDMI>;
