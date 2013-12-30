@@ -444,7 +444,17 @@ static struct i2c_driver as3722_i2c_driver = {
 	.id_table = as3722_i2c_id,
 };
 
-module_i2c_driver(as3722_i2c_driver);
+static int __init as3722_i2c_init(void)
+{
+	return i2c_add_driver(&as3722_i2c_driver);
+}
+subsys_initcall(as3722_i2c_init);
+
+static void __exit as3722_i2c_exit(void)
+{
+	i2c_del_driver(&as3722_i2c_driver);
+}
+module_exit(as3722_i2c_exit);
 
 MODULE_DESCRIPTION("I2C support for AS3722 PMICs");
 MODULE_AUTHOR("Florian Lobmaier <florian.lobmaier@ams.com>");

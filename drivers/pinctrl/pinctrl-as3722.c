@@ -606,7 +606,18 @@ static struct platform_driver as3722_pinctrl_driver = {
 	.probe = as3722_pinctrl_probe,
 	.remove = as3722_pinctrl_remove,
 };
-module_platform_driver(as3722_pinctrl_driver);
+
+static int __init as3722_pinctrl_init(void)
+{
+	return platform_driver_register(&as3722_pinctrl_driver);
+}
+subsys_initcall(as3722_pinctrl_init);
+
+static void __exit as3722_pinctrl_exit(void)
+{
+	platform_driver_unregister(&as3722_pinctrl_driver);
+}
+module_exit(as3722_pinctrl_exit);
 
 MODULE_ALIAS("platform:as3722-pinctrl");
 MODULE_DESCRIPTION("AS3722 pin control and GPIO driver");

@@ -945,7 +945,17 @@ static struct platform_driver as3722_regulator_driver = {
 	.probe = as3722_regulator_probe,
 };
 
-module_platform_driver(as3722_regulator_driver);
+static int __init as3722_regulator_init(void)
+{
+	return platform_driver_register(&as3722_regulator_driver);
+}
+subsys_initcall(as3722_regulator_init);
+
+static void __exit as3722_regulator_exit(void)
+{
+	platform_driver_unregister(&as3722_regulator_driver);
+}
+module_exit(as3722_regulator_exit);
 
 MODULE_ALIAS("platform:as3722-regulator");
 MODULE_DESCRIPTION("AS3722 regulator driver");
