@@ -4135,7 +4135,7 @@ static void __exit tegra_dfll_driver_exit(void)
 	platform_driver_unregister(&tegra_dfll_driver);
 }
 
-module_init(tegra_dfll_driver_init);
+fs_initcall(tegra_dfll_driver_init);
 module_exit(tegra_dfll_driver_exit);
 
 MODULE_DESCRIPTION("Tegra DFLL clock source driver");
