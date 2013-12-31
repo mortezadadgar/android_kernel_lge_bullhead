@@ -908,6 +908,8 @@ static int gk20a_probe(struct platform_device *dev)
 	gk20a_pmu_debugfs_init(dev);
 #endif
 
+	spin_lock_init(&gk20a->mc_enable_lock);
+
 	return 0;
 }
 
@@ -983,6 +985,42 @@ void gk20a_idle(struct platform_device *pdev)
 	if (pdata->idle)
 		pdata->idle(dev);
 #endif
+}
+
+void gk20a_disable(struct gk20a *g, u32 units)
+{
+	u32 pmc;
+
+	nvhost_dbg(dbg_info, "pmc disable: %08x\n", units);
+
+	spin_lock(&g->mc_enable_lock);
+	pmc = gk20a_readl(g, mc_enable_r());
+	pmc &= ~units;
+	gk20a_writel(g, mc_enable_r(), pmc);
+	spin_unlock(&g->mc_enable_lock);
+}
+
+void gk20a_enable(struct gk20a *g, u32 units)
+{
+	u32 pmc;
+
+	nvhost_dbg(dbg_info, "pmc enable: %08x\n", units);
+
+	spin_lock(&g->mc_enable_lock);
+	pmc = gk20a_readl(g, mc_enable_r());
+	pmc |= units;
+	gk20a_writel(g, mc_enable_r(), pmc);
+	spin_unlock(&g->mc_enable_lock);
+	gk20a_readl(g, mc_enable_r());
+
+	udelay(20);
+}
+
+void gk20a_reset(struct gk20a *g, u32 units)
+{
+	gk20a_disable(g, units);
+	udelay(20);
+	gk20a_enable(g, units);
 }
 
 module_init(gk20a_init);

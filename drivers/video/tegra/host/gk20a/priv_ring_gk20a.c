@@ -31,7 +31,7 @@
 
 void gk20a_reset_priv_ring(struct gk20a *g)
 {
-	u32 pmc_en, data;
+	u32 data;
 
 	data = gk20a_readl(g, trim_sys_gpc2clk_out_r());
 	data = set_field(data,
@@ -39,16 +39,7 @@ void gk20a_reset_priv_ring(struct gk20a *g)
 			trim_sys_gpc2clk_out_bypdiv_f(0));
 	gk20a_writel(g, trim_sys_gpc2clk_out_r(), data);
 
-	pmc_en = gk20a_readl(g, mc_enable_r());
-	pmc_en &= ~mc_enable_priv_ring_enabled_f();
-	gk20a_writel(g, mc_enable_r(), pmc_en);
-
-	udelay(20);
-
-	pmc_en = gk20a_readl(g, mc_enable_r());
-	pmc_en |= mc_enable_priv_ring_enabled_f();
-	gk20a_writel(g, mc_enable_r(), pmc_en);
-	pmc_en = gk20a_readl(g, mc_enable_r());
+	gk20a_reset(g, mc_enable_priv_ring_enabled_f());
 
 	gk20a_writel(g, pri_ringmaster_command_r(),
 			0x4);
