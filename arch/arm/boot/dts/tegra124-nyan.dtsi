@@ -1,4 +1,5 @@
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/thermal/thermal.h>
 #include "tegra124.dtsi"
 
 / {
@@ -1847,24 +1848,26 @@
 		cdev-cap-type = "CPU-EDP-cap";
         };
 
-	tj-temperature-throttling {
+	throttle0: tj-temperature-throttling {
 		compatible = "nvidia,tegra124-tj-throttle";
 		clocks = <&tegra_car TEGRA124_CLK_CAP_THROTTLE_C3BUS>,
 			 <&tegra_car TEGRA124_CLK_CAP_THROTTLE_SCLK>,
 			 <&tegra_car TEGRA124_CLK_CAP_THROTTLE_EMC>;
 		clock-names = "cap.throttle.c3bus", "cap.throttle.sclk", "cap.throttle.emc";
 		cpu-balanced-states = <&{/cpu-throttling-state}>;
+
+		#cooling-cells = <2>; /* min followed by max */
 	};
 
 	thermal-zones {
-		tmp451-local {
+		board_thermal_sensor: tmp451-local {
 			polling-delay-passive = <2000>; /* milliseconds */
 			polling-delay = <0>; /* milliseconds */
 
 			thermal-sensors = <&tmp451 0>;
 		};
 
-		tmp451-remote {
+		diode_thermal_sensor: tmp451-remote {
 			polling-delay-passive = <1000>; /* milliseconds */
 			polling-delay = <0>; /* milliseconds */
 
