@@ -34,6 +34,7 @@
 #define LP_BACKUP_FREQ		204000
 #define CPU_FREQ_STEP		102000 /* 102MHz cpu_g table step */
 #define CPU_FREQ_TABLE_MAX_SIZE (2 * MAX_DVFS_FREQS + 1)
+#define CLUSTER_SWITCH_THRESHOLD 696000000
 
 static struct clk *cpu_clk;
 static struct clk *fcpu_clk;
@@ -47,7 +48,6 @@ static bool is_dfll_clk_enabled;
 static unsigned long dfll_mode_threshold;
 static struct cpufreq_frequency_table
 		tegra124_cpufreq_tables[CPU_FREQ_TABLE_MAX_SIZE];
-static unsigned int g_cpu_min_rate;
 static cpumask_t online_cpus;
 
 static DEFINE_MUTEX(tegra124_cpu_lock);
@@ -251,7 +251,7 @@ static int tegra124_cpu_clk_set_rate(unsigned long new_rate)
 	mutex_lock(&tegra124_cpu_lock);
 
 	/* Switch back to G cluster if we're in G range. */
-	if (is_lp_cluster() && new_rate >= g_cpu_min_rate) {
+	if (is_lp_cluster() && new_rate >= CLUSTER_SWITCH_THRESHOLD) {
 		ret = tegra124_switch_cluster(TEGRA_CLUSTER_G);
 		if (ret)
 			goto out;
@@ -277,7 +277,7 @@ static int tegra124_cpu_clk_set_rate(unsigned long new_rate)
 	/* If only CPU0 is up and we're lower than G range, switch. */
 	if (cpumask_weight(&online_cpus) == 1 &&
 	    cpumask_first(&online_cpus) == 0 &&
-	    new_rate < g_cpu_min_rate)
+	    new_rate < CLUSTER_SWITCH_THRESHOLD)
 		ret = tegra124_switch_cluster(TEGRA_CLUSTER_LP);
 
 out:
@@ -332,7 +332,6 @@ static int tegra124_prepare_tables(struct tegra_cpufreq_data *data)
 				__func__);
 		return -EINVAL;
 	}
-	g_cpu_min_rate = g_vmin_freq;
 
 	/* Start with singular frequency */
 	i = 0;
