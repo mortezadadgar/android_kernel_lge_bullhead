@@ -269,7 +269,8 @@ struct thermal_cooling_device *balanced_throttle_register(
 	list_add(&bthrot->node, &bthrot_list);
 	mutex_unlock(&bthrot_list_lock);
 
-	bthrot->cdev = thermal_cooling_device_register(
+	bthrot->cdev = thermal_of_cooling_device_register(
+						bthrot->np,
 						type,
 						bthrot,
 						&tegra_throttle_cooling_ops);

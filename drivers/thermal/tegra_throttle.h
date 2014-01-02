@@ -39,6 +39,7 @@ struct throttle_table {
 
 struct balanced_throttle_instance {
 	struct thermal_cooling_device *cdev;
+	struct device_node *np;
 	struct list_head node;
 	unsigned long cur_state;
 	int throttle_count;

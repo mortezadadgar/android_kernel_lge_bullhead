@@ -167,6 +167,8 @@ static int tegra124_throttle_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	cpu_throt->np = pdev->dev.of_node;
+
 	balanced_throttle_register(cpu_throt, "cpu-balanced");
 
 	/* register gpu-balanced */

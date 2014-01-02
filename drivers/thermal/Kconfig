@@ -198,6 +198,16 @@ config TEGRA_SOCTHERM
         help
           Enables use of soc_therm for thermal management.
 
+config TEGRA_THERM_EST
+	bool "Tegra thermal estimator driver"
+	depends on THERMAL_OF
+	default n
+	help
+	  Tegra thermal driver which estimates temperature based
+	  off of the weighted sum of a sequence of readings from
+	  other sensors. The weights customized on a per-platform
+	  basis.
+
 config TEGRA_124_DFLL_COOLING
 	tristate "Tegra124 DFLL thermal reaction driver"
 	depends on THERMAL && CLK_TEGRA_T124_DFLL

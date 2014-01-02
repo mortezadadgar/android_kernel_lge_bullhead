@@ -32,6 +32,7 @@ ifeq ($(CONFIG_TEGRA_SOCTHERM),y)
 obj-$(CONFIG_ARCH_TEGRA_114_SOC)	+= tegra114_soctherm.o
 obj-$(CONFIG_ARCH_TEGRA_124_SOC)	+= tegra124_soctherm.o
 endif
+obj-$(CONFIG_TEGRA_THERM_EST)		+= tegra_therm_est.o
 
 # platform thermally-reactive drivers
 obj-$(CONFIG_TEGRA_124_DFLL_COOLING)	+= tegra124_dfll_action.o
