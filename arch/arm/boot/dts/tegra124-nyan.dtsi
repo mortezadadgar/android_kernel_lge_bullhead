@@ -8,6 +8,26 @@
 		reg = <0x80000000 0x80000000>;
 	};
 
+	host1x@50000000 {
+		dc@54200000 {
+			avdd-lcd-supply = <&avdd_lcd>;
+			vdd-lcd-bl-supply = <&vdd_lcd_bl>;
+			lcd-bl-en-supply = <&lcd_bl_en>;
+		};
+
+		dc@54240000 {
+			avdd-hdmi-pex-supply = <&avdd_hdmi_pex>;
+			avdd-hdmi-pll-supply = <&avdd_hdmi_pll>;
+			vdd-hdmi-5v0-supply = <&vdd_hdmi_5v0>;
+
+			hdmi-hpd-gpios = <&gpio TEGRA_GPIO(N, 7) GPIO_ACTIVE_HIGH>;
+		};
+
+		gk20a@57000000 {
+			vddgpu-supply = <&vdd_gpu>;
+		};
+	};
+
 	pinmux {
 		pinctrl-names = "default";
 		pinctrl-0 = <&state_default>;
@@ -612,7 +632,7 @@
 					regulator-always-on;
 				};
 
-				sd4 {
+				avdd_hdmi_pex: sd4 {
 					regulator-name = "avdd-hdmi-pex";
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
@@ -1674,6 +1694,28 @@
 			regulator-boot-on;
 			gpio = <&gpio TEGRA_GPIO(H, 2) GPIO_ACTIVE_HIGH>;
 		};
+
+		vdd_hdmi_5v0: regulator@8 {
+			compatible = "regulator-fixed";
+			reg = <8>;
+			regulator-name = "vdd-hdmi-5v0";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			enable-active-high;
+			regulator-boot-on;
+			gpio = <&gpio TEGRA_GPIO(K, 6) GPIO_ACTIVE_HIGH>;
+		};
+
+		avdd_hdmi_pll: regulator@9 {
+			compatible = "regulator-fixed";
+			reg = <9>;
+			regulator-name = "avdd-hdmi-pll";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			enable-active-low;
+			regulator-boot-on;
+			gpio = <&gpio TEGRA_GPIO(H, 7) GPIO_ACTIVE_HIGH>;
+		};
 	};
 
 	/*
@@ -1706,12 +1748,6 @@
 
 	usb@7d008000 {
 		status = "okay";
-	};
-
-	host1x@50000000 {
-		gk20a@57000000 {
-			vddgpu-supply = <&vdd_gpu>;
-		};
 	};
 
 	soc_therm {
