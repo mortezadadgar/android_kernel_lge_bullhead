@@ -593,11 +593,10 @@ static void zram_slot_free_notify(struct block_device *bdev,
 	zram_stat64_inc(zram, &zram->stats.notify_free);
 }
 
-static int zram_release(struct gendisk *disk, fmode_t mode)
+static void zram_release(struct gendisk *disk, fmode_t mode)
 {
 	struct zram *zram = disk->private_data;
 	atomic_dec(&zram->nr_opens);
-	return 0;
 }
 
 static int zram_open(struct block_device *bdev, fmode_t mode)
