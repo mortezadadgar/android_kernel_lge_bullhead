@@ -87,17 +87,18 @@ static void tegra_throttle_set_cap_clk(struct throttle_table *throt_tab,
 					int cap_clk_index)
 {
 	unsigned long cap_rate, clk_rate;
+	int cap_offset = cap_clk_index - CAP_CLK_START;
 
 	cap_rate = throt_tab->cap_freqs[cap_clk_index];
 	if (cap_rate == NO_CAP)
-		clk_rate = tegra_cap_freqs_table[cap_clk_index-1].max_freq;
+		clk_rate = tegra_cap_freqs_table[cap_offset].max_freq;
 	else
 		clk_rate = cap_rate * 1000UL;
 
-	if (tegra_cap_freqs_table[cap_clk_index-1].cap_freq != clk_rate) {
-		clk_set_rate(tegra_cap_freqs_table[cap_clk_index-1].cap_clk,
+	if (tegra_cap_freqs_table[cap_offset].cap_freq != clk_rate) {
+		clk_set_rate(tegra_cap_freqs_table[cap_offset].cap_clk,
 			     clk_rate);
-		tegra_cap_freqs_table[cap_clk_index-1].cap_freq = clk_rate;
+		tegra_cap_freqs_table[cap_offset].cap_freq = clk_rate;
 	}
 }
 
@@ -106,15 +107,15 @@ tegra_throttle_cap_freqs_update(struct throttle_table *throt_tab,
 				int direction)
 {
 	int i;
-	int num_of_cap_clocks = tegra_cap_freqs_table_size;
+	int max_cap_clock = CAP_CLK_START + tegra_cap_freqs_table_size;
 
 	if (direction == 1) {
 		/* performance up : throttle less */
-		for (i = num_of_cap_clocks; i >= CAP_C3BUS; i--)
+		for (i = max_cap_clock - 1; i >= CAP_CLK_START; i--)
 			tegra_throttle_set_cap_clk(throt_tab, i);
 	} else {
 		/* performance down : throotle more */
-		for (i = CAP_C3BUS; i <= num_of_cap_clocks; i++)
+		for (i = CAP_CLK_START; i < max_cap_clock; i++)
 			tegra_throttle_set_cap_clk(throt_tab, i);
 	}
 }
@@ -126,7 +127,7 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 	struct balanced_throttle_instance *bthrot = cdev->devdata;
 	int direction;
 	int i;
-	int num_of_cap_clocks = tegra_cap_freqs_table_size;
+	int max_cap_clock = CAP_CLK_START + tegra_cap_freqs_table_size;
 	unsigned long bthrot_speed;
 	struct throttle_table *throt_entry;
 	struct throttle_table cur_throt_freq = {
@@ -151,7 +152,7 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 			continue;
 
 		throt_entry = &bthrot->throt_tab[bthrot->cur_state-1];
-		for (i = 0; i <= num_of_cap_clocks; i++) {
+		for (i = 0; i < max_cap_clock; i++) {
 			cur_throt_freq.cap_freqs[i] = min(
 					cur_throt_freq.cap_freqs[i],
 					throt_entry->cap_freqs[i]);
@@ -221,15 +222,16 @@ static struct notifier_block tegra_throttle_cpufreq_notifier_block = {
 static int table_show(struct seq_file *s, void *data)
 {
 	struct balanced_throttle_instance *bthrot = s->private;
+	int max_cap_clock = CAP_CLK_START + tegra_cap_freqs_table_size;
 	int i, j;
 
 	for (i = 0; i < bthrot->throt_tab_size; i++) {
 		/* CPU FREQ */
 		seq_printf(s, "[%d] = %7lu",
-			   i, bthrot->throt_tab[i].cap_freqs[0]);
+			   i, bthrot->throt_tab[i].cap_freqs[CAP_CPU]);
 
-		/* OTHER DVFS MODULE FREQS */
-		for (j = 1; j <= tegra_cap_freqs_table_size; j++)
+		/* GPU FREQ and other DVFS module FREQS */
+		for (j = CAP_GPU; j < max_cap_clock; j++)
 			if (bthrot->throt_tab[i].cap_freqs[j] == NO_CAP)
 				seq_printf(s, " %7s", "NO_CAP");
 			else

@@ -27,7 +27,8 @@ struct dentry;
 enum throttle_cap_freqs {
 	CAP_CPU = 0,
 	CAP_GPU,
-	CAP_C3BUS,
+	CAP_CLK_START,
+	CAP_C3BUS = CAP_CLK_START,
 	CAP_SCLK,
 	CAP_EMC,
 	NUM_OF_CAP_FREQS,
