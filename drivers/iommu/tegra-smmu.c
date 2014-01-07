@@ -253,6 +253,7 @@ struct smmu_device {
 	int nr_asid_secs;	/* number of asid_security registers */
 	u32 tlb_reset;		/* TLB config reset value */
 	u32 ptc_reset;		/* PTC config reset value */
+	bool extended_pa;	/* supports > 32bit physical addresses */
 
 	/*
 	 * Register image savers for suspend/resume
@@ -277,6 +278,7 @@ struct smmu_platform_data {
 	int nr_asid_secs;	/* number of asid_security registers */
 	u32 tlb_reset;		/* TLB config reset value */
 	u32 ptc_reset;		/* PTC config reset value */
+	bool extended_pa;	/* supports > 32bit physical addresses */
 };
 
 static struct smmu_device *smmu_handle; /* unique for a system */
@@ -565,9 +567,10 @@ static void flush_ptc_by_addr(struct smmu_device *smmu, unsigned long *pte,
 {
 	u32 val;
 
-	val = VA_PAGE_TO_PA_HI(pte, page);
-	if (val)
+	if (smmu->extended_pa) {
+		val = VA_PAGE_TO_PA_HI(pte, page);
 		smmu_write(smmu, val, SMMU_PTC_FLUSH_1);
+	}
 
 	val = SMMU_PTC_FLUSH_TYPE_ADR | VA_PAGE_TO_PA(pte, page);
 	smmu_write(smmu, val, SMMU_PTC_FLUSH);
@@ -1324,6 +1327,7 @@ static const struct smmu_platform_data tegra124_smmu_pdata = {
 	.nr_asid_secs = 8,
 	.tlb_reset = SMMU_TLB_CONFIG_RESET_VAL | SMMU_TLB_RR_ARB | 0x20,
 	.ptc_reset = SMMU_PTC_CONFIG_RESET_VAL | SMMU_PTC_REQ_LIMIT,
+	.extended_pa = true,
 };
 
 static struct of_device_id tegra_smmu_of_match[] = {
@@ -1379,6 +1383,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 		(SMMU_TLB_CONFIG_RESET_VAL | 0x10);
 	smmu->ptc_reset = (pdata && pdata->ptc_reset) ? pdata->ptc_reset :
 		(SMMU_PTC_CONFIG_RESET_VAL | SMMU_PTC_REQ_LIMIT);
+	smmu->extended_pa = pdata->extended_pa;
 	smmu->regs = devm_kzalloc(dev, 2 * smmu->nregs * sizeof(*smmu->regs),
 				  GFP_KERNEL);
 	smmu->rege = smmu->regs + smmu->nregs;
