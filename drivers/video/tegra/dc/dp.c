@@ -766,7 +766,10 @@ static int tegra_dc_dp_init_max_link_cfg(struct tegra_dc_dp_data *dp,
 
 	cfg->bits_per_pixel = dp->dc->pdata->default_out->depth;
 
-	/* TODO: need to come from the board file */
+	/*
+	 * Set to a high value for link training and attach.
+	 * Will be re-programmed when dp is enabled.
+	 */
 	cfg->drive_current = 0x40404040;
 	cfg->preemphasis = 0x0f0f0f0f;
 	cfg->postcursor = 0;
@@ -1649,6 +1652,13 @@ static void tegra_dc_dp_enable(struct tegra_dc *dc)
 
 	tegra_dc_sor_set_power_state(dp->sor, 1);
 	tegra_dc_sor_attach(dp->sor);
+
+	/*
+	 * Power down the unused lanes to save power
+	 * (about hundreds milli-watts, varies from boards).
+	 */
+	tegra_dc_sor_power_down_unused_lanes(dp->sor);
+
 	dp->enabled = true;
 
 error_enable:

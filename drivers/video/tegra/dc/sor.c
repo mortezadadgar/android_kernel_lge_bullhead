@@ -483,6 +483,8 @@ static int tegra_dc_sor_enable_lane_sequencer(struct tegra_dc_sor_data *sor,
 
 	if (is_lvds)
 		reg_val |= 15 << NV_SOR_LANE_SEQ_CTL_DELAY_SHIFT;
+	else
+		reg_val |= 1 << NV_SOR_LANE_SEQ_CTL_DELAY_SHIFT;
 
 	tegra_sor_writel(sor, NV_SOR_LANE_SEQ_CTL, reg_val);
 
@@ -1296,3 +1298,65 @@ void tegra_dc_sor_set_lane_parm(struct tegra_dc_sor_data *sor,
 		0xf0, 0x0);
 }
 
+void tegra_dc_sor_power_down_unused_lanes(struct tegra_dc_sor_data *sor)
+{
+	u32 pad_ctrl = 0;
+	u32 drive_current = 0;
+	u32 pre_emphasis = 0;
+	int err = 0;
+
+	switch (sor->link_cfg->lane_count) {
+	case 4:
+		pad_ctrl = (NV_SOR_DP_PADCTL_PD_TXD_0_NO |
+			NV_SOR_DP_PADCTL_PD_TXD_1_NO |
+			NV_SOR_DP_PADCTL_PD_TXD_2_NO |
+			NV_SOR_DP_PADCTL_PD_TXD_3_NO);
+		break;
+	case 2:
+		pad_ctrl = (NV_SOR_DP_PADCTL_PD_TXD_0_NO |
+			NV_SOR_DP_PADCTL_PD_TXD_1_NO |
+			NV_SOR_DP_PADCTL_PD_TXD_2_YES |
+			NV_SOR_DP_PADCTL_PD_TXD_3_YES);
+		break;
+	case 1:
+		pad_ctrl = (NV_SOR_DP_PADCTL_PD_TXD_0_NO |
+			NV_SOR_DP_PADCTL_PD_TXD_1_YES |
+			NV_SOR_DP_PADCTL_PD_TXD_2_YES |
+			NV_SOR_DP_PADCTL_PD_TXD_3_YES);
+		break;
+	default:
+		WARN(1, "Invalid sor lane count: %u\n",
+			sor->link_cfg->lane_count);
+		return;
+	}
+
+	pad_ctrl |= NV_SOR_DP_PADCTL_PAD_CAL_PD_POWERDOWN;
+	tegra_sor_writel(sor, NV_SOR_DP_PADCTL(sor->portnum), pad_ctrl);
+
+	err = tegra_dc_sor_enable_lane_sequencer(sor, 0, false);
+	if (err) {
+		dev_warn(&sor->dc->ndev->dev,
+			"Wait for lane power down failed: %d\n", err);
+		return;
+	}
+
+	/* Set to a known-good pre-calibrated setting */
+	switch (sor->link_cfg->link_bw) {
+	case SOR_LINK_SPEED_G1_62:
+	case SOR_LINK_SPEED_G2_7:
+		drive_current = 0x13131313;
+		pre_emphasis = 0;
+		break;
+	case SOR_LINK_SPEED_G5_4:
+		drive_current = 0x19191919;
+		pre_emphasis = 0x09090909;
+	default:
+		WARN(1, "Invalid sor link bandwidth: %d\n",
+			sor->link_cfg->link_bw);
+		return;
+	}
+
+	tegra_sor_writel(sor, NV_SOR_LANE_DRIVE_CURRENT(sor->portnum),
+				drive_current);
+	tegra_sor_writel(sor, NV_SOR_PR(sor->portnum), pre_emphasis);
+}

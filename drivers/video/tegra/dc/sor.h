@@ -128,5 +128,6 @@ void tegra_dc_sor_set_lane_parm(struct tegra_dc_sor_data *sor,
 	const struct tegra_dc_dp_link_config *cfg);
 int tegra_dc_sor_set_power_state(struct tegra_dc_sor_data *sor,
 	int pu_pd);
+void tegra_dc_sor_power_down_unused_lanes(struct tegra_dc_sor_data *sor);
 
 #endif
