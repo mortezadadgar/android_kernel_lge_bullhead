@@ -540,6 +540,7 @@
 		trusted-platform-module {
 			compatible = "infineon,slb9645tt";
 			reg = <0x20>;
+			powered-while-suspended;
 		};
 	};
 
