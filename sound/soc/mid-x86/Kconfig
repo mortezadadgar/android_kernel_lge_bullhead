@@ -1,13 +1,81 @@
 config SND_MFLD_MACHINE
 	tristate "SOC Machine Audio driver for Intel Medfield MID platform"
-	depends on INTEL_SCU_IPC
+	depends on INTEL_SCU_IPC && INTEL_SCU_IPC_UTIL && X86 && GPIO_LANGWELL
+	depends on MSIC_GPADC
 	select SND_SOC_SN95031
 	select SND_SST_PLATFORM
+	select SND_INTEL_SST
+	default n
 	help
           This adds support for ASoC machine driver for Intel(R) MID Medfield platform
-          used as alsa device in audio substem in Intel(R) MID devices
+	  used as alsa device in audio subsystem in Intel(R) MID devices
+	  Say Y if you have such a device
+	  If unsure select "N".
+
+config SND_MFLD_MACHINE_GI
+	tristate "SOC Machine Audio driver for Intel Medfield GI board"
+	depends on INTEL_SCU_IPC && INTEL_SCU_IPC_UTIL && X86 && GPIO_LANGWELL
+	depends on MSIC_GPADC
+	select SND_SOC_SN95031
+	select SND_SST_PLATFORM
+	select SND_INTEL_SST
+	default n
+	help
+	  This adds support for ASoC machine driver for Gilligan Island board, based on
+	  Intel(R) MID Medfield platform. This will create an alsa sound card.
+	  Say Y if you have such a device
+	  If unsure select "N".
+
+config SND_BYT_MACHINE
+	tristate "SOC Machine Audio driver for Intel Baytrail platform"
+	depends on X86
+	select SND_SOC_AK4614
+	select SND_SST_PLATFORM
+	select SND_INTEL_SST
+	default n
+	help
+	  This adds support for ASoC machine driver for Intel(R) Baytrail platform
+          used as alsa device in audio subsystem in Intel(R) MID devices
           Say Y if you have such a device
           If unsure select "N".
 
+config SND_INTEL_SST
+       tristate
+
+config SND_COMPRESS_SST
+       tristate "Compressed framework driver for Intel(R) SST engine"
+
 config SND_SST_PLATFORM
+	tristate
+
+config SND_MFLD_MONO_SPEAKER_SUPPORT
+	tristate "Mono Speaker support for Medfield based devices"
+	default N
+	help
+	  This adds support for Mono speaker support on Intel(R) MID Medfield based devices.
+	  Say Y if you have device with mono speaker. If you say N support for stereo speakers
+	  will be enabled.
+	  If unsure select "N".
+
+config SND_MFLD_COMMS_MACHINE
+	tristate "Audio Comms SOC Machine Audio driver for Intel Medfield MID platform"
+	depends on EXPERIMENTAL && SND_INTEL_MID_I2S
+	select SND_SOC_WL1273_UART
+	select SND_SOC_IFX1130_MODEM_CODEC
+	select SND_SOC_ES305
+	select SND_SOC_SSP
+	help
+	  Say Y here to include support for ALSA SSP soundcard.
+	  To compile this driver as a module, choose M here: the module
+	  will be called snd-alsa-ssp.ko
+	  This is a sound card driver for TI LNW1273 BT/FM Board
+	  This ALSA driver offers:
+	  - BT device with 1 capture and 1 playback substreams,
+	  for BT SCO voice memp record and playback
+	  - FM device with 1 capture substream.
+	  - VOIP device with 1 capture and 1 playback substreams
+	  - IFX Modem device with 1 capture and 1 playback substreams,
+	  for audio/tone/alert mixing during Voice Call and Voice Call record
+
+config SND_SOC_SSP
 	tristate
