@@ -440,9 +440,10 @@
 			<&tegra_car TEGRA124_CLK_CLK_M>,
 			<&tegra_car TEGRA124_CLK_PLL_M_UD>,
 			<&tegra_car TEGRA124_CLK_PLL_C2>,
-			<&tegra_car TEGRA124_CLK_PLL_C3>;
+			<&tegra_car TEGRA124_CLK_PLL_C3>,
+			<&tegra_car TEGRA124_CLK_PLL_C_UD>;
 		clock-names = "emc", "pll_m", "pll_c", "pll_p", "clk_m",
-			"pll_m_ud", "pll_c2", "pll_c3";
+			"pll_m_ud", "pll_c2", "pll_c3", "pll_c_ud";
 	};
 
 	sdhci@700b0600 {
