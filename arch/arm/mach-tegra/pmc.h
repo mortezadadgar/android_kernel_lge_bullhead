@@ -39,6 +39,7 @@ void tegra_pmc_suspend(void);
 void tegra_pmc_resume(void);
 void tegra_pmc_pm_set(enum tegra_suspend_mode mode);
 void tegra_pmc_suspend_init(void);
+int tegra_pmc_suspend_valid(void);
 #endif
 
 bool tegra_pmc_cpu_is_powered(int cpuid);

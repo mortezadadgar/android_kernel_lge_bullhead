@@ -23,6 +23,7 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/irq.h>
+#include <linux/firmware.h>
 #include <linux/memblock.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
@@ -41,6 +42,13 @@
 #include "pm.h"
 #include "pmc.h"
 #include "sleep.h"
+
+/*
+ * When another Tegra variant supports loading LP0 code with request_firmware,
+ * this #define should be converted to a lookup table so each SoC can have its
+ * own firmware name.
+ */
+#define LP0_FW_NAME "tegra12x/tegra_lp0_resume.fw"
 
 #define TEGRA_POWER_PWRREQ_POLARITY	(1 << 8)   /* core power req polarity */
 #define TEGRA_POWER_PWRREQ_OE		(1 << 9)   /* core power req enable */
@@ -796,6 +804,45 @@ void tegra_pmc_suspend_init(void)
 
 	tegra_pmc_wake_syscore_init();
 }
+
+/*
+ * When starting to enter LP0 without LP0 boot code, try to request the
+ * code with request_firmware, if it can't be loaded, switch to LP1.
+ */
+int tegra_pmc_suspend_valid(void)
+{
+	const struct firmware *fw;
+	int ret;
+	uint8_t *fw_buff;
+
+	if (pmc_pm_data.suspend_mode != TEGRA_SUSPEND_LP0 ||
+	    pmc_pm_data.lp0_vec_size)
+		return 0;
+
+	ret = request_firmware(&fw, LP0_FW_NAME, NULL);
+	if (ret) {
+		pr_info("Disabling LP0, no resume code found\n");
+		pmc_pm_data.suspend_mode = TEGRA_SUSPEND_LP1;
+		return 0;
+	}
+
+	fw_buff = kmalloc(fw->size, GFP_KERNEL);
+	if (!fw_buff) {
+		pr_debug("Couldn't allocate %zu bytes LP0 code, disabling\n",
+			 fw->size);
+		pmc_pm_data.suspend_mode = TEGRA_SUSPEND_LP1;
+		goto suspend_check_done;
+	}
+	pr_info("Loaded LP0 firmware with request_firmware.\n");
+
+	memcpy(fw_buff, fw->data, fw->size);
+	pmc_pm_data.lp0_vec_phy_addr = virt_to_phys(fw_buff);
+	pmc_pm_data.lp0_vec_size = fw->size;
+
+suspend_check_done:
+	release_firmware(fw);
+	return 0;
+}
 #endif
 
 static const struct of_device_id matches[] __initconst = {
@@ -893,15 +940,17 @@ void __init tegra_pmc_init(void)
 	pmc_pm_data.cpu_pwr_good_en = of_property_read_bool(np,
 				"nvidia,cpu-pwr-good-en");
 
-	if (of_property_read_u32_array(np, "nvidia,lp0-vec", lp0_vec,
-				       ARRAY_SIZE(lp0_vec)))
-		if (suspend_mode == TEGRA_SUSPEND_LP0)
-			suspend_mode = TEGRA_SUSPEND_LP1;
+	/*
+	 * If LP0 suspend is requested, try to load the address of the resume
+	 * code.  If the resume code isn't passed from the bootloader, an
+	 * attempt to load it will be made at the first suspend.
+	 */
+	if (suspend_mode == TEGRA_SUSPEND_LP0 &&
+	    !of_property_read_u32_array(np, "nvidia,lp0-vec", lp0_vec,
+					ARRAY_SIZE(lp0_vec))) {
+		pmc_pm_data.lp0_vec_phy_addr = lp0_vec[0];
+		pmc_pm_data.lp0_vec_size = lp0_vec[1];
 
-	pmc_pm_data.lp0_vec_phy_addr = lp0_vec[0];
-	pmc_pm_data.lp0_vec_size = lp0_vec[1];
-
-	if (suspend_mode == TEGRA_SUSPEND_LP0) {
 		if (!memblock_is_reserved(pmc_pm_data.lp0_vec_phy_addr)) {
 			pr_info("Suspend mode LP0 requested, but init failed");
 			pr_cont("-- disabling LP0\n");
