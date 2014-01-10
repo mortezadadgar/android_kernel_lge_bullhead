@@ -3130,7 +3130,18 @@ static struct platform_driver tegra124_pinctrl_driver = {
 	.probe = tegra124_pinctrl_probe,
 	.remove = tegra_pinctrl_remove,
 };
-module_platform_driver(tegra124_pinctrl_driver);
+
+static int __init tegra124_pinctrl_init(void)
+{
+	return platform_driver_register(&tegra124_pinctrl_driver);
+}
+arch_initcall(tegra124_pinctrl_init);
+
+static void __exit tegra124_pinctrl_exit(void)
+{
+	platform_driver_unregister(&tegra124_pinctrl_driver);
+}
+module_exit(tegra124_pinctrl_exit);
 
 MODULE_AUTHOR("Ashwini Ghuge <aghuge@nvidia.com>");
 MODULE_DESCRIPTION("NVIDIA Tegra124 pinctrl driver");
