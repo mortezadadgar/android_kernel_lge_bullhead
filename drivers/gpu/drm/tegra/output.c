@@ -193,8 +193,7 @@ int tegra_output_probe(struct tegra_output *output)
 {
 	struct device_node *ddc, *panel;
 	enum of_gpio_flags flags;
-	size_t size;
-	int err;
+	int err, size;
 
 	if (!output->of_node)
 		output->of_node = output->dev->of_node;
