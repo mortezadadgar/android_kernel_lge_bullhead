@@ -125,12 +125,29 @@ out:
 
 static int clk_super_prepare(struct clk_hw *hw)
 {
+	struct tegra_clk_super_mux *mux = to_clk_super_mux(hw);
+
+	mux->prepared = true;
 	return tegra_dvfs_set_rate(hw->clk, clk_get_rate(hw->clk));
 }
 
 static void clk_super_unprepare(struct clk_hw *hw)
 {
+	struct tegra_clk_super_mux *mux = to_clk_super_mux(hw);
+
 	tegra_dvfs_set_rate(hw->clk, 0);
+	mux->prepared = false;
+}
+
+static int clk_super_is_prepared(struct clk_hw *hw)
+{
+	struct tegra_clk_super_mux *mux = to_clk_super_mux(hw);
+
+	if (mux->prepared)
+		return true;
+
+	/* In case the clock is used to determine the required voltage */
+	return tegra_dvfs_get_rate(hw->clk) != 0;
 }
 
 const struct clk_ops tegra_clk_super_ops = {
@@ -138,6 +155,7 @@ const struct clk_ops tegra_clk_super_ops = {
 	.set_parent = clk_super_set_parent,
 	.prepare = clk_super_prepare,
 	.unprepare = clk_super_unprepare,
+	.is_prepared = clk_super_is_prepared,
 };
 
 struct clk *tegra_clk_register_super_mux(const char *name,

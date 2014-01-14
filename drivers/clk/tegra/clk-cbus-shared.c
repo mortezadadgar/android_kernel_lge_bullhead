@@ -440,16 +440,49 @@ static unsigned long clk_system_recalc_rate(struct clk_hw *hw,
 	return parent_rate;
 }
 
+static int clk_shared_master_prepare(struct clk_hw *hw)
+{
+	struct tegra_clk_cbus_shared *master = to_clk_cbus_shared(hw);
+
+	master->prepared = true;
+	return tegra_dvfs_set_rate(hw->clk, clk_get_rate(hw->clk));
+}
+
+static void clk_shared_master_unprepare(struct clk_hw *hw)
+{
+	struct tegra_clk_cbus_shared *master = to_clk_cbus_shared(hw);
+
+	tegra_dvfs_set_rate(hw->clk, 0);
+	master->prepared = false;
+}
+
+static int clk_shared_master_is_prepared(struct clk_hw *hw)
+{
+	struct tegra_clk_cbus_shared *master = to_clk_cbus_shared(hw);
+
+	if (master->prepared)
+		return true;
+
+	/* In case the clock is used to determine the required voltage */
+	return tegra_dvfs_get_rate(hw->clk) != 0;
+}
+
 static const struct clk_ops tegra_clk_system_ops = {
 	.recalc_rate = clk_system_recalc_rate,
 	.round_rate = clk_system_round_rate,
 	.set_rate = clk_system_set_rate,
+	.prepare = clk_shared_master_prepare,
+	.unprepare = clk_shared_master_unprepare,
+	.is_prepared = clk_shared_master_is_prepared,
 };
 
 static const struct clk_ops tegra_clk_cbus_ops = {
 	.recalc_rate = clk_cbus_recalc_rate,
 	.round_rate = clk_cbus_round_rate,
 	.set_rate = clk_cbus_set_rate,
+	.prepare = clk_shared_master_prepare,
+	.unprepare = clk_shared_master_unprepare,
+	.is_prepared = clk_shared_master_is_prepared,
 };
 
 static const struct clk_ops tegra_clk_shared_ops = {
@@ -460,7 +493,11 @@ static const struct clk_ops tegra_clk_shared_ops = {
 	.recalc_rate = clk_shared_recalc_rate,
 };
 
-static const struct clk_ops tegra_clk_shared_master_ops;
+static const struct clk_ops tegra_clk_shared_master_ops = {
+	.prepare = clk_shared_master_prepare,
+	.unprepare = clk_shared_master_unprepare,
+	.is_prepared = clk_shared_master_is_prepared,
+};
 
 struct clk *tegra_clk_register_sbus_cmplx(const char *name,
 		const char *parent, unsigned long flags,
