@@ -215,6 +215,7 @@ struct tegra_clk_pll_params {
  * @flags:	PLL flags
  * @fixed_rate:	PLL rate if it is fixed
  * @lock:	register lock
+ * @prepared:	clock is prepared or not
  *
  * Flags:
  * TEGRA_PLL_USE_LOCK - This flag indicated to use lock bits for
@@ -243,6 +244,7 @@ struct tegra_clk_pll {
 	void __iomem	*pmc;
 	spinlock_t	*lock;
 	struct tegra_clk_pll_params	*params;
+	bool		prepared;
 };
 
 #define to_clk_pll(_hw) container_of(_hw, struct tegra_clk_pll, hw)
@@ -362,6 +364,7 @@ struct tegra_clk_periph_regs {
  * @flags:		hardware-specific flags
  * @clk_num:		Clock number
  * @enable_refcnt:	array to maintain reference count of the clock
+ * @prepared:		clock is prepared or not
  *
  * Flags:
  * TEGRA_PERIPH_NO_RESET - This flag indicates that reset is not allowed
@@ -383,6 +386,7 @@ struct tegra_clk_periph_gate {
 	int			clk_num;
 	int			*enable_refcnt;
 	struct tegra_clk_periph_regs	*regs;
+	bool			prepared;
 };
 
 #define to_clk_periph_gate(_hw)					\
@@ -415,6 +419,7 @@ struct clk *tegra_clk_register_periph_gate(const char *name,
  * @mux_ops:	mux clock ops
  * @div_ops:	divider clock ops
  * @gate_ops:	gate clock ops
+ * @prepared:	clock is prepared or not
  */
 struct tegra_clk_periph {
 	u32			magic;
@@ -426,6 +431,7 @@ struct tegra_clk_periph {
 	const struct clk_ops	*mux_ops;
 	const struct clk_ops	*div_ops;
 	const struct clk_ops	*gate_ops;
+	bool			prepared;
 };
 
 #define to_clk_periph(_hw) container_of(_hw, struct tegra_clk_periph, hw)

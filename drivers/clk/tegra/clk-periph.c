@@ -114,12 +114,29 @@ static void clk_periph_disable(struct clk_hw *hw)
 
 static int clk_periph_prepare(struct clk_hw *hw)
 {
+	struct tegra_clk_periph *periph = to_clk_periph(hw);
+
+	periph->prepared = true;
 	return tegra_dvfs_set_rate(hw->clk, clk_get_rate(hw->clk));
 }
 
 static void clk_periph_unprepare(struct clk_hw *hw)
 {
+	struct tegra_clk_periph *periph = to_clk_periph(hw);
+
 	tegra_dvfs_set_rate(hw->clk, 0);
+	periph->prepared = false;
+}
+
+static int clk_periph_is_prepared(struct clk_hw *hw)
+{
+	struct tegra_clk_periph *periph = to_clk_periph(hw);
+
+	if (periph->prepared)
+		return true;
+
+	/* In case the clock is used to determine the required voltage */
+	return tegra_dvfs_get_rate(hw->clk) != 0;
 }
 
 void tegra_periph_reset_deassert(struct clk *c)
@@ -185,6 +202,7 @@ const struct clk_ops tegra_clk_periph_ops = {
 	.round_rate = clk_periph_round_rate,
 	.set_rate = clk_periph_set_rate,
 	.is_enabled = clk_periph_is_enabled,
+	.is_prepared = clk_periph_is_prepared,
 	.enable = clk_periph_enable,
 	.disable = clk_periph_disable,
 	.prepare = clk_periph_prepare,
@@ -195,6 +213,7 @@ const struct clk_ops tegra_clk_periph_nodiv_ops = {
 	.get_parent = clk_periph_get_parent,
 	.set_parent = clk_periph_set_parent,
 	.is_enabled = clk_periph_is_enabled,
+	.is_prepared = clk_periph_is_prepared,
 	.enable = clk_periph_enable,
 	.disable = clk_periph_disable,
 	.prepare = clk_periph_prepare,

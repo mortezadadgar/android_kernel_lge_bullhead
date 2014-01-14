@@ -779,16 +779,34 @@ static unsigned long clk_plle_recalc_rate(struct clk_hw *hw,
 
 static int clk_pll_prepare(struct clk_hw *hw)
 {
+	struct tegra_clk_pll *pll = to_clk_pll(hw);
+
+	pll->prepared = true;
 	return tegra_dvfs_set_rate(hw->clk, clk_get_rate(hw->clk));
 }
 
 static void clk_pll_unprepare(struct clk_hw *hw)
 {
+	struct tegra_clk_pll *pll = to_clk_pll(hw);
+
 	tegra_dvfs_set_rate(hw->clk, 0);
+	pll->prepared = false;
+}
+
+static int clk_pll_is_prepared(struct clk_hw *hw)
+{
+	struct tegra_clk_pll *pll = to_clk_pll(hw);
+
+	if (pll->prepared)
+		return true;
+
+	/* In case the clock is used to determine the required voltage */
+	return tegra_dvfs_get_rate(hw->clk) != 0;
 }
 
 const struct clk_ops tegra_clk_pll_ops = {
 	.is_enabled = clk_pll_is_enabled,
+	.is_prepared = clk_pll_is_prepared,
 	.enable = clk_pll_enable,
 	.disable = clk_pll_disable,
 	.recalc_rate = clk_pll_recalc_rate,
@@ -801,6 +819,7 @@ const struct clk_ops tegra_clk_pll_ops = {
 const struct clk_ops tegra_clk_plle_ops = {
 	.recalc_rate = clk_plle_recalc_rate,
 	.is_enabled = clk_pll_is_enabled,
+	.is_prepared = clk_pll_is_prepared,
 	.disable = clk_pll_disable,
 	.enable = clk_plle_enable,
 	.prepare = clk_pll_prepare,
@@ -1499,6 +1518,7 @@ void tegra_clk_sync_state_pll(struct clk *c)
 #if defined(CONFIG_ARCH_TEGRA_114_SOC) || defined(CONFIG_ARCH_TEGRA_124_SOC)
 const struct clk_ops tegra_clk_pllxc_ops = {
 	.is_enabled = clk_pll_is_enabled,
+	.is_prepared = clk_pll_is_prepared,
 	.enable = clk_pll_iddq_enable,
 	.disable = clk_pll_iddq_disable,
 	.recalc_rate = clk_pll_recalc_rate,
@@ -1510,6 +1530,7 @@ const struct clk_ops tegra_clk_pllxc_ops = {
 
 const struct clk_ops tegra_clk_pllm_ops = {
 	.is_enabled = clk_pll_is_enabled,
+	.is_prepared = clk_pll_is_prepared,
 	.enable = clk_pll_iddq_enable,
 	.disable = clk_pll_iddq_disable,
 	.recalc_rate = clk_pll_recalc_rate,
@@ -1521,6 +1542,7 @@ const struct clk_ops tegra_clk_pllm_ops = {
 
 const struct clk_ops tegra_clk_pllc_ops = {
 	.is_enabled = clk_pll_is_enabled,
+	.is_prepared = clk_pll_is_prepared,
 	.enable = clk_pllc_enable,
 	.disable = clk_pllc_disable,
 	.recalc_rate = clk_pll_recalc_rate,
@@ -1532,6 +1554,7 @@ const struct clk_ops tegra_clk_pllc_ops = {
 
 const struct clk_ops tegra_clk_pllre_ops = {
 	.is_enabled = clk_pll_is_enabled,
+	.is_prepared = clk_pll_is_prepared,
 	.enable = clk_pll_iddq_enable,
 	.disable = clk_pll_iddq_disable,
 	.recalc_rate = clk_pllre_recalc_rate,
@@ -1543,6 +1566,7 @@ const struct clk_ops tegra_clk_pllre_ops = {
 
 const struct clk_ops tegra_clk_plle_tegra114_ops = {
 	.is_enabled =  clk_pll_is_enabled,
+	.is_prepared = clk_pll_is_prepared,
 	.enable = clk_plle_tegra114_enable,
 	.disable = clk_plle_tegra114_disable,
 	.recalc_rate = clk_pll_recalc_rate,
@@ -1893,6 +1917,7 @@ void tegra_clk_sync_state_iddq(struct clk *c)
 #ifdef CONFIG_ARCH_TEGRA_124_SOC
 const struct clk_ops tegra_clk_pllss_ops = {
 	.is_enabled = clk_pll_is_enabled,
+	.is_prepared = clk_pll_is_prepared,
 	.enable = clk_pll_iddq_enable,
 	.disable = clk_pll_iddq_disable,
 	.recalc_rate = clk_pll_recalc_rate,

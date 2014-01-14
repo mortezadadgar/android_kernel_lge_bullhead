@@ -141,12 +141,29 @@ static void clk_periph_disable(struct clk_hw *hw)
 
 static int clk_periph_prepare(struct clk_hw *hw)
 {
+	struct tegra_clk_periph_gate *gate = to_clk_periph_gate(hw);
+
+	gate->prepared = true;
 	return tegra_dvfs_set_rate(hw->clk, clk_get_rate(hw->clk));
 }
 
 static void clk_periph_unprepare(struct clk_hw *hw)
 {
+	struct tegra_clk_periph_gate *gate = to_clk_periph_gate(hw);
+
 	tegra_dvfs_set_rate(hw->clk, 0);
+	gate->prepared = false;
+}
+
+static int clk_periph_is_prepared(struct clk_hw *hw)
+{
+	struct tegra_clk_periph_gate *gate = to_clk_periph_gate(hw);
+
+	if (gate->prepared)
+		return true;
+
+	/* In case the clock is used to determine the required voltage */
+	return tegra_dvfs_get_rate(hw->clk) != 0;
 }
 
 void tegra_periph_reset(struct tegra_clk_periph_gate *gate, bool assert)
@@ -171,6 +188,7 @@ void tegra_periph_reset(struct tegra_clk_periph_gate *gate, bool assert)
 
 const struct clk_ops tegra_clk_periph_gate_ops = {
 	.is_enabled = clk_periph_is_enabled,
+	.is_prepared = clk_periph_is_prepared,
 	.enable = clk_periph_enable,
 	.disable = clk_periph_disable,
 	.prepare = clk_periph_prepare,
