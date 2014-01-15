@@ -97,7 +97,7 @@ static struct cpuidle_driver tegra_idle_driver = {
 			.target_residency	= 10000,
 			.power_usage		= 0,
 			.flags			= CPUIDLE_FLAG_TIME_VALID,
-			.name			= "CPU cluster off",
+			.name			= "CPU-cluster-off",
 			.desc			= "CPU cluster power gated",
 		},
 #endif
