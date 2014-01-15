@@ -22,6 +22,23 @@
 static ktime_t last_g2lp;
 static unsigned int lp_cpu_max_rate;
 static struct clk *cclk_g, *cclk_lp, *dfll_clk, *pll_x;
+static u64 g_time, lp_time, last_update;
+static DEFINE_SPINLOCK(cluster_stats_lock);
+
+static void cluster_stats_update(void)
+{
+	u64 cur_time, diff;
+
+	spin_lock(&cluster_stats_lock);
+	cur_time = get_jiffies_64();
+	diff = cur_time - last_update;
+	if (is_lp_cluster())
+		lp_time += diff;
+	else
+		g_time += diff;
+	last_update = cur_time;
+	spin_unlock(&cluster_stats_lock);
+}
 
 static inline void enable_pllx_cluster_port(void)
 {
@@ -232,6 +249,8 @@ int tegra_switch_cluster(int new_cluster)
 		goto abort;
 	}
 
+	cluster_stats_update();
+
 	err = tegra_cluster_control(flags);
 	if (err) {
 		pr_err("%s: failed to switch to %s cluster\n", __func__,
@@ -262,6 +281,35 @@ static int cluster_get(void *data, u64 *val)
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(cluster_ops, cluster_get, NULL, "%llu\n");
+
+static int cluster_stats_show(struct seq_file *s, void *data)
+{
+	u64 g, lp;
+
+	cluster_stats_update();
+
+	spin_lock(&cluster_stats_lock);
+	g = g_time;
+	lp = lp_time;
+	spin_unlock(&cluster_stats_lock);
+
+	seq_printf(s, "G %-10llu\n", g);
+	seq_printf(s, "LP %-10llu\n", lp);
+
+	return 0;
+}
+
+static int cluster_stats_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cluster_stats_show, inode->i_private);
+}
+
+static const struct file_operations cluster_stats_ops = {
+	.open		= cluster_stats_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
 #endif
 
 int tegra_cluster_control_init(void)
@@ -270,7 +318,7 @@ int tegra_cluster_control_init(void)
 	unsigned long *freqs_lp;
 	struct clk *tmp_parent;
 #ifdef CONFIG_DEBUG_FS
-	struct dentry *rootdir, *d = NULL;
+	struct dentry *rootdir;
 #endif
 
 	cclk_g = clk_get(NULL, "cclk_g");
@@ -317,12 +365,14 @@ int tegra_cluster_control_init(void)
 #ifdef CONFIG_DEBUG_FS
 	rootdir = debugfs_create_dir("tegra_cluster", NULL);
 	if (rootdir) {
-		d = debugfs_create_file("current_cluster", S_IRUGO, rootdir,
+		debugfs_create_file("current_cluster", S_IRUGO, rootdir,
 					NULL, &cluster_ops);
-		if (!d)
-			debugfs_remove_recursive(rootdir);
+		debugfs_create_file("time_in_state", S_IRUGO, rootdir,
+					NULL, &cluster_stats_ops);
 	}
 #endif
+
+	last_update = get_jiffies_64();
 
 	return 0;
 
