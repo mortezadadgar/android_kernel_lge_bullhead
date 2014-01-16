@@ -1125,6 +1125,11 @@ static struct tegra_devclk devclks[] __initdata = {
 	{ .con_id = "gbus", .dt_id = TEGRA124_CLK_GPU },
 	{ .con_id = "cpu.emc", .dt_id = TEGRA124_CLK_CPU_EMC },
 	{ .con_id = "xusb.emc", .dt_id = TEGRA124_CLK_XUSB_EMC },
+	{ .con_id = "xusb_ss_src", .dt_id = TEGRA124_CLK_XUSB_SS_SRC },
+	{ .con_id = "xusb_host", .dt_id = TEGRA124_CLK_XUSB_HOST },
+	{ .con_id = "xusb_dev", .dt_id = TEGRA124_CLK_XUSB_DEV },
+	{ .con_id = "xusb_ss", .dt_id = TEGRA124_CLK_XUSB_SS },
+	{ .con_id = "xusb_falcon_src", .dt_id = TEGRA124_CLK_XUSB_FALCON_SRC },
 };
 
 static struct clk **clks;
