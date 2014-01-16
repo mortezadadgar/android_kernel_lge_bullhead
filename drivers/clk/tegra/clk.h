@@ -189,6 +189,7 @@ struct tegra_clk_pll_params {
 	u32		iddq_reg;
 	u32		iddq_bit_idx;
 	u32		aux_reg;
+	u32		xusbio_pll_cfg0_reg;
 	u32		dyn_ramp_reg;
 	u32		ext_misc_reg[3];
 	u32		pmc_divnm_reg;

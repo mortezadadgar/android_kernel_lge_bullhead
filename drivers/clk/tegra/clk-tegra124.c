@@ -67,6 +67,7 @@
 #define PLLE_AUX 0x48c
 #define PLLRE_BASE 0x4c4
 #define PLLRE_MISC 0x4c8
+#define XUSBIO_PLL_CFG0 0x51c
 #define PLLDP_BASE 0x590
 #define PLLDP_MISC 0x594
 #define PLLC4_BASE 0x5a4
@@ -468,6 +469,7 @@ static struct tegra_clk_pll_params pll_e_params = {
 	.base_reg = PLLE_BASE,
 	.misc_reg = PLLE_MISC,
 	.aux_reg = PLLE_AUX,
+	.xusbio_pll_cfg0_reg = XUSBIO_PLL_CFG0,
 	.lock_mask = PLLE_MISC_LOCK,
 	.lock_enable_bit_idx = PLLE_MISC_LOCK_ENABLE,
 	.lock_delay = 300,
