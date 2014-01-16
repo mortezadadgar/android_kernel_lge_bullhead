@@ -1269,6 +1269,9 @@ static __init void tegra124_periph_clk_init(void __iomem *clk_base,
 	tegra_periph_clk_init(clk_base, pmc_base, tegra124_clks, &pll_p_params);
 }
 
+static const char *mux_pll_e[] = { "pll_ref", "pll_p", "pllre_vco" };
+static u32 mux_pll_e_idx[] = { [0] = 0, [1] = BIT(2), [2] = BIT(28) };
+
 static void __init tegra124_pll_init(void __iomem *clk_base,
 				     void __iomem *pmc)
 {
@@ -1394,7 +1397,13 @@ static void __init tegra124_pll_init(void __iomem *clk_base,
 	clks[TEGRA124_CLK_PLL_RE_OUT] = clk;
 
 	/* PLLE */
-	clk = tegra_clk_register_plle_tegra114("pll_e", "pll_ref",
+	clk = clk_register_mux_table(NULL, "pll_e_mux", mux_pll_e,
+				ARRAY_SIZE(mux_pll_e), CLK_SET_RATE_PARENT,
+				clk_base + PLLE_AUX, 0, BIT(28) | BIT(2),
+				0, mux_pll_e_idx, &pll_e_lock);
+	clks[TEGRA124_CLK_PLL_E_MUX] = clk;
+
+	clk = tegra_clk_register_plle_tegra114("pll_e", "pll_e_mux",
 				      clk_base, 0, &pll_e_params, &pll_e_lock);
 	clk_register_clkdev(clk, "pll_e", NULL);
 	clks[TEGRA124_CLK_PLL_E] = clk;
