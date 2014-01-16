@@ -165,12 +165,21 @@ tegra124_powergate_partition_info[TEGRA124_POWERGATE_NUM] = {
 	},
 	[TEGRA_POWERGATE_XUSBA] = {
 		.name = "xusba",
+		.clk_info = {
+			[0] = { .clk_name = "xusb_ss" },
+		},
 	},
 	[TEGRA_POWERGATE_XUSBB] = {
 		.name = "xusbb",
+		.clk_info = {
+			[0] = { .clk_name = "xusb_dev" },
+		},
 	},
 	[TEGRA_POWERGATE_XUSBC] = {
 		.name = "xusbc",
+		.clk_info = {
+			[0] = { .clk_name = "xusb_host" },
+		},
 	},
 	[TEGRA_POWERGATE_VIC] = {
 		.name = "vic",
