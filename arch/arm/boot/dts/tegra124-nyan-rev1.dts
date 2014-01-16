@@ -64,4 +64,50 @@
 		nvidia,mic-det-gpios = <&gpio TEGRA_GPIO(R, 7)
 							GPIO_ACTIVE_HIGH>;
 	};
+
+	skin_temp: therm-est {
+		compatible = "nvidia,tegra124-therm-est";
+		toffset = <9793>;
+		tc1 = <10>;
+		tc2 = <1>;
+		polling-period = <1100>;
+
+		#thermal-sensor-cells = <0>;
+
+		sub-devs {
+			dev@0 {
+				dev = <&diode_thermal_sensor>;
+				coeffs = "2 1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 0 0 -1 -7";
+			};
+
+			dev@1 {
+				dev = <&board_thermal_sensor>;
+				coeffs = "-11 -7 -5 -3 -3 -2 -1 0 0 0 1 1 1 2 2 3 4 6 11 18";
+			};
+		};
+	};
+
+	thermal-zones {
+		skin-therm {
+			polling-delay-passive = <15000>; /* milliseconds */
+			polling-delay = <0>; /* milliseconds */
+
+			thermal-sensors = <&skin_temp>;
+
+			trips {
+				balance_trip0: balance_trip {
+					temperature = <45000>; /* millicelsius */
+					hysteresis = <0>; /* millicelsius */
+					type = "passive";
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&balance_trip0>;
+					cooling-device = <&throttle0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+	};
 };
