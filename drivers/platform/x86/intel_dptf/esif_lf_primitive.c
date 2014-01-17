@@ -92,7 +92,7 @@
  */
 
 /* u16 To String */
-static char *esif_primitive_domain_str(
+char *esif_primitive_domain_str(
 	u16 domain,
 	char *str_ptr
 	)
@@ -104,7 +104,7 @@ static char *esif_primitive_domain_str(
 
 
 /* u32 To String */
-static char *esif_action_acpi_str(
+char *esif_action_acpi_str(
 	u32 method,
 	char *str_ptr
 	)
