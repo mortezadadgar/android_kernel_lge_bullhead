@@ -1,0 +1,28 @@
+#
+# DPTF Drivers
+#
+
+config INTEL_DPTF
+	tristate "Intel DPTF/ESIF Lower Framework"
+	select IOSF_MBI
+	depends on ACPI
+	---help---
+	  This is a driver for DPTF/ESIF Lower Framework.
+
+config INTEL_DPTF_ACPI
+	tristate "Intel DPTF Acpi Participant"
+	depends on INTEL_DPTF
+	---help---
+	  This is a driver for DPTF Acpi Participant.
+
+config INTEL_DPTF_CPU
+	tristate "Intel DPTF CPU Participant"
+	depends on INTEL_DPTF
+	---help---
+	  This is a driver for DPTF CPU Participant.
+
+config INTEL_DPTF_PCH
+	tristate "Intel DPTF PCH Participant"
+	depends on INTEL_DPTF
+	---help---
+	  This is a driver for DPTF PCH Participant.
