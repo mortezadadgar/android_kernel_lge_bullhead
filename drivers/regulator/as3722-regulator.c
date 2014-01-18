@@ -78,6 +78,7 @@ struct as3722_regulator_config_data {
 	struct regulator_init_data *reg_init;
 	bool enable_tracking;
 	int ext_control;
+	int standby_sequence;
 };
 
 struct as3722_regulators {
@@ -372,14 +373,96 @@ static int as3722_set_suspend_disable(struct regulator_dev *rdev)
 {
 	struct as3722_regulators *as3722_regs = rdev_get_drvdata(rdev);
 	int id = rdev_get_id(rdev);
+	int slot = as3722_regs->reg_config_data[id].standby_sequence;
 	int ret;
 
 	ret = as3722_update_bits(as3722_regs->as3722,
 			as3722_reg_lookup[id].standby_ctrl_reg,
 			as3722_reg_lookup[id].standby_ctrl_mask, 0);
-	if (ret < 0)
+	if (ret < 0) {
 		dev_err(as3722_regs->dev, "Reg 0x%02x update failed: %d\n",
 			as3722_reg_lookup[id].standby_ctrl_reg, ret);
+		return ret;
+	}
+	if (slot >= 0) {
+		/*
+		 * To put disabling of the regulator in the standby entry/exit
+		 * sequence, map the regulator's vsel register into the desired
+		 * slot in the sequence and set the standby voltage to 0.
+		 */
+		ret = as3722_update_bits(as3722_regs->as3722,
+					 AS3722_STBY_REGn_CONTROL_REG(slot),
+					 AS3722_STBY_REG_SELECT_MASK,
+					 as3722_reg_lookup[id].vsel_reg);
+		if (ret < 0) {
+			dev_err(as3722_regs->dev,
+				"Reg 0x%02x update failed: %d\n",
+				AS3722_STBY_REGn_CONTROL_REG(slot), ret);
+			return ret;
+		}
+		ret = as3722_update_bits(as3722_regs->as3722,
+					 AS3722_STBY_REGn_VOLTAGE_REG(slot),
+					 as3722_reg_lookup[id].vsel_mask, 0);
+		if (ret < 0) {
+			dev_err(as3722_regs->dev,
+				"Reg 0x%02x update failed: %d\n",
+				AS3722_STBY_REGn_VOLTAGE_REG(slot), ret);
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+static int as3722_set_suspend_voltage(struct regulator_dev *rdev, int uV)
+{
+	struct as3722_regulators *as3722_regs = rdev_get_drvdata(rdev);
+	int id = rdev_get_id(rdev);
+	int slot = as3722_regs->reg_config_data[id].standby_sequence;
+	int vsel, ret;
+
+	if (slot < 0) {
+		dev_err(as3722_regs->dev,
+			"Regulator not in standby sequence\n");
+		return -EINVAL;
+	}
+
+	/*
+	 * To set the standby voltage of a regulator, map the regulator's
+	 * vsel register into the desired slot in the standby sequence and
+	 * update the standy voltage for that slot.
+	 */
+	ret = as3722_update_bits(as3722_regs->as3722,
+				 AS3722_STBY_REGn_CONTROL_REG(slot),
+				 AS3722_STBY_REG_SELECT_MASK,
+				 as3722_reg_lookup[id].vsel_reg);
+	if (ret < 0) {
+		dev_err(as3722_regs->dev,
+			"Reg 0x%02x update failed: %d\n",
+			AS3722_STBY_REGn_CONTROL_REG(slot), ret);
+		return ret;
+	}
+	if (rdev->desc->ops->map_voltage) {
+		vsel = rdev->desc->ops->map_voltage(rdev, uV, uV);
+	} else {
+		if (rdev->desc->ops->list_voltage ==
+			regulator_list_voltage_linear)
+			vsel = regulator_map_voltage_linear(rdev, uV, uV);
+		else
+			vsel = regulator_map_voltage_iterate(rdev, uV, uV);
+	}
+	if (vsel < 0) {
+		dev_err(as3722_regs->dev, "Invalid standby voltage: %d\n", uV);
+		return -EINVAL;
+	}
+	ret = as3722_update_bits(as3722_regs->as3722,
+				 AS3722_STBY_REGn_VOLTAGE_REG(slot),
+				 as3722_reg_lookup[id].vsel_mask, vsel);
+	if (ret < 0)
+		dev_err(as3722_regs->dev,
+			"Reg 0x%02x update failed: %d\n",
+			AS3722_STBY_REGn_VOLTAGE_REG(slot), ret);
+
 	return ret;
 }
 
@@ -451,6 +534,7 @@ static struct regulator_ops as3722_ldo0_ops = {
 	.set_current_limit = as3722_ldo_set_current_limit,
 	.set_suspend_enable = as3722_set_suspend_enable,
 	.set_suspend_disable = as3722_set_suspend_disable,
+	.set_suspend_voltage = as3722_set_suspend_voltage,
 };
 
 static struct regulator_ops as3722_ldo0_extcntrl_ops = {
@@ -461,6 +545,7 @@ static struct regulator_ops as3722_ldo0_extcntrl_ops = {
 	.set_current_limit = as3722_ldo_set_current_limit,
 	.set_suspend_enable = as3722_set_suspend_enable,
 	.set_suspend_disable = as3722_set_suspend_disable,
+	.set_suspend_voltage = as3722_set_suspend_voltage,
 };
 
 static int as3722_ldo3_set_tracking_mode(struct as3722_regulators *as3722_reg,
@@ -497,6 +582,7 @@ static struct regulator_ops as3722_ldo3_ops = {
 	.get_current_limit = as3722_ldo3_get_current_limit,
 	.set_suspend_enable = as3722_set_suspend_enable,
 	.set_suspend_disable = as3722_set_suspend_disable,
+	.set_suspend_voltage = as3722_set_suspend_voltage,
 };
 
 static struct regulator_ops as3722_ldo3_extcntrl_ops = {
@@ -506,6 +592,7 @@ static struct regulator_ops as3722_ldo3_extcntrl_ops = {
 	.get_current_limit = as3722_ldo3_get_current_limit,
 	.set_suspend_enable = as3722_set_suspend_enable,
 	.set_suspend_disable = as3722_set_suspend_disable,
+	.set_suspend_voltage = as3722_set_suspend_voltage,
 };
 
 #define regulator_lin_range(_min_sel, _max_sel, _min_uV, _step_uV)	\
@@ -534,6 +621,7 @@ static struct regulator_ops as3722_ldo_ops = {
 	.set_current_limit = as3722_ldo_set_current_limit,
 	.set_suspend_enable = as3722_set_suspend_enable,
 	.set_suspend_disable = as3722_set_suspend_disable,
+	.set_suspend_voltage = as3722_set_suspend_voltage,
 };
 
 static struct regulator_ops as3722_ldo_extcntrl_ops = {
@@ -545,6 +633,7 @@ static struct regulator_ops as3722_ldo_extcntrl_ops = {
 	.set_current_limit = as3722_ldo_set_current_limit,
 	.set_suspend_enable = as3722_set_suspend_enable,
 	.set_suspend_disable = as3722_set_suspend_disable,
+	.set_suspend_voltage = as3722_set_suspend_voltage,
 };
 
 static unsigned int as3722_sd_get_mode(struct regulator_dev *rdev)
@@ -731,6 +820,7 @@ static struct regulator_ops as3722_sd016_ops = {
 	.set_mode = as3722_sd_set_mode,
 	.set_suspend_enable = as3722_set_suspend_enable,
 	.set_suspend_disable = as3722_set_suspend_disable,
+	.set_suspend_voltage = as3722_set_suspend_voltage,
 };
 
 static struct regulator_ops as3722_sd016_extcntrl_ops = {
@@ -744,6 +834,7 @@ static struct regulator_ops as3722_sd016_extcntrl_ops = {
 	.set_mode = as3722_sd_set_mode,
 	.set_suspend_enable = as3722_set_suspend_enable,
 	.set_suspend_disable = as3722_set_suspend_disable,
+	.set_suspend_voltage = as3722_set_suspend_voltage,
 };
 
 static struct regulator_ops as3722_sd2345_ops = {
@@ -758,6 +849,7 @@ static struct regulator_ops as3722_sd2345_ops = {
 	.set_mode = as3722_sd_set_mode,
 	.set_suspend_enable = as3722_set_suspend_enable,
 	.set_suspend_disable = as3722_set_suspend_disable,
+	.set_suspend_voltage = as3722_set_suspend_voltage,
 };
 
 static struct regulator_ops as3722_sd2345_extcntrl_ops = {
@@ -769,6 +861,7 @@ static struct regulator_ops as3722_sd2345_extcntrl_ops = {
 	.set_mode = as3722_sd_set_mode,
 	.set_suspend_enable = as3722_set_suspend_enable,
 	.set_suspend_disable = as3722_set_suspend_disable,
+	.set_suspend_voltage = as3722_set_suspend_voltage,
 };
 
 static int as3722_extreg_init(struct as3722_regulators *as3722_regs, int id,
@@ -857,6 +950,17 @@ static int as3722_get_regulator_dt_data(struct platform_device *pdev,
 		}
 		reg_config->enable_tracking =
 			of_property_read_bool(reg_node, "ams,enable-tracking");
+		reg_config->standby_sequence = -1;
+		ret = of_property_read_u32(reg_node, "ams,standby-sequence",
+						&prop);
+		if (!ret) {
+			if (prop < 10)
+				reg_config->standby_sequence = prop;
+			else
+				dev_warn(&pdev->dev,
+					"invalid standby-sequence slot: %u\n",
+					prop);
+		}
 	}
 	return 0;
 }

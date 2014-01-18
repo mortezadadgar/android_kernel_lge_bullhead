@@ -38,6 +38,9 @@ Optional nodes:
 			3: Rail is controlled by ENABLE3 input pin.
 		ams,enable-tracking: Enable tracking with SD1, only supported
 			by LDO3.
+		ams,standby-sequence: Slot (0 - 9) in the standby sequence
+			in which the standby state of the regulator is
+			applied.
 
 Example:
 -------
