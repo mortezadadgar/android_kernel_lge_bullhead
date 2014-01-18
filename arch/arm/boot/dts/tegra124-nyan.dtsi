@@ -617,6 +617,7 @@
 					regulator-min-microvolt = <700000>;
 					regulator-max-microvolt = <1350000>;
 					regulator-always-on;
+					regulator-suspend-mem-disabled;
 					ams,ext-control = <2>;
 				};
 
@@ -626,7 +627,9 @@
 					regulator-max-microvolt = <1350000>;
 					regulator-max-microamp = <3500000>;
 					regulator-always-on;
+					regulator-suspend-mem-disabled;
 					ams,ext-control = <1>;
+					ams,standby-sequence = <5>;
 				};
 
 				as3722_sd2: sd2 {
@@ -634,6 +637,15 @@
 					regulator-min-microvolt = <1350000>;
 					regulator-max-microvolt = <1350000>;
 					regulator-always-on;
+					regulator-suspend-mem-enabled;
+				};
+
+				as3722_sd3: sd3 {
+					regulator-name = "sd3";
+					regulator-min-microvolt = <1350000>;
+					regulator-max-microvolt = <1350000>;
+					regulator-always-on;
+					regulator-suspend-mem-enabled;
 				};
 
 				avdd_hdmi_pex: sd4 {
@@ -642,6 +654,8 @@
 					regulator-max-microvolt = <1050000>;
 					regulator-boot-on;
 					regulator-always-on;
+					regulator-suspend-mem-disabled;
+					ams,standby-sequence = <3>;
 				};
 
 				vddio_1v8: sd5 {
@@ -649,6 +663,7 @@
 					regulator-min-microvolt = <1800000>;
 					regulator-max-microvolt = <1800000>;
 					regulator-always-on;
+					regulator-suspend-mem-enabled;
 				};
 
 				vdd_gpu: sd6 {
@@ -657,6 +672,8 @@
 					regulator-max-microvolt = <1200000>;
 					regulator-boot-on;
 					regulator-always-on;
+					regulator-suspend-mem-disabled;
+					ams,standby-sequence = <0>;
 				};
 
 				run_avdd_1v05: ldo0 {
@@ -664,13 +681,16 @@
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
 					regulator-always-on;
+					regulator-suspend-mem-disabled;
 					ams,ext-control = <1>;
+					ams,standby-sequence = <4>;
 				};
 
 				run_cam_1v8: ldo1 {
 					regulator-name = "vdd_cam";
 					regulator-min-microvolt = <1800000>;
 					regulator-max-microvolt = <1800000>;
+					regulator-suspend-mem-disabled;
 				};
 
 				gen_avdd_1v2: ldo2 {
@@ -678,6 +698,8 @@
 					regulator-min-microvolt = <1200000>;
 					regulator-max-microvolt = <1200000>;
 					regulator-always-on;
+					regulator-suspend-mem-disabled;
+					ams,standby-sequence = <2>;
 				};
 
 				lp0_vdd_rtc_1v0: ldo3 {
@@ -685,6 +707,7 @@
 					regulator-min-microvolt = <1000000>;
 					regulator-max-microvolt = <1000000>;
 					regulator-always-on;
+					regulator-suspend-mem-enabled;
 					ams,enable-tracking;
 				};
 
@@ -692,42 +715,50 @@
 					regulator-name = "avdd_cam";
 					regulator-min-microvolt = <2800000>;
 					regulator-max-microvolt = <2800000>;
+					regulator-suspend-mem-disabled;
+					ams,standby-sequence = <1>;
 				};
 
 				run_cam_front_1v2: ldo5 {
 					regulator-name = "vdig";
 					regulator-min-microvolt = <1200000>;
 					regulator-max-microvolt = <1200000>;
+					regulator-suspend-mem-disabled;
 				};
 
 				vddio_sdmmc3: ldo6 {
 					regulator-name = "vddio_sdmmc";
 					regulator-min-microvolt = <3300000>;
 					regulator-max-microvolt = <3300000>;
+					regulator-suspend-mem-disabled;
 				};
 
 				run_cam_rear_en_1v05: ldo7 {
 					regulator-name = "vdd_cam1";
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
+					regulator-suspend-mem-disabled;
 				};
 
 				run_touch_2v8: ldo9 {
 					regulator-name = "avdd";
 					regulator-min-microvolt = <2800000>;
 					regulator-max-microvolt = <2800000>;
+					regulator-suspend-mem-disabled;
 				};
 
 				run_cam_af_2v8: ldo10 {
 					regulator-name = "avdd_af1_cam";
 					regulator-min-microvolt = <2800000>;
 					regulator-max-microvolt = <2800000>;
+					regulator-suspend-mem-disabled;
 				};
 
 				run_vpp_fuse_1v8: ldo11 {
 					regulator-name = "vpp_fuse";
 					regulator-min-microvolt = <1800000>;
 					regulator-max-microvolt = <1800000>;
+					regulator-suspend-mem-disabled;
 				};
 			};
 		};
