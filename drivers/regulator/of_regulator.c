@@ -75,6 +75,8 @@ static void of_get_regulation_constraints(struct device_node *np,
 		constraints->state_disk.uV = be32_to_cpu(*state_disk_uV);
 		constraints->state_disk.enabled = true;
 	}
+	if (of_find_property(np, "regulator-suspend-disk-enabled", NULL))
+		constraints->state_disk.enabled = true;
 	if (of_find_property(np, "regulator-suspend-disk-disabled", NULL))
 		constraints->state_disk.disabled = true;
 
@@ -85,6 +87,8 @@ static void of_get_regulation_constraints(struct device_node *np,
 		constraints->state_mem.uV = be32_to_cpu(*state_mem_uV);
 		constraints->state_mem.enabled = true;
 	}
+	if (of_find_property(np, "regulator-suspend-mem-enabled", NULL))
+		constraints->state_mem.enabled = true;
 	if (of_find_property(np, "regulator-suspend-mem-disabled", NULL))
 		constraints->state_mem.disabled = true;
 
@@ -95,6 +99,8 @@ static void of_get_regulation_constraints(struct device_node *np,
 		constraints->state_standby.uV = be32_to_cpu(*state_standby_uV);
 		constraints->state_standby.enabled = true;
 	}
+	if (of_find_property(np, "regulator-suspend-standby-enabled", NULL))
+		constraints->state_standby.enabled = true;
 	if (of_find_property(np, "regulator-suspend-standby-disabled", NULL))
 		constraints->state_standby.disabled = true;
 
