@@ -39,19 +39,6 @@ extern int tegra124_dfll_lock_loop(void);
 extern int tegra124_dfll_unlock_loop(void);
 extern int tegra124_dfll_get_fv_table(int *num_freqs, unsigned long **freqs,
 		int **millivolts);
-#else
-static inline int tegra124_dfll_suspend(struct platform_device *pdev)
-{ return 0; }
-static inline void tegra124_dfll_resume(struct platform_device *pdev)
-{ }
-static inline int tegra124_dfll_lock_loop(void)
-{ return -EPERM; }
-static inline int tegra124_dfll_unlock_loop(void)
-{ return -EPERM; }
-static inline int tegra124_dfll_get_fv_table(int *num_freqs,
-		unsigned long **freqs, int **millivolts)
-{return -EPERM; }
-#endif
 
 /* Thermal interface */
 extern int tegra124_dfll_update_thermal_index(struct platform_device *pdev,
@@ -70,5 +57,41 @@ extern int tegra124_dfll_attach_thermal(struct platform_device *pdev,
 extern int tegra124_dfll_detach_thermal(struct platform_device *pdev,
 					enum tegra_dfll_therm_type type,
 					struct thermal_cooling_device *cdev);
-
+#else
+static inline int tegra124_dfll_suspend(struct platform_device *pdev)
+{ return 0; }
+static inline void tegra124_dfll_resume(struct platform_device *pdev)
+{ }
+static inline int tegra124_dfll_lock_loop(void)
+{ return -EPERM; }
+static inline int tegra124_dfll_unlock_loop(void)
+{ return -EPERM; }
+static inline int tegra124_dfll_get_fv_table(int *num_freqs,
+		unsigned long **freqs, int **millivolts)
+{return -EPERM; }
+static inline int tegra124_dfll_update_thermal_index(
+						struct platform_device *pdev,
+						enum tegra_dfll_therm_type type,
+						unsigned long new_idx)
+{ return 0; }
+static inline int tegra124_dfll_get_thermal_index(struct platform_device *pdev,
+						enum tegra_dfll_therm_type type)
+{ return 0; }
+static inline int tegra124_dfll_count_therm_states(struct platform_device *pdev,
+						enum tegra_dfll_therm_type type)
+{ return 0; }
+static inline int tegra124_dfll_get_therm_state_temp(
+						struct platform_device *pdev,
+						enum tegra_dfll_therm_type type,
+						unsigned long index)
+{ return -EINVAL; }
+static inline int tegra124_dfll_attach_thermal(struct platform_device *pdev,
+					enum tegra_dfll_therm_type type,
+					struct thermal_cooling_device *cdev)
+{ return 0; }
+static inline int tegra124_dfll_detach_thermal(struct platform_device *pdev,
+					enum tegra_dfll_therm_type type,
+					struct thermal_cooling_device *cdev)
+{ return 0; }
+#endif
 #endif

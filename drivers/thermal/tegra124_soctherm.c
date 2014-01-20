@@ -428,6 +428,8 @@ static int tegra124_soctherm_parse_dfll_cdev(struct device_node *soctherm_dn,
 	dfll_cdev.cdev_type = (char *)cdev_floor_type;
 	num = tegra124_dfll_count_therm_states(pdev_cdev,
 					       TEGRA_DFLL_THERM_FLOOR);
+	if (num == 0)
+		goto ignore_dfll_floor_cdev;
 	dfll_cdev.trip_temperatures_num = num;
 
 	trip_temp = devm_kzalloc(&pdev->dev, sizeof(int) * num, GFP_KERNEL);
@@ -436,9 +438,14 @@ static int tegra124_soctherm_parse_dfll_cdev(struct device_node *soctherm_dn,
 
 	dfll_cdev.trip_temperatures = trip_temp;
 	for (i = 0; i < num; i++) {
-		dfll_cdev.trip_temperatures[i] =
-				tegra124_dfll_get_therm_state_temp(
+		int temp;
+		temp =  tegra124_dfll_get_therm_state_temp(
 					pdev_cdev, TEGRA_DFLL_THERM_FLOOR, i);
+		if (IS_ERR_VALUE(temp)) {
+			devm_kfree(&pdev->dev, trip_temp);
+			goto ignore_dfll_floor_cdev;
+		}
+		dfll_cdev.trip_temperatures[i] =  temp;
 	}
 	soctherm_add_trip_points(pdev, trips, num_trips, &dfll_cdev);
 
@@ -451,6 +458,8 @@ ignore_dfll_floor_cdev:
 	dfll_cdev.cdev_type = (char *)cdev_cap_type;
 	num = tegra124_dfll_count_therm_states(pdev_cdev,
 					       TEGRA_DFLL_THERM_CAP);
+	if (num == 0)
+		return 0;
 	dfll_cdev.trip_temperatures_num = num;
 
 	trip_temp = devm_kzalloc(&pdev->dev, sizeof(int) * num, GFP_KERNEL);
@@ -459,9 +468,15 @@ ignore_dfll_floor_cdev:
 
 	dfll_cdev.trip_temperatures = trip_temp;
 	for (i = 0; i < num; i++) {
-		dfll_cdev.trip_temperatures[i] =
-				tegra124_dfll_get_therm_state_temp(
+		int temp;
+		temp = tegra124_dfll_get_therm_state_temp(
 					pdev_cdev, TEGRA_DFLL_THERM_CAP, i);
+		if (IS_ERR_VALUE(temp)) {
+			devm_kfree(&pdev->dev, trip_temp);
+			return 0;
+		}
+		dfll_cdev.trip_temperatures[i] = temp;
+
 	}
 	soctherm_add_trip_points(pdev, trips, num_trips, &dfll_cdev);
 
