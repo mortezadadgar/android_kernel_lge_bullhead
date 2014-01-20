@@ -190,7 +190,7 @@ static inline int tegra_dvfs_get_dfll_threshold(
 		struct clk *c, unsigned long *rate)
 { return -EINVAL; }
 static inline int tegra_dvfs_set_rate(struct clk *c, unsigned long rate)
-{ return -EINVAL; }
+{ return 0; }
 static inline unsigned long tegra_dvfs_get_rate(struct clk *c)
 { return 0; }
 static inline int tegra_dvfs_get_freqs(
