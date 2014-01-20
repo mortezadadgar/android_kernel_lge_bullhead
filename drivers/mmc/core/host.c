@@ -12,6 +12,8 @@
  *  MMC host class device management
  */
 
+#include <linux/kernel.h>
+#include <linux/clk.h>
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/idr.h>
@@ -20,6 +22,7 @@
 #include <linux/pagemap.h>
 #include <linux/export.h>
 #include <linux/leds.h>
+#include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/suspend.h>
 
@@ -312,7 +315,7 @@ void mmc_of_parse(struct mmc_host *host)
 	u32 bus_width;
 	bool explicit_inv_wp, gpio_inv_wp = false;
 	enum of_gpio_flags flags;
-	int len, ret, gpio;
+	int i, len, ret, gpio;
 
 	if (!host->parent || !host->parent->of_node)
 		return;
@@ -401,6 +404,43 @@ void mmc_of_parse(struct mmc_host *host)
 	if (explicit_inv_wp ^ gpio_inv_wp)
 		host->caps2 |= MMC_CAP2_RO_ACTIVE_HIGH;
 
+	/* Parse card power/reset/clock control */
+	if (of_find_property(np, "card-reset-gpios", NULL)) {
+		for (i = 0; i < ARRAY_SIZE(host->card_reset_gpios); i++) {
+			gpio = of_get_named_gpio_flags(np, "card-reset-gpios",
+						       i, &flags);
+			if (!gpio_is_valid(gpio))
+				break;
+			ret = devm_gpio_request(host->parent, gpio,
+						"card-reset");
+			if (ret) {
+				dev_warn(host->parent,
+					 "Failed to request reset GPIO %d\n",
+					 gpio);
+				continue;
+			}
+			if (flags & OF_GPIO_ACTIVE_LOW) {
+				host->card_reset_active_low[i] = true;
+				gpio_direction_output(gpio, 1);
+			} else {
+				host->card_reset_active_low[i] = false;
+				gpio_direction_output(gpio, 0);
+			}
+			host->card_reset_gpios[i] = gpio;
+		}
+
+		gpio = of_get_named_gpio(np, "card-reset-gpios",
+					 ARRAY_SIZE(host->card_reset_gpios));
+		if (gpio_is_valid(gpio))
+			dev_warn(host->parent, "More reset gpios than we can handle");
+	}
+
+	host->card_clk = of_clk_get_by_name(np, "card_ext_clock");
+	if (IS_ERR(host->card_clk))
+		host->card_clk = NULL;
+
+	host->card_regulator = regulator_get(host->parent, "card-external-vcc");
+
 	if (of_find_property(np, "cap-sd-highspeed", &len))
 		host->caps |= MMC_CAP_SD_HIGHSPEED;
 	if (of_find_property(np, "cap-mmc-highspeed", &len))
@@ -428,7 +468,7 @@ EXPORT_SYMBOL(mmc_of_parse);
  */
 struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 {
-	int err;
+	int err, i;
 	struct mmc_host *host;
 
 	host = kzalloc(sizeof(struct mmc_host) + extra, GFP_KERNEL);
@@ -476,6 +516,9 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	host->max_req_size = PAGE_CACHE_SIZE;
 	host->max_blk_size = 512;
 	host->max_blk_count = PAGE_CACHE_SIZE / 512;
+
+	for (i = 0; i < ARRAY_SIZE(host->card_reset_gpios); i++)
+		host->card_reset_gpios[i] = -EINVAL;
 
 	return host;
 
