@@ -27,6 +27,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/serial_reg.h>
 #include <linux/syscore_ops.h>
+#include <linux/regulator/machine.h>
 
 #include <asm/smp_plat.h>
 #include <asm/cacheflush.h>
@@ -460,6 +461,10 @@ static int __cpuinit tegra_suspend_enter(suspend_state_t state)
 static int tegra_suspend_valid(suspend_state_t state)
 {
 	int ret = tegra_pmc_suspend_valid();
+	if (ret)
+		return ret;
+
+	ret = regulator_suspend_prepare(state);
 	if (ret)
 		return ret;
 
