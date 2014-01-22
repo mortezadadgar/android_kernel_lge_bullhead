@@ -437,10 +437,41 @@ static const struct i2c_device_id as3722_i2c_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, as3722_i2c_id);
 
+#ifdef CONFIG_PM_SLEEP
+static int as3722_suspend(struct device *dev)
+{
+	struct i2c_client *i2c = to_i2c_client(dev);
+	struct as3722 *as3722 = i2c_get_clientdata(i2c);
+	int ret;
+
+	/* Enable standby mode entry when the ENABLE1 pin is de-asserted. */
+	ret = as3722_update_bits(as3722, AS3722_CTRL_SEQU1_REG,
+					AS3722_ENABLE1_DEEPSLEEP,
+					AS3722_ENABLE1_DEEPSLEEP);
+	if (ret < 0) {
+		dev_err(as3722->dev, "Reg 0x%02x write failed: %d\n",
+			AS3722_CTRL_SEQU1_REG, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int as3722_resume(struct device *dev)
+{
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops as3722_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(as3722_suspend, as3722_resume)
+};
+
 static struct i2c_driver as3722_i2c_driver = {
 	.driver = {
 		.name = "as3722",
 		.owner = THIS_MODULE,
+		.pm = &as3722_pm_ops,
 		.of_match_table = as3722_of_match,
 	},
 	.probe = as3722_i2c_probe,
