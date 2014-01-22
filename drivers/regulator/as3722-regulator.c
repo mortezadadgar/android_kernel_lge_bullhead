@@ -68,8 +68,8 @@ struct as3722_register_mapping {
 	u8 enable_mask;
 	u32 control_reg;
 	u8 mode_mask;
-	u32 sleep_ctrl_reg;
-	u8 sleep_ctrl_mask;
+	u32 ext_ctrl_reg;
+	u8 ext_ctrl_mask;
 };
 
 struct as3722_regulator_config_data {
@@ -95,8 +95,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_SD_VSEL_MASK,
 		.enable_reg = AS3722_SD_CONTROL_REG,
 		.enable_mask = AS3722_SDn_CTRL(0),
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL1_REG,
-		.sleep_ctrl_mask = AS3722_SD0_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL1_REG,
+		.ext_ctrl_mask = AS3722_SD0_EXT_ENABLE_MASK,
 		.control_reg = AS3722_SD0_CONTROL_REG,
 		.mode_mask = AS3722_SD0_MODE_FAST,
 	},
@@ -107,8 +107,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_SD_VSEL_MASK,
 		.enable_reg = AS3722_SD_CONTROL_REG,
 		.enable_mask = AS3722_SDn_CTRL(1),
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL1_REG,
-		.sleep_ctrl_mask = AS3722_SD1_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL1_REG,
+		.ext_ctrl_mask = AS3722_SD1_EXT_ENABLE_MASK,
 		.control_reg = AS3722_SD1_CONTROL_REG,
 		.mode_mask = AS3722_SD1_MODE_FAST,
 	},
@@ -120,8 +120,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_SD_VSEL_MASK,
 		.enable_reg = AS3722_SD_CONTROL_REG,
 		.enable_mask = AS3722_SDn_CTRL(2),
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL1_REG,
-		.sleep_ctrl_mask = AS3722_SD2_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL1_REG,
+		.ext_ctrl_mask = AS3722_SD2_EXT_ENABLE_MASK,
 		.control_reg = AS3722_SD23_CONTROL_REG,
 		.mode_mask = AS3722_SD2_MODE_FAST,
 		.n_voltages = AS3722_SD2_VSEL_MAX + 1,
@@ -134,8 +134,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_SD_VSEL_MASK,
 		.enable_reg = AS3722_SD_CONTROL_REG,
 		.enable_mask = AS3722_SDn_CTRL(3),
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL1_REG,
-		.sleep_ctrl_mask = AS3722_SD3_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL1_REG,
+		.ext_ctrl_mask = AS3722_SD3_EXT_ENABLE_MASK,
 		.control_reg = AS3722_SD23_CONTROL_REG,
 		.mode_mask = AS3722_SD3_MODE_FAST,
 		.n_voltages = AS3722_SD2_VSEL_MAX + 1,
@@ -148,8 +148,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_SD_VSEL_MASK,
 		.enable_reg = AS3722_SD_CONTROL_REG,
 		.enable_mask = AS3722_SDn_CTRL(4),
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL2_REG,
-		.sleep_ctrl_mask = AS3722_SD4_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL2_REG,
+		.ext_ctrl_mask = AS3722_SD4_EXT_ENABLE_MASK,
 		.control_reg = AS3722_SD4_CONTROL_REG,
 		.mode_mask = AS3722_SD4_MODE_FAST,
 		.n_voltages = AS3722_SD2_VSEL_MAX + 1,
@@ -162,8 +162,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_SD_VSEL_MASK,
 		.enable_reg = AS3722_SD_CONTROL_REG,
 		.enable_mask = AS3722_SDn_CTRL(5),
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL2_REG,
-		.sleep_ctrl_mask = AS3722_SD5_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL2_REG,
+		.ext_ctrl_mask = AS3722_SD5_EXT_ENABLE_MASK,
 		.control_reg = AS3722_SD5_CONTROL_REG,
 		.mode_mask = AS3722_SD5_MODE_FAST,
 		.n_voltages = AS3722_SD2_VSEL_MAX + 1,
@@ -175,8 +175,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_SD_VSEL_MASK,
 		.enable_reg = AS3722_SD_CONTROL_REG,
 		.enable_mask = AS3722_SDn_CTRL(6),
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL2_REG,
-		.sleep_ctrl_mask = AS3722_SD6_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL2_REG,
+		.ext_ctrl_mask = AS3722_SD6_EXT_ENABLE_MASK,
 		.control_reg = AS3722_SD6_CONTROL_REG,
 		.mode_mask = AS3722_SD6_MODE_FAST,
 	},
@@ -188,8 +188,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_LDO0_VSEL_MASK,
 		.enable_reg = AS3722_LDOCONTROL0_REG,
 		.enable_mask = AS3722_LDO0_CTRL,
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL3_REG,
-		.sleep_ctrl_mask = AS3722_LDO0_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL3_REG,
+		.ext_ctrl_mask = AS3722_LDO0_EXT_ENABLE_MASK,
 		.n_voltages = AS3722_LDO0_NUM_VOLT,
 	},
 	{
@@ -200,8 +200,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_LDO_VSEL_MASK,
 		.enable_reg = AS3722_LDOCONTROL0_REG,
 		.enable_mask = AS3722_LDO1_CTRL,
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL3_REG,
-		.sleep_ctrl_mask = AS3722_LDO1_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL3_REG,
+		.ext_ctrl_mask = AS3722_LDO1_EXT_ENABLE_MASK,
 		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
@@ -212,8 +212,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_LDO_VSEL_MASK,
 		.enable_reg = AS3722_LDOCONTROL0_REG,
 		.enable_mask = AS3722_LDO2_CTRL,
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL3_REG,
-		.sleep_ctrl_mask = AS3722_LDO2_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL3_REG,
+		.ext_ctrl_mask = AS3722_LDO2_EXT_ENABLE_MASK,
 		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
@@ -224,8 +224,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_LDO3_VSEL_MASK,
 		.enable_reg = AS3722_LDOCONTROL0_REG,
 		.enable_mask = AS3722_LDO3_CTRL,
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL3_REG,
-		.sleep_ctrl_mask = AS3722_LDO3_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL3_REG,
+		.ext_ctrl_mask = AS3722_LDO3_EXT_ENABLE_MASK,
 		.n_voltages = AS3722_LDO3_NUM_VOLT,
 	},
 	{
@@ -236,8 +236,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_LDO_VSEL_MASK,
 		.enable_reg = AS3722_LDOCONTROL0_REG,
 		.enable_mask = AS3722_LDO4_CTRL,
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL4_REG,
-		.sleep_ctrl_mask = AS3722_LDO4_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL4_REG,
+		.ext_ctrl_mask = AS3722_LDO4_EXT_ENABLE_MASK,
 		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
@@ -248,8 +248,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_LDO_VSEL_MASK,
 		.enable_reg = AS3722_LDOCONTROL0_REG,
 		.enable_mask = AS3722_LDO5_CTRL,
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL4_REG,
-		.sleep_ctrl_mask = AS3722_LDO5_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL4_REG,
+		.ext_ctrl_mask = AS3722_LDO5_EXT_ENABLE_MASK,
 		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
@@ -260,8 +260,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_LDO_VSEL_MASK,
 		.enable_reg = AS3722_LDOCONTROL0_REG,
 		.enable_mask = AS3722_LDO6_CTRL,
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL4_REG,
-		.sleep_ctrl_mask = AS3722_LDO6_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL4_REG,
+		.ext_ctrl_mask = AS3722_LDO6_EXT_ENABLE_MASK,
 		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
@@ -272,8 +272,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_LDO_VSEL_MASK,
 		.enable_reg = AS3722_LDOCONTROL0_REG,
 		.enable_mask = AS3722_LDO7_CTRL,
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL4_REG,
-		.sleep_ctrl_mask = AS3722_LDO7_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL4_REG,
+		.ext_ctrl_mask = AS3722_LDO7_EXT_ENABLE_MASK,
 		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
@@ -284,8 +284,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_LDO_VSEL_MASK,
 		.enable_reg = AS3722_LDOCONTROL1_REG,
 		.enable_mask = AS3722_LDO9_CTRL,
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL5_REG,
-		.sleep_ctrl_mask = AS3722_LDO9_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL5_REG,
+		.ext_ctrl_mask = AS3722_LDO9_EXT_ENABLE_MASK,
 		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
@@ -296,8 +296,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_LDO_VSEL_MASK,
 		.enable_reg = AS3722_LDOCONTROL1_REG,
 		.enable_mask = AS3722_LDO10_CTRL,
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL5_REG,
-		.sleep_ctrl_mask = AS3722_LDO10_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL5_REG,
+		.ext_ctrl_mask = AS3722_LDO10_EXT_ENABLE_MASK,
 		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 	{
@@ -308,8 +308,8 @@ static const struct as3722_register_mapping as3722_reg_lookup[] = {
 		.vsel_mask = AS3722_LDO_VSEL_MASK,
 		.enable_reg = AS3722_LDOCONTROL1_REG,
 		.enable_mask = AS3722_LDO11_CTRL,
-		.sleep_ctrl_reg = AS3722_ENABLE_CTRL5_REG,
-		.sleep_ctrl_mask = AS3722_LDO11_EXT_ENABLE_MASK,
+		.ext_ctrl_reg = AS3722_ENABLE_CTRL5_REG,
+		.ext_ctrl_mask = AS3722_LDO11_EXT_ENABLE_MASK,
 		.n_voltages = AS3722_LDO_NUM_VOLT,
 	},
 };
@@ -693,13 +693,13 @@ static int as3722_extreg_init(struct as3722_regulators *as3722_regs, int id,
 		(ext_pwr_ctrl > AS3722_EXT_CONTROL_ENABLE3))
 		return -EINVAL;
 
-	val =  ext_pwr_ctrl << (ffs(as3722_reg_lookup[id].sleep_ctrl_mask) - 1);
+	val =  ext_pwr_ctrl << (ffs(as3722_reg_lookup[id].ext_ctrl_mask) - 1);
 	ret = as3722_update_bits(as3722_regs->as3722,
-			as3722_reg_lookup[id].sleep_ctrl_reg,
-			as3722_reg_lookup[id].sleep_ctrl_mask, val);
+			as3722_reg_lookup[id].ext_ctrl_reg,
+			as3722_reg_lookup[id].ext_ctrl_mask, val);
 	if (ret < 0)
 		dev_err(as3722_regs->dev, "Reg 0x%02x update failed: %d\n",
-			as3722_reg_lookup[id].sleep_ctrl_reg, ret);
+			as3722_reg_lookup[id].ext_ctrl_reg, ret);
 	return ret;
 }
 
