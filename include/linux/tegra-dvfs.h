@@ -182,6 +182,7 @@ struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void);
 void tegra_dvfs_core_lock(void);
 void tegra_dvfs_core_unlock(void);
 int tegra_dvfs_set_fmax_at_vmin(struct clk *c, unsigned long f_max, int v_min);
+int tegra_dvfs_get_core_nominal_millivolts(void);
 #else
 static inline int tegra_dvfs_init(void)
 { return 0; }
@@ -230,6 +231,8 @@ static inline void tegra_dvfs_core_unlock(void)
 static inline int tegra_dvfs_set_fmax_at_vmin(struct clk *c,
 		unsigned long f_max, int v_min)
 { return -EINVAL; }
+static inline int tegra_dvfs_get_core_nominal_millivolts(void)
+{ return -ENOENT; }
 #endif
 
 #ifdef CONFIG_TEGRA_124_DVFS
