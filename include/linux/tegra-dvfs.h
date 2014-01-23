@@ -179,6 +179,8 @@ int tegra_dvfs_set_dfll_range(struct clk *c, int range);
 void tegra_dvfs_rail_init_vmin_thermal_profile(int *therm_trips_table,
 		int *therm_floors_table, struct dvfs_rail *rail);
 struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void);
+void tegra_dvfs_core_lock(void);
+void tegra_dvfs_core_unlock(void);
 #else
 static inline int tegra_dvfs_init(void)
 { return 0; }
@@ -220,6 +222,10 @@ static inline void tegra_dvfs_rail_init_vmin_thermal_profile(
 { return; }
 static inline struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void)
 { return ERR_PTR(-EINVAL); }
+static inline void tegra_dvfs_core_lock(void)
+{ return; }
+static inline void tegra_dvfs_core_unlock(void)
+{ return; }
 #endif
 
 #ifdef CONFIG_TEGRA_124_DVFS
