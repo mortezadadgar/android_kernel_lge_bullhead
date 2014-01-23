@@ -181,6 +181,7 @@ void tegra_dvfs_rail_init_vmin_thermal_profile(int *therm_trips_table,
 struct tegra_cooling_device *tegra_dvfs_get_core_vmin_cdev(void);
 void tegra_dvfs_core_lock(void);
 void tegra_dvfs_core_unlock(void);
+int tegra_dvfs_set_fmax_at_vmin(struct clk *c, unsigned long f_max, int v_min);
 #else
 static inline int tegra_dvfs_init(void)
 { return 0; }
@@ -226,6 +227,9 @@ static inline void tegra_dvfs_core_lock(void)
 { return; }
 static inline void tegra_dvfs_core_unlock(void)
 { return; }
+static inline int tegra_dvfs_set_fmax_at_vmin(struct clk *c,
+		unsigned long f_max, int v_min)
+{ return -EINVAL; }
 #endif
 
 #ifdef CONFIG_TEGRA_124_DVFS
