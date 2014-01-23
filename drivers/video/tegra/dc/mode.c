@@ -302,8 +302,9 @@ int tegra_dc_program_mode(struct tegra_dc *dc, struct tegra_dc_mode *mode)
 	rate = tegra_dc_clk_get_rate(dc);
 
 	pclk = tegra_dc_pclk_round_rate(dc, mode->pclk);
-	if (pclk < (mode->pclk / 100 * 99) ||
-	    pclk > (mode->pclk / 100 * 109)) {
+	if (dc->ndev->id == 0 &&
+	    (pclk < (mode->pclk / 100 * 99) ||
+	     pclk > (mode->pclk / 100 * 109))) {
 		dev_err(&dc->ndev->dev,
 			"can't divide %ld clock to %d -1/+9%% %ld %d %d\n",
 			rate, mode->pclk,
