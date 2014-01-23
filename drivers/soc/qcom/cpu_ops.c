@@ -86,7 +86,7 @@ static int secondary_pen_release(unsigned int cpu)
 	return secondary_holding_pen_release != INVALID_HWID ? -ENOSYS : 0;
 }
 
-static int __init msm_cpu_init(struct device_node *dn, unsigned int cpu)
+static int __init msm_cpu_init(unsigned int cpu)
 {
 	return 0;
 }
@@ -262,7 +262,7 @@ static struct cpu_operations msm_cortex_a_ops = {
 	.cpu_suspend       = msm_pm_collapse,
 };
 CPU_METHOD_OF_DECLARE(msm_cortex_a_ops,
-		"qcom,arm-cortex-acc", &msm_cortex_a_ops);
+	"qcom,arm-cortex-acc", &msm_cortex_a_ops);
 
 static struct cpu_operations msm8994_cortex_a_ops = {
 	.name		= "qcom,8994-arm-cortex-acc",
