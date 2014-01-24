@@ -1039,6 +1039,7 @@ static void smmu_iommu_domain_destroy(struct iommu_domain *domain)
 enum {
 	SYSTEM_DEFAULT,
 	SYSTEM_PROTECTED,
+	SYSTEM_AVPC,
 	NUM_OF_STATIC_MAPS,
 };
 
@@ -1055,6 +1056,8 @@ int tegra_smmu_get_asid(struct device *dev)
 
 	if (test_bit(TEGRA_SWGROUP_PPCS, swgroups))
 		return SYSTEM_PROTECTED;
+	else if (test_bit(TEGRA_SWGROUP_AVPC, swgroups))
+		return SYSTEM_AVPC;
 
 	return SYSTEM_DEFAULT;
 }
@@ -1081,6 +1084,8 @@ static int smmu_iommu_bound_driver(struct device *dev)
 
 	if (test_bit(TEGRA_SWGROUP_PPCS, swgroups))
 		map = smmu_handle->map[SYSTEM_PROTECTED];
+	else if (test_bit(TEGRA_SWGROUP_AVPC, swgroups))
+		map = smmu_handle->map[SYSTEM_AVPC];
 	else
 		map = smmu_handle->map[SYSTEM_DEFAULT];
 
