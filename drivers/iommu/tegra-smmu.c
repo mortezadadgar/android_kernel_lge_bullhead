@@ -475,7 +475,7 @@ static int __smmu_client_set_swgroups(struct smmu_client *c,
 			if (val) {
 				if (WARN_ON(val != mask))
 					return -EINVAL;
-				goto skip;
+				continue;
 			}
 
 			val = mask;
@@ -488,7 +488,6 @@ static int __smmu_client_set_swgroups(struct smmu_client *c,
 	}
 
 	FLUSH_SMMU_REGS(smmu);
-skip:
 	return 0;
 }
 
