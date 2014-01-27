@@ -668,11 +668,12 @@
 
 				vdd_gpu: sd6 {
 					regulator-name = "vdd_gpu";
-					regulator-min-microvolt = <800000>;
+					regulator-min-microvolt = <610000>;
 					regulator-max-microvolt = <1200000>;
 					regulator-boot-on;
 					regulator-always-on;
-					regulator-suspend-mem-disabled;
+					regulator-suspend-mem-enabled;
+					regulator-suspend-mem-microvolt = <610000>;
 					ams,standby-sequence = <0>;
 				};
 
