@@ -33,12 +33,18 @@
 
 #include "iomap.h"
 
+#define PWRGATE_CLAMP_STATUS	0x2c
 #define PWRGATE_TOGGLE		0x30
 #define  PWRGATE_TOGGLE_START	(1 << 8)
 
 #define REMOVE_CLAMPING		0x34
 
 #define PWRGATE_STATUS		0x38
+
+/* Timeout for powergate toggle operation if it takes affect */
+#define PWRGATE_TOGGLE_TIMEOUT		10
+/* Timeout for PMC to complete other requests before this */
+#define PWRGATE_CONTENTION_TIMEOUT	100
 
 static int tegra_num_powerdomains;
 static int tegra_num_cpu_domains;
@@ -63,6 +69,12 @@ static int tegra_powergate_set(int id, bool new_state)
 {
 	bool status;
 	unsigned long flags;
+	/*
+	 * (TOGGLE_TIMEOUT * CONTENTION_TIMEOUT) timeout in microsecond for
+	 * toggle command to take affect in case of contention with h/w
+	 * initiated CPU power gating.
+	 */
+	int timeout = PWRGATE_CONTENTION_TIMEOUT * PWRGATE_TOGGLE_TIMEOUT;
 
 	spin_lock_irqsave(&tegra_powergate_lock, flags);
 
@@ -75,7 +87,21 @@ static int tegra_powergate_set(int id, bool new_state)
 
 	pmc_write(PWRGATE_TOGGLE_START | id, PWRGATE_TOGGLE);
 
+	/* Check power gate status */
+	do {
+		udelay(1);
+		status = !!(pmc_read(PWRGATE_STATUS) & (1 << id));
+
+		timeout--;
+	} while ((status != new_state) && (timeout > 0));
+
 	spin_unlock_irqrestore(&tegra_powergate_lock, flags);
+
+	if (status != new_state) {
+		WARN(1, "Could not set powergate %d to %d",
+				id, new_state);
+		return -EBUSY;
+	}
 
 	return 0;
 }
@@ -110,6 +136,7 @@ int tegra_powergate_is_powered(int id)
 int tegra_powergate_remove_clamping(int id)
 {
 	u32 mask;
+	int contention_timeout = PWRGATE_CONTENTION_TIMEOUT;
 
 	if (id < 0 || id >= tegra_num_powerdomains)
 		return -EINVAL;
@@ -126,6 +153,18 @@ int tegra_powergate_remove_clamping(int id)
 		mask = (1 << id);
 
 	pmc_write(mask, REMOVE_CLAMPING);
+
+	/* Wait until clamp is removed */
+	do {
+		udelay(1);
+		contention_timeout--;
+	} while ((contention_timeout > 0)
+			&& (pmc_read(PWRGATE_CLAMP_STATUS) & BIT(id)));
+
+	if (pmc_read(PWRGATE_CLAMP_STATUS) & BIT(id)) {
+		WARN(1, "Couldn't remove clamping");
+		return -EBUSY;
+	}
 
 	return 0;
 }
