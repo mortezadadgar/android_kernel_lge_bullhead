@@ -62,21 +62,21 @@ static struct soctherm_platform_data t124_soctherm_data = {
 			.trips = {
 				{
 					.cdev_type = "cpu-balanced",
-					.trip_temp = 86000,
+					.trip_temp = 90000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-heavy",
-					.trip_temp = 96000,
+					.trip_temp = 100000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-shutdown",
-					.trip_temp = 98000,
+					.trip_temp = 103000,
 					.trip_type = THERMAL_TRIP_CRITICAL,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
@@ -92,21 +92,21 @@ static struct soctherm_platform_data t124_soctherm_data = {
 			.trips = {
 				{
 					.cdev_type = "gpu-balanced",
-					.trip_temp = 88000,
+					.trip_temp = 89000,
 					.trip_type = THERMAL_TRIP_PASSIVE,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-heavy",
-					.trip_temp = 98000,
+					.trip_temp = 99000,
 					.trip_type = THERMAL_TRIP_HOT,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
 				},
 				{
 					.cdev_type = "tegra-shutdown",
-					.trip_temp = 100000,
+					.trip_temp = 101000,
 					.trip_type = THERMAL_TRIP_CRITICAL,
 					.upper = THERMAL_NO_LIMIT,
 					.lower = THERMAL_NO_LIMIT,
@@ -574,12 +574,12 @@ int tegra124_soctherm_init(struct device_node *soctherm_dn)
 			goto ignore_cpu_edp;
 		}
 
-		/* edp temperature margin is 8000 */
+		/* edp temperature margin is 7000 */
 		err = tegra_cpu_edp_init_trips(pdev_cdev,
 					       trips,
 					       num_trips,
 					       (char *)cdev_cap_type,
-					       8000);
+					       7000);
 		if (err == -EPROBE_DEFER)
 			return err;
 		else if (err)
