@@ -107,7 +107,7 @@ static inline int tegra_cpuquiet_init(void)
 }
 #endif
 
-u32 tegra_fuse_readl(unsigned long offset);
+u32 tegra30_fuse_readl(const unsigned int offset);
 
 struct gpu_info {
 	int num_pixel_pipes;

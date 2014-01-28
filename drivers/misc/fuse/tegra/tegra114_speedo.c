@@ -73,8 +73,8 @@ static void rev_sku_to_speedo_ids(struct tegra_sku_info *sku_info,
 	}
 
 	if (rev == TEGRA_REVISION_A01) {
-		tmp = tegra30_fuse_readl(0x270) << 1;
-		tmp |= tegra30_fuse_readl(0x26c);
+		tmp = tegra30_fuse_readl(0x170) << 1;
+		tmp |= tegra30_fuse_readl(0x16c);
 		if (!tmp)
 			sku_info->cpu_speedo_id = 0;
 	}
@@ -95,8 +95,8 @@ void tegra114_init_speedo_data(struct tegra_sku_info *sku_info,
 
 	rev_sku_to_speedo_ids(sku_info, &threshold, dev);
 
-	cpu_speedo_val = tegra30_fuse_readl(0x12c) + 1024;
-	core_speedo_val = tegra30_fuse_readl(0x134);
+	cpu_speedo_val = tegra30_fuse_readl(0x2c) + 1024;
+	core_speedo_val = tegra30_fuse_readl(0x34);
 
 	for (i = 0; i < CPU_PROCESS_CORNERS_NUM; i++)
 		if (cpu_speedo_val < cpu_process_speedos[threshold][i])

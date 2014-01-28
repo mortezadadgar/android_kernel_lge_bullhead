@@ -186,12 +186,12 @@ static struct soctherm_fuse_calib_data t124_calib_data = {
 };
 
 /* fuse registers used in public fuse data read API */
-#define T124_FUSE_FT_REV		0x128
-#define T124_FUSE_CP_REV		0x190
+#define T124_FUSE_FT_REV		0x28
+#define T124_FUSE_CP_REV		0x90
 /* sparse realignment register */
-#define T124_FUSE_SPARE_REALIGNMENT_REG_0	0x2fc
+#define T124_FUSE_SPARE_REALIGNMENT_REG_0	0x1fc
 /* tsensor8_calib */
-#define T124_FUSE_TSENSOR_CALIB_8	0x280
+#define T124_FUSE_TSENSOR_CALIB_8	0x180
 
 #define T124_FUSE_BASE_CP_SHIFT		0
 #define T124_FUSE_BASE_CP_MASK		0x3ff
@@ -205,21 +205,21 @@ static struct soctherm_fuse_calib_data t124_calib_data = {
 #define T124_FUSE_SHIFT_FT_BITS		5
 
 static int t124_tsensor_calib_offset[] = {
-	[0] = 0x198,
-	[1] = 0x184,
-	[2] = 0x188,
-	[3] = 0x22c,
-	[4] = 0x254,
-	[5] = 0x258,
-	[6] = 0x25c,
-	[7] = 0x260,
+	[0] = 0x098,
+	[1] = 0x084,
+	[2] = 0x088,
+	[3] = 0x12c,
+	[4] = 0x154,
+	[5] = 0x158,
+	[6] = 0x15c,
+	[7] = 0x160,
 };
 
 static int tegra124_fuse_get_tsensor_calib(int index, u32 *calib)
 {
 	if (index < 0 || index >= ARRAY_SIZE(t124_tsensor_calib_offset))
 		return -EINVAL;
-	*calib = tegra_fuse_readl(t124_tsensor_calib_offset[index]);
+	*calib = tegra30_fuse_readl(t124_tsensor_calib_offset[index]);
 	return 0;
 }
 
@@ -227,7 +227,7 @@ static int fuse_cp_rev_check(void)
 {
 	u32 rev, rev_major, rev_minor;
 
-	rev = tegra_fuse_readl(T124_FUSE_CP_REV);
+	rev = tegra30_fuse_readl(T124_FUSE_CP_REV);
 	rev_minor = rev & 0x1f;
 	rev_major = (rev >> 5) & 0x3f;
 	/* CP rev < 00.4 is unsupported */
@@ -241,7 +241,7 @@ static inline int fuse_ft_rev_check(void)
 {
 	u32 rev, rev_major, rev_minor;
 
-	rev = tegra_fuse_readl(T124_FUSE_FT_REV);
+	rev = tegra30_fuse_readl(T124_FUSE_FT_REV);
 	rev_minor = rev & 0x1f;
 	rev_major = (rev >> 5) & 0x3f;
 	/* FT rev < 00.5 is unsupported */
@@ -254,7 +254,7 @@ static inline int fuse_ft_rev_check(void)
 static int tegra124_fuse_calib_base_get_cp(u32 *base_cp, s32 *shifted_cp)
 {
 	s32 cp;
-	u32 val = tegra_fuse_readl(T124_FUSE_TSENSOR_CALIB_8);
+	u32 val = tegra30_fuse_readl(T124_FUSE_TSENSOR_CALIB_8);
 
 	if (fuse_cp_rev_check() || !val)
 		return -EINVAL;
@@ -264,7 +264,7 @@ static int tegra124_fuse_calib_base_get_cp(u32 *base_cp, s32 *shifted_cp)
 				<< T124_FUSE_BASE_CP_SHIFT))
 				>> T124_FUSE_BASE_CP_SHIFT);
 
-		val = tegra_fuse_readl(T124_FUSE_SPARE_REALIGNMENT_REG_0);
+		val = tegra30_fuse_readl(T124_FUSE_SPARE_REALIGNMENT_REG_0);
 		cp = (((val) & (T124_FUSE_SHIFT_CP_MASK
 				<< T124_FUSE_SHIFT_CP_SHIFT))
 				>> T124_FUSE_SHIFT_CP_SHIFT);
@@ -280,7 +280,7 @@ static int tegra124_fuse_calib_base_get_cp(u32 *base_cp, s32 *shifted_cp)
 static int tegra124_fuse_calib_base_get_ft(u32 *base_ft, s32 *shifted_ft)
 {
 	s32 ft;
-	u32 val = tegra_fuse_readl(T124_FUSE_TSENSOR_CALIB_8);
+	u32 val = tegra30_fuse_readl(T124_FUSE_TSENSOR_CALIB_8);
 
 	if (fuse_ft_rev_check() || !val)
 		return -EINVAL;

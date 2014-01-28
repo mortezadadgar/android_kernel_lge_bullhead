@@ -173,7 +173,7 @@ static struct soctherm_fuse_calib_data t114_calib_data = {
 	.fuse_corr_beta = t114_fuse_corr_beta,
 };
 
-#define T114_FUSE_VSENSOR_CALIB_0	0x18c
+#define T114_FUSE_VSENSOR_CALIB_0	0x08c
 #define T114_FUSE_BASE_CP_SHIFT		0
 #define T114_FUSE_BASE_CP_MASK		0x3ff
 #define T114_FUSE_BASE_FT_SHIFT		16
@@ -186,28 +186,28 @@ static struct soctherm_fuse_calib_data t114_calib_data = {
 #define T114_FUSE_SHIFT_FT_BITS		5
 
 static int t114_tsensor_calib_offset[] = {
-	[0] = 0x198,
-	[1] = 0x184,
-	[2] = 0x188,
-	[3] = 0x22c,
-	[4] = 0x254,
-	[5] = 0x258,
-	[6] = 0x25c,
-	[7] = 0x260,
+	[0] = 0x098,
+	[1] = 0x084,
+	[2] = 0x088,
+	[3] = 0x12c,
+	[4] = 0x154,
+	[5] = 0x158,
+	[6] = 0x15c,
+	[7] = 0x160,
 };
 
 static int tegra114_fuse_get_tsensor_calib(int index, u32 *calib)
 {
 	if (index < 0 || index >= ARRAY_SIZE(t114_tsensor_calib_offset))
 		return -EINVAL;
-	*calib = tegra_fuse_readl(t114_tsensor_calib_offset[index]);
+	*calib = tegra30_fuse_readl(t114_tsensor_calib_offset[index]);
 	return 0;
 }
 
 static int tegra114_fuse_calib_base_get_cp(u32 *base_cp, s32 *shifted_cp)
 {
 	s32 cp;
-	u32 val = tegra_fuse_readl(T114_FUSE_VSENSOR_CALIB_0);
+	u32 val = tegra30_fuse_readl(T114_FUSE_VSENSOR_CALIB_0);
 
 	if (base_cp && shifted_cp) {
 		*base_cp = (((val) & (T114_FUSE_BASE_CP_MASK
@@ -231,7 +231,7 @@ static int tegra114_fuse_calib_base_get_cp(u32 *base_cp, s32 *shifted_cp)
 static int tegra114_fuse_calib_base_get_ft(u32 *base_ft, s32 *shifted_ft)
 {
 	s32 ft;
-	u32 val = tegra_fuse_readl(T114_FUSE_VSENSOR_CALIB_0);
+	u32 val = tegra30_fuse_readl(T114_FUSE_VSENSOR_CALIB_0);
 
 	if (base_ft && shifted_ft) {
 		*base_ft = (((val) & (T114_FUSE_BASE_FT_MASK

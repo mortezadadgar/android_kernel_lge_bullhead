@@ -47,6 +47,7 @@ static int cpu_speedo_1_value;
 static int soc_speedo_0_value;
 static int soc_speedo_1_value;
 static int soc_speedo_2_value;
+static int soc_speedo_id;
 static int cpu_iddq_value;
 static int gpu_iddq_value;
 static int soc_iddq_value;
@@ -62,7 +63,7 @@ static const u32 gpu_process_speedos[][GPU_PROCESS_CORNERS_NUM] = {
 };
 
 static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
-	{2101,	UINT_MAX},
+	{2061,	UINT_MAX},
 	{0,	UINT_MAX},
 };
 
@@ -100,6 +101,8 @@ static void rev_sku_to_speedo_ids(struct tegra_sku_info *sku_info,
 		/* Using the default for the error case */
 		break;
 	}
+
+	soc_speedo_id = sku_info->soc_speedo_id;
 }
 
 void tegra124_init_speedo_data(struct tegra_sku_info *sku_info,
@@ -161,4 +164,15 @@ void tegra124_init_speedo_data(struct tegra_sku_info *sku_info,
 
 	dev_dbg(dev, "GPU Speedo ID=%d, Speedo Value=%d\n",
 			sku_info->gpu_speedo_id, sku_info->gpu_speedo_value);
+}
+
+int tegra124_get_core_speedo_mv(void)
+{
+	switch (soc_speedo_id) {
+	case 0:
+	case 1:
+		return 1150;
+	default:
+		BUG();
+	}
 }

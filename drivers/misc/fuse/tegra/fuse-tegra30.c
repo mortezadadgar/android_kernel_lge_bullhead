@@ -55,6 +55,65 @@ static struct clk *fuse_clk;
 static struct tegra_fuse_info *fuse_info;
 static struct tegra_sku_info sku_info;
 
+int tegra_get_cpu_process_id(void)
+{
+	return sku_info.cpu_process_id;
+}
+
+int tegra_get_core_process_id(void)
+{
+	return sku_info.core_process_id;
+}
+
+int tegra_get_gpu_process_id(void)
+{
+	return sku_info.gpu_process_id;
+}
+
+int tegra_get_cpu_speedo_id(void)
+{
+	if (tegra_chip_id == TEGRA20)
+		return -EINVAL;
+
+	return sku_info.cpu_speedo_id;
+}
+
+int tegra_get_soc_speedo_id(void)
+{
+	return sku_info.soc_speedo_id;
+}
+
+int tegra_get_gpu_speedo_id(void)
+{
+	return sku_info.gpu_speedo_id;
+}
+
+int tegra_get_cpu_speedo_value(void)
+{
+	return sku_info.cpu_speedo_value;
+}
+
+int tegra_get_gpu_speedo_value(void)
+{
+	return sku_info.gpu_speedo_value;
+}
+
+int tegra_get_cpu_iddq_value(void)
+{
+	return sku_info.cpu_iddq_value;
+}
+
+void tegra_gpu_get_info(struct gpu_info *pinfo)
+{
+	if (tegra_chip_id == TEGRA114) {
+		pinfo->num_pixel_pipes = 4;
+		pinfo->num_alus_per_pixel_pipe = 3;
+	} else {
+		pinfo->num_pixel_pipes = 1;
+		pinfo->num_alus_per_pixel_pipe = 1;
+	}
+}
+
 u32 tegra30_fuse_readl(const unsigned int offset)
 {
 	u32 val;
