@@ -9,6 +9,12 @@
 		reg = <0x80000000 0x80000000>;
 	};
 
+	firmware {
+		chromeos {
+			write-protect-gpio = <&gpio TEGRA_GPIO(R, 1) GPIO_ACTIVE_LOW>;
+		};
+	};
+
 	host1x@50000000 {
 		dc@54200000 {
 			avdd-lcd-supply = <&avdd_lcd>;
@@ -480,6 +486,13 @@
 				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+			chromeos_write_protect {
+				nvidia,pins = "kb_row1_pr1";
+				nvidia,function = "rsvd4";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 			};
 		};
 	};
