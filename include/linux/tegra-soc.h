@@ -17,8 +17,31 @@
 #ifndef __LINUX_TEGRA_SOC_H_
 #define __LINUX_TEGRA_SOC_H_
 
+#define TEGRA20         0x20
+#define TEGRA30         0x30
+#define TEGRA114        0x35
+#define TEGRA124        0x40
+
+#ifndef __ASSEMBLY__
+
 #include <asm/cputype.h>
 
+enum tegra_revision {
+	TEGRA_REVISION_UNKNOWN = 0,
+	TEGRA_REVISION_A01,
+	TEGRA_REVISION_A02,
+	TEGRA_REVISION_A03,
+	TEGRA_REVISION_A03p,
+	TEGRA_REVISION_A04,
+	TEGRA_REVISION_MAX,
+};
+
+u32 tegra_read_straps(void);
+void tegra_init_fuse(void);
+
+extern int tegra_chip_id;
+extern enum tegra_revision tegra_revision;
+extern int tegra_bct_strapping;
 extern int tegra_sku_id;
 
 u32 tegra_read_chipid(void);
@@ -114,4 +137,7 @@ static inline int tegra_apb_writel_using_dma(u32 value, unsigned long offset)
 	return -EINVAL;
 }
 #endif
+
+#endif /* __ASSEMBLY__ */
+
 #endif /* __LINUX_TEGRA_SOC_H_ */

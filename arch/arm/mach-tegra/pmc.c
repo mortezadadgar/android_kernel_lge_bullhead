@@ -31,6 +31,7 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/tegra-powergate.h>
+#include <linux/tegra-soc.h>
 #include <linux/of_gpio.h>
 #include <linux/of_platform.h>
 #include <linux/slab.h>
@@ -38,7 +39,6 @@
 #include <linux/tegra-soc.h>
 
 #include "flowctrl.h"
-#include "fuse.h"
 #include "pm.h"
 #include "pmc.h"
 #include "sleep.h"

@@ -27,6 +27,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/serial_reg.h>
 #include <linux/syscore_ops.h>
+#include <linux/tegra-soc.h>
 #include <linux/regulator/machine.h>
 
 #include <asm/smp_plat.h>
@@ -40,7 +41,6 @@
 #include "iomap.h"
 #include "reset.h"
 #include "flowctrl.h"
-#include "fuse.h"
 #include "pm.h"
 #include "pmc.h"
 #include "sleep.h"

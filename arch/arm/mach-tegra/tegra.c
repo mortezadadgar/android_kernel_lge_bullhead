@@ -37,6 +37,7 @@
 #include <linux/clk/tegra.h>
 #include <linux/regulator/machine.h>
 #include <linux/tegra-dvfs.h>
+#include <linux/tegra-soc.h>
 #include <linux/irqchip.h>
 #include <linux/tegra-soc.h>
 #include <linux/nvmap.h>
@@ -53,7 +54,6 @@
 #include "board-panel.h"
 #include "common.h"
 #include "cpuidle.h"
-#include "fuse.h"
 #include "iomap.h"
 #include "irq.h"
 #include "pmc.h"

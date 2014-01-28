@@ -29,8 +29,8 @@
 #include <linux/spinlock.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-powergate.h>
+#include <linux/tegra-soc.h>
 
-#include "fuse.h"
 #include "iomap.h"
 
 #define PWRGATE_TOGGLE		0x30

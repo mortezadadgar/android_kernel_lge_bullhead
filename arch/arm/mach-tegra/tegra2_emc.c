@@ -24,9 +24,9 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/tegra_emc.h>
+#include <linux/tegra-soc.h>
 
 #include "tegra2_emc.h"
-#include "fuse.h"
 
 #ifdef CONFIG_TEGRA_EMC_SCALING_ENABLE
 static bool emc_enable = true;
