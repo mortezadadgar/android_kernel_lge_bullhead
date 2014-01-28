@@ -1,0 +1,101 @@
+/dts-v1/;
+
+#include "tegra124.dtsi"
+#include "tegra124-nyan.dtsi"
+
+/ {
+	model = "Google Nyan Big Rev 0";
+
+	compatible = "google,nyan-big-rev0", "google,nyan-big", "google,nyan",
+			"nvidia,tegra124";
+
+	pinmux {
+		pinmux@0 {
+			hp_det_l {
+				nvidia,pins = "pi7";
+				nvidia,function = "rsvd1";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+			soc_warm_reset_l {
+				nvidia,pins = "pi5";
+				nvidia,function = "gmi";
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+		};
+	};
+
+	i2c@7000c400 {
+		trackpad@15 {
+			compatible = "elan_i2c";
+			reg = <0x15>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(W, 3) GPIO_ACTIVE_HIGH>;
+			nvidia,pmc-wakeup = <&pmc 1 11 2>;
+			wakeup-source;
+		};
+	};
+
+	sdhci@700b0400 {
+		cd-inverted;
+	};
+
+	pmc {
+		nvidia,reset-gpio = <&gpio TEGRA_GPIO(I, 5) GPIO_ACTIVE_LOW>;
+	};
+
+	sound {
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(I, 7) GPIO_ACTIVE_HIGH>;
+		nvidia,mic-det-gpios = <&gpio TEGRA_GPIO(R, 7)
+							GPIO_ACTIVE_HIGH>;
+	};
+
+	skin_temp: therm-est {
+		compatible = "nvidia,tegra124-therm-est";
+		toffset = <9793>;
+		tc1 = <10>;
+		tc2 = <1>;
+		polling-period = <1100>;
+
+		#thermal-sensor-cells = <0>;
+
+		sub-devs {
+			dev@0 {
+				dev = <&diode_thermal_sensor>;
+				coeffs = "2 1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 0 0 -1 -7";
+			};
+
+			dev@1 {
+				dev = <&board_thermal_sensor>;
+				coeffs = "-11 -7 -5 -3 -3 -2 -1 0 0 0 1 1 1 2 2 3 4 6 11 18";
+			};
+		};
+	};
+
+	thermal-zones {
+		skin-therm {
+			polling-delay-passive = <15000>; /* milliseconds */
+			polling-delay = <0>; /* milliseconds */
+
+			thermal-sensors = <&skin_temp>;
+
+			trips {
+				balance_trip0: balance_trip {
+					temperature = <45000>; /* millicelsius */
+					hysteresis = <0>; /* millicelsius */
+					type = "passive";
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&balance_trip0>;
+					cooling-device = <&throttle0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+	};
+};
