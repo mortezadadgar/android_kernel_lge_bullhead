@@ -1,0 +1,8 @@
+What:		/sys/devices/*/<our-device>/fuse
+Date:		December 2013
+Contact:	Peter De Schrijver <pdeschrijver@nvidia.com>
+Description:	read-only access to the efuses on Tegra20, Tegra30, Tegra114
+		and Tegra124 SoC's from NVIDIA. The efuses contain write once
+		data programmed at the factory.
+Users:		any user space application which wants to read the efuses on
+		Tegra SoC's
