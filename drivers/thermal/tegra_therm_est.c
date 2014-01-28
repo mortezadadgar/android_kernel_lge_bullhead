@@ -556,6 +556,8 @@ static int therm_est_probe(struct platform_device *pdev)
 	if (IS_ERR(est->thz))
 		return PTR_ERR(est->thz);
 
+	thermal_update_governor(est->thz, "pid_thermal_gov");
+
 	est->num_trips = est->thz->trips;
 
 	est->trips = devm_kzalloc(&pdev->dev,
