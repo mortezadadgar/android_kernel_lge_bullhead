@@ -1,3 +1,4 @@
+#include <dt-bindings/clock/tegra20-car.h>
 #include <dt-bindings/gpio/tegra-gpio.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
@@ -445,6 +446,13 @@
 		reg = <0x7000f400 0x200>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+	};
+
+	fuse@7000f800 {
+		compatible = "nvidia,tegra20-efuse";
+		reg = <0x7000f800 0x400>,
+		      <0x70000000 0x400>;
+		clocks = <&tegra_car TEGRA20_CLK_FUSE>;
 	};
 
 	usb@c5000000 {

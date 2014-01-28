@@ -1,0 +1,32 @@
+NVIDIA Tegra20/Tegra30/Tegr114/Tegra124 fuse driver.
+
+Required properties:
+- compatible : should be:
+	"nvidia,tegra20-efuse"
+	"nvidia,tegra30-efuse"
+	"nvidia,tegra114-efuse"
+	"nvidia,tegra124-efuse"
+  Details:
+  nvidia,tegra20-efuse: Tegra20 requires using APB DMA to read the fuse data
+	due to a hardware bug. Tegra20 also lacks certain information which is
+	available in later generations such as fab code, lot code, wafer id,..
+  nvidia,tegra30-efuse, nvidia,tegra114-efuse and nvidia,tegra124-efuse:
+	The differences between these SoCs are the size of the efuse array,
+	the location of the spare (OEM programmable) bits and the location of
+	the speedo data.
+- reg: Should contain 2 entries: the first entry gives the physical address
+       and length of the fuse registers, the second entry gives the physical
+       address and length of the apbmisc registers. These are used to provide
+       the chipid, chip revision and strapping options.
+- clocks: Should contain a pointer to the fuse clock.
+
+Example:
+
+        fuse@7000f800 {
+                compatible = "nvidia,tegra20-efuse";
+                reg = <0x7000F800 0x400>,
+                      <0x70000000 0x400>;
+                clocks = <&tegra_car TEGRA20_CLK_FUSE>;
+        };
+
+

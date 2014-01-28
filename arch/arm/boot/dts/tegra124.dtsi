@@ -412,6 +412,13 @@
 		clock-names = "pclk", "clk32k_in";
 	};
 
+	fuse@7000f800 {
+		compatible = "nvidia,tegra124-efuse";
+		reg = <0x7000f800 0x400>,
+		      <0x70000000 0x400>;
+		clocks = <&tegra_car TEGRA124_CLK_FUSE>;
+	};
+
 	mc: memory-controller@70019000 {
 		compatible = "nvidia,tegra124-mc";
 		reg = <0x70019000 0x1000>;
