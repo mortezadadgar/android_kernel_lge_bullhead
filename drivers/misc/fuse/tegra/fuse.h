@@ -34,8 +34,9 @@ struct tegra_sku_info {
 };
 
 int tegra_fuse_create_sysfs(struct device *dev, int size,
-		     u32 (*readl)(const unsigned int offset),
-		     struct tegra_sku_info *sku_info);
+	u32 (*readl)(const unsigned int offset),
+	u32 (*write)(const unsigned int offset, const char *buf, u32 size),
+	struct tegra_sku_info *sku_info);
 
 bool tegra30_spare_fuse(int bit);
 u32 tegra30_fuse_readl(const unsigned int offset);

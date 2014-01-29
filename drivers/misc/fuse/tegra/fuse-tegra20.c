@@ -112,7 +112,7 @@ static int tegra20_fuse_probe(struct platform_device *pdev)
 	tegra20_fuse_add_randomness();
 
 	if (tegra_fuse_create_sysfs(&pdev->dev, FUSE_SIZE, tegra20_fuse_readl,
-			     &sku_info))
+				NULL, &sku_info))
 		return -ENODEV;
 
 	dev_dbg(&pdev->dev, "loaded\n");

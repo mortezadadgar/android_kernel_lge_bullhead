@@ -41,6 +41,7 @@ int tegra_bct_strapping;
 #define TEGRA_RAM_ID_MASK	3
 
 static u32 (*fuse_readl)(const unsigned int offset);
+static u32 (*_fuse_write)(const unsigned int offset, const char *buf, u32 size);
 static int fuse_size;
 static void __iomem *fuse_base;
 static void __iomem *apbmisc_base;
@@ -84,9 +85,32 @@ static ssize_t fuse_read(struct file *fd, struct kobject *kobj,
 	return i;
 }
 
+static ssize_t fuse_write(struct file *fd, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t pos, size_t size)
+{
+	int ret;
+
+	if (!_fuse_write)
+		return -EPERM;
+
+	if (pos < 0 || pos >= fuse_size)
+		return 0;
+
+	if (size > fuse_size - pos)
+		size = fuse_size - pos;
+
+	ret = _fuse_write(pos, buf, size);
+
+	if (IS_ERR_VALUE(ret))
+		return -EPERM;
+
+	return ret;
+}
+
 static struct bin_attribute fuse_bin_attr = {
-	.attr = { .name = "fuse", .mode = S_IRUGO, },
+	.attr = { .name = "fuse", .mode = S_IRUGO | S_IWUSR, },
 	.read = fuse_read,
+	.write = fuse_write,
 };
 
 static const struct of_device_id tegra_fuse_match[] __initconst = {
@@ -151,8 +175,9 @@ u32 tegra_read_chipid(void)
 }
 
 int tegra_fuse_create_sysfs(struct device *dev, int size,
-		     u32 (*readl)(const unsigned int offset),
-		     struct tegra_sku_info *sku_info)
+	 u32 (*readl)(const unsigned int offset),
+	 u32 (*write)(const unsigned int offset, const char *buf, u32 size),
+	 struct tegra_sku_info *sku_info)
 {
 	int err;
 
@@ -161,9 +186,11 @@ int tegra_fuse_create_sysfs(struct device *dev, int size,
 
 	fuse_bin_attr.size = size;
 	fuse_bin_attr.read = fuse_read;
+	fuse_bin_attr.write = fuse_write;
 
 	fuse_size = size;
 	fuse_readl = readl;
+	_fuse_write = write;
 
 	err = device_create_bin_file(dev, &fuse_bin_attr);
 	if (err)
