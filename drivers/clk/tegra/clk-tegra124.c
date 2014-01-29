@@ -1317,8 +1317,8 @@ static void __init tegra124_pll_init(void __iomem *clk_base,
 
 	/* PLLM */
 	clk = tegra_clk_register_pllm("pll_m", "pll_ref", clk_base, pmc,
-			     CLK_IGNORE_UNUSED | CLK_SET_RATE_GATE,
-			     &pll_m_params, NULL);
+				CLK_IGNORE_UNUSED | CLK_SET_RATE_GATE |
+				CLK_GET_RATE_NOCACHE, &pll_m_params, NULL);
 	clk_register_clkdev(clk, "pll_m", NULL);
 	clks[TEGRA124_CLK_PLL_M] = clk;
 
@@ -1813,12 +1813,19 @@ static void tegra124_clk_resume(void)
 		tegra124_dfll_resume(dfll_pdev);
 
 	tegra_clk_emc_resume(clks[TEGRA124_CLK_EMC]);
+	tegra_clk_sync_state_iddq(clks[TEGRA124_CLK_PLL_M]);
 
 	tegra124_emc_timing_invalidate();
 
 	tegra124_utmi_param_configure(clk_base);
 
 	tegra_clk_plle_tegra114_resume(clks[TEGRA124_CLK_PLL_E]);
+
+	/*
+	 * Force PLLM rate to be recalculated as it may have changed
+	 * across suspend/resume.
+	 */
+	clk_get_rate(clks[TEGRA124_CLK_PLL_M]);
 }
 
 static struct syscore_ops tegra_clk_syscore_ops = {
