@@ -1951,8 +1951,13 @@ static int tegra_dc_init(struct tegra_dc *dc)
 {
 	int i;
 	int int_enable;
+	int win_mask = WINDOW_A_SELECT | WINDOW_B_SELECT | WINDOW_C_SELECT;
 
 	tegra_dc_io_start(dc);
+
+	tegra_dc_writel(dc, win_mask, DC_CMD_DISPLAY_WINDOW_HEADER);
+	tegra_dc_writel(dc, 0, DC_WIN_WIN_OPTIONS);
+
 	tegra_dc_writel(dc, 0x00000100, DC_CMD_GENERAL_INCR_SYNCPT_CNTRL);
 	/* TODO: Add MC priority setting here. */
 
