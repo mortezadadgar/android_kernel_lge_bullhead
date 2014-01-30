@@ -930,6 +930,10 @@
 		nvidia,sys-clock-req-active-high;
 	};
 
+	fuse@7000f800 {
+		vdd-supply = <&run_vpp_fuse_1v8>;
+	};
+
 	memory-controller@7001b000 {
 		#address-cells = <1>;
 		#size-cells = <0>;
