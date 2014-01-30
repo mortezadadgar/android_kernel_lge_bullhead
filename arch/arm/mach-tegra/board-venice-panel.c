@@ -220,17 +220,17 @@ static struct tegra_dc_mode lp129qe_modes[] = {
 
 static struct tegra_dc_mode n116bge_modes[] = {
 	{
-		.pclk = 70920000,
-		.h_ref_to_sync = 1,
-		.v_ref_to_sync = 1,
-		.h_sync_width = 46,
-		.v_sync_width = 8,
-		.h_back_porch = 44,
-		.v_back_porch = 6,
+		.pclk = 76416000,
+		.h_ref_to_sync = 68,
+		.v_ref_to_sync = 4,
+		.h_sync_width = 30,
+		.v_sync_width = 12,
+		.h_back_porch = 60,
+		.v_back_porch = 12,
 		.h_active = 1366,
 		.v_active = 768,
-		.h_front_porch = 44,
-		.v_front_porch = 6,
+		.h_front_porch = 136,
+		.v_front_porch = 8,
 	},
 };
 
