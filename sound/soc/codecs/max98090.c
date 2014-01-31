@@ -8,6 +8,7 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/acpi.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
@@ -2098,7 +2099,6 @@ static void max98090_jack_work(struct work_struct *work)
 	snd_soc_dapm_sync(dapm);
 }
 
-#if 0
 static irqreturn_t max98090_interrupt(int irq, void *data)
 {
 	struct snd_soc_codec *codec = data;
@@ -2161,7 +2161,6 @@ static irqreturn_t max98090_interrupt(int irq, void *data)
 
 	return IRQ_HANDLED;
 }
-#endif
 
 /**
  * max98090_mic_detect - Enable microphone detection via the MAX98090 IRQ
@@ -2312,15 +2311,18 @@ static int max98090_probe(struct snd_soc_codec *codec)
 	/* Register for interrupts */
 	dev_dbg(codec->dev, "irq = %d\n", max98090->irq);
 
-	// TODO:  Figure out why request_threaded_irq is failing and fix it
-	// properly instead of just removing it.
-	// ret = request_threaded_irq(max98090->irq, NULL,
-	// 	max98090_interrupt, IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-	// 	"max98090_interrupt", codec);
-	// if (ret < 0) {
-	// 	dev_err(codec->dev, "request_irq failed: %d\n",
-	// 		ret);
-	// }
+	ret = request_threaded_irq(max98090->irq, NULL,
+		max98090_interrupt, IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+		"max98090_interrupt", codec);
+	if (ret < 0) {
+		dev_err(codec->dev, "request_irq failed: %d\n",
+			ret);
+		/*
+		 * Workaround for static probing without defined
+		 * interrupt: Don't fail on interrupt registration
+		 */
+		ret = 0;
+	}
 
 	/*
 	 * Clear any old interrupts.
@@ -2392,7 +2394,11 @@ static int max98090_i2c_probe(struct i2c_client *i2c,
 	if (max98090 == NULL)
 		return -ENOMEM;
 
-	max98090->devtype = id->driver_data;
+	/* id is NULL if probed from ACPI ID, use default devtype instead */
+	if (id)
+		max98090->devtype = id->driver_data;
+	else
+		max98090->devtype = MAX98090;
 	i2c_set_clientdata(i2c, max98090);
 	max98090->control_data = i2c;
 	max98090->pdata = i2c->dev.platform_data;
@@ -2449,11 +2455,20 @@ static const struct i2c_device_id max98090_i2c_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, max98090_i2c_id);
 
+#ifdef CONFIG_ACPI
+static const struct acpi_device_id max98090_acpi_id[] = {
+	{ "193C9890", MAX98090 },
+	{ }
+};
+MODULE_DEVICE_TABLE(acpi, max98090_acpi_id);
+#endif
+
 static struct i2c_driver max98090_i2c_driver = {
 	.driver = {
 		.name = "max98090",
 		.owner = THIS_MODULE,
 		.pm = &max98090_pm,
+		.acpi_match_table = ACPI_PTR(max98090_acpi_id),
 	},
 	.probe  = max98090_i2c_probe,
 	.remove = max98090_i2c_remove,

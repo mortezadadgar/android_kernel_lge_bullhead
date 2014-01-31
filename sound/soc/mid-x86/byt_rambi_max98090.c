@@ -54,7 +54,7 @@ static inline struct snd_soc_codec *byt_get_codec(struct snd_soc_card *card)
 	struct snd_soc_codec *codec;
 
 	list_for_each_entry(codec, &card->codec_dev_list, card_list) {
-		if (!strstr(codec->name, "max98090."I2C_BUSNUM"-0010")) {
+		if (!strstr(codec->name, "max98090")) {
 			pr_debug("codec was %s", codec->name);
 			continue;
 		} else {
@@ -352,7 +352,19 @@ static int snd_byt_mc_probe(struct platform_device *pdev)
 	ret_val = snd_soc_register_card(&snd_soc_card_byt);
 	if (ret_val) {
 		pr_err("snd_soc_register_card failed %d\n", ret_val);
-		return ret_val;
+
+		/* Fallback: try default bus number 1 */
+		if (CONFIG_SND_BYT_MAX98090_I2C_BUSNUM != 1 &&
+		    !strcmp(byt_dailink[0].codec_name,
+			    "max98090."I2C_BUSNUM"-0010")) {
+			pr_info("%s try bus 1\n", __func__);
+			byt_dailink[0].codec_name = "max98090.1-0010";
+			byt_dailink[1].codec_name = "max98090.1-0010";
+			ret_val = snd_soc_register_card(&snd_soc_card_byt);
+		}
+
+		if (ret_val)
+			return ret_val;
 	}
 	platform_set_drvdata(pdev, &snd_soc_card_byt);
 	pr_info("%s successful\n", __func__);
