@@ -1955,6 +1955,8 @@ static int tegra_dc_init(struct tegra_dc *dc)
 
 	tegra_dc_io_start(dc);
 
+	tegra_dc_writel(dc, WRITE_MUX_ASSEMBLY | READ_MUX_ASSEMBLY,
+			DC_CMD_STATE_ACCESS);
 	tegra_dc_writel(dc, win_mask, DC_CMD_DISPLAY_WINDOW_HEADER);
 	tegra_dc_writel(dc, 0, DC_WIN_WIN_OPTIONS);
 
