@@ -185,9 +185,11 @@ int dma_release_from_coherent(struct device *dev, int order, void *vaddr)
 	if (!mem)
 		return 0;
 
+#ifdef CONFIG_DMA_COHERENT_NOMAP
 	if (mem->flags & DMA_MEMORY_NOMAP)
 		mem_addr =  (void *)mem->device_base;
 	else
+#endif
 		mem_addr =  mem->virt_base;
 
 	if (mem && vaddr >= mem_addr && vaddr <
@@ -225,9 +227,11 @@ int dma_mmap_from_coherent(struct device *dev, struct vm_area_struct *vma,
 	if (!mem)
 		return 0;
 
+#ifdef CONFIG_DMA_COHERENT_NOMAP
 	if (mem->flags & DMA_MEMORY_NOMAP)
 		mem_addr =  (void *)mem->device_base;
 	else
+#endif
 		mem_addr =  mem->virt_base;
 
 	if (mem && vaddr >= mem_addr && vaddr + size <=

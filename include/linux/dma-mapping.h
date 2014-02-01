@@ -153,7 +153,11 @@ static inline int dma_get_cache_alignment(void)
 #define DMA_MEMORY_IO			0x02
 #define DMA_MEMORY_INCLUDES_CHILDREN	0x04
 #define DMA_MEMORY_EXCLUSIVE		0x08
+#ifdef CONFIG_DMA_COHERENT_NOMAP
 #define DMA_MEMORY_NOMAP		0x10
+#else
+#define DMA_MEMORY_NOMAP		0x00
+#endif
 
 #ifndef ARCH_HAS_DMA_DECLARE_COHERENT_MEMORY
 static inline int
