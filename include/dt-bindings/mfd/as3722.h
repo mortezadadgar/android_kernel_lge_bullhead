@@ -52,4 +52,18 @@
 /* GPIO suspend state */
 #define AS3722_GPIO_LOW_POWER_MODE(s, c) (((s) & 0xff) << 8 | ((c) & 0xff))
 
+/* Thermal sensor zones */
+#define AS3722_SD0_SENSOR		0
+#define AS3722_SD1_SENSOR		1
+#define AS3722_SD6_SENSOR		2
+
+/* SDx temperature ADC channel */
+#define AS3722_TEMP1_SD0		16
+#define AS3722_TEMP2_SD0		17
+#define AS3722_TEMP3_SD0		18
+#define AS3722_TEMP4_SD0		19
+#define AS3722_TEMP_SD1			20
+#define AS3722_TEMP1_SD6		21
+#define AS3722_TEMP2_SD6		22
+
 #endif /* __DT_BINDINGS_AS3722_H__ */

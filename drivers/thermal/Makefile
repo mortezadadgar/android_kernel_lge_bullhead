@@ -43,3 +43,4 @@ obj-$(CONFIG_TEGRA_THERMAL_THROTTLE)	+= tegra_throttle.o
 ifeq ($(CONFIG_TEGRA_THERMAL_THROTTLE),y)
 obj-$(CONFIG_ARCH_TEGRA_124_SOC)        += tegra124_throttle.o
 endif
+obj-$(CONFIG_AS3722_THERMAL)		+= as3722_thermal.o

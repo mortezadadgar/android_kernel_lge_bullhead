@@ -54,6 +54,27 @@ static const struct resource as3722_adc_resource[] = {
 	},
 };
 
+static const struct resource as3722_thermal_resource[] = {
+	{
+		.name = "as3722-sd0-alarm",
+		.start = AS3722_IRQ_TEMP_SD0_ALARM,
+		.end = AS3722_IRQ_TEMP_SD0_ALARM,
+		.flags = IORESOURCE_IRQ,
+	},
+	{
+		.name = "as3722-sd1-alarm",
+		.start = AS3722_IRQ_TEMP_SD1_ALARM,
+		.end = AS3722_IRQ_TEMP_SD1_ALARM,
+		.flags = IORESOURCE_IRQ,
+	},
+	{
+		.name = "as3722-sd6-alarm",
+		.start = AS3722_IRQ_TEMP_SD6_ALARM,
+		.end = AS3722_IRQ_TEMP_SD6_ALARM,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
 static struct mfd_cell as3722_devs[] = {
 	{
 		.name = "as3722-pinctrl",
@@ -76,6 +97,11 @@ static struct mfd_cell as3722_devs[] = {
 	},
 	{
 		.name = "as3722-power-off",
+	},
+	{
+		.name = "as3722-thermal",
+		.num_resources = ARRAY_SIZE(as3722_thermal_resource),
+		.resources = as3722_thermal_resource,
 	},
 };
 

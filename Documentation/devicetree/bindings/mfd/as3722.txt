@@ -113,6 +113,20 @@ functionality from ams AS3722:
 ams,system-power-controller: To enable the power off functionality through
 	device.
 
+Thermal:
+=========
+
+AS3722 has thermal sensors for SD0, SD1, and SD6 and supports over-temperature
+alarm interrupts.  The device node should have the following optional property
+to support thermal sensors:
+- ams,sd0-adc-ch: ADC channel for sd0 regulator temp, it has four possible
+  channels: 16, 17, 18, 19.
+- ams,sd1-adc-ch: ADC channel for sd1 regulator temp, it has one possible
+  channel: 20.
+- ams,sd6-adc-ch: ADC channel for sd6 regulator temp, it has two possible
+  channels: 21, 22.
+- #thermal-sensor-cells: from the common thermal binding; shall be set to 1.
+
 Example:
 --------
 ams3722 {
@@ -125,6 +139,11 @@ ams3722 {
 
 	gpio-controller;
 	#gpio-cells = <2>;
+
+	ams,sd0-adc-ch = <16>;
+	ams,sd0-adc-ch = <20>;
+	ams,sd0-adc-ch = <22>;
+	#thermal-sensor-cells = <1>;
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&as3722_default>;
