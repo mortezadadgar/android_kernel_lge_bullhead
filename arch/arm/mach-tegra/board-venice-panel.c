@@ -415,7 +415,6 @@ static struct tegra_fb_data venice_disp2_fb_data = {
 };
 
 struct tegra_dc_platform_data venice_disp2_pdata = {
-	.flags		= TEGRA_DC_FLAG_ENABLED,
 	.default_out	= &venice_disp2_out,
 	.fb		= &venice_disp2_fb_data,
 	.emc_clk_rate	= 300000000,
