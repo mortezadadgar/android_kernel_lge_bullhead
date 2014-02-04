@@ -585,6 +585,11 @@
 
 			ams,system-power-controller;
 
+			ams,sd0-adc-ch = <AS3722_TEMP1_SD0>;
+			ams,sd1-adc-ch = <AS3722_TEMP_SD1>;
+			ams,sd6-adc-ch = <AS3722_TEMP2_SD6>;
+			#thermal-sensor-cells = <1>;
+
 			pinctrl-names = "default";
 			pinctrl-0 = <&as3722_default>;
 
