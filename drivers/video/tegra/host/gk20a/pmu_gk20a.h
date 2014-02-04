@@ -713,6 +713,8 @@ struct pmu_gk20a {
 	bool elpg_enable_allow;
 	/* protect elpg enable/disable */
 	struct mutex elpg_mutex;
+	/* protect pmu pg_initialization routine */
+	struct mutex pg_init_mutex;
 	/* disable -1, enable +1, <=0 elpg disabled, > 0 elpg enabled */
 	int elpg_refcnt;
 
