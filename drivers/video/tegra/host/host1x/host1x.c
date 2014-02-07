@@ -622,8 +622,10 @@ void nvhost_host1x_update_clk(struct platform_device *pdev)
 	struct nvhost_device_profile *profile;
 
 	/* There are only two chips which need this workaround, so hardcode */
+#ifdef CONFIG_ARCH_TEGRA_114_SOC
 	if (of_machine_is_compatible("nvidia,tegra114"))
 		pdata = &t11_gr3d_info;
+#endif
 
 	if (!pdata)
 		return;
