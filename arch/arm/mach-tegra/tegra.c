@@ -176,9 +176,11 @@ static void __init venice2_init(void)
 }
 
 static struct of_dev_auxdata tegra_auxdata_lookup[] __initdata = {
+#ifdef CONFIG_TEGRA_DC
 	OF_DEV_AUXDATA("pwm-backlight", 0, "pwm-backlight", &venice_bl_data),
 	OF_DEV_AUXDATA("nvidia,tegra124-dc", 0x54200000, "tegradc.0", &venice_disp1_pdata),
 	OF_DEV_AUXDATA("nvidia,tegra124-dc", 0x54240000, "tegradc.1", &venice_disp2_pdata),
+#endif
 	{}
 };
 
