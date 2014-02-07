@@ -11,6 +11,9 @@
 #include <dt-bindings/memory/tegra-swgroup.h>
 
 / {
+	#address-cells = <2>;
+	#size-cells = <1>;
+
 	compatible = "nvidia,tegra124";
 	interrupt-parent = <&gic>;
 
@@ -23,7 +26,7 @@
 
 	host1x@50000000 {
 		compatible = "nvidia,tegra124-host1x", "simple-bus";
-		reg = <0x50000000 0x00034000>;
+		reg = <0x0 0x50000000 0x00034000>;
 		interrupts = <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>,	/* mpcore syncpt */
 			     <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;	/* mpcore general */
 		clocks = <&tegra_car TEGRA124_CLK_HOST1X>,
@@ -34,7 +37,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		ranges = <0x54000000 0x54000000 0x0c000000>;
+		ranges = <0x54000000 0x0 0x54000000 0x0c000000>;
 
 		dc@54200000 {
 			compatible = "nvidia,tegra124-dc";
@@ -123,17 +126,17 @@
 		compatible = "arm,cortex-a15-gic";
 		#interrupt-cells = <3>;
 		interrupt-controller;
-		reg = <0x50041000 0x1000>,
-		      <0x50042000 0x1000>,
-		      <0x50044000 0x2000>,
-		      <0x50046000 0x2000>;
+		reg = <0x0 0x50041000 0x1000>,
+		      <0x0 0x50042000 0x1000>,
+		      <0x0 0x50044000 0x2000>,
+		      <0x0 0x50046000 0x2000>;
 		interrupts = <GIC_PPI 9
 			(GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
 	};
 
 	timer@60005000 {
 		compatible = "nvidia,tegra124-timer", "nvidia,tegra20-timer";
-		reg = <0x60005000 0x400>;
+		reg = <0x0 0x60005000 0x400>;
 		interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>,
@@ -145,13 +148,13 @@
 
 	tegra_car: clock {
 		compatible = "nvidia,tegra124-car";
-		reg = <0x60006000 0x1000>;
+		reg = <0x0 0x60006000 0x1000>;
 		#clock-cells = <1>;
 	};
 
 	apbdma: dma@60020000 {
 		compatible = "nvidia,tegra124-apbdma", "nvidia,tegra148-apbdma";
-		reg = <0x60020000 0x1400>;
+		reg = <0x0 0x60020000 0x1400>;
 		interrupts = <GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>,
@@ -189,12 +192,12 @@
 
 	ahb: ahb {
 		compatible = "nvidia,tegra124-ahb", "nvidia,tegra114-ahb", "nvidia,tegra30-ahb";
-		reg = <0x6000c004 0x14c>;
+		reg = <0x0 0x6000c004 0x14c>;
 	};
 
 	gpio: gpio {
 		compatible = "nvidia,tegra124-gpio", "nvidia,tegra30-gpio";
-		reg = <0x6000d000 0x1000>;
+		reg = <0x0 0x6000d000 0x1000>;
 		interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 33 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>,
@@ -211,8 +214,8 @@
 
 	pinmux: pinmux {
 		compatible = "nvidia,tegra124-pinmux";
-		reg = <0x70000868 0x148         /* Pad control registers */
-		       0x70003000 0x40c>;       /* Mux registers */
+		reg = <0x0 0x70000868 0x148>,   /* Pad control registers */
+		      <0x0 0x70003000 0x40c>;   /* Mux registers */
 	};
 
 	/*
@@ -225,7 +228,7 @@
 	 */
 	uarta: serial@70006000 {
 		compatible = "nvidia,tegra124-uart", "nvidia,tegra20-uart";
-		reg = <0x70006000 0x40>;
+		reg = <0x0 0x70006000 0x40>;
 		reg-shift = <2>;
 		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>;
 		nvidia,dma-request-selector = <&apbdma 8>;
@@ -235,7 +238,7 @@
 
 	uartb: serial@70006040 {
 		compatible = "nvidia,tegra124-uart", "nvidia,tegra20-uart";
-		reg = <0x70006040 0x40>;
+		reg = <0x0 0x70006040 0x40>;
 		reg-shift = <2>;
 		interrupts = <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
 		nvidia,dma-request-selector = <&apbdma 9>;
@@ -245,7 +248,7 @@
 
 	uartc: serial@70006200 {
 		compatible = "nvidia,tegra124-uart", "nvidia,tegra20-uart";
-		reg = <0x70006200 0x40>;
+		reg = <0x0 0x70006200 0x40>;
 		reg-shift = <2>;
 		interrupts = <GIC_SPI 46 IRQ_TYPE_LEVEL_HIGH>;
 		nvidia,dma-request-selector = <&apbdma 10>;
@@ -255,7 +258,7 @@
 
 	uartd: serial@70006300 {
 		compatible = "nvidia,tegra124-uart", "nvidia,tegra20-uart";
-		reg = <0x70006300 0x40>;
+		reg = <0x0 0x70006300 0x40>;
 		reg-shift = <2>;
 		interrupts = <GIC_SPI 90 IRQ_TYPE_LEVEL_HIGH>;
 		nvidia,dma-request-selector = <&apbdma 19>;
@@ -265,7 +268,7 @@
 
 	pwm: pwm {
 		compatible = "nvidia,tegra124-pwm", "nvidia,tegra20-pwm";
-		reg = <0x7000a000 0x100>;
+		reg = <0x0 0x7000a000 0x100>;
 		#pwm-cells = <2>;
 		clocks = <&tegra_car TEGRA124_CLK_PWM>;
 		status = "disabled";
@@ -273,7 +276,7 @@
 
 	i2c@7000c000 {
 		compatible = "nvidia,tegra124-i2c", "nvidia,tegra114-i2c";
-		reg = <0x7000c000 0x100>;
+		reg = <0x0 0x7000c000 0x100>;
 		interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -284,7 +287,7 @@
 
 	i2c@7000c400 {
 		compatible = "nvidia,tegra124-i2c", "nvidia,tegra114-i2c";
-		reg = <0x7000c400 0x100>;
+		reg = <0x0 0x7000c400 0x100>;
 		interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -295,7 +298,7 @@
 
 	i2c@7000c500 {
 		compatible = "nvidia,tegra124-i2c", "nvidia,tegra114-i2c";
-		reg = <0x7000c500 0x100>;
+		reg = <0x0 0x7000c500 0x100>;
 		interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -306,7 +309,7 @@
 
 	i2c@7000c700 {
 		compatible = "nvidia,tegra124-i2c", "nvidia,tegra114-i2c";
-		reg = <0x7000c700 0x100>;
+		reg = <0x0 0x7000c700 0x100>;
 		interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -317,7 +320,7 @@
 
 	i2c@7000d000 {
 		compatible = "nvidia,tegra124-i2c", "nvidia,tegra114-i2c";
-		reg = <0x7000d000 0x100>;
+		reg = <0x0 0x7000d000 0x100>;
 		interrupts = <GIC_SPI 53 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -328,7 +331,7 @@
 
 	spi0: spi@7000d400 {
 		compatible = "nvidia,tegra124-spi", "nvidia,tegra114-spi";
-		reg = <0x7000d400 0x200>;
+		reg = <0x0 0x7000d400 0x200>;
 		interrupts = <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>;
 		nvidia,dma-request-selector = <&apbdma 15>;
 		#address-cells = <1>;
@@ -340,7 +343,7 @@
 
 	spi1: spi@7000d600 {
 		compatible = "nvidia,tegra124-spi", "nvidia,tegra114-spi";
-		reg = <0x7000d600 0x200>;
+		reg = <0x0 0x7000d600 0x200>;
 		interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>;
 		nvidia,dma-request-selector = <&apbdma 16>;
 		#address-cells = <1>;
@@ -352,7 +355,7 @@
 
 	spi2: spi@7000d800 {
 		compatible = "nvidia,tegra124-spi", "nvidia,tegra114-spi";
-		reg = <0x7000d800 0x200>;
+		reg = <0x0 0x7000d800 0x200>;
 		interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
 		nvidia,dma-request-selector = <&apbdma 17>;
 		#address-cells = <1>;
@@ -364,7 +367,7 @@
 
 	spi3: spi@7000da00 {
 		compatible = "nvidia,tegra124-spi", "nvidia,tegra114-spi";
-		reg = <0x7000da00 0x200>;
+		reg = <0x0 0x7000da00 0x200>;
 		interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
 		nvidia,dma-request-selector = <&apbdma 18>;
 		#address-cells = <1>;
@@ -376,7 +379,7 @@
 
 	spi4: spi@7000dc00 {
 		compatible = "nvidia,tegra124-spi", "nvidia,tegra114-spi";
-		reg = <0x7000dc00 0x200>;
+		reg = <0x0 0x7000dc00 0x200>;
 		interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH>;
 		nvidia,dma-request-selector = <&apbdma 27>;
 		#address-cells = <1>;
@@ -388,7 +391,7 @@
 
 	spi5: spi@7000de00 {
 		compatible = "nvidia,tegra124-spi", "nvidia,tegra114-spi";
-		reg = <0x7000de00 0x200>;
+		reg = <0x0 0x7000de00 0x200>;
 		interrupts = <GIC_SPI 79 IRQ_TYPE_LEVEL_HIGH>;
 		nvidia,dma-request-selector = <&apbdma 28>;
 		#address-cells = <1>;
@@ -400,43 +403,44 @@
 
 	rtc {
 		compatible = "nvidia,tegra124-rtc", "nvidia,tegra20-rtc";
-		reg = <0x7000e000 0x100>;
+		reg = <0x0 0x7000e000 0x100>;
 		interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&tegra_car TEGRA124_CLK_RTC>;
 	};
 
 	pmc: pmc {
 		compatible = "nvidia,tegra124-pmc", "nvidia,tegra114-pmc";
-		reg = <0x7000e400 0x400>;
+		reg = <0x0 0x7000e400 0x400>;
 		clocks = <&tegra_car TEGRA124_CLK_PCLK>, <&clk32k_in>;
 		clock-names = "pclk", "clk32k_in";
 	};
 
 	fuse@7000f800 {
 		compatible = "nvidia,tegra124-efuse";
-		reg = <0x7000f800 0x400>,
-		      <0x70000000 0x400>;
+		reg = <0x0 0x7000f800 0x400>,
+		      <0x0 0x70000000 0x400>;
 		clocks = <&tegra_car TEGRA124_CLK_FUSE>;
 	};
 
 	mc: memory-controller@70019000 {
 		compatible = "nvidia,tegra124-mc";
-		reg = <0x70019000 0x1000>;
+		reg = <0x0 0x70019000 0x1000>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 	};
 
 	smmu: iommu {
 		compatible = "nvidia,tegra124-smmu", "nvidia,tegra114-smmu", "nvidia,tegra30-smmu";
-		reg = <0x70019000 0x1000>;
+		reg = <0x0 0x70019000 0x1000>;
 		nvidia,#asids = <128>;
 		dma-window = <0 0x40000000>;
 		#iommu-cells = <2>;
+		#dma-address-cells = <1>;
 	};
 
 	memory-controller@7001b000 {
 		compatible = "nvidia,tegra124-emc";
-		reg = <0x7001b000 0x1000>;
+		reg = <0x0 0x7001b000 0x1000>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		nvidia,mc = <&mc>;
@@ -455,7 +459,7 @@
 
 	sdhci@700b0600 {
 		compatible = "nvidia,tegra124-sdhci", "nvidia,tegra114-sdhci";
-		reg = <0x700b0600 0x200>;
+		reg = <0x0 0x700b0600 0x200>;
 		interrupts = <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&tegra_car TEGRA124_CLK_SDMMC4>;
 		status = "disabled";
@@ -463,9 +467,9 @@
 
 	ahub {
 		compatible = "nvidia,tegra124-ahub";
-		reg = <0x70300000 0x200>,
-		      <0x70300800 0x800>,
-		      <0x70300200 0x600>;
+		reg = <0x0 0x70300000 0x200>,
+		      <0x0 0x70300800 0x800>,
+		      <0x0 0x70300200 0x600>;
 		interrupts = <GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&tegra_car TEGRA124_CLK_D_AUDIO>,
 			 <&tegra_car TEGRA124_CLK_APBIF>,
@@ -492,7 +496,7 @@
 			      "i2s3", "i2s4", "dam0", "dam1", "dam2",
 			      "spdif_in", "amx", "amx1", "adx", "adx1",
 			      "afc0", "afc1", "afc2", "afc3", "afc4", "afc5";
-		ranges;
+		ranges = <0x70301000 0x0 0x70301000 0x500>;
 		#address-cells = <1>;
 		#size-cells = <1>;
 
@@ -544,7 +548,7 @@
 
 	sdhci@700b0000 {
 		compatible = "nvidia,tegra124-sdhci", "nvidia,tegra114-sdhci";
-		reg = <0x700b0000 0x200>;
+		reg = <0x0 0x700b0000 0x200>;
 		interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&tegra_car TEGRA124_CLK_SDMMC1>;
 		status = "disabled";
@@ -552,7 +556,7 @@
 
 	sdhci@700b0200 {
 		compatible = "nvidia,tegra124-sdhci", "nvidia,tegra114-sdhci";
-		reg = <0x700b0200 0x200>;
+		reg = <0x0 0x700b0200 0x200>;
 		interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&tegra_car TEGRA124_CLK_SDMMC2>;
 		status = "disabled";
@@ -560,7 +564,7 @@
 
 	sdhci@700b0400 {
 		compatible = "nvidia,tegra124-sdhci", "nvidia,tegra114-sdhci";
-		reg = <0x700b0400 0x200>;
+		reg = <0x0 0x700b0400 0x200>;
 		interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&tegra_car TEGRA124_CLK_SDMMC3>;
 		status = "disabled";
@@ -568,7 +572,8 @@
 
 	phy1: usb-phy@7d000000 {
 		compatible = "nvidia,tegra30-usb-phy";
-		reg = <0x7d000000 0x4000 0x7d000000 0x4000>;
+		reg = <0x0 0x7d000000 0x4000>,
+		      <0x0 0x7d000000 0x4000>;
 		phy_type = "utmi";
 		clocks = <&tegra_car TEGRA124_CLK_USBD>,
 			 <&tegra_car TEGRA124_CLK_PLL_U>,
@@ -589,7 +594,7 @@
 
 	usb@7d000000 {
 		compatible = "nvidia,tegra30-ehci", "usb-ehci";
-		reg = <0x7d000000 0x4000>;
+		reg = <0x0 0x7d000000 0x4000>;
 		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
 		phy_type = "utmi";
 		clocks = <&tegra_car TEGRA124_CLK_USBD>;
@@ -599,7 +604,8 @@
 
 	phy2: usb-phy@7d004000 {
 		compatible = "nvidia,tegra30-usb-phy";
-		reg = <0x7d004000 0x4000 0x7d000000 0x4000>;
+		reg = <0x0 0x7d004000 0x4000>,
+		      <0x0 0x7d000000 0x4000>;
 		phy_type = "utmi";
 		clocks = <&tegra_car TEGRA124_CLK_USB2>,
 			 <&tegra_car TEGRA124_CLK_PLL_U>,
@@ -620,7 +626,7 @@
 
 	usb@7d004000 {
 		compatible = "nvidia,tegra30-ehci", "usb-ehci";
-		reg = <0x7d004000 0x4000>;
+		reg = <0x0 0x7d004000 0x4000>;
 		interrupts = <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
 		phy_type = "utmi";
 		clocks = <&tegra_car TEGRA124_CLK_USB2>;
@@ -630,7 +636,8 @@
 
 	phy3: usb-phy@7d008000 {
 		compatible = "nvidia,tegra30-usb-phy";
-		reg = <0x7d008000 0x4000 0x7d000000 0x4000>;
+		reg = <0x0 0x7d008000 0x4000>,
+		      <0x0 0x7d000000 0x4000>;
 		phy_type = "utmi";
 		clocks = <&tegra_car TEGRA124_CLK_USB3>,
 			 <&tegra_car TEGRA124_CLK_PLL_U>,
@@ -651,7 +658,7 @@
 
 	usb@7d008000 {
 		compatible = "nvidia,tegra30-ehci", "usb-ehci";
-		reg = <0x7d008000 0x4000>;
+		reg = <0x0 0x7d008000 0x4000>;
 		interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
 		phy_type = "utmi";
 		clocks = <&tegra_car TEGRA124_CLK_USB3>;
@@ -661,7 +668,7 @@
 
 	dfll@70110000 {
 		compatible = "nvidia,tegra124-dfll";
-		reg = <0x70110000 0x400>;
+		reg = <0x0 0x70110000 0x400>;
 		clocks = <&tegra_car TEGRA124_CLK_DFLL_SOC>,
 			 <&tegra_car TEGRA124_CLK_DFLL_REF>,
 			 <&tegra_car TEGRA124_CLK_I2C5>;

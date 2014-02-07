@@ -6,7 +6,7 @@
 	compatible = "google,nyan", "nvidia,tegra124";
 
 	memory {
-		reg = <0x80000000 0x80000000>;
+		reg = <0x0 0x80000000 0x80000000>;
 	};
 
 	firmware {
@@ -1949,7 +1949,7 @@
 
 	soc_therm {
 		compatible = "nvidia,tegra124-soctherm";
-		reg = <0x700e2000 0x1000>;
+		reg = <0x0 0x700e2000 0x1000>;
 		interrupts = <GIC_SPI 48 IRQ_TYPE_NONE>;
 		clocks = <&tegra_car TEGRA124_CLK_SOC_THERM>,
 			 <&tegra_car TEGRA124_CLK_TSENSOR>;
