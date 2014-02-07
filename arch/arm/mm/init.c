@@ -30,6 +30,8 @@
 #include <asm/setup.h>
 #include <asm/tlb.h>
 #include <asm/fixmap.h>
+#include <asm/system_info.h>
+#include <asm/cp15.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -723,11 +725,59 @@ void __init mem_init(void)
 	}
 }
 
+static inline void section_update(unsigned long addr, pmdval_t prot)
+{
+	pgd_t *pgd;
+	pud_t *pud;
+	pmd_t *pmd;
+
+	pgd = pgd_offset_k(addr);
+	pud = pud_offset(pgd, addr);
+	pmd = pmd_offset(pud, addr);
+
+#ifdef CONFIG_ARM_LPAE
+	pmd[0] = __pmd(pmd_val(pmd[0]) | prot);
+#else
+	if (addr & SECTION_SIZE)
+		pmd[1] = __pmd(pmd_val(pmd[1]) | prot);
+	else
+		pmd[0] = __pmd(pmd_val(pmd[0]) | prot);
+#endif
+	flush_pmd_entry(pmd);
+}
+
 void free_initmem(void)
 {
 #ifdef CONFIG_HAVE_TCM
 	extern char __tcm_start, __tcm_end;
+#endif
+	unsigned long addr;
+	int cpu_arch = cpu_architecture();
+	unsigned int cr = get_cr();
 
+	if (cpu_arch >= CPU_ARCH_ARMv6 && (cr & CR_XP)) {
+		/* Make pages tables, etc before _stext NX. */
+		for (addr = PAGE_OFFSET; addr < (unsigned long)_stext;
+		     addr += SECTION_SIZE)
+			section_update(addr, PMD_SECT_XN);
+		/* Make init NX. */
+		for (addr = (unsigned long)__init_begin;
+		     addr < (unsigned long)_sdata;
+		     addr += SECTION_SIZE)
+			section_update(addr, PMD_SECT_XN);
+		/* Make kernel code and rodata RO. */
+		for (addr = (unsigned long)_stext;
+		     addr < (unsigned long)__init_begin;
+		     addr += SECTION_SIZE) {
+#ifdef CONFIG_ARM_LPAE
+			section_update(addr, PMD_SECT_RDONLY);
+#else
+			section_update(addr, PMD_SECT_APX|PMD_SECT_AP_WRITE);
+#endif
+		}
+	}
+
+#ifdef CONFIG_HAVE_TCM
 	poison_init_mem(&__tcm_start, &__tcm_end - &__tcm_start);
 	free_reserved_area(&__tcm_start, &__tcm_end, 0, "TCM link");
 #endif
