@@ -42,7 +42,7 @@ struct mem_mgr *nvhost_memmgr_alloc_mgr(void)
 	mgr = nvhost_nvmap_alloc_mgr();
 #else
 #ifdef CONFIG_TEGRA_GRHOST_USE_DMABUF
-	mgr = (struct mem_mgr)1;
+	mgr = (struct mem_mgr *)1;
 #endif
 #endif
 
@@ -55,7 +55,7 @@ void nvhost_memmgr_put_mgr(struct mem_mgr *mgr)
 	nvhost_nvmap_put_mgr(mgr);
 #else
 #ifdef CONFIG_TEGRA_GRHOST_USE_DMABUF
-	mgr = (struct mem_mgr)1;
+	mgr = (struct mem_mgr *)1;
 #endif
 #endif
 }
@@ -67,7 +67,7 @@ struct mem_mgr *nvhost_memmgr_get_mgr(struct mem_mgr *_mgr)
 	mgr = nvhost_nvmap_get_mgr(_mgr);
 #else
 #ifdef CONFIG_TEGRA_GRHOST_USE_DMABUF
-	mgr = (struct mem_mgr)1;
+	mgr = (struct mem_mgr *)1;
 #endif
 #endif
 
@@ -81,7 +81,7 @@ struct mem_mgr *nvhost_memmgr_get_mgr_file(int fd)
 	mgr = nvhost_nvmap_get_mgr_file(fd);
 #else
 #ifdef CONFIG_TEGRA_GRHOST_USE_DMABUF
-	mgr = (struct mem_mgr)1;
+	mgr = (struct mem_mgr *)1;
 #endif
 #endif
 
@@ -425,6 +425,7 @@ int nvhost_memmgr_alloc_comptags(struct mem_handle *mem,
 #endif
 #ifdef CONFIG_TEGRA_GRHOST_USE_DMABUF
 	WARN_ON(1);
+	return 0;
 #endif
 }
 
