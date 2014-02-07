@@ -9,7 +9,7 @@ ccflags-y += -Wno-multichar
 config_present = $(if $(findstring y,$(1)),y,)
 
 all_configs = $(call config_present,$(CONFIG_ARCH_TEGRA_114_SOC) \
- $(CONFIG_ARCH_TEGRA_124_SOC))
+ $(CONFIG_ARCH_TEGRA_124_SOC) $(CONFIG_TEGRA_GRHOST))
 
 t11x_or_higher_config = $(call config_present,$(CONFIG_ARCH_TEGRA_114_SOC)\
  $(t12x_or_higher_config))
