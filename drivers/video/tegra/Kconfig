@@ -58,7 +58,7 @@ config TEGRA_GRHOST_GK20A_PHYS_PAGE_TABLES
 
 config TEGRA_DC
 	tristate "Tegra Display Contoller"
-	depends on ARCH_TEGRA && TEGRA_GRHOST
+	depends on ARCH_TEGRA && TEGRA_GRHOST && TEGRA_NVMAP
 	select BACKLIGHT_CLASS_DEVICE
 	select FB_MODE_HELPERS
 	select I2C
