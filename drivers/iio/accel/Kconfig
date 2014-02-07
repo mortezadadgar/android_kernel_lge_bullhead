@@ -3,6 +3,15 @@
 #
 menu "Accelerometers"
 
+config CROS_EC_ACCEL
+       tristate "ChromeOS EC Accelerometer"
+       depends on SYSFS && MFD_CROS_EC
+       select IIO_BUFFER
+       help
+         Say yes here to build support for ChromeOS EC Accelerometer.
+	 This driver is used to access an accelerometer attached to the
+	 ChromeOS Embedded Controller.
+
 config HID_SENSOR_ACCEL_3D
 	depends on HID_SENSOR_HUB
 	select IIO_BUFFER
