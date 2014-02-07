@@ -67,11 +67,12 @@ static inline int get_dc_n_windows(void)
 
 static inline u32 ALL_UF_INT(void)
 {
+#if defined(CONFIG_ARCH_TEGRA_124_SOC)
 	if (is_tegra124())
 		return WIN_A_UF_INT | WIN_B_UF_INT | WIN_C_UF_INT | HC_UF_INT |
 			WIN_D_UF_INT | WIN_T_UF_INT;
-	else
-		return WIN_A_UF_INT | WIN_B_UF_INT | WIN_C_UF_INT;
+#endif
+	return WIN_A_UF_INT | WIN_B_UF_INT | WIN_C_UF_INT;
 }
 
 struct tegra_dc;

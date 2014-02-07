@@ -627,6 +627,7 @@ static void _dump_regs(struct tegra_dc *dc, void *data,
 		DUMP_REG(DC_WINBUF_ADDR_H_OFFSET);
 		DUMP_REG(DC_WINBUF_ADDR_V_OFFSET);
 
+#if defined(CONFIG_ARCH_TEGRA_124_SOC)
 		if (is_tegra124()) {
 			DUMP_REG(DC_WINBUF_START_ADDR_HI);
 			DUMP_REG(DC_WINBUF_START_ADDR_HI_U);
@@ -640,6 +641,7 @@ static void _dump_regs(struct tegra_dc *dc, void *data,
 			DUMP_REG(DC_WINBUF_ADDR_H_OFFSET_FIELD2);
 			DUMP_REG(DC_WINBUF_ADDR_V_OFFSET_FIELD2);
 		}
+#endif
 
 		DUMP_REG(DC_WINBUF_UFLOW_STATUS);
 		DUMP_REG(DC_WIN_CSC_YOF);
@@ -788,6 +790,7 @@ static int dbg_dc_stats_show(struct seq_file *s, void *unused)
 		dc->stats.underflows_b,
 		dc->stats.underflows_c);
 
+#if defined(CONFIG_ARCH_TEGRA_124_SOC)
 	if (is_tegra124()) {
 		seq_printf(s,
 			"underflows_d: %llu\n"
@@ -797,6 +800,7 @@ static int dbg_dc_stats_show(struct seq_file *s, void *unused)
 			dc->stats.underflows_h,
 			dc->stats.underflows_t);
 	}
+#endif
 
 	mutex_unlock(&dc->lock);
 
@@ -1622,6 +1626,7 @@ static void tegra_dc_underflow_handler(struct tegra_dc *dc)
 		dc->stats.underflows_c += tegra_dc_underflow_count(dc,
 			DC_WINBUF_CD_UFLOW_STATUS);
 
+#if defined(CONFIG_ARCH_TEGRA_124_SOC)
 	if (is_tegra124()) {
 		if (dc->underflow_mask & HC_UF_INT)
 			dc->stats.underflows_h += tegra_dc_underflow_count(dc,
@@ -1633,6 +1638,7 @@ static void tegra_dc_underflow_handler(struct tegra_dc *dc)
 			dc->stats.underflows_t += tegra_dc_underflow_count(dc,
 				DC_WINBUF_TD_UFLOW_STATUS);
 	}
+#endif
 
 	/* Check for any underflow reset conditions */
 	for (i = 0; i < get_dc_n_windows(); i++) {
@@ -2455,10 +2461,12 @@ static int tegra_dc_probe(struct platform_device *ndev)
 		dc->win_syncpt[1] = NVSYNCPT_DISP0_B;
 		dc->win_syncpt[2] = NVSYNCPT_DISP0_C;
 		dc->valid_windows = 0x07;
+#if defined(CONFIG_ARCH_TEGRA_124_SOC)
 		if (is_tegra124()) {
 			dc->win_syncpt[3] = NVSYNCPT_DISP0_D;
 			dc->valid_windows |= 0x08;
 		}
+#endif
 		dc->powergate_id = TEGRA_POWERGATE_DIS;
 		ndev->id = 0;
 	} else if (strcmp(dev_name(&ndev->dev), "tegradc.1") == 0) {
@@ -2467,10 +2475,12 @@ static int tegra_dc_probe(struct platform_device *ndev)
 		dc->win_syncpt[1] = NVSYNCPT_DISP1_B;
 		dc->win_syncpt[2] = NVSYNCPT_DISP1_C;
 		dc->valid_windows = 0x07;
+#if defined(CONFIG_ARCH_TEGRA_124_SOC)
 		if (is_tegra124()) {
 			dc->win_syncpt[3] = NVSYNCPT_DISP0_D;
 			dc->valid_windows |= 0x08;
 		}
+#endif
 		dc->powergate_id = TEGRA_POWERGATE_DISB;
 		ndev->id = 1;
 	} else {
