@@ -25,6 +25,7 @@
 #ifndef __ASSEMBLY__
 
 #include <asm/cputype.h>
+#include <linux/err.h>
 
 enum tegra_revision {
 	TEGRA_REVISION_UNKNOWN = 0,
