@@ -180,6 +180,10 @@ extern pgd_t swapper_pg_dir[PTRS_PER_PGD];
 
 #define pmd_none(pmd)		(!pmd_val(pmd))
 #define pmd_present(pmd)	(pmd_val(pmd))
+#define pmd_table(pmd)		((pmd_val(pmd) & PMD_TYPE_MASK) == \
+						 PMD_TYPE_TABLE)
+#define pmd_sect(pmd)		((pmd_val(pmd) & PMD_TYPE_MASK) == \
+						 PMD_TYPE_SECT)
 
 static inline pte_t *pmd_page_vaddr(pmd_t pmd)
 {
