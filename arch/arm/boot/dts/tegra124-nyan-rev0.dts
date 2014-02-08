@@ -9,6 +9,25 @@
 	compatible = "google,nyan-rev0", "google,nyan", "nvidia,venice2",
 			"nvidia,tegra124";
 
+	host1x@50000000 {
+		dc@54200000 {
+			pclk = <287456400>;
+			h-ref-to-sync = <11>;
+			v-ref-to-sync = <1>;
+			h-sync-width = <32>;
+			v-sync-width = <10>;
+			h-back-porch = <80>;
+			v-back-porch = <36>;
+			h-active = <2560>;
+			v-active = <1700>;
+			h-front-porch = <48>;
+			v-front-porch = <3>;
+			depth = <24>;
+			width = <283>;
+			height = <195>;
+		};
+	};
+
 	pinmux {
 		pinmux@0 {
 			dap1_din_pn1 {
