@@ -202,37 +202,7 @@ static struct tegra_dc_out_pin venice_edp_out_pins[] = {
 	},
 };
 
-static struct tegra_dc_mode lp129qe_modes[] = {
-	{
-		.pclk = 287456400,
-		.h_ref_to_sync = 11,
-		.v_ref_to_sync = 1,
-		.h_sync_width = 32,
-		.v_sync_width = 10,
-		.h_back_porch = 80,
-		.v_back_porch = 36,
-		.h_active = 2560,
-		.v_active = 1700,
-		.h_front_porch = 48,
-		.v_front_porch = 3,
-	},
-};
-
-static struct tegra_dc_mode n116bge_modes[] = {
-	{
-		.pclk = 76416000,
-		.h_ref_to_sync = 68,
-		.v_ref_to_sync = 4,
-		.h_sync_width = 30,
-		.v_sync_width = 12,
-		.h_back_porch = 60,
-		.v_back_porch = 12,
-		.h_active = 1366,
-		.v_active = 768,
-		.h_front_porch = 136,
-		.v_front_porch = 8,
-	},
-};
+static struct tegra_dc_mode venice_mode;
 
 static struct tegra_dc_out venice_disp1_out = {
 	.type		 = TEGRA_DC_OUT_DP,
@@ -464,28 +434,118 @@ struct platform_pwm_backlight_data venice_bl_data = {
 };
 EXPORT_SYMBOL(venice_bl_data);
 
-static void venice2_panel_init(struct platform_device **dcs)
+static int venice_panel_mode_init(struct platform_device *dcs)
 {
-	venice_disp1_out.modes = lp129qe_modes;
-	venice_disp1_out.n_modes = ARRAY_SIZE(lp129qe_modes);
-	venice_disp1_out.depth = 24,
-	venice_disp1_out.width = 283;
-	venice_disp1_out.height = 195;
+	struct device *dev = &dcs->dev;
+	u32 outval;
+	int ret;
 
-	venice_disp1_fb_data.xres = lp129qe_modes[0].h_active;
-	venice_disp1_fb_data.yres = lp129qe_modes[0].v_active;
-}
+	/* Get mode information from dc0 */
+	ret = of_property_read_u32(dev->of_node, "pclk", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find pclk property\n");
+		return ret;
+	}
+	venice_mode.pclk = outval;
 
-static void norrin_panel_init(struct platform_device **dcs)
-{
-	venice_disp1_out.modes = n116bge_modes;
-	venice_disp1_out.n_modes = ARRAY_SIZE(n116bge_modes);
-	venice_disp1_out.depth = 18,
-	venice_disp1_out.width = 256;
-	venice_disp1_out.height = 144;
+	ret = of_property_read_u32(dev->of_node, "h-ref-to-sync", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find h-ref-to-sync property\n");
+		return ret;
+	}
+	venice_mode.h_ref_to_sync = outval;
 
-	venice_disp1_fb_data.xres = n116bge_modes[0].h_active;
-	venice_disp1_fb_data.yres = n116bge_modes[0].v_active;
+	ret = of_property_read_u32(dev->of_node, "v-ref-to-sync", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find v-ref-to-sync property\n");
+		return ret;
+	}
+	venice_mode.v_ref_to_sync = outval;
+
+	ret = of_property_read_u32(dev->of_node, "h-sync-width", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find h-sync-width property\n");
+		return ret;
+	}
+	venice_mode.h_sync_width = outval;
+
+	ret = of_property_read_u32(dev->of_node, "v-sync-width", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find v-sync-width property\n");
+		return ret;
+	}
+	venice_mode.v_sync_width = outval;
+
+	ret = of_property_read_u32(dev->of_node, "h-back-porch", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find h-back-porch property\n");
+		return ret;
+	}
+	venice_mode.h_back_porch = outval;
+
+	ret = of_property_read_u32(dev->of_node, "v-back-porch", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find v-back-porch property\n");
+		return ret;
+	}
+	venice_mode.v_back_porch = outval;
+
+	ret = of_property_read_u32(dev->of_node, "h-active", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find h-active property\n");
+		return ret;
+	}
+	venice_mode.h_active = outval;
+
+	ret = of_property_read_u32(dev->of_node, "v-active", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find v-active property\n");
+		return ret;
+	}
+	venice_mode.v_active = outval;
+
+	ret = of_property_read_u32(dev->of_node, "h-front-porch", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find h-front-porch property\n");
+		return ret;
+	}
+	venice_mode.h_front_porch = outval;
+
+	ret = of_property_read_u32(dev->of_node, "v-front-porch", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find v-front-porch property\n");
+		return ret;
+	}
+	venice_mode.v_front_porch = outval;
+
+	ret = of_property_read_u32(dev->of_node, "depth", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find depth property\n");
+		return ret;
+	}
+	venice_disp1_out.depth = outval;
+
+	ret = of_property_read_u32(dev->of_node, "width", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find width property\n");
+		return ret;
+	}
+	venice_disp1_out.width = outval;
+
+	ret = of_property_read_u32(dev->of_node, "height", &outval);
+	if (ret < 0) {
+		dev_err(dev, "Could not find height property\n");
+		return ret;
+	}
+	venice_disp1_out.height = outval,
+
+	venice_disp1_out.modes = &venice_mode;
+	venice_disp1_out.n_modes = 1;
+
+	venice_disp1_fb_data.xres = venice_mode.h_active;
+	venice_disp1_fb_data.yres = venice_mode.v_active;
+
+	return 0;
 }
 
 void __init find_dc_dev(struct platform_device **dcs)
@@ -505,6 +565,7 @@ int __init venice_panel_init(void)
 {
 	struct platform_device *phost1x = NULL;
 	struct platform_device *dc_devs[2];
+	int ret;
 
 	phost1x = venice_host1x_init();
 	if (!phost1x) {
@@ -520,10 +581,9 @@ int __init venice_panel_init(void)
 	}
 	disp1_device = dc_devs[0];
 
-	if (of_machine_is_compatible("nvidia,venice2"))
-		venice2_panel_init(dc_devs);
-	else if (of_machine_is_compatible("nvidia,norrin"))
-		norrin_panel_init(dc_devs);
+	ret = venice_panel_mode_init(disp1_device);
+	if (ret < 0)
+		return ret;
 
 	venice_disp1_pdata.fbmem.name = "fbmem.0";
 	venice_disp1_pdata.fbmem.start = tegra_fb_start;
