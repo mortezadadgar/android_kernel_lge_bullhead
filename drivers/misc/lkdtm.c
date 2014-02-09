@@ -295,11 +295,10 @@ static void lkdtm_do_action(enum ctype which)
 		(void) recursive_loop(0);
 		break;
 	case CT_CORRUPT_STACK: {
-		/* Make sure the compiler creates and uses an 8 char array. */
-		volatile char data[8];
-		volatile char *p = data;
+		volatile u32 data[8];
+		volatile u32 *p = data;
 
-		memset(p, 0, 64);
+		p[12] = 0x12345678;
 		break;
 	}
 	case CT_UNALIGNED_LOAD_STORE_WRITE: {
