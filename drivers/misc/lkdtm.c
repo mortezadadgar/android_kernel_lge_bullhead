@@ -306,10 +306,8 @@ static void lkdtm_do_action(enum ctype which)
 		/* Make sure the compiler creates and uses an 8 char array. */
 		volatile char data[8];
 		volatile char *p = data;
-		int i;
 
-		for (i = 0; i < 64; i++)
-			p[i] = 0;
+		memset(p, 0, 64);
 		break;
 	}
 	case CT_UNALIGNED_LOAD_STORE_WRITE: {
