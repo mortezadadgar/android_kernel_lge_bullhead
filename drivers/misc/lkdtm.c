@@ -268,17 +268,11 @@ static int lkdtm_parse_commandline(void)
 	return -EINVAL;
 }
 
-#if defined(CONFIG_FRAME_WARN) && (CONFIG_FRAME_WARN > 0)
-#define SIZE_BUF_ON_STACK (CONFIG_FRAME_WARN - 64)
-#else
-#define SIZE_BUF_ON_STACK 1024
-#endif
-
 static int recursive_loop(int a)
 {
-	char buf[SIZE_BUF_ON_STACK];
+	char buf[1024];
 
-	memset(buf, 0xFF, SIZE_BUF_ON_STACK);
+	memset(buf,0xFF,1024);
 	recur_count--;
 	if (!recur_count)
 		return 0;
