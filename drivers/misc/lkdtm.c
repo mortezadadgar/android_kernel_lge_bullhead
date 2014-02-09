@@ -68,7 +68,6 @@ enum ctype {
 	CT_NONE,
 	CT_PANIC,
 	CT_BUG,
-	CT_WARNING,
 	CT_EXCEPTION,
 	CT_LOOP,
 	CT_OVERFLOW,
@@ -96,7 +95,6 @@ static char* cp_name[] = {
 static char* cp_type[] = {
 	"PANIC",
 	"BUG",
-	"WARNING",
 	"EXCEPTION",
 	"LOOP",
 	"OVERFLOW",
@@ -285,9 +283,6 @@ static void lkdtm_do_action(enum ctype which)
 		break;
 	case CT_BUG:
 		BUG();
-		break;
-	case CT_WARNING:
-		WARN_ON(1);
 		break;
 	case CT_EXCEPTION:
 		*((int *) 0) = 0;
