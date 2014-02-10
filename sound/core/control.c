@@ -153,7 +153,7 @@ void snd_ctl_notify(struct snd_card *card, unsigned int mask,
 	if (card->shutdown)
 		return;
 	read_lock(&card->ctl_files_rwlock);
-#if defined(CONFIG_SND_MIXER_OSS) || defined(CONFIG_SND_MIXER_OSS_MODULE)
+#if IS_ENABLED(CONFIG_SND_MIXER_OSS)
 	card->mixer_oss_change_count++;
 #endif
 	list_for_each_entry(ctl, &card->ctl_files, list) {
