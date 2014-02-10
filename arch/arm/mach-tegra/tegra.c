@@ -160,7 +160,7 @@ static struct platform_device venice_nvmap_device = {
 };
 #endif
 
-static void __init venice2_init(void)
+static void __init nyan_init(void)
 {
 #ifdef CONFIG_TEGRA_NVMAP
 	int err;
@@ -228,9 +228,8 @@ out:
 				tegra_auxdata_lookup, parent);
 	tegra_dvfs_init();
 
-	if (of_machine_is_compatible("nvidia,venice2") ||
-	    of_machine_is_compatible("nvidia,norrin"))
-		venice2_init();
+	if (of_machine_is_compatible("google,nyan"))
+		nyan_init();
 }
 
 static void __init trimslice_init(void)
