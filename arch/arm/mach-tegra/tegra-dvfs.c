@@ -1299,8 +1299,8 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 	struct dvfs_rail *rail;
 	struct dvfs_relationship *rel;
 
-	seq_puts(s, "   clock      rate       mV\n");
-	seq_puts(s, "--------------------------------\n");
+	seq_puts(s, "   clock           rate       mV\n");
+	seq_puts(s, "-------------------------------------\n");
 
 	mutex_lock(&dvfs_lock);
 
@@ -1322,12 +1322,12 @@ static int dvfs_tree_show(struct seq_file *s, void *data)
 			if (i < rail->therm_mv_floors_num)
 				thermal_mv_floor = rail->therm_mv_floors[i];
 		}
-		seq_printf(s, "   thermal    %-7d mV\n", thermal_mv_floor);
+		seq_printf(s, "   thermal         %-7d mV\n", thermal_mv_floor);
 
 		list_sort(NULL, &rail->dvfs, dvfs_tree_sort_cmp);
 
 		list_for_each_entry(d, &rail->dvfs, reg_node) {
-			seq_printf(s, "   %-10s %-10lu %-4d mV\n", d->clk_name,
+			seq_printf(s, "   %-15s %-10lu %-4d mV\n", d->clk_name,
 				d->cur_rate, d->cur_millivolts);
 		}
 	}
