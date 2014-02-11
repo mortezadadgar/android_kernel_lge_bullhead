@@ -3,7 +3,7 @@
  *
  * Tegra graphics host driver
  *
- * Copyright (c) 2009-2013, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2009-2014, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -86,6 +86,10 @@ struct nvhost_get_param_args {
 struct nvhost_get_param_arg {
 	__u32 param;
 	__u32 value;
+};
+
+struct nvhost_channel_open_args {
+	__s32 channel_fd;
 };
 
 struct nvhost_set_nvmap_fd_args {
@@ -335,9 +339,11 @@ struct nvhost_set_ctxswitch_args {
 	_IOWR(NVHOST_IOCTL_MAGIC, 110, struct nvhost_zcull_bind_args)
 #define NVHOST_IOCTL_CHANNEL_SET_ERROR_NOTIFIER  \
 	_IOWR(NVHOST_IOCTL_MAGIC, 111, struct nvhost_set_error_notifier)
+#define NVHOST_IOCTL_CHANNEL_OPEN	\
+	_IOR(NVHOST_IOCTL_MAGIC,  112, struct nvhost_channel_open_args)
 
 #define NVHOST_IOCTL_CHANNEL_LAST	\
-	_IOC_NR(NVHOST_IOCTL_CHANNEL_SET_ERROR_NOTIFIER)
+	_IOC_NR(NVHOST_IOCTL_CHANNEL_OPEN)
 #define NVHOST_IOCTL_CHANNEL_MAX_ARG_SIZE sizeof(struct nvhost_submit_args)
 
 struct nvhost_ctrl_syncpt_read_args {
