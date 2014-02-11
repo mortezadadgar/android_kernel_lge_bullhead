@@ -186,6 +186,7 @@
 	};
 
 	sdhci@700b0400 {
+		wp-inverted;
 		trim-delay = <0x3>;
 		calib-3v3-offsets = <0x7676>;
 		calib-1v8-offsets = <0x7676>;
