@@ -200,6 +200,7 @@ static void __init tegra20_init_timer(struct device_node *np)
 		WARN(1, "Unknown clock rate");
 	}
 
+	pr_info("Initial usec timer %u\n", tegra_read_sched_clock());
 	setup_sched_clock(tegra_read_sched_clock, 32, 1000000);
 
 	if (clocksource_mmio_init(timer_reg_base + TIMERUS_CNTR_1US,
