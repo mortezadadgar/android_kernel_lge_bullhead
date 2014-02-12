@@ -1,4 +1,5 @@
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/mfd/as3722.h>
 #include <dt-bindings/thermal/thermal.h>
 #include "tegra124.dtsi"
 
@@ -594,9 +595,15 @@
 					bias-pull-down;
 				};
 
-				gpio1_2_4_7 {
-					pins = "gpio1", "gpio2", "gpio4",
-						"gpio7";
+				gpio1 {
+					pins = "gpio1";
+					function = "gpio";
+					bias-pull-up;
+					low-power-enable = <AS3722_GPIO_LOW_POWER_MODE(4, 0x7)>;
+				};
+
+				gpio2_4_7 {
+					pins = "gpio2", "gpio4", "gpio7";
 					function = "gpio";
 					bias-pull-up;
 				};
@@ -643,7 +650,7 @@
 					regulator-always-on;
 					regulator-suspend-mem-disabled;
 					ams,ext-control = <1>;
-					ams,standby-sequence = <5>;
+					ams,standby-sequence = <6>;
 				};
 
 				as3722_sd2: sd2 {
@@ -698,7 +705,7 @@
 					regulator-always-on;
 					regulator-suspend-mem-disabled;
 					ams,ext-control = <1>;
-					ams,standby-sequence = <4>;
+					ams,standby-sequence = <5>;
 				};
 
 				run_cam_1v8: ldo1 {
