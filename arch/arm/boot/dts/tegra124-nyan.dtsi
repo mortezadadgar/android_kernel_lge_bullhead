@@ -1915,18 +1915,13 @@
 		};
 	};
 
-	/*
-	 * TODO: USB1 port doesn't work if we enable all ports.
-	 *       USB1 port works if we only enable it.
-	 *	 It will be enabled once we are ready.
-	 */
 	usb-phy@7d000000 {
-		status = "disabled";
+		status = "okay";
 		vbus-supply = <&usb1_vbus_reg>;
 	};
 
 	usb@7d000000 {
-		status = "disabled";
+		status = "okay";
 	};
 
 	usb-phy@7d004000 {
