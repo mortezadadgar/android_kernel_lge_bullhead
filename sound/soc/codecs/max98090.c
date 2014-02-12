@@ -15,6 +15,7 @@
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
+#include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <sound/jack.h>
 #include <sound/pcm.h>
@@ -2394,6 +2395,22 @@ static int max98090_i2c_probe(struct i2c_client *i2c,
 	if (max98090 == NULL)
 		return -ENOMEM;
 
+	max98090->dvdd = devm_regulator_get(&i2c->dev, "dvdd");
+
+	if (IS_ERR(max98090->dvdd)) {
+		if (PTR_ERR(max98090->dvdd) == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
+
+		dev_info(&i2c->dev, "no dvdd regulator found\n");
+		return PTR_ERR(max98090->dvdd);
+	}
+
+	ret = regulator_enable(max98090->dvdd);
+	if (ret) {
+		dev_err(&i2c->dev, "failed to enable dvdd regulator %d\n", ret);
+		return ret;
+	}
+
 	/* id is NULL if probed from ACPI ID, use default devtype instead */
 	if (id)
 		max98090->devtype = id->driver_data;
@@ -2420,7 +2437,9 @@ err_enable:
 
 static int max98090_i2c_remove(struct i2c_client *client)
 {
+	struct max98090_priv *max98090 = dev_get_drvdata(&client->dev);
 	snd_soc_unregister_codec(&client->dev);
+	regulator_disable(max98090->dvdd);
 	return 0;
 }
 
@@ -2455,6 +2474,14 @@ static const struct i2c_device_id max98090_i2c_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, max98090_i2c_id);
 
+#ifdef CONFIG_OF
+static const struct of_device_id max98090_of_match[] = {
+	{ .compatible = "maxim,max98090", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, max98090_of_match);
+#endif
+
 #ifdef CONFIG_ACPI
 static const struct acpi_device_id max98090_acpi_id[] = {
 	{ "193C9890", MAX98090 },
@@ -2469,6 +2496,7 @@ static struct i2c_driver max98090_i2c_driver = {
 		.owner = THIS_MODULE,
 		.pm = &max98090_pm,
 		.acpi_match_table = ACPI_PTR(max98090_acpi_id),
+		.of_match_table = of_match_ptr(max98090_of_match),
 	},
 	.probe  = max98090_i2c_probe,
 	.remove = max98090_i2c_remove,
