@@ -2628,6 +2628,12 @@ static int tegra_dc_probe(struct platform_device *ndev)
 			dc->pdata->fb->xres = mode->h_active;
 			dc->pdata->fb->yres = mode->v_active;
 		}
+		/* If we didn't set the fb's xres and yres, get it from DC's
+		   mode which is set as part of edid parsing. */
+		if (!dc->pdata->fb->xres && dc->mode.h_active)
+			dc->pdata->fb->xres = dc->mode.h_active;
+		if (!dc->pdata->fb->yres && dc->mode.v_active)
+			dc->pdata->fb->yres = dc->mode.v_active;
 
 		tegra_dc_io_start(dc);
 		dc->fb = tegra_fb_register(ndev, dc, dc->pdata->fb,

@@ -834,6 +834,8 @@ static void tegra_dc_sor_config_panel(struct tegra_dc_sor_data *sor,
 	/* Skipping programming NV_HEAD_STATE0, assuming:
 	   interlacing: PROGRESSIVE, dynamic range: VESA, colorspace: RGB */
 
+	if (!dc_mode)
+		dc_mode = &sor->dc->mode;
 	BUG_ON(!dc_mode);
 	vtotal = dc_mode->v_sync_width + dc_mode->v_back_porch +
 		dc_mode->v_active + dc_mode->v_front_porch;

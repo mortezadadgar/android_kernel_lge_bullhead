@@ -216,6 +216,8 @@ struct tegra_dc {
 	atomic_t			frame_end_ref;
 
 	bool				mode_dirty;
+
+	struct tegra_edid		*edid;
 };
 
 #endif
