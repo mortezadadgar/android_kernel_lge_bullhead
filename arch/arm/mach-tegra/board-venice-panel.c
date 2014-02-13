@@ -45,18 +45,14 @@ struct platform_device * __init venice_host1x_init(void)
 	struct device_node *node = NULL;
 	struct platform_device *pdev = NULL;
 
-#ifdef CONFIG_TEGRA_GRHOST
 	node = of_find_compatible_node(NULL, NULL, "nvidia,tegra124-host1x");
 	if (!node)
 		return NULL;
 
 	pdev = of_find_device_by_node(node);
 	of_node_put(node);
-#endif
 	return pdev;
 }
-
-#ifdef CONFIG_TEGRA_DC
 
 static struct regulator *avdd_lcd_3v3;
 static struct regulator *vdd_lcd_bl;
@@ -597,12 +593,3 @@ int __init venice_panel_init(void)
 
 	return 0;
 }
-#else
-int __init venice_panel_init(void)
-{
-	if (venice_host1x_init())
-		return 0;
-	else
-		return -EINVAL;
-}
-#endif

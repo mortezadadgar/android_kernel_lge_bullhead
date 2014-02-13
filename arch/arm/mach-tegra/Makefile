@@ -54,4 +54,4 @@ ifeq ($(CONFIG_TEGRA_CPU_EDP_LIMITS),y)
 obj-$(CONFIG_ARCH_TEGRA_124_SOC)	+= tegra124_cpu_edp.o
 endif
 
-obj-y					+= board-venice-panel.o
+obj-$(CONFIG_TEGRA_DC)			+= board-venice-panel.o

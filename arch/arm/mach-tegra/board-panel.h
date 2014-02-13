@@ -20,11 +20,18 @@
 #include <linux/platform_device.h>
 #include <linux/platform_data/tegra_dc.h>
 
+#ifdef CONFIG_TEGRA_DC
 extern atomic_t sd_brightness;
 extern struct platform_pwm_backlight_data venice_bl_data;
 extern struct tegra_dc_platform_data venice_disp1_pdata;
 extern struct tegra_dc_platform_data venice_disp2_pdata;
 
 extern int venice_panel_init(void);
+#else
+static inline int venice_panel_init(void)
+{
+	return -EINVAL;
+}
+#endif
 
 #endif /* __MACH_TEGRA_BOARD_PANEL_H */
