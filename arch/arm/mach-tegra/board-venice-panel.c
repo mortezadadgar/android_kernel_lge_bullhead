@@ -433,114 +433,114 @@ EXPORT_SYMBOL(venice_bl_data);
 static int venice_panel_mode_init(struct platform_device *dcs)
 {
 	struct device *dev = &dcs->dev;
-	u32 outval;
+	u32 val;
 	int ret;
 
 	/* Get mode information from dc0 */
-	ret = of_property_read_u32(dev->of_node, "pclk", &outval);
-	if (ret < 0) {
-		dev_err(dev, "Could not find pclk property\n");
-		return ret;
-	}
-	venice_mode.pclk = outval;
-
-	ret = of_property_read_u32(dev->of_node, "h-ref-to-sync", &outval);
-	if (ret < 0) {
-		dev_err(dev, "Could not find h-ref-to-sync property\n");
-		return ret;
-	}
-	venice_mode.h_ref_to_sync = outval;
-
-	ret = of_property_read_u32(dev->of_node, "v-ref-to-sync", &outval);
-	if (ret < 0) {
-		dev_err(dev, "Could not find v-ref-to-sync property\n");
-		return ret;
-	}
-	venice_mode.v_ref_to_sync = outval;
-
-	ret = of_property_read_u32(dev->of_node, "h-sync-width", &outval);
-	if (ret < 0) {
-		dev_err(dev, "Could not find h-sync-width property\n");
-		return ret;
-	}
-	venice_mode.h_sync_width = outval;
-
-	ret = of_property_read_u32(dev->of_node, "v-sync-width", &outval);
-	if (ret < 0) {
-		dev_err(dev, "Could not find v-sync-width property\n");
-		return ret;
-	}
-	venice_mode.v_sync_width = outval;
-
-	ret = of_property_read_u32(dev->of_node, "h-back-porch", &outval);
-	if (ret < 0) {
-		dev_err(dev, "Could not find h-back-porch property\n");
-		return ret;
-	}
-	venice_mode.h_back_porch = outval;
-
-	ret = of_property_read_u32(dev->of_node, "v-back-porch", &outval);
-	if (ret < 0) {
-		dev_err(dev, "Could not find v-back-porch property\n");
-		return ret;
-	}
-	venice_mode.v_back_porch = outval;
-
-	ret = of_property_read_u32(dev->of_node, "h-active", &outval);
-	if (ret < 0) {
-		dev_err(dev, "Could not find h-active property\n");
-		return ret;
-	}
-	venice_mode.h_active = outval;
-
-	ret = of_property_read_u32(dev->of_node, "v-active", &outval);
-	if (ret < 0) {
-		dev_err(dev, "Could not find v-active property\n");
-		return ret;
-	}
-	venice_mode.v_active = outval;
-
-	ret = of_property_read_u32(dev->of_node, "h-front-porch", &outval);
-	if (ret < 0) {
-		dev_err(dev, "Could not find h-front-porch property\n");
-		return ret;
-	}
-	venice_mode.h_front_porch = outval;
-
-	ret = of_property_read_u32(dev->of_node, "v-front-porch", &outval);
-	if (ret < 0) {
-		dev_err(dev, "Could not find v-front-porch property\n");
-		return ret;
-	}
-	venice_mode.v_front_porch = outval;
-
-	ret = of_property_read_u32(dev->of_node, "depth", &outval);
+	ret = of_property_read_u32(dev->of_node, "depth", &val);
 	if (ret < 0) {
 		dev_err(dev, "Could not find depth property\n");
 		return ret;
 	}
-	venice_disp1_out.depth = outval;
+	venice_disp1_out.depth = val;
 
-	ret = of_property_read_u32(dev->of_node, "width", &outval);
+	ret = of_property_read_u32(dev->of_node, "width", &val);
 	if (ret < 0) {
 		dev_err(dev, "Could not find width property\n");
 		return ret;
 	}
-	venice_disp1_out.width = outval;
+	venice_disp1_out.width = val;
 
-	ret = of_property_read_u32(dev->of_node, "height", &outval);
+	ret = of_property_read_u32(dev->of_node, "height", &val);
 	if (ret < 0) {
 		dev_err(dev, "Could not find height property\n");
 		return ret;
 	}
-	venice_disp1_out.height = outval,
+	venice_disp1_out.height = val;
 
-	venice_disp1_out.modes = &venice_mode;
-	venice_disp1_out.n_modes = 1;
+	/* Optional mode definitions follows */
+	ret = of_property_read_u32(dev->of_node, "pclk", &val);
+	if (ret == 0) {
+		venice_mode.pclk = val;
 
-	venice_disp1_fb_data.xres = venice_mode.h_active;
-	venice_disp1_fb_data.yres = venice_mode.v_active;
+		ret = of_property_read_u32(dev->of_node, "h-ref-to-sync",
+					   &val);
+		if (ret < 0) {
+			dev_err(dev, "Could not find h-ref-to-sync property\n");
+			return ret;
+		}
+		venice_mode.h_ref_to_sync = val;
 
+		ret = of_property_read_u32(dev->of_node, "v-ref-to-sync",
+					   &val);
+		if (ret < 0) {
+			dev_err(dev, "Could not find v-ref-to-sync property\n");
+			return ret;
+		}
+		venice_mode.v_ref_to_sync = val;
+
+		ret = of_property_read_u32(dev->of_node, "h-sync-width", &val);
+		if (ret < 0) {
+			dev_err(dev, "Could not find h-sync-width property\n");
+			return ret;
+		}
+		venice_mode.h_sync_width = val;
+
+		ret = of_property_read_u32(dev->of_node, "v-sync-width", &val);
+		if (ret < 0) {
+			dev_err(dev, "Could not find v-sync-width property\n");
+			return ret;
+		}
+		venice_mode.v_sync_width = val;
+
+		ret = of_property_read_u32(dev->of_node, "h-back-porch", &val);
+		if (ret < 0) {
+			dev_err(dev, "Could not find h-back-porch property\n");
+			return ret;
+		}
+		venice_mode.h_back_porch = val;
+
+		ret = of_property_read_u32(dev->of_node, "v-back-porch", &val);
+		if (ret < 0) {
+			dev_err(dev, "Could not find v-back-porch property\n");
+			return ret;
+		}
+		venice_mode.v_back_porch = val;
+
+		ret = of_property_read_u32(dev->of_node, "h-active", &val);
+		if (ret < 0) {
+			dev_err(dev, "Could not find h-active property\n");
+			return ret;
+		}
+		venice_mode.h_active = val;
+
+		ret = of_property_read_u32(dev->of_node, "v-active", &val);
+		if (ret < 0) {
+			dev_err(dev, "Could not find v-active property\n");
+			return ret;
+		}
+		venice_mode.v_active = val;
+
+		ret = of_property_read_u32(dev->of_node, "h-front-porch", &val);
+		if (ret < 0) {
+			dev_err(dev, "Could not find h-front-porch property\n");
+			return ret;
+		}
+		venice_mode.h_front_porch = val;
+
+		ret = of_property_read_u32(dev->of_node, "v-front-porch", &val);
+		if (ret < 0) {
+			dev_err(dev, "Could not find v-front-porch property\n");
+			return ret;
+		}
+		venice_mode.v_front_porch = val;
+
+		venice_disp1_out.modes = &venice_mode;
+		venice_disp1_out.n_modes = 1;
+
+		venice_disp1_fb_data.xres = venice_mode.h_active;
+		venice_disp1_fb_data.yres = venice_mode.v_active;
+	}
 	return 0;
 }
 
