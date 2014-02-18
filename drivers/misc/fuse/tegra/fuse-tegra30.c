@@ -572,6 +572,8 @@ static int tegra30_fuse_probe(struct platform_device *pdev)
 		return PTR_ERR(fuse_base);
 	}
 
+	tegra_sku_id = tegra30_fuse_readl(FUSE_SKU_INFO) & 0xff;
+	sku_info.sku_id = tegra_sku_id;
 	sku_info.revision = tegra_revision;
 	fuse_info->init_speedo_data(&sku_info, &pdev->dev);
 	dev_dbg(&pdev->dev, "CPU Speedo ID %d, Soc Speedo ID %d",

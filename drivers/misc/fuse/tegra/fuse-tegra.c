@@ -29,6 +29,7 @@
 
 int tegra_chip_id;
 enum tegra_revision tegra_revision;
+int tegra_sku_id;
 
 /*
  * The BCT to use at boot is specified by board straps that can be read

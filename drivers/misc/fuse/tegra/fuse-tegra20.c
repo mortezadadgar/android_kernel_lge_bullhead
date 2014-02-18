@@ -105,6 +105,8 @@ static int tegra20_fuse_probe(struct platform_device *pdev)
 		return -EINVAL;
 	fuse_phys = res->start;
 
+	tegra_sku_id = tegra20_fuse_readl(FUSE_SKU_INFO) & 0xff;
+	sku_info.sku_id = tegra_sku_id;
 	sku_info.revision = tegra_revision;
 	tegra20_init_speedo_data(&sku_info, &pdev->dev);
 	dev_dbg(&pdev->dev, "Soc Speedo ID %d", sku_info.soc_speedo_id);
