@@ -36,6 +36,7 @@ static inline u32 mpidr_hash_size(void)
 	return 1 << mpidr_hash.bits;
 }
 
+extern void secondary_holding_pen(void);
 /*
  * Logical CPU mapping.
  */
@@ -55,5 +56,6 @@ static inline int get_logical_index(u64 mpidr)
 			return cpu;
 	return -EINVAL;
 }
+extern volatile unsigned long secondary_holding_pen_release;
 
 #endif /* __ASM_SMP_PLAT_H */
