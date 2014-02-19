@@ -49,4 +49,7 @@
 #define AS3722_IRQ_OCCUR_ALARM_SD6	30
 #define AS3722_IRQ_ADC			31
 
+/* GPIO suspend state */
+#define AS3722_GPIO_LOW_POWER_MODE(s, c) (((s) & 0xff) << 8 | ((c) & 0xff))
+
 #endif /* __DT_BINDINGS_AS3722_H__ */

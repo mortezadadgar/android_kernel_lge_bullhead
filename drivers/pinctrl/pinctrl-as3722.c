@@ -55,6 +55,13 @@
 #define AS3722_GPIO_MODE_PULL_DOWN         BIT(PIN_CONFIG_BIAS_PULL_DOWN)
 #define AS3722_GPIO_MODE_HIGH_IMPED        BIT(PIN_CONFIG_BIAS_HIGH_IMPEDANCE)
 #define AS3722_GPIO_MODE_OPEN_DRAIN        BIT(PIN_CONFIG_DRIVE_OPEN_DRAIN)
+#define AS3722_GPIO_MODE_LP_MODE           BIT(PIN_CONFIG_LOW_POWER_MODE)
+
+/* Convert from a packed pinconf arg to standby sequence/mode */
+#define AS3722_LP_SEQUENCE(arg)		(((arg) >> 8) & 0xff)
+#define AS3722_LP_CONFIG(arg)		((arg) & 0xff)
+/* Pack a standby sequence/mode into a pinconf arg */
+#define AS3722_LP_PACKED(seq, cfg)	(((seq) & 0xff) << 8 | ((cfg) & 0xff))
 
 struct as3722_pin_function {
 	const char *name;
@@ -67,6 +74,8 @@ struct as3722_gpio_pin_control {
 	bool enable_gpio_invert;
 	unsigned mode_prop;
 	int io_function;
+	unsigned standby_sequence;
+	unsigned standby_config;
 };
 
 struct as3722_pingroup {
@@ -317,6 +326,39 @@ static int as3722_pinctrl_gpio_set_direction(struct pinctrl_dev *pctldev,
 				  AS3722_GPIO_MODE_MASK, mode);
 }
 
+static int as3722_pinctrl_set_standby(struct as3722_pctrl_info *as_pci,
+		unsigned offset)
+{
+	unsigned slot = as_pci->gpio_control[offset].standby_sequence;
+	unsigned config = as_pci->gpio_control[offset].standby_config;
+	int ret;
+
+	if (slot > AS3722_STBY_CONTROL_MAX_SLOT) {
+		dev_err(as_pci->dev, "Bad standby sequence index: %u\n", slot);
+		return -EINVAL;
+	}
+
+	/* Confugure standby sequence control reg with gpio number */
+	ret = as3722_update_bits(as_pci->as3722,
+				 AS3722_STBY_REGn_CONTROL_REG(slot),
+				 AS3722_STBY_REG_SELECT_MASK,
+				 AS3722_GPIO0_CONTROL_REG + offset);
+	if (ret < 0) {
+		dev_err(as_pci->dev, "Reg 0x%02x update failed: %d\n",
+			AS3722_STBY_REGn_CONTROL_REG(slot), ret);
+		return ret;
+	}
+	/* Configure gpio standby state */
+	ret = as3722_write(as_pci->as3722, AS3722_STBY_REGn_VOLTAGE_REG(slot),
+			   config);
+	if (ret < 0) {
+		dev_err(as_pci->dev, "Reg 0x%02x write failed: %d\n",
+			AS3722_STBY_REGn_VOLTAGE_REG(slot), ret);
+		return ret;
+	}
+	return 0;
+}
+
 static struct pinmux_ops as3722_pinmux_ops = {
 	.get_functions_count	= as3722_pinctrl_get_funcs_count,
 	.get_function_name	= as3722_pinctrl_get_func_name,
@@ -331,7 +373,7 @@ static int as3722_pinconf_get(struct pinctrl_dev *pctldev,
 	struct as3722_pctrl_info *as_pci = pinctrl_dev_get_drvdata(pctldev);
 	enum pin_config_param param = pinconf_to_config_param(*config);
 	int arg = 0;
-	u16 prop;
+	u16 prop, seq, cfg;
 
 	switch (param) {
 	case PIN_CONFIG_BIAS_DISABLE:
@@ -358,13 +400,24 @@ static int as3722_pinconf_get(struct pinctrl_dev *pctldev,
 		prop = AS3722_GPIO_MODE_HIGH_IMPED;
 		break;
 
+	case PIN_CONFIG_LOW_POWER_MODE:
+		prop = AS3722_GPIO_MODE_LP_MODE;
+		break;
+
 	default:
 		dev_err(as_pci->dev, "Properties not supported\n");
 		return -ENOTSUPP;
 	}
 
-	if (as_pci->gpio_control[pin].mode_prop & prop)
-		arg = 1;
+	if (as_pci->gpio_control[pin].mode_prop & prop) {
+		if (prop == AS3722_GPIO_MODE_LP_MODE) {
+			seq = as_pci->gpio_control[pin].standby_sequence;
+			cfg = as_pci->gpio_control[pin].standby_config;
+			arg = AS3722_LP_PACKED(seq, cfg);
+		} else {
+			arg = 1;
+		}
+	}
 
 	*config = pinconf_to_config_packed(param, (u16)arg);
 	return 0;
@@ -375,7 +428,9 @@ static int as3722_pinconf_set(struct pinctrl_dev *pctldev,
 {
 	struct as3722_pctrl_info *as_pci = pinctrl_dev_get_drvdata(pctldev);
 	enum pin_config_param param = pinconf_to_config_param(config);
+	u16 arg = pinconf_to_config_argument(config);
 	int mode_prop = as_pci->gpio_control[pin].mode_prop;
+	int ret;
 
 	switch (param) {
 	case PIN_CONFIG_BIAS_PULL_PIN_DEFAULT:
@@ -399,6 +454,19 @@ static int as3722_pinconf_set(struct pinctrl_dev *pctldev,
 
 	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
 		mode_prop |= AS3722_GPIO_MODE_OPEN_DRAIN;
+		break;
+
+	case PIN_CONFIG_LOW_POWER_MODE:
+		mode_prop |= AS3722_GPIO_MODE_LP_MODE;
+		as_pci->gpio_control[pin].standby_sequence =
+			AS3722_LP_SEQUENCE(arg);
+		as_pci->gpio_control[pin].standby_config =
+			AS3722_LP_CONFIG(arg);
+		ret = as3722_pinctrl_set_standby(as_pci, pin);
+		if (ret) {
+			dev_err(as_pci->dev, "Failed to set standby mode\n");
+			return ret;
+		}
 		break;
 
 	default:
