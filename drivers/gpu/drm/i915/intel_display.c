@@ -3533,6 +3533,8 @@ static void ironlake_crtc_enable(struct drm_crtc *crtc)
 	if (HAS_PCH_CPT(dev))
 		cpt_verify_modeset(dev, intel_crtc->pipe);
 
+	drm_vblank_on(dev, pipe);
+
 	/*
 	 * There seems to be a race in PCH platform hw (at least on some
 	 * outputs) where an enabled pipe still completes any pageflip right
@@ -3675,6 +3677,8 @@ static void haswell_crtc_enable(struct drm_crtc *crtc)
 	 * to change the workaround. */
 	haswell_mode_set_planes_workaround(intel_crtc);
 	haswell_crtc_enable_planes(crtc);
+
+	drm_vblank_on(dev, pipe);
 
 	/*
 	 * There seems to be a race in PCH platform hw (at least on some
@@ -3943,6 +3947,8 @@ static void valleyview_crtc_enable(struct drm_crtc *crtc)
 
 	for_each_encoder_on_crtc(dev, crtc, encoder)
 		encoder->enable(encoder);
+
+	drm_vblank_on(dev, pipe);
 }
 
 static void i9xx_crtc_enable(struct drm_crtc *crtc)
@@ -3987,6 +3993,8 @@ static void i9xx_crtc_enable(struct drm_crtc *crtc)
 
 	for_each_encoder_on_crtc(dev, crtc, encoder)
 		encoder->enable(encoder);
+
+	drm_vblank_on(dev, pipe);
 }
 
 static void i9xx_pfit_disable(struct intel_crtc *crtc)
