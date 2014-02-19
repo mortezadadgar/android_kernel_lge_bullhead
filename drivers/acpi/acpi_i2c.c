@@ -49,6 +49,7 @@ static acpi_status acpi_i2c_add_device(acpi_handle handle, u32 level,
 	struct i2c_board_info info;
 	struct acpi_device *adev;
 	int ret;
+	unsigned short addrs[] = {0, I2C_CLIENT_END};
 
 	if (acpi_bus_get_device(handle, &adev))
 		return AE_OK;
@@ -67,8 +68,9 @@ static acpi_status acpi_i2c_add_device(acpi_handle handle, u32 level,
 	if (ret < 0 || !info.addr)
 		return AE_OK;
 
+	addrs[0] = info.addr;
 	strlcpy(info.type, dev_name(&adev->dev), sizeof(info.type));
-	if (!i2c_new_device(adapter, &info)) {
+	if (!i2c_new_probed_device(adapter, &info, addrs, NULL)) {
 		dev_err(&adapter->dev,
 			"failed to add I2C device %s from ACPI\n",
 			dev_name(&adev->dev));
