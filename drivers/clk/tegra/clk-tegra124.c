@@ -1128,6 +1128,13 @@ static struct tegra_devclk devclks[] __initdata = {
 	{ .con_id = "xusb_dev", .dt_id = TEGRA124_CLK_XUSB_DEV },
 	{ .con_id = "xusb_ss", .dt_id = TEGRA124_CLK_XUSB_SS },
 	{ .con_id = "xusb_falcon_src", .dt_id = TEGRA124_CLK_XUSB_FALCON_SRC },
+	{ .con_id = "xusb_host_src", .dt_id = TEGRA124_CLK_XUSB_HOST_SRC },
+	{ .con_id = "xusb_dev_src", .dt_id = TEGRA124_CLK_XUSB_DEV_SRC },
+	{ .con_id = "xusb_hs_src", .dt_id = TEGRA124_CLK_XUSB_HS_SRC },
+	{ .con_id = "xusb_fs_src", .dt_id = TEGRA124_CLK_XUSB_FS_SRC },
+	{ .con_id = "mselect", .dt_id = TEGRA124_CLK_MSELECT },
+	{ .con_id = "hda", .dt_id = TEGRA124_CLK_HDA },
+	{ .con_id = "hda2codec_2x", .dt_id = TEGRA124_CLK_HDA2CODEC_2X },
 };
 
 static struct clk **clks;
