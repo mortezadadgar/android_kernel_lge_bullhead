@@ -954,6 +954,10 @@
 		};
 	};
 
+	hda@70030000 {
+		status = "okay";
+	};
+
 	usb@70090000 {
 		status = "okay";
 		s1p05v-supply = <&avdd_hdmi_pex>; /* avddio_usb */
