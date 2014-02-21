@@ -40,7 +40,7 @@
 #include "../codecs/max98090.h"
 #include <linux/stringify.h>
 
-#define BYT_PLAT_CLK_3_HZ	25000000
+#define BYT_PLAT_CLK_3_HZ	19200000
 
 #define I2C_BUSNUM __stringify(CONFIG_SND_BYT_MAX98090_I2C_BUSNUM)
 
@@ -171,7 +171,7 @@ static int byt_aif1_hw_params(struct snd_pcm_substream *substream,
 	 * max98090 driver ignores it.
 	 */
 	ret = snd_soc_dai_set_sysclk(codec_dai, M98090_REG_SYSTEM_CLOCK,
-				     params_rate(params) * 256,
+				     BYT_PLAT_CLK_3_HZ,
 				     SND_SOC_CLOCK_IN);
 	if (ret < 0) {
 		dev_err(codec_dai->dev, "Can't set codec clock %d\n", ret);
