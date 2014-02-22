@@ -102,12 +102,19 @@ struct esif_data_complex_osc {
 	u32          capabilities;	/* Always Used By DPTF */
 };
 
+/* GUID Pair */
+struct esif_data_complex_guid_pair {
+	esif_guid_t  guid1; /* Example SUB_GROUP */
+	esif_guid_t  guid2; /* Example Power Setting */
+};
+
 #define ESIF_TABLE_NO_REVISION  0xffff
 struct esif_table_hdr {
 	u8   revision;
 	u16  rows;
 	u16  cols;
 };
+
 
 /* Variant */
 
@@ -137,22 +144,6 @@ union esif_data_variant {
 	string;
 
 	/* String Data Here */
-};
-
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-/* Must be consecutive data no pointers may be marshalled from R0 To R3 */
-/* esif_data_type must be structure. buffer size must be 272 bytes
- *(guid+context). */
-
-struct esif_data_guid_event {
-	/* ESIF Event GUID */
-	esif_guid_t  event_GUID;
-
-	/* ESIF Event Data */
-	u8  event_context[256];
-	u8  event_context_length;
 };
 
 #pragma pack(pop)

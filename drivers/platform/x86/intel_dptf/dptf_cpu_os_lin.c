@@ -91,6 +91,7 @@ static struct esif_participant_iface pi = {
 	.device_path = "NA",	/* Filled In Dynamically By Driver */
 	.device      = NULL,	/* Driver Assigned                 */
 	.mem_base    = NULL,	/* Driver Assigned                 */
+	.mem_size    = 0,	/* Driver Assigned                 */
 	.acpi_handle = NULL,	/* Driver Assigned                 */
 
 	/* EVENT */
@@ -207,6 +208,33 @@ static irqreturn_t pci_cpu_irq(
 	return IRQ_HANDLED;
 }
 
+/* ACPI Send Event */
+enum esif_rc acpi_send_event(
+	struct esif_participant_iface *pi_ptr,
+	enum esif_event_type type, 
+	u16 domain, 
+	struct esif_data *data_ptr
+        )
+{
+        if (NULL == pi_ptr)
+                return ESIF_E_PARAMETER_IS_NULL;
+
+        if (NULL == pi_ptr->send_event)
+                return ESIF_E_CALLBACK_IS_NULL;
+
+        return pi_ptr->send_event(pi_ptr, type, domain, data_ptr);
+}
+
+/* ACPI Event Handler */
+static void acpi_notify(acpi_handle handle, u32 event, void *data)
+{
+	struct esif_participant_iface *pi_ptr = data;
+	struct esif_data event_data = { 
+		ESIF_DATA_UINT32, &event, sizeof(event), sizeof(event)};
+
+	ESIF_TRACE_DEBUG("%s: ACPI event on CPU %d\n", ESIF_FUNC, event);
+	acpi_send_event(pi_ptr, ESIF_EVENT_ACPI, 'NA', &event_data);
+}
 
 /* Probe */
 static int pci_cpu_probe(
@@ -280,6 +308,7 @@ static int pci_cpu_probe(
 	}
 	ESIF_TRACE_DEBUG("%s: request_irq returns %d\n", ESIF_FUNC, err);
 
+	pi.mem_size = resource_len;
 	pi.mem_base = ioremap_nocache(resource_start, resource_len);
 	if (!pi.mem_base) {
 		err = -ENOMEM;
@@ -335,6 +364,12 @@ static int pci_cpu_probe(
 					 pi.acpi_scope);
 			kfree(acpi_scope.pointer);
 		}
+
+		status = acpi_install_notify_handler(pi.acpi_handle, 
+				ACPI_ALL_NOTIFY, acpi_notify, &pi);
+		if (ACPI_FAILURE(status)) 
+			ESIF_TRACE_DEBUG("%s: acpi_install_notify_handler error %d\n",
+					ESIF_FUNC, status);
 	}
 
 	/*
@@ -368,6 +403,10 @@ error_cleanup:
 static void pci_cpu_remove(struct pci_dev *dev_ptr)
 {
 	enum esif_rc rc = ESIF_OK;
+
+	if (pi.acpi_handle)
+		acpi_remove_notify_handler(pi.acpi_handle, ACPI_ALL_NOTIFY, 
+				acpi_notify);
 
 	writel(cpu_data.camarillo, (pi.mem_base + THERMAL_CAMARILLO));
 	rc = esif_lf_unregister_participant(&pi);

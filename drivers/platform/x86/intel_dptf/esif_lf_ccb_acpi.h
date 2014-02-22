@@ -61,7 +61,6 @@
 
 #ifdef ESIF_ATTR_OS_LINUX
 #define esif_ccb_acpi_get_name acpi_get_name
-#define esif_ccb_acpi_set_len(len)
 #endif
 #ifdef ESIF_ATTR_OS_WINDOWS
 #define ACPI_TYPE_INTEGER          ACPI_METHOD_ARGUMENT_INTEGER	/* 0 */
@@ -79,8 +78,6 @@
 #define do_div(x, y)   x = x / y
 #define esif_ccb_acpi_get_name(handle, pathname, ref) \
 		(ESIF_E_UNSUPPORTED_ACTION_TYPE)
-
-#define esif_ccb_acpi_set_len(len)  (len = sizeof(acpi_obj->integer.value))
 
 #define ACPI_FULL_PATHNAME
 
@@ -173,7 +170,7 @@ static ESIF_INLINE char *esif_acpi_type_str(u32 type)
 		CREATE_ACPI_TYPE(ACPI_TYPE_PACKAGE, str);
 		CREATE_ACPI_TYPE(ACPI_TYPE_POWER, str);
 		CREATE_ACPI_TYPE(ACPI_TYPE_PROCESSOR, str);
-#ifndef ESIF_ATTR_OS_WINDOWS
+#ifdef ESIF_ATTR_OS_LINUX
 		CREATE_ACPI_TYPE(ACPI_TYPE_ANY, str);
 		CREATE_ACPI_TYPE(ACPI_TYPE_FIELD_UNIT, str);
 		CREATE_ACPI_TYPE(ACPI_TYPE_DEVICE, str);
@@ -200,23 +197,19 @@ static ESIF_INLINE acpi_status esif_ccb_acpi_evaluate_object(
 {
 	acpi_status rc = 0;
 
-#if defined(ESIF_ATTR_OS_LINUX) || defined(ESIF_ATTR_OS_WINDOWS)
 	int orig_length = 0;
 	if (NULL != return_buffer_ptr)
 		orig_length = return_buffer_ptr->length;
-#endif
 
 	rc = acpi_evaluate_object(handle,
 				  acpi_method,
 				  in_params_ptr,
 				  return_buffer_ptr);
 
-#if defined(ESIF_ATTR_OS_LINUX) || defined(ESIF_ATTR_OS_WINDOWS)
 	if (NULL != return_buffer_ptr && NULL != return_buffer_ptr->pointer &&
 	    ACPI_ALLOCATE_BUFFER == orig_length) {
 		memstat_inc(&g_memstat.allocs); /* Increment in Linux Only Not *Windows! */
 	}
-#endif
 #ifdef ESIF_ATTR_OS_LINUX
 	return rc;
 
@@ -446,7 +439,8 @@ static ESIF_INLINE void esif_create_acpi_buffer(
 		/* On Windows, Use &acpi_obj->buffer.pointer Do NOT use
 		 *esif_acpi_memcpy!!! */
 		acpi_obj->buffer.pointer =
-			((u8 *)acpi_obj + sizeof(acpi_obj->buffer.pointer));
+			((u8 *)acpi_obj + (sizeof(acpi_obj->buffer) - 
+			                   sizeof(acpi_obj->buffer.pointer)));
 		esif_ccb_memcpy(&acpi_obj->buffer.pointer, &osc->guid, 16);
 		acpi_obj =
 			(union acpi_object *)((u8 *)acpi_obj +
@@ -464,7 +458,8 @@ static ESIF_INLINE void esif_create_acpi_buffer(
 					     sizeof(union acpi_object));
 #endif
 #ifdef ESIF_ATTR_OS_WINDOWS
-		esif_ccb_acpi_set_len(acpi_obj->integer.length);
+
+		acpi_obj->integer.length = sizeof(acpi_obj->integer.value);
 		acpi_obj =
 			(union acpi_object *)((u8 *)acpi_obj +
 					     sizeof(acpi_obj->integer));
@@ -479,7 +474,7 @@ static ESIF_INLINE void esif_create_acpi_buffer(
 					     sizeof(union acpi_object));
 #endif
 #ifdef ESIF_ATTR_OS_WINDOWS
-		esif_ccb_acpi_set_len(acpi_obj->integer.length);
+		acpi_obj->integer.length = sizeof(acpi_obj->integer.value);
 		acpi_obj =
 			(union acpi_object *)((u8 *)acpi_obj +
 					     sizeof(acpi_obj->integer));
@@ -497,7 +492,8 @@ static ESIF_INLINE void esif_create_acpi_buffer(
 		/* On Windows, Use &acpi_obj->buffer.pointer!!! Do NOT use
 		 *esif_acpi_memcpy!!! */
 		acpi_obj->buffer.pointer =
-			((u8 *)acpi_obj + sizeof(acpi_obj->buffer.pointer));
+			((u8 *)acpi_obj + (sizeof(acpi_obj->buffer) - 
+			                   sizeof(acpi_obj->buffer.pointer)));
 		esif_ccb_memcpy(&acpi_obj->buffer.pointer,
 				&osc->status,
 				acpi_obj->buffer.length);
@@ -517,7 +513,10 @@ static ESIF_INLINE void esif_create_acpi_buffer(
 		 */
 		for (i = 0; i < arg_list->count; i++) {
 			acpi_obj->integer.type = ACPI_TYPE_INTEGER;
-			esif_ccb_acpi_set_len(acpi_obj->integer.length);
+#ifdef ESIF_ATTR_OS_WINDOWS
+			acpi_obj->integer.length = sizeof(acpi_obj->integer.value);
+#endif
+
 			switch (req_data_ptr->type) {
 			case ESIF_DATA_UINT8:
 				acpi_obj->integer.value = *((u8 *)buf_ptr);
@@ -528,13 +527,14 @@ static ESIF_INLINE void esif_create_acpi_buffer(
 				buf_ptr += sizeof(u16);
 				break;
 
-			case ESIF_DATA_TEMPERATURE:
 			case ESIF_DATA_UINT32:
+			case ESIF_DATA_TEMPERATURE:
 				acpi_obj->integer.value = *((u32 *)buf_ptr);
 				buf_ptr += sizeof(u32);
 				break;
 
 			case ESIF_DATA_UINT64:
+			case ESIF_DATA_FREQUENCY:
 				/* For 32-bit Windows, it's type ULONG 4-byte */
 				acpi_obj->integer.value = *((u32 *)buf_ptr);
 				buf_ptr += sizeof(u64);
@@ -641,7 +641,12 @@ static ESIF_INLINE u32 esif_ccb_acpi_pkg_count(union acpi_object *obj_ptr)
 
 	while (obj_len > 0) {
 		/* Calc the size of each package and move to the next one */
-		pkg_len  = (2 * sizeof(USHORT)) + pkg_ptr->package.count;
+		/* make sure if the count is less than 4 to account for the */
+		/* union. A good example would be a short string like ma\0 */
+		pkg_len  = (2 * sizeof(USHORT)) + 
+			(pkg_ptr->package.count < sizeof(ULONG) ? sizeof(ULONG): 
+			pkg_ptr->package.count);
+
 		pkg_ptr  = (union acpi_object *)((u8 *)pkg_ptr + pkg_len);
 		obj_len -= pkg_len;
 		count++;

@@ -58,10 +58,10 @@
 
 #ifdef ESIF_ATTR_USER
 # include "esif.h"
+# include "esif_ccb_atomic.h"
 
 /* Enable Detailed Memory Tracing? */
 # ifdef ESIF_ATTR_MEMTRACE
-#	include "esif_ccb_atomic.h"
 	struct memalloc_s {
 		void			*mem_ptr;
 		size_t			size;
@@ -132,7 +132,8 @@ static ESIF_INLINE void esif_ccb_memcpy(
 #ifdef ESIF_ATTR_KERNEL
 #ifdef ESIF_ATTR_OS_WINDOWS
 	memcpy_s(dest_ptr, size, src_ptr, size);
-#else
+#endif
+#ifdef ESIF_ATTR_OS_LINUX
 	memcpy(dest_ptr, src_ptr, size);
 #endif
 #endif
@@ -140,7 +141,8 @@ static ESIF_INLINE void esif_ccb_memcpy(
 #ifdef ESIF_ATTR_USER
 #ifdef ESIF_ATTR_OS_WINDOWS
 	memcpy_s(dest_ptr, size, src_ptr, size);
-#else
+#endif
+#ifdef ESIF_ATTR_OS_LINUX
 	memcpy(dest_ptr, src_ptr, size);
 #endif
 #endif
@@ -162,7 +164,8 @@ static ESIF_INLINE void esif_ccb_memmove(
 #ifdef ESIF_ATTR_KERNEL
 #ifdef ESIF_ATTR_OS_WINDOWS
 	memmove_s(dest_ptr, size, src_ptr, size);
-#else
+#endif
+#ifdef ESIF_ATTR_OS_LINUX
 	memmove(dest_ptr, src_ptr, size);
 #endif
 #endif
@@ -261,7 +264,9 @@ void esif_ccb_free(void *mem_ptr)
     #endif
 #endif /* ESIF_ATTR_KERNEL */
 #ifdef ESIF_ATTR_USER
-	free(mem_ptr);
+	if (NULL != mem_ptr)
+		free(mem_ptr);
+
 #endif /* ESIF_ATTR_USER */
 }
 

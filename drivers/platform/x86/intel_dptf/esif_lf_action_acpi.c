@@ -460,12 +460,13 @@ enum esif_rc esif_set_action_acpi(
 		arg_list.count = req_data_ptr->buf_len / sizeof(u16);
 		break;
 
-	case ESIF_DATA_TEMPERATURE:
 	case ESIF_DATA_UINT32:
+	case ESIF_DATA_TEMPERATURE:
 		arg_list.count = req_data_ptr->buf_len / sizeof(u32);
 		break;
 
 	case ESIF_DATA_UINT64:
+	case ESIF_DATA_FREQUENCY:
 		arg_list.count = req_data_ptr->buf_len / sizeof(u64);
 		break;
 
@@ -659,7 +660,7 @@ static void esif_unpack_acpi_object(
 	{
 		ESIF_TRACE_DYN_UNPACK("%s: Have ACPI Integer = %p = %llu\n",
 				      ESIF_FUNC, obj_ptr,
-				      obj_ptr->integer.value);
+				      (u64)obj_ptr->integer.value);
 
 		switch (data_ptr->rsp_data_ptr->type) {
 		case ESIF_DATA_UINT8:
@@ -687,6 +688,7 @@ static void esif_unpack_acpi_object(
 			break;
 
 		case ESIF_DATA_UINT64:
+		case ESIF_DATA_FREQUENCY:
 			data_ptr->needed_len += sizeof(u64);
 			if (data_ptr->needed_len <= data_ptr->rsp_data_ptr->buf_len)
 				*((u64 *)bin.buf_ptr) = (u64) obj_ptr->integer.value;
@@ -845,14 +847,14 @@ static void esif_unpack_acpi_object(
 				data_ptr->rc = ESIF_E_NEED_LARGER_BUFFER;
 			}
 			ESIF_TRACE_DYN_UNPACK(
-				"%s: ACPI_BUFFER %p len %lu, ESIF_BINARY "
-				"addr %p %s len (%lu + %u), needed_len %u rc %d\n",
+				"%s: ACPI_BUFFER %p len %u, ESIF_BINARY "
+				"addr %p %s len (%u + %u), needed_len %u rc %d\n",
 				ESIF_FUNC,
 				obj_ptr->string.pointer,
-				sizeof(union esif_data_variant),
+				(u32)sizeof(union esif_data_variant),
 				bin.variant_ptr,
 				(char *)bin.variant_ptr,
-				sizeof(obj_ptr->string),
+				(u32)sizeof(obj_ptr->string),
 				str_len,
 				data_ptr->needed_len,
 				data_ptr->rc);
@@ -1005,15 +1007,15 @@ static void esif_unpack_acpi_object(
 				data_ptr->rc = ESIF_E_NEED_LARGER_BUFFER;
 			}
 			ESIF_TRACE_DYN_UNPACK(
-				"%s: ACPI_STRING %p len %lu, ESIF_BINARY "
-				"addr %p %s len (%lu + %u), needed_len %u "
+				"%s: ACPI_STRING %p len %u, ESIF_BINARY "
+				"addr %p %s len (%u + %u), needed_len %u "
 				"rc %d\n",
 				ESIF_FUNC,
 				obj_ptr->string.pointer,
-				sizeof(union esif_data_variant),
+				(u32)sizeof(union esif_data_variant),
 				bin.variant_ptr,
 				(char *)bin.variant_ptr,
-				sizeof(obj_ptr->string),
+				(u32)sizeof(obj_ptr->string),
 				str_len,
 				data_ptr->needed_len,
 				data_ptr->rc);
@@ -1044,7 +1046,7 @@ static void esif_unpack_acpi_object(
 					&acpi_ref);
 			if (ESIF_FALSE ==
 			    esif_ccb_has_acpi_failure(acpi_status, NULL)) {
-#ifndef ESIF_ATTR_OS_WINDOWS
+#ifdef ESIF_ATTR_OS_LINUX
 				/* Include terminator */
 				str_len = (u32)strlen(acpi_ref.pointer) + 1;
 #endif
