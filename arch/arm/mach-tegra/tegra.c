@@ -61,12 +61,12 @@
 #include "reset.h"
 #include "sleep.h"
 
-unsigned long tegra_fb_start;
-unsigned long tegra_fb_size;
-unsigned long tegra_fb2_start;
-unsigned long tegra_fb2_size;
-unsigned long tegra_carveout_start;
-unsigned long tegra_carveout_size;
+phys_addr_t tegra_fb_start;
+size_t tegra_fb_size;
+phys_addr_t tegra_fb2_start;
+size_t tegra_fb2_size;
+phys_addr_t tegra_carveout_start;
+size_t tegra_carveout_size;
 
 /*
  * Storage for debug-macro.S's state.
@@ -294,56 +294,57 @@ static void __init tegra_dt_init_late(void)
 	}
 }
 
+#define MAX_FB_ADDR	(0x1ULL << 32)
+
 static void __init tegra_reserve(unsigned long carveout_size,
 				 unsigned long fb_size,
 				 unsigned long fb2_size)
 {
+	phys_addr_t carveout_end = 0, fb_end = 0, fb2_end = 0;
+
 	if (carveout_size) {
 		tegra_carveout_start = memblock_end_of_DRAM() - carveout_size;
 		if (memblock_remove(tegra_carveout_start, carveout_size)) {
-			pr_err("Failed to remove carveout %08lx@%08lx from memory map\n",
-				carveout_size, tegra_carveout_start);
+			pr_err("Failed to remove carveout %08lx@%pa from memory map\n",
+				carveout_size, &tegra_carveout_start);
 			tegra_carveout_start = 0;
 			tegra_carveout_size = 0;
 		} else
 			tegra_carveout_size = carveout_size;
+		carveout_end = tegra_carveout_start + carveout_size;
 	}
 
 	if (fb2_size) {
 		tegra_fb2_start = memblock_end_of_DRAM() - fb2_size;
 		if (memblock_remove(tegra_fb2_start, fb2_size)) {
-			pr_err("Failed to remove second framebuffer %08lx@%08lx from memory map\n",
-				fb2_size, tegra_fb2_start);
+			pr_err("Failed to remove second framebuffer %08lx@%pa from memory map\n",
+				fb2_size, &tegra_fb2_start);
 			tegra_fb2_start = 0;
 			tegra_fb2_size = 0;
 		} else
 			tegra_fb2_size = fb2_size;
+		fb2_end = tegra_fb2_start + fb2_size;
 	}
 
 	if (fb_size) {
 		tegra_fb_start = memblock_end_of_DRAM() - fb_size;
 		if (memblock_remove(tegra_fb_start, fb_size)) {
-			pr_err("Failed to remove framebuffer %08lx@%08lx from memory map\n",
-				fb_size, tegra_fb_start);
+			pr_err("Failed to remove framebuffer %08lx@%pa from memory map\n",
+				fb_size, &tegra_fb_start);
 			tegra_fb_start = 0;
 			tegra_fb_size = 0;
 		} else
 			tegra_fb_size = fb_size;
+		fb_end = tegra_fb_start + fb_size;
 	}
 
 	pr_info("Tegra reserved memory:\n"
-		"Framebuffer:	    %08lx - %08lx\n"
-		"2nd Framebuffer:	%08lx - %08lx\n"
-		"Carveout:	       %08lx - %08lx\n",
-		tegra_fb_start,
-		tegra_fb_size ?
-			tegra_fb_start + tegra_fb_size - 1 : 0,
-		tegra_fb2_start,
-		tegra_fb2_size ?
-			tegra_fb2_start + tegra_fb2_size - 1 : 0,
-		tegra_carveout_start,
-		tegra_carveout_size ?
-			tegra_carveout_start + tegra_carveout_size - 1 : 0);
+		"Framebuffer:	    %pa - %pa\n"
+		"2nd Framebuffer:	%pa - %pa\n"
+		"Carveout:	       %pa - %pa\n",
+		&tegra_fb_start, &fb_end,
+		&tegra_fb2_start, &fb2_end,
+		&tegra_carveout_start, &carveout_end);
 }
 
 static void __init tegra_board_reserve(void)
