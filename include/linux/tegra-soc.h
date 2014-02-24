@@ -71,8 +71,6 @@ static inline bool is_lp_cluster(void)
 int tegra_switch_cluster(int new_cluster);
 int tegra_cluster_control_init(void);
 int tegra124_get_core_speedo_mv(void);
-struct tegra_cooling_device *tegra_get_gpu_vmin_cdev(void);
-struct tegra_cooling_device *tegra_get_gpu_vts_cdev(void);
 #else
 static inline int tegra_switch_cluster(int new_cluster)
 {
@@ -84,6 +82,12 @@ static inline int tegra_cluster_control_init(void)
 }
 static inline int tegra124_get_core_speedo_mv(void)
 { return -EINVAL; }
+#endif
+
+#ifdef CONFIG_TEGRA_GK20A
+struct tegra_cooling_device *tegra_get_gpu_vmin_cdev(void);
+struct tegra_cooling_device *tegra_get_gpu_vts_cdev(void);
+#else
 static inline struct tegra_cooling_device *tegra_get_gpu_vmin_cdev(void)
 { return ERR_PTR(-EINVAL); }
 static inline struct tegra_cooling_device *tegra_get_gpu_vts_cdev(void)
