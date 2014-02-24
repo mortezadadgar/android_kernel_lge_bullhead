@@ -96,6 +96,7 @@ enum rq_cmd_type_bits {
 struct request {
 	struct list_head queuelist;
 	struct call_single_data csd;
+	unsigned long fifo_time;
 
 	struct request_queue *q;
 
