@@ -1300,30 +1300,30 @@
 	};
 
 	usb-phy@7d000000 {
-		status = "okay";
+		status = "disabled";
 		vbus-supply = <&usb1_vbus_reg>;
 	};
 
 	usb@7d000000 {
-		status = "okay";
+		status = "disabled";
 	};
 
 	usb-phy@7d004000 {
-		status = "okay";
+		status = "disabled";
 		vbus-supply = <&run_cam_2v8>;
 	};
 
 	usb@7d004000 {
-		status = "okay";
+		status = "disabled";
 	};
 
 	usb-phy@7d008000 {
-		status = "okay";
+		status = "disabled";
 		vbus-supply = <&usb3_vbus_reg>;
 	};
 
 	usb@7d008000 {
-		status = "okay";
+		status = "disabled";
 	};
 
 	soc_therm {
