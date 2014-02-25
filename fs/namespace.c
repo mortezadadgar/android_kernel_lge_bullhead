@@ -608,11 +608,10 @@ struct vfsmount *lookup_mnt(struct path *path)
 	}
 }
 
-static struct mountpoint *new_mountpoint(struct dentry *dentry)
+static struct mountpoint *lookup_mountpoint(struct dentry *dentry)
 {
 	struct list_head *chain = mountpoint_hashtable + hash(NULL, dentry);
 	struct mountpoint *mp;
-	int ret;
 
 	list_for_each_entry(mp, chain, m_hash) {
 		if (mp->m_dentry == dentry) {
@@ -623,6 +622,14 @@ static struct mountpoint *new_mountpoint(struct dentry *dentry)
 			return mp;
 		}
 	}
+	return NULL;
+}
+
+static struct mountpoint *new_mountpoint(struct dentry *dentry)
+{
+	struct list_head *chain = mountpoint_hashtable + hash(NULL, dentry);
+	struct mountpoint *mp;
+	int ret;
 
 	mp = kmalloc(sizeof(struct mountpoint), GFP_KERNEL);
 	if (!mp)
@@ -1628,7 +1635,9 @@ retry:
 	namespace_lock();
 	mnt = lookup_mnt(path);
 	if (likely(!mnt)) {
-		struct mountpoint *mp = new_mountpoint(dentry);
+		struct mountpoint *mp = lookup_mountpoint(dentry);
+		if (!mp)
+			mp = new_mountpoint(dentry);
 		if (IS_ERR(mp)) {
 			namespace_unlock();
 			mutex_unlock(&dentry->d_inode->i_mutex);
