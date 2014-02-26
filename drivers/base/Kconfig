@@ -211,13 +211,6 @@ config DMA_SHARED_BUFFER
 	  APIs extension; the file's descriptor can then be passed on to other
 	  driver.
 
-config DMA_COHERENT_NOMAP
-	bool "Enable coherent dma mem w/o address mapping"
-	help
-	  This enables a flag for coherent memory that avoids the creation of
-	  kernel virtual mappins for the addresses.  Currently only works on
-	  Tegra systems.
-
 config CMA
 	bool "Contiguous Memory Allocator"
 	depends on HAVE_DMA_CONTIGUOUS && HAVE_MEMBLOCK
