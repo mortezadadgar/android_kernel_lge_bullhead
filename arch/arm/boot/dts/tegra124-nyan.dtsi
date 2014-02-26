@@ -994,16 +994,6 @@
 			nvidia,thole-vmin-slope = <793>;
 			nvidia,thole-vmin-int = <115672>;
 		};
-		tuning-data@2 {
-			compatible = "nvidia,sdhci-tuning-data";
-			clock-frequency = <204000000>;
-			nvidia,thole-vnom-slope = <874>;
-			nvidia,thole-vnom-int = <85243>;
-			nvidia,thole-vmax-slope = <874>;
-			nvidia,thole-vmax-int = <85243>;
-			nvidia,thole-vmin-slope = <449>;
-			nvidia,thole-vmin-int = <57321>;
-		};
 	};
 
 	sdhci@700b0400 {
