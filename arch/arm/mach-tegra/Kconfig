@@ -70,6 +70,7 @@ config ARCH_TEGRA_114_SOC
 
 config ARCH_TEGRA_124_SOC
 	bool "Enable support for Tegra124 family"
+	select ARCH_DMA_ADDR_T_64BIT if ARM_LPAE
 	select ARM_ARCH_TIMER
 	select ARM_GIC
 	select ARM_L1_CACHE_SHIFT_6
