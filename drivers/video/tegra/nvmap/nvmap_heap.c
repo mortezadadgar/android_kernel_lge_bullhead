@@ -229,7 +229,7 @@ static struct nvmap_heap_block *do_heap_alloc(struct nvmap_heap *heap,
 	}
 
 	dev_addr = dma_alloc_coherent(&heap->dev, len, &dev_base,
-					DMA_MEMORY_NOMAP);
+					DMA_MEMORY_MAP);
 	if (dev_base == DMA_ERROR_CODE) {
 		dev_err(&heap->dev, "%s: failed to alloc DMA coherent mem %s\n",
 			__func__, dev_name(&heap->dev));
@@ -382,8 +382,8 @@ struct nvmap_heap *nvmap_heap_create(struct device *parent, const char *name,
 	mutex_init(&h->lock);
 
 	err = dma_declare_coherent_memory(&h->dev, 0, base, len,
-		DMA_MEMORY_NOMAP | DMA_MEMORY_EXCLUSIVE);
-	if (!(err & DMA_MEMORY_NOMAP) || (base == 0)) {
+		DMA_MEMORY_MAP | DMA_MEMORY_EXCLUSIVE);
+	if (!(err & DMA_MEMORY_MAP) || (base == 0)) {
 		dev_err(&h->dev, "%s: Unable to declare dma coherent memory\n",
 			__func__);
 		goto fail_dma_declare;
