@@ -410,8 +410,9 @@
 	};
 
 	pmc: pmc {
-		compatible = "nvidia,tegra124-pmc", "nvidia,tegra114-pmc";
-		reg = <0x0 0x7000e400 0x400>;
+		compatible = "nvidia,tegra124-pmc", "nvidia,tegra114-pmc",
+			     "syscon";
+		reg = <0x0 0x7000e400 0x800>;
 		clocks = <&tegra_car TEGRA124_CLK_PCLK>, <&clk32k_in>;
 		clock-names = "pclk", "clk32k_in";
 	};
@@ -445,6 +446,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		nvidia,mc = <&mc>;
+		nvidia,pmc = <&pmc>;
 		clocks = <&tegra_car TEGRA124_CLK_EMC>,
 			<&tegra_car TEGRA124_CLK_PLL_M>,
 			<&tegra_car TEGRA124_CLK_PLL_C>,
