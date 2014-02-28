@@ -1012,7 +1012,7 @@ EXPORT_SYMBOL_GPL(azx_attach_pcm_stream);
 /*
  * CORB / RIRB interface
  */
-int azx_alloc_cmd_io(struct azx *chip)
+static int azx_alloc_cmd_io(struct azx *chip)
 {
 	int err;
 
@@ -1519,6 +1519,11 @@ int azx_alloc_stream_pages(struct azx *chip)
 		dev_err(card->dev, "cannot allocate posbuf\n");
 		return -ENOMEM;
 	}
+
+	/* allocate CORB/RIRB */
+	err = azx_alloc_cmd_io(chip);
+	if (err < 0)
+		return err;
 	return 0;
 }
 EXPORT_SYMBOL_GPL(azx_alloc_stream_pages);
