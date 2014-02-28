@@ -362,7 +362,7 @@ static int azx_alloc_cmd_io(struct azx *chip)
 
 	/* single page (at least 4096 bytes) must suffice for both ringbuffes */
 	err = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV,
-				  snd_dma_pci_data(chip->pci),
+				  chip->card->dev,
 				  PAGE_SIZE, &chip->rb);
 	if (err < 0) {
 		snd_printk(KERN_ERR SFX "%s: cannot allocate CORB/RIRB\n", pci_name(chip->pci));
@@ -1007,7 +1007,7 @@ static irqreturn_t azx_interrupt(int irq, void *dev_id)
 	int i, ok;
 
 #ifdef CONFIG_PM_RUNTIME
-	if (chip->pci->dev.power.runtime_status != RPM_ACTIVE)
+	if (chip->driver_caps & AZX_DCAPS_PM_RUNTIME)
 		return IRQ_NONE;
 #endif
 
@@ -2257,7 +2257,7 @@ azx_attach_pcm_stream(struct hda_bus *bus, struct hda_codec *codec,
 	if (size > MAX_PREALLOC_SIZE)
 		size = MAX_PREALLOC_SIZE;
 	snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV_SG,
-					      snd_dma_pci_data(chip->pci),
+					      chip->card->dev,
 					      size, MAX_PREALLOC_SIZE);
 	return 0;
 }
@@ -2369,7 +2369,7 @@ static int azx_load_dsp_prepare(struct hda_bus *bus, unsigned int format,
 	spin_unlock_irq(&chip->reg_lock);
 
 	err = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV_SG,
-				  snd_dma_pci_data(chip->pci),
+				  chip->card->dev,
 				  byte_size, bufp);
 	if (err < 0)
 		goto err_alloc;
@@ -2462,9 +2462,9 @@ static void azx_power_notify(struct hda_bus *bus, bool power_up)
 		return;
 
 	if (power_up)
-		pm_runtime_get_sync(&chip->pci->dev);
+		pm_runtime_get_sync(chip->card->dev);
 	else
-		pm_runtime_put_sync(&chip->pci->dev);
+		pm_runtime_put_sync(chip->card->dev);
 }
 
 static DEFINE_MUTEX(card_list_lock);
@@ -2718,7 +2718,7 @@ static void azx_vs_set_state(struct pci_dev *pci,
 			   "%s: %s via VGA-switcheroo\n", pci_name(chip->pci),
 			   disabled ? "Disabling" : "Enabling");
 		if (disabled) {
-			azx_suspend(&pci->dev);
+			azx_suspend(card->dev);
 			chip->disabled = true;
 			if (snd_hda_lock_devices(chip->bus))
 				snd_printk(KERN_WARNING SFX "%s: Cannot lock devices!\n",
@@ -2726,7 +2726,7 @@ static void azx_vs_set_state(struct pci_dev *pci,
 		} else {
 			snd_hda_unlock_devices(chip->bus);
 			chip->disabled = false;
-			azx_resume(&pci->dev);
+			azx_resume(card->dev);
 		}
 	}
 }
@@ -3296,7 +3296,7 @@ static int azx_first_init(struct azx *chip)
 		dsp_lock_init(&chip->azx_dev[i]);
 		/* allocate memory for the BDL for each stream */
 		err = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV,
-					  snd_dma_pci_data(chip->pci),
+					  chip->card->dev,
 					  BDL_SIZE, &chip->azx_dev[i].bdl);
 		if (err < 0) {
 			snd_printk(KERN_ERR SFX "%s: cannot allocate BDL\n", pci_name(chip->pci));
@@ -3306,7 +3306,7 @@ static int azx_first_init(struct azx *chip)
 	}
 	/* allocate memory for the position buffer */
 	err = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV,
-				  snd_dma_pci_data(chip->pci),
+				  chip->card->dev,
 				  chip->num_streams * 8, &chip->posbuf);
 	if (err < 0) {
 		snd_printk(KERN_ERR SFX "%s: cannot allocate posbuf\n", pci_name(chip->pci));
