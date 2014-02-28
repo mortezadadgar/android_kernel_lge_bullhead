@@ -150,7 +150,7 @@ static int channel_gk20a_commit_userd(struct channel_gk20a *c)
 	addr_hi = u64_hi32(c->userd_iova);
 
 	nvhost_dbg_info("channel %d : set ramfc userd 0x%16llx",
-		c->hw_chid, c->userd_iova);
+		c->hw_chid, (u64)c->userd_iova);
 
 	mem_wr32(inst_ptr, ram_in_ramfc_w() + ram_fc_userd_w(),
 		 pbdma_userd_target_vid_mem_f() |
@@ -381,8 +381,8 @@ static int channel_gk20a_alloc_inst(struct gk20a *g,
 		goto clean_up;
 	}
 
-	nvhost_dbg_info("channel %d inst block physical addr: 0x%16llx",
-		ch->hw_chid, ch->inst_block.cpu_pa);
+	nvhost_dbg_info("channel %d inst block physical addr: 0x%llx",
+		ch->hw_chid, (u64)ch->inst_block.cpu_pa);
 
 	nvhost_dbg_fn("done");
 	return 0;
@@ -829,7 +829,7 @@ static int channel_gk20a_alloc_priv_cmdbuf(struct channel_gk20a *c)
 		c->gpfifo.entry_num * 2 * 10 * sizeof(u32) / 3);
 
 	q->mem.base_cpuva = dma_alloc_coherent(d, size,
-					(dma_addr_t *)&q->mem.base_iova,
+					&q->mem.base_iova,
 					GFP_KERNEL);
 	if (!q->mem.base_cpuva) {
 		nvhost_err(d, "%s: memory allocation failed\n", __func__);
@@ -1131,7 +1131,7 @@ int gk20a_alloc_channel_gpfifo(struct channel_gk20a *c,
 	c->gpfifo.size = gpfifo_size * sizeof(struct gpfifo);
 	c->gpfifo.cpu_va = (struct gpfifo *)dma_alloc_coherent(d,
 						c->gpfifo.size,
-						(dma_addr_t *)&c->gpfifo.iova,
+						&c->gpfifo.iova,
 						GFP_KERNEL);
 	if (!c->gpfifo.cpu_va) {
 		nvhost_err(d, "%s: memory allocation failed\n", __func__);

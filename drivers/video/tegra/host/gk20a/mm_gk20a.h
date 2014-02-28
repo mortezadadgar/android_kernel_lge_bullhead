@@ -60,7 +60,7 @@ struct gpfifo_desc {
 
 	bool wrap;
 
-	u64 iova;
+	dma_addr_t iova;
 	struct gpfifo *cpu_va;
 	u64 gpu_va;
 };
@@ -80,14 +80,14 @@ struct inst_desc {
 
 struct userd_desc {
 	struct sg_table *sgt;
-	u64 iova;
+	dma_addr_t iova;
 	void *cpuva;
 	size_t size;
 	u64 gpu_va;
 };
 
 struct runlist_mem_desc {
-	u64 iova;
+	dma_addr_t iova;
 	void *cpuva;
 	size_t size;
 };
@@ -103,13 +103,13 @@ struct patch_desc {
 
 struct pmu_mem_desc {
 	void *cpuva;
-	u64 iova;
+	dma_addr_t iova;
 	u64 pmu_va;
 	size_t size;
 };
 
 struct priv_cmd_queue_mem_desc {
-	u64 base_iova;
+	dma_addr_t base_iova;
 	u32 *base_cpuva;
 	size_t size;
 };
@@ -311,7 +311,7 @@ phys_addr_t gk20a_get_phys_from_iova(struct device *d,
 				dma_addr_t dma_addr);
 
 int gk20a_get_sgtable(struct device *d, struct sg_table **sgt,
-			void *cpuva, u64 iova,
+			void *cpuva, dma_addr_t iova,
 			size_t size);
 
 int gk20a_get_sgtable_from_pages(struct device *d, struct sg_table **sgt,

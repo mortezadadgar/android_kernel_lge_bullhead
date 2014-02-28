@@ -1039,7 +1039,7 @@ int gk20a_init_pmu_setup_sw(struct gk20a *g)
 	gk20a_init_pmu_vm(mm);
 
 	pmu->ucode.cpuva = dma_alloc_attrs(d, GK20A_PMU_UCODE_SIZE_MAX,
-					(dma_addr_t *)&pmu->ucode.iova,
+					&pmu->ucode.iova,
 					GFP_KERNEL,
 					&attrs);
 	if (!pmu->ucode.cpuva) {
@@ -1049,7 +1049,7 @@ int gk20a_init_pmu_setup_sw(struct gk20a *g)
 	}
 
 	pmu->seq_buf.cpuva = dma_alloc_coherent(d, GK20A_PMU_SEQ_BUF_SIZE,
-					(dma_addr_t *)&pmu->seq_buf.iova,
+					&pmu->seq_buf.iova,
 					GFP_KERNEL);
 	if (!pmu->seq_buf.cpuva) {
 		nvhost_err(d, "failed to allocate memory\n");
@@ -1250,7 +1250,7 @@ int gk20a_init_pmu_setup_hw2(struct gk20a *g)
 
 	if (!pmu->sw_ready) {
 		pmu->pg_buf.cpuva = dma_alloc_coherent(d, size,
-						(dma_addr_t *)&pmu->pg_buf.iova,
+						&pmu->pg_buf.iova,
 						GFP_KERNEL);
 		if (!pmu->pg_buf.cpuva) {
 			nvhost_err(d, "failed to allocate memory\n");

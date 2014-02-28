@@ -1345,7 +1345,7 @@ phys_addr_t gk20a_get_phys_from_iova(struct device *d,
 
 /* get sg_table from already allocated buffer */
 int gk20a_get_sgtable(struct device *d, struct sg_table **sgt,
-			void *cpuva, u64 iova,
+			void *cpuva, dma_addr_t iova,
 			size_t size)
 {
 	int err = 0;

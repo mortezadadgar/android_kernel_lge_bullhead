@@ -323,7 +323,7 @@ static int init_runlist(struct gk20a *g, struct fifo_gk20a *f)
 		runlist->mem[i].cpuva =
 			dma_alloc_coherent(d,
 					runlist_size,
-					(dma_addr_t *)&runlist->mem[i].iova,
+					&runlist->mem[i].iova,
 					GFP_KERNEL);
 		if (!runlist->mem[i].cpuva) {
 			dev_err(d, "memory allocation failed\n");
@@ -509,7 +509,7 @@ static int gk20a_init_fifo_setup_sw(struct gk20a *g)
 
 	f->userd.cpuva = dma_alloc_coherent(d,
 					f->userd_total_size,
-					(dma_addr_t *)&f->userd.iova,
+					&f->userd.iova,
 					GFP_KERNEL);
 	if (!f->userd.cpuva) {
 		dev_err(d, "memory allocation failed\n");
@@ -1644,7 +1644,7 @@ static int gk20a_fifo_update_runlist_locked(struct gk20a *g, u32 runlist_id,
 	new_buf = !runlist->cur_buffer;
 
 	nvhost_dbg_info("runlist_id : %d, switch to new buffer 0x%16llx",
-		runlist_id, runlist->mem[new_buf].iova);
+		runlist_id, (u64)runlist->mem[new_buf].iova);
 
 	runlist_pa = gk20a_get_phys_from_iova(d, runlist->mem[new_buf].iova);
 	if (!runlist_pa) {
