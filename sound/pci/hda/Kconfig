@@ -1,8 +1,15 @@
-menuconfig SND_HDA_INTEL
-	tristate "Intel HD Audio"
+menu "HD-Audio"
+
+config SND_HDA
+	tristate
 	select SND_PCM
 	select SND_VMASTER
 	select SND_KCTL_JACK
+
+config SND_HDA_INTEL
+	tristate "HD Audio PCI"
+	depends on SND_PCI
+	select SND_HDA
 	help
 	  Say Y here to include support for Intel "High Definition
 	  Audio" (Azalia) and its compatible devices.
@@ -13,7 +20,7 @@ menuconfig SND_HDA_INTEL
 	  To compile this driver as a module, choose M here: the module
 	  will be called snd-hda-intel.
 
-if SND_HDA_INTEL
+if SND_HDA
 
 config SND_HDA_DSP_LOADER
 	bool
@@ -50,7 +57,7 @@ config SND_HDA_RECONFIG
 
 config SND_HDA_INPUT_BEEP
 	bool "Support digital beep via input layer"
-	depends on INPUT=y || INPUT=SND_HDA_INTEL
+	depends on INPUT=y || INPUT=SND_HDA
 	help
 	  Say Y here to build a digital beep interface for HD-audio
 	  driver. This interface is used to generate digital beeps.
@@ -265,3 +272,5 @@ config SND_HDA_POWER_SAVE_DEFAULT
 	  power-save mode.  0 means to disable the power-save mode.
 
 endif
+
+endmenu
