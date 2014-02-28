@@ -138,6 +138,14 @@
 
 #define INTERLACE		0
 
+/* Define the offset for TEGRA_DC_FEATURE_HI_REGS */
+#define START_ADDR_HI			0
+#define START_ADDR_HI_UV		1
+#define START_ADDR_FIELD2_HI		2
+#define START_ADDR_FIELD2_HI_UV		3
+
+#define CURSOR_HI_REGS			0
+
 /* Available operations on feature table. */
 enum {
 	HAS_SCALE,
@@ -149,6 +157,11 @@ enum {
 	GET_WIN_SIZE,
 	HAS_BLOCKLINEAR,
 	HAS_INTERLACE,
+	HAS_HI_REGS,
+	HAS_HI_UV_REGS,
+	HAS_HI_FIELD2_REGS,
+	HAS_HI_FIELD2_UV_REGS,
+	HAS_HI_CURSOR_REGS,
 };
 
 enum tegra_dc_feature_option {
@@ -161,6 +174,8 @@ enum tegra_dc_feature_option {
 	TEGRA_DC_FEATURE_INVERT_TYPE,
 	TEGRA_DC_FEATURE_PREFERRED_FORMATS,
 	TEGRA_DC_FEATURE_FIELD_TYPE,
+	TEGRA_DC_FEATURE_HI_REGS,
+	TEGRA_DC_FEATURE_CURSOR_HI_REGS,
 };
 
 struct tegra_dc_feature_entry {
@@ -179,6 +194,8 @@ int tegra_dc_feature_has_tiling(struct tegra_dc *dc, int win_idx);
 int tegra_dc_feature_has_blocklinear(struct tegra_dc *dc, int win_idx);
 int tegra_dc_feature_has_interlace(struct tegra_dc *dc, int win_idx);
 int tegra_dc_feature_has_filter(struct tegra_dc *dc, int win_idx, int op);
+int tegra_dc_feature_has_hi_regs(struct tegra_dc *dc, int win_idx, int op);
+int tegra_dc_feature_has_cursor_hi_regs(struct tegra_dc *dc);
 int tegra_dc_feature_is_gen2_blender(struct tegra_dc *dc, int win_idx);
 
 long *tegra_dc_parse_feature(struct tegra_dc *dc, int win_idx, int operation);

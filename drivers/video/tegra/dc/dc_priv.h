@@ -315,6 +315,27 @@ static inline void tegra_dc_set_edid(struct tegra_dc *dc,
 void tegra_dc_powergate_locked(struct tegra_dc *dc);
 void tegra_dc_unpowergate_locked(struct tegra_dc *dc);
 
+#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
+static inline u32 tegra_dc_reg_l32(dma_addr_t reg)
+{
+	return reg & 0xffffffff;
+}
+
+static inline u32 tegra_dc_reg_h32(dma_addr_t reg)
+{
+	return reg >> 32;
+}
+#else
+static inline u32 tegra_dc_reg_l32(dma_addr_t v)
+{
+	return v;
+}
+static inline u32 tegra_dc_reg_h32(dma_addr_t v)
+{
+	return 0;
+}
+#endif
+
 extern struct tegra_dc_out_ops tegra_dc_rgb_ops;
 extern struct tegra_dc_out_ops tegra_dc_hdmi_ops;
 extern struct tegra_dc_out_ops tegra_dc_dsi_ops;

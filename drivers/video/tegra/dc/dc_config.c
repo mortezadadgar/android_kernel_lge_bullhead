@@ -87,6 +87,9 @@ struct tegra_dc_feature t114_feature_table_b = {
 };
 
 static struct tegra_dc_feature_entry t124_feature_entries_a[] = {
+	/* Cursor is not a window feature */
+	{ UINT_MAX, TEGRA_DC_FEATURE_CURSOR_HI_REGS, {1,} },
+
 	{ 0, TEGRA_DC_FEATURE_FORMATS,
 			{ TEGRA_WIN_FMT_BASE, TEGRA_WIN_FMT_T124_HIGH } },
 	{ 0, TEGRA_DC_FEATURE_BLEND_TYPE, {2,} },
@@ -96,6 +99,7 @@ static struct tegra_dc_feature_entry t124_feature_entries_a[] = {
 	{ 0, TEGRA_DC_FEATURE_LAYOUT_TYPE, {1, 1, 1,} },
 	{ 0, TEGRA_DC_FEATURE_INVERT_TYPE, {1, 1, 0,} },
 	{ 0, TEGRA_DC_FEATURE_FIELD_TYPE, {1,} },
+	{ 0, TEGRA_DC_FEATURE_HI_REGS, {1, 1, 1, 1} },
 
 	{ 1, TEGRA_DC_FEATURE_FORMATS,
 			{ TEGRA_WIN_FMT_BASE, TEGRA_WIN_FMT_T124_HIGH } },
@@ -106,6 +110,7 @@ static struct tegra_dc_feature_entry t124_feature_entries_a[] = {
 	{ 1, TEGRA_DC_FEATURE_LAYOUT_TYPE, {1, 1, 1,} },
 	{ 1, TEGRA_DC_FEATURE_INVERT_TYPE, {1, 1, 0,} },
 	{ 1, TEGRA_DC_FEATURE_FIELD_TYPE, {1,} },
+	{ 1, TEGRA_DC_FEATURE_HI_REGS, {1, 1, 1, 1} },
 
 	{ 2, TEGRA_DC_FEATURE_FORMATS,
 			{ TEGRA_WIN_FMT_BASE, TEGRA_WIN_FMT_T124_HIGH } },
@@ -116,6 +121,7 @@ static struct tegra_dc_feature_entry t124_feature_entries_a[] = {
 	{ 2, TEGRA_DC_FEATURE_LAYOUT_TYPE, {1, 1, 1,} },
 	{ 2, TEGRA_DC_FEATURE_INVERT_TYPE, {1, 1, 0,} },
 	{ 2, TEGRA_DC_FEATURE_FIELD_TYPE, {1,} },
+	{ 2, TEGRA_DC_FEATURE_HI_REGS, {1, 1, 1, 1} },
 
 	{ 3, TEGRA_DC_FEATURE_FORMATS, {TEGRA_WIN_FMT_SIMPLE,} },
 	{ 3, TEGRA_DC_FEATURE_BLEND_TYPE, {2,} },
@@ -125,9 +131,13 @@ static struct tegra_dc_feature_entry t124_feature_entries_a[] = {
 	{ 3, TEGRA_DC_FEATURE_LAYOUT_TYPE, {0, 0,} },
 	{ 3, TEGRA_DC_FEATURE_INVERT_TYPE, {0, 0, 0,} },
 	{ 3, TEGRA_DC_FEATURE_FIELD_TYPE, {0,} },
+	{ 3, TEGRA_DC_FEATURE_HI_REGS, {1, 0, 0, 0} },
 };
 
 static struct tegra_dc_feature_entry t124_feature_entries_b[] = {
+	/* Cursor is not a window feature */
+	{ UINT_MAX, TEGRA_DC_FEATURE_CURSOR_HI_REGS, {1,} },
+
 	{ 0, TEGRA_DC_FEATURE_FORMATS,
 			{ TEGRA_WIN_FMT_BASE, TEGRA_WIN_FMT_T124_HIGH } },
 	{ 0, TEGRA_DC_FEATURE_BLEND_TYPE, {2,} },
@@ -137,6 +147,7 @@ static struct tegra_dc_feature_entry t124_feature_entries_b[] = {
 	{ 0, TEGRA_DC_FEATURE_LAYOUT_TYPE, {1, 1, 1,} },
 	{ 0, TEGRA_DC_FEATURE_INVERT_TYPE, {1, 1, 0,} },
 	{ 0, TEGRA_DC_FEATURE_FIELD_TYPE, {1,} },
+	{ 0, TEGRA_DC_FEATURE_HI_REGS, {1, 1, 1, 1} },
 
 	{ 1, TEGRA_DC_FEATURE_FORMATS,
 			{ TEGRA_WIN_FMT_BASE, TEGRA_WIN_FMT_T124_HIGH } },
@@ -147,6 +158,7 @@ static struct tegra_dc_feature_entry t124_feature_entries_b[] = {
 	{ 1, TEGRA_DC_FEATURE_LAYOUT_TYPE, {1, 1, 1,} },
 	{ 1, TEGRA_DC_FEATURE_INVERT_TYPE, {1, 1, 0,} },
 	{ 1, TEGRA_DC_FEATURE_FIELD_TYPE, {1,} },
+	{ 1, TEGRA_DC_FEATURE_HI_REGS, {1, 1, 1, 1} },
 
 	{ 2, TEGRA_DC_FEATURE_FORMATS,
 			{ TEGRA_WIN_FMT_BASE, TEGRA_WIN_FMT_T124_HIGH } },
@@ -157,6 +169,7 @@ static struct tegra_dc_feature_entry t124_feature_entries_b[] = {
 	{ 2, TEGRA_DC_FEATURE_LAYOUT_TYPE, {1, 1, 1,} },
 	{ 2, TEGRA_DC_FEATURE_INVERT_TYPE, {1, 1, 0,} },
 	{ 2, TEGRA_DC_FEATURE_FIELD_TYPE, {1,} },
+	{ 2, TEGRA_DC_FEATURE_HI_REGS, {1, 1, 1, 1} },
 };
 
 struct tegra_dc_feature t124_feature_table_a = {
@@ -220,6 +233,14 @@ long *tegra_dc_parse_feature(struct tegra_dc *dc, int win_idx, int operation)
 	case HAS_INTERLACE:
 		option = TEGRA_DC_FEATURE_FIELD_TYPE;
 		break;
+	case HAS_HI_REGS:
+	case HAS_HI_UV_REGS:
+	case HAS_HI_FIELD2_REGS:
+	case HAS_HI_FIELD2_UV_REGS:
+		option = TEGRA_DC_FEATURE_HI_REGS;
+		break;
+	case HAS_HI_CURSOR_REGS:
+		option = TEGRA_DC_FEATURE_CURSOR_HI_REGS;
 	default:
 		return NULL;
 	}
@@ -287,6 +308,40 @@ int tegra_dc_feature_has_filter(struct tegra_dc *dc, int win_idx, int op)
 		return addr[V_FILTER];
 	else
 		return addr[H_FILTER];
+}
+
+int tegra_dc_feature_has_hi_regs(struct tegra_dc *dc, int win_idx, int op)
+{
+	long *addr = tegra_dc_parse_feature(dc, win_idx, op);
+
+	if (WARN_ONCE(!addr, "window does not exist"))
+		return 0;
+
+	switch (op) {
+	case HAS_HI_REGS:
+		return addr[START_ADDR_HI];
+	case HAS_HI_UV_REGS:
+		return addr[START_ADDR_HI_UV];
+	case HAS_HI_FIELD2_REGS:
+		return addr[START_ADDR_FIELD2_HI];
+	case HAS_HI_FIELD2_UV_REGS:
+		return addr[START_ADDR_FIELD2_HI_UV];
+	default:
+		WARN_ONCE(1, "invalid op: %d\n", op);
+	}
+
+	return 0;
+}
+
+int tegra_dc_feature_has_cursor_hi_regs(struct tegra_dc *dc)
+{
+	/* Cursor is not a window feature */
+	long *addr = tegra_dc_parse_feature(dc, UINT_MAX, HAS_HI_CURSOR_REGS);
+
+	if (WARN_ONCE(!addr, "window does not exist"))
+		return 0;
+
+	return addr[CURSOR_HI_REGS];
 }
 
 int tegra_dc_feature_is_gen2_blender(struct tegra_dc *dc, int win_idx)

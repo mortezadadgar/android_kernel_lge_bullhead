@@ -22,6 +22,7 @@
 /* ugh */
 #include "../dc_priv.h"
 #include "../dc_reg.h"
+#include "../dc_config.h"
 
 int tegra_dc_ext_get_cursor(struct tegra_dc_ext_user *user)
 {
@@ -83,19 +84,14 @@ static unsigned int set_cursor_start_addr(struct tegra_dc *dc,
 	clip_win = CURSOR_CLIP_GET_WINDOW(tegra_dc_readl(dc,
 					  DC_DISP_CURSOR_START_ADDR));
 	val |= clip_win;
-#if defined(CONFIG_TEGRA_DC_64BIT_SUPPORT)
-	/* TO DO: check calculation with HW */
-	tegra_dc_writel(dc,
-		(u32)(CURSOR_START_ADDR_HI(phys_addr)),
-		DC_DISP_CURSOR_START_ADDR_HI);
-	tegra_dc_writel(dc, (u32)(val |
-			CURSOR_START_ADDR_LOW(phys_addr)),
-		DC_DISP_CURSOR_START_ADDR);
-#else
-	tegra_dc_writel(dc,
-		val | CURSOR_START_ADDR(((unsigned long) phys_addr)),
-		DC_DISP_CURSOR_START_ADDR);
-#endif
+
+	tegra_dc_writel(dc, val | CURSOR_START_ADDR_LOW(phys_addr),
+			DC_DISP_CURSOR_START_ADDR);
+	if (tegra_dc_feature_has_cursor_hi_regs(dc)) {
+		/* TO DO: check calculation with HW */
+		tegra_dc_writel(dc, CURSOR_START_ADDR_HI(phys_addr),
+			DC_DISP_CURSOR_START_ADDR_HI);
+	}
 
 	if (is_tegra124()) {
 		tegra_dc_writel(dc, CURSOR_UPDATE, DC_CMD_STATE_CONTROL);

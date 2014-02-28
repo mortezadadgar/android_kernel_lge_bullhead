@@ -554,25 +554,44 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 			tegra_dc_update_scaling(dc, win, bpp, bpp_bw,
 								scan_column);
 
-		tegra_dc_writel(dc, win->phys_addr, DC_WINBUF_START_ADDR);
+		tegra_dc_writel(dc, tegra_dc_reg_l32(win->phys_addr),
+				DC_WINBUF_START_ADDR);
+		if (tegra_dc_feature_has_hi_regs(dc, win->idx, HAS_HI_REGS))
+			tegra_dc_writel(dc, tegra_dc_reg_h32(win->phys_addr),
+				DC_WINBUF_START_ADDR_HI);
 
 		if (!yuvp && !yuvsp) {
 			tegra_dc_writel(dc, win->stride, DC_WIN_LINE_STRIDE);
 		} else if (yuvp) {
-			tegra_dc_writel(dc,
-				win->phys_addr_u,
-				DC_WINBUF_START_ADDR_U);
-			tegra_dc_writel(dc,
-				win->phys_addr_v,
-				DC_WINBUF_START_ADDR_V);
+			tegra_dc_writel(dc, tegra_dc_reg_l32(win->phys_addr_u),
+					DC_WINBUF_START_ADDR_U);
+			tegra_dc_writel(dc, tegra_dc_reg_l32(win->phys_addr_v),
+					DC_WINBUF_START_ADDR_V);
+
+			if (tegra_dc_feature_has_hi_regs(dc, win->idx,
+					HAS_HI_UV_REGS)) {
+				tegra_dc_writel(dc,
+					tegra_dc_reg_h32(win->phys_addr_u),
+					DC_WINBUF_START_ADDR_HI_U);
+
+				tegra_dc_writel(dc,
+					tegra_dc_reg_h32(win->phys_addr_v),
+					DC_WINBUF_START_ADDR_HI_V);
+			}
+
 			tegra_dc_writel(dc,
 				LINE_STRIDE(win->stride) |
 				UV_LINE_STRIDE(win->stride_uv),
 				DC_WIN_LINE_STRIDE);
 		} else {
-			tegra_dc_writel(dc,
-					win->phys_addr_u,
+			tegra_dc_writel(dc, tegra_dc_reg_l32(win->phys_addr_u),
 					DC_WINBUF_START_ADDR_U);
+			if (tegra_dc_feature_has_hi_regs(dc, win->idx,
+					HAS_HI_UV_REGS))
+				tegra_dc_writel(dc,
+					tegra_dc_reg_h32(win->phys_addr_u),
+					DC_WINBUF_START_ADDR_HI_U);
+
 			tegra_dc_writel(dc,
 					LINE_STRIDE(win->stride) |
 					UV_LINE_STRIDE(win->stride_uv),
@@ -603,23 +622,41 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 	}
 
 	if (tegra_dc_feature_has_interlace(dc, win->idx) &&
-		(dc->mode.vmode == FB_VMODE_INTERLACED)) {
-			tegra_dc_writel(dc,
-				win->phys_addr2,
-				DC_WINBUF_START_ADDR_FIELD2);
+			(dc->mode.vmode == FB_VMODE_INTERLACED)) {
+		tegra_dc_writel(dc, tegra_dc_reg_l32(win->phys_addr2),
+					DC_WINBUF_START_ADDR_FIELD2);
+
+		if (tegra_dc_feature_has_hi_regs(dc, win->idx,
+				HAS_HI_FIELD2_REGS))
+			tegra_dc_writel(dc, tegra_dc_reg_h32(win->phys_addr2),
+					DC_WINBUF_START_ADDR_FIELD2_HI);
+
 		if (yuvp) {
 			tegra_dc_writel(dc,
-				win->phys_addr_u2,
-				DC_WINBUF_START_ADDR_FIELD2_U);
+					tegra_dc_reg_l32(win->phys_addr_u2),
+					DC_WINBUF_START_ADDR_FIELD2_U);
+			tegra_dc_writel(dc,
+					tegra_dc_reg_l32(win->phys_addr_v2),
+					DC_WINBUF_START_ADDR_FIELD2_V);
 
-			tegra_dc_writel(dc,
-				win->phys_addr_v2,
-				DC_WINBUF_START_ADDR_FIELD2_V);
+			if (tegra_dc_feature_has_hi_regs(dc, win->idx,
+					HAS_HI_FIELD2_UV_REGS)) {
+				tegra_dc_writel(dc,
+					tegra_dc_reg_h32(win->phys_addr_u2),
+					DC_WINBUF_START_ADDR_FIELD2_HI_U);
+				tegra_dc_writel(dc,
+					tegra_dc_reg_h32(win->phys_addr_v2),
+					DC_WINBUF_START_ADDR_FIELD2_HI_V);
+			}
 		} else if (yuvsp) {
-			tegra_dc_writel(dc,
-				win->phys_addr_u2,
-				DC_WINBUF_START_ADDR_FIELD2_U);
-		} else {
+			tegra_dc_writel(dc, tegra_dc_reg_l32(win->phys_addr_u2),
+					DC_WINBUF_START_ADDR_FIELD2_U);
+
+			if (tegra_dc_feature_has_hi_regs(dc, win->idx,
+					HAS_HI_FIELD2_UV_REGS))
+				tegra_dc_writel(dc,
+					tegra_dc_reg_h32(win->phys_addr_u2),
+					DC_WINBUF_START_ADDR_FIELD2_HI_U);
 		}
 		tegra_dc_writel(dc, dfixed_trunc(h_offset),
 			DC_WINBUF_ADDR_H_OFFSET_FIELD2);
