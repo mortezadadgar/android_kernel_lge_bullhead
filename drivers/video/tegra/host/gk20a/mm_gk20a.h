@@ -136,9 +136,9 @@ struct gr_ctx_desc {
 };
 
 struct compbit_store_desc {
-	struct mem_desc mem;
-	u64 base_pa;
-	u32 alignment;
+	struct pages **pages;
+	size_t size;
+	dma_addr_t base_iova;
 };
 
 struct page_table_gk20a {
