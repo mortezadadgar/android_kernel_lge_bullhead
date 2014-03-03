@@ -157,6 +157,15 @@
 #endif
 #define ARCH_PGD_MASK		((1 << ARCH_PGD_SHIFT) - 1)
 
+/* Max physical memory supported */
+#ifndef MAX_PHYSMEM_BITS
+#ifdef CONFIG_ARM_LPAE
+#define MAX_PHYSMEM_BITS	40
+#else /* !CONFIG_ARM_LPAE */
+#define MAX_PHYSMEM_BITS	32
+#endif
+#endif
+
 #ifndef __ASSEMBLY__
 
 /*
