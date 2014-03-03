@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -505,16 +505,16 @@
 #define DC_WIN_COLOR_DEPTH			0x703
 
 #define DC_WIN_POSITION				0x704
-#define  H_POSITION(x)		(((x) & 0xfff) << 0)
-#define  V_POSITION(x)		(((x) & 0xfff) << 16)
+#define  H_POSITION(x)		(((x) & 0x1fff) << 0)
+#define  V_POSITION(x)		(((x) & 0x1fff) << 16)
 
 #define DC_WIN_SIZE				0x705
-#define  H_SIZE(x)		(((x) & 0xfff) << 0)
-#define  V_SIZE(x)		(((x) & 0xfff) << 16)
+#define  H_SIZE(x)		(((x) & 0x1fff) << 0)
+#define  V_SIZE(x)		(((x) & 0x1fff) << 16)
 
 #define DC_WIN_PRESCALED_SIZE			0x706
-#define  H_PRESCALED_SIZE(x)	(((x) & 0x3fff) << 0)
-#define  V_PRESCALED_SIZE(x)	(((x) & 0xfff) << 16)
+#define  H_PRESCALED_SIZE(x)	(((x) & 0x7fff) << 0)
+#define  V_PRESCALED_SIZE(x)	(((x) & 0x1fff) << 16)
 
 #define DC_WIN_H_INITIAL_DDA			0x707
 #define DC_WIN_V_INITIAL_DDA			0x708
