@@ -40,6 +40,8 @@
 atomic_t sd_brightness = ATOMIC_INIT(255);
 EXPORT_SYMBOL(sd_brightness);
 
+static int power_off_time;
+
 struct platform_device * __init venice_host1x_init(void)
 {
 	struct device_node *node = NULL;
@@ -123,8 +125,7 @@ static int venice_edp_disable(void)
 	if (avdd_lcd_3v3)
 		regulator_disable(avdd_lcd_3v3);
 
-	if (of_machine_is_compatible("nvidia,norrin"))
-		msleep(500); /* VCCS powerdown time */
+	msleep(power_off_time);
 
 	return 0;
 }
@@ -457,6 +458,12 @@ static int venice_panel_mode_init(struct platform_device *dcs)
 		return ret;
 	}
 	venice_disp1_out.height = val;
+
+	ret = of_property_read_u32(dev->of_node, "power-off-time", &val);
+	if (ret < 0)
+		power_off_time = 0;
+	else
+		power_off_time = val;
 
 	/* Optional mode definitions follows */
 	ret = of_property_read_u32(dev->of_node, "pclk", &val);
