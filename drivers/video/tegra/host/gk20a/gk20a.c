@@ -448,12 +448,6 @@ int nvhost_init_gk20a_support(struct platform_device *dev)
 
 	mutex_init(&g->dbg_sessions_lock);
 
-	/* nvhost_as alloc_share can be called before gk20a is powered on.
-	   It requires mm sw states configured so init mm sw early here. */
-	err = gk20a_init_mm_setup_sw(g);
-	if (err)
-		goto fail;
-
 	err = gk20a_init_clk_gpcpll(g);
 	if (err)
 		goto fail;
@@ -470,11 +464,22 @@ int nvhost_init_gk20a_support(struct platform_device *dev)
 
 int nvhost_gk20a_init(struct platform_device *dev)
 {
+	struct gk20a *g = get_gk20a(dev);
+	int err;
+
 	nvhost_dbg_fn("");
 
 #ifndef CONFIG_PM_RUNTIME
 	nvhost_gk20a_finalize_poweron(dev);
 #endif
+
+	/*
+	 * nvhost_as alloc_share can be called before gk20a is powered on.
+	 * It requires mm sw states configured so init mm sw early here.
+	 */
+	err = gk20a_init_mm_setup_sw(g);
+	if (err)
+		return err;
 
 	if (IS_ENABLED(CONFIG_TEGRA_GK20A_DEVFREQ))
 		nvhost_gk20a_scale_hw_init(dev);
