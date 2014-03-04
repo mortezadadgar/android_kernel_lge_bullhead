@@ -962,7 +962,6 @@
 		no-1-8-v;
 		non-removable;
 		status = "okay";
-		nvidia,no-runtime-suspend;
 		nvidia,host-off-card-on;
 		keep-power-in-suspend;
 
