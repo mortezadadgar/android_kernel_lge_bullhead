@@ -236,6 +236,7 @@ static struct snd_soc_jack_gpio mic_jack_gpio = {
 	.report			= SND_JACK_MICROPHONE,
 	.debounce_time		= 200,
 	.gpio			= CONFIG_SND_BYT_RAMBI_MICDET_GPIO,
+	.invert			= 1,
 };
 
 static int byt_init(struct snd_soc_pcm_runtime *runtime)
