@@ -26,6 +26,7 @@
 			depth = <18>;
 			width = <256>;
 			height = <144>;
+			power-off-time = <500>;
 		};
 	};
 
