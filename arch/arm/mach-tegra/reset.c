@@ -73,11 +73,7 @@ static void tegra_cpu_reset_handler_enable(void)
 #ifdef CONFIG_PM_SLEEP
 void tegra_cpu_reset_handler_save(void)
 {
-	u32 i;
 	WARN_ON(!is_enabled);
-	for (i = 0; i < TEGRA_RESET_DATA_SIZE; i++)
-		__tegra_cpu_reset_handler_data[i] =
-			tegra_cpu_reset_handler_data_iram_ptr[i];
 	is_enabled = false;
 }
 
