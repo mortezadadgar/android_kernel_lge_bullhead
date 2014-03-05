@@ -2408,10 +2408,119 @@ static void tegra_dc_free_members(struct tegra_dc *dc)
 	kfree(dc->win_syncpt);
 }
 
+static int tegra_dc_create_fb(struct notifier_block *nb,
+				unsigned long event, void *data)
+{
+	struct device *dev = data;
+	struct platform_device *pdc0 = NULL;
+	struct platform_device *pdc1 = NULL;
+	struct tegra_dc *dc = NULL;
+	void *fb_cpuva = NULL;
+	dma_addr_t fb_iova;
+	size_t fb_size;
+	struct tegra_dc_mode *mode;
+	int bpp;
+	unsigned stride;
+
+	if (event != BUS_NOTIFY_BOUND_DRIVER)
+		return NOTIFY_DONE;
+
+	pdc0 = to_platform_device(bus_find_device_by_name(
+				&platform_bus_type, NULL, "tegradc.0"));
+	pdc1 = to_platform_device(bus_find_device_by_name(
+				&platform_bus_type, NULL, "tegradc.1"));
+
+	if (dev == &pdc0->dev)
+		dc = platform_get_drvdata(pdc0);
+	else if (dev == &pdc1->dev)
+		dc = platform_get_drvdata(pdc1);
+	else
+		return NOTIFY_DONE;
+
+	if (dc->fb)
+		return NOTIFY_DONE;
+
+	mode = tegra_dc_get_override_mode(dc);
+	if (mode) {
+		dc->pdata->fb->xres = mode->h_active;
+		dc->pdata->fb->yres = mode->v_active;
+	} else {
+		mode = &dc->mode;
+	}
+
+	if (dc->enabled && dc->pdata->fb->bits_per_pixel == -1) {
+		unsigned long fmt;
+		tegra_dc_writel(dc, WINDOW_A_SELECT << dc->pdata->fb->win,
+				DC_CMD_DISPLAY_WINDOW_HEADER);
+
+		fmt = tegra_dc_readl(dc, DC_WIN_COLOR_DEPTH);
+		dc->pdata->fb->bits_per_pixel = tegra_dc_fmt_bpp(fmt);
+	}
+	bpp = DIV_ROUND_UP(dc->pdata->fb->bits_per_pixel, 8);
+
+	if (dev == &pdc0->dev) {
+		stride = round_up(mode->h_active * bpp,
+					TEGRA_LINEAR_PITCH_ALIGNMENT);
+		fb_size = round_up(stride * mode->v_active * 2, PAGE_SIZE);
+	} else {
+		/* HDMI doesn't have preset modes */
+		stride = round_up(dc->pdata->fb->xres * bpp,
+					TEGRA_LINEAR_PITCH_ALIGNMENT);
+		fb_size = round_up(stride * dc->pdata->fb->yres * 2, PAGE_SIZE);
+	}
+
+	fb_cpuva = dma_alloc_writecombine(dev, fb_size, &fb_iova, GFP_KERNEL);
+	if (!fb_cpuva) {
+		dev_err(dev, "Allocate framebuffer failed.\n");
+		goto failed;
+	}
+	dev_info(dev,
+		"Framebuffer created: cpuva: 0x%p@%d, iova: 0x%llx@%d\n",
+		fb_cpuva, fb_size, (u64)fb_iova, fb_size);
+
+	if (dev == &pdc0->dev)
+		dc->pdata->fbmem.name = "fbmem.0";
+	else
+		dc->pdata->fbmem.name = "fbmem.1";
+	dc->pdata->fbmem.start = fb_iova;
+	dc->pdata->fbmem.end = fb_iova + fb_size - 1;
+	dc->pdata->fbmem.flags = IORESOURCE_MEM;
+
+	/* If we didn't set the fb's xres and yres, get it from DC's
+	   mode which is set as part of edid parsing. */
+	if (!dc->pdata->fb->xres && dc->mode.h_active)
+		dc->pdata->fb->xres = dc->mode.h_active;
+	if (!dc->pdata->fb->yres && dc->mode.v_active)
+		dc->pdata->fb->yres = dc->mode.v_active;
+
+	tegra_dc_io_start(dc);
+	dc->fb = tegra_fb_register(dc->ndev, dc, dc->pdata->fb,
+					&dc->pdata->fbmem, fb_cpuva);
+	tegra_dc_io_end(dc);
+	if (IS_ERR_OR_NULL(dc->fb)) {
+		dc->fb = NULL;
+		dev_err(dev, "failed to register fb\n");
+		goto freefb;
+	}
+
+	if (dc->out && dc->out->n_modes)
+		tegra_dc_add_modes(dc);
+
+	return NOTIFY_OK;
+
+freefb:
+	dma_free_writecombine(dev, fb_size, fb_cpuva, fb_iova);
+failed:
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block tegra_dc_bus_notifier = {
+	.notifier_call = tegra_dc_create_fb,
+};
+
 static int tegra_dc_probe(struct platform_device *ndev)
 {
 	struct tegra_dc *dc;
-	struct tegra_dc_mode *mode;
 	struct clk *clk;
 	struct clk *emc_clk;
 	struct resource	*res;
@@ -2609,46 +2718,6 @@ static int tegra_dc_probe(struct platform_device *ndev)
 
 	tegra_dc_create_debugfs(dc);
 
-	dev_info(&ndev->dev, "probed\n");
-
-	if (dc->pdata->fb) {
-		if (dc->enabled && dc->pdata->fb->bits_per_pixel == -1) {
-			unsigned long fmt;
-			tegra_dc_writel(dc,
-					WINDOW_A_SELECT << dc->pdata->fb->win,
-					DC_CMD_DISPLAY_WINDOW_HEADER);
-
-			fmt = tegra_dc_readl(dc, DC_WIN_COLOR_DEPTH);
-			dc->pdata->fb->bits_per_pixel =
-				tegra_dc_fmt_bpp(fmt);
-		}
-
-		mode = tegra_dc_get_override_mode(dc);
-		if (mode) {
-			dc->pdata->fb->xres = mode->h_active;
-			dc->pdata->fb->yres = mode->v_active;
-		}
-		/* If we didn't set the fb's xres and yres, get it from DC's
-		   mode which is set as part of edid parsing. */
-		if (!dc->pdata->fb->xres && dc->mode.h_active)
-			dc->pdata->fb->xres = dc->mode.h_active;
-		if (!dc->pdata->fb->yres && dc->mode.v_active)
-			dc->pdata->fb->yres = dc->mode.v_active;
-
-		tegra_dc_io_start(dc);
-		dc->fb = tegra_fb_register(ndev, dc, dc->pdata->fb,
-						&pdata->fbmem);
-		tegra_dc_io_end(dc);
-		if (IS_ERR_OR_NULL(dc->fb)) {
-			dc->fb = NULL;
-			dev_err(&ndev->dev, "failed to register fb\n");
-			goto err_remove_debugfs;
-		}
-	}
-
-	if (dc->out && dc->out->n_modes)
-		tegra_dc_add_modes(dc);
-
 	if (dc->out && dc->out->hotplug_init)
 		dc->out->hotplug_init(&ndev->dev);
 
@@ -2662,13 +2731,21 @@ static int tegra_dc_probe(struct platform_device *ndev)
 	if (!tegra_dc_get_connected(dc) && !dc->out_ops->detect)
 		tegra_dc_powergate_locked(dc);
 
+	if (strcmp(dev_name(&ndev->dev), "tegradc.0") == 0) {
+		/*
+		 * Register a notifier to register framebuffer.
+		 * We use IOMMU to create the framebuffer so we need to
+		 * make sure the IOMMU has bound with our driver.
+		 */
+		bus_register_notifier(&platform_bus_type,
+					&tegra_dc_bus_notifier);
+	}
+
 	tegra_dc_create_sysfs(&dc->ndev->dev);
 
+	dev_info(&ndev->dev, "probed\n");
 	return 0;
 
-err_remove_debugfs:
-	tegra_dc_remove_debugfs(dc);
-	free_irq(irq, dc);
 err_disable_dc:
 	if (dc->ext) {
 		tegra_dc_ext_disable(dc->ext);
@@ -2689,6 +2766,8 @@ err_free:
 static int tegra_dc_remove(struct platform_device *ndev)
 {
 	struct tegra_dc *dc = platform_get_drvdata(ndev);
+
+	bus_unregister_notifier(&platform_bus_type, &tegra_dc_bus_notifier);
 
 	tegra_dc_remove_sysfs(&dc->ndev->dev);
 	tegra_dc_remove_debugfs(dc);

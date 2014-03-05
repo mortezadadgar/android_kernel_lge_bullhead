@@ -40,9 +40,6 @@
 
 #include "dc/dc_priv.h"
 
-/* Pad pitch to 256-byte boundary. */
-#define TEGRA_LINEAR_PITCH_ALIGNMENT 256
-
 struct tegra_fb_info {
 	struct tegra_dc_win	*win;
 	struct platform_device	*ndev;
@@ -489,6 +486,14 @@ int tegra_fb_set_mode(struct tegra_dc *dc, int fps)
 	return -EIO;
 }
 
+static int tegra_fb_mmap(struct fb_info *info, struct vm_area_struct *vma)
+{
+	struct tegra_fb_info *fb = info->par;
+
+	return dma_mmap_writecombine(&fb->ndev->dev, vma, info->screen_base,
+				 fb->phys_start, info->screen_size);
+}
+
 static struct fb_ops tegra_fb_ops = {
 	.owner = THIS_MODULE,
 	.fb_check_var = tegra_fb_check_var,
@@ -500,6 +505,7 @@ static struct fb_ops tegra_fb_ops = {
 	.fb_copyarea = tegra_fb_copyarea,
 	.fb_imageblit = tegra_fb_imageblit,
 	.fb_ioctl = tegra_fb_ioctl,
+	.fb_mmap = tegra_fb_mmap,
 };
 
 /* Enabling the pan_display by resetting the cache of offset */
@@ -567,13 +573,13 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 					struct tegra_dc *dc,
 					struct tegra_fb_data *fb_data,
-					struct resource *fb_mem)
+					struct resource *fb_mem,
+					void *fb_base)
 {
 	struct tegra_dc_win *win;
 	struct fb_info *info;
 	struct tegra_fb_info *tegra_fb;
-	void __iomem *fb_base = NULL;
-	phys_addr_t fb_size = 0;
+	size_t fb_size = 0;
 	int ret = 0;
 	int mode_idx;
 	unsigned stride;
@@ -602,12 +608,6 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 	if (fb_mem) {
 		fb_size = resource_size(fb_mem);
 		tegra_fb->phys_start = fb_mem->start;
-		fb_base = ioremap_nocache(tegra_fb->phys_start, fb_size);
-		if (!fb_base) {
-			dev_err(&ndev->dev, "fb can't be mapped\n");
-			ret = -EBUSY;
-			goto err_free;
-		}
 		tegra_fb->valid = true;
 	}
 
@@ -670,12 +670,10 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 	if (register_framebuffer(info)) {
 		dev_err(&ndev->dev, "failed to register framebuffer\n");
 		ret = -ENODEV;
-		goto err_iounmap_fb;
+		goto err_free;
 	}
 
 	tegra_fb->info = info;
-
-	dev_info(&ndev->dev, "probed\n");
 
 	if (fb_data->flags & TEGRA_FB_FLIP_ON_PROBE) {
 		tegra_dc_update_windows(&tegra_fb->win, 1);
@@ -696,9 +694,6 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 
 	return tegra_fb;
 
-err_iounmap_fb:
-	if (fb_base)
-		iounmap(fb_base);
 err_free:
 	framebuffer_release(info);
 err:
@@ -711,6 +706,9 @@ void tegra_fb_unregister(struct tegra_fb_info *fb_info)
 
 	unregister_framebuffer(info);
 
-	iounmap(info->screen_base);
+	dma_free_writecombine(&fb_info->ndev->dev,
+			resource_size(fb_info->fb_mem), info->screen_base,
+			fb_info->phys_start);
+
 	framebuffer_release(info);
 }

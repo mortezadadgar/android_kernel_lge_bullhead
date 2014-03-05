@@ -61,13 +61,6 @@
 #include "reset.h"
 #include "sleep.h"
 
-phys_addr_t tegra_fb_start;
-size_t tegra_fb_size;
-phys_addr_t tegra_fb2_start;
-size_t tegra_fb2_size;
-phys_addr_t tegra_carveout_start;
-size_t tegra_carveout_size;
-
 /*
  * Storage for debug-macro.S's state.
  *
@@ -133,15 +126,15 @@ static struct nvmap_platform_carveout venice_carveouts[] = {
 	[1] = {
 		.name		= "generic-0",
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
-		.base		= 0, /* Filled in by venice_panel_init() */
-		.size		= 0, /* Filled in by venice_panel_init() */
+		.base		= 0, /* Filled later, if carveout is needed */
+		.size		= 0, /* Filled later, if carveout is needed */
 		.buddy_size	= SZ_32K,
 	},
 	[2] = {
 		.name		= "vpr",
 		.usage_mask	= NVMAP_HEAP_CARVEOUT_VPR,
-		.base		= 0, /* Filled in by venice_panel_init() */
-		.size		= 0, /* Filled in by venice_panel_init() */
+		.base		= 0, /* Filled later */
+		.size		= 0, /* Filled later */
 		.buddy_size	= SZ_32K,
 	},
 };
@@ -165,8 +158,6 @@ static void __init nyan_init(void)
 #ifdef CONFIG_TEGRA_NVMAP
 	int err;
 
-	venice_carveouts[1].base = tegra_carveout_start;
-	venice_carveouts[1].size = tegra_carveout_size;
 	err = platform_device_register(&venice_nvmap_device);
 	if (err)
 		pr_err("nvmap device registration failed: %d\n", err);
@@ -294,70 +285,6 @@ static void __init tegra_dt_init_late(void)
 	}
 }
 
-#define MAX_FB_ADDR	(0x1ULL << 32)
-
-static void __init tegra_reserve(unsigned long carveout_size,
-				 unsigned long fb_size,
-				 unsigned long fb2_size)
-{
-	phys_addr_t carveout_end = 0, fb_end = 0, fb2_end = 0;
-
-	if (carveout_size) {
-		tegra_carveout_start = memblock_end_of_DRAM() - carveout_size;
-		if (memblock_remove(tegra_carveout_start, carveout_size)) {
-			pr_err("Failed to remove carveout %08lx@%pa from memory map\n",
-				carveout_size, &tegra_carveout_start);
-			tegra_carveout_start = 0;
-			tegra_carveout_size = 0;
-		} else
-			tegra_carveout_size = carveout_size;
-		carveout_end = tegra_carveout_start + carveout_size;
-	}
-
-	if (fb2_size) {
-		tegra_fb2_start = memblock_end_of_DRAM() - fb2_size;
-		if (memblock_remove(tegra_fb2_start, fb2_size)) {
-			pr_err("Failed to remove second framebuffer %08lx@%pa from memory map\n",
-				fb2_size, &tegra_fb2_start);
-			tegra_fb2_start = 0;
-			tegra_fb2_size = 0;
-		} else
-			tegra_fb2_size = fb2_size;
-		fb2_end = tegra_fb2_start + fb2_size;
-	}
-
-	if (fb_size) {
-		tegra_fb_start = memblock_end_of_DRAM() - fb_size;
-		if (memblock_remove(tegra_fb_start, fb_size)) {
-			pr_err("Failed to remove framebuffer %08lx@%pa from memory map\n",
-				fb_size, &tegra_fb_start);
-			tegra_fb_start = 0;
-			tegra_fb_size = 0;
-		} else
-			tegra_fb_size = fb_size;
-		fb_end = tegra_fb_start + fb_size;
-	}
-
-	pr_info("Tegra reserved memory:\n"
-		"Framebuffer:	    %pa - %pa\n"
-		"2nd Framebuffer:	%pa - %pa\n"
-		"Carveout:	       %pa - %pa\n",
-		&tegra_fb_start, &fb_end,
-		&tegra_fb2_start, &fb2_end,
-		&tegra_carveout_start, &carveout_end);
-}
-
-static void __init tegra_board_reserve(void)
-{
-#if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
-	/* TODO: Need to find a way to distiguish Venice 2 & Norrin */
-	/* Reserve framebuffer, size: 2560*1700*4*2 */
-	tegra_reserve(0, SZ_32M + SZ_2M, SZ_16M);
-#else
-	tegra_reserve(SZ_128M, SZ_16M + SZ_2M, SZ_4M);
-#endif
-}
-
 static const char * const tegra_dt_board_compat[] = {
 	"nvidia,tegra124",
 	"nvidia,tegra114",
@@ -369,7 +296,6 @@ static const char * const tegra_dt_board_compat[] = {
 DT_MACHINE_START(TEGRA_DT, "NVIDIA Tegra SoC (Flattened Device Tree)")
 	.map_io		= tegra_map_common_io,
 	.smp		= smp_ops(tegra_smp_ops),
-	.reserve	= tegra_board_reserve,
 	.init_early	= tegra_init_early,
 	.init_irq	= tegra_dt_init_irq,
 	.init_time	= tegra_dt_init_time,

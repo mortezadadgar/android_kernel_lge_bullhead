@@ -35,6 +35,8 @@
 
 #include "dc_reg.h"
 
+/* Pad pitch to 256-byte boundary. */
+#define TEGRA_LINEAR_PITCH_ALIGNMENT 256
 
 #define NEED_UPDATE_EMC_ON_EVERY_FRAME (windows_idle_detection_time == 0)
 

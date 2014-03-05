@@ -588,15 +588,5 @@ int __init venice_panel_init(void)
 	if (ret < 0)
 		return ret;
 
-	venice_disp1_pdata.fbmem.name = "fbmem.0";
-	venice_disp1_pdata.fbmem.start = tegra_fb_start;
-	venice_disp1_pdata.fbmem.end = tegra_fb_start + tegra_fb_size - 1;
-	venice_disp1_pdata.fbmem.flags = IORESOURCE_MEM;
-
-	venice_disp2_pdata.fbmem.name = "fbmem.1";
-	venice_disp2_pdata.fbmem.start = tegra_fb2_start;
-	venice_disp2_pdata.fbmem.end = tegra_fb2_start + tegra_fb2_size - 1;
-	venice_disp2_pdata.fbmem.flags = IORESOURCE_MEM;
-
 	return 0;
 }
