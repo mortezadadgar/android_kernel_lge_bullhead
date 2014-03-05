@@ -12,7 +12,7 @@
 #include <linux/atomic.h>
 #include <linux/cpu.h>
 #include <linux/cpufreq.h>
-#include <asm/cputime.h>
+#include <linux/cputime.h>
 #include <linux/hashtable.h>
 #include <linux/module.h>
 #include <linux/of.h>
