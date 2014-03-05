@@ -86,6 +86,7 @@ struct podgov_info_rec {
 
 	ktime_t			last_throughput_hint;
 	ktime_t			last_scale;
+	ktime_t			last_freq_estimate;
 
 	struct delayed_work	idle_timer;
 
@@ -97,6 +98,7 @@ struct podgov_info_rec {
 	unsigned int		p_scaleup_limit;
 	unsigned int		p_scaledown_limit;
 	unsigned int		p_smooth;
+	unsigned int		p_smooth_long;
 	int			p_damp;
 	int			p_load_max;
 	int			p_load_target;
@@ -117,7 +119,8 @@ struct podgov_info_rec {
 	int			*freqlist;
 	int			freq_count;
 
-	unsigned int		idle_avg;
+	unsigned int		idle_avg_short;
+	unsigned int		idle_avg_long;
 	int			freq_avg;
 	unsigned int		hint_avg;
 	int			block;
@@ -441,15 +444,14 @@ static unsigned long scaling_state_check(struct devfreq *df, ktime_t time)
 	max_boost = df->max_freq / 3;
 
 	/* calculate and trace load */
-	load = 1000 - podgov->idle_avg;
+	load = 1000 - podgov->idle_avg_long;
 	trace_podgov_busy(load);
 	damp = podgov->p_damp;
 
-	if ((1000 - podgov->idle) > podgov->p_load_max) {
+	if ((1000 - podgov->idle_avg_short) > podgov->p_load_max) {
 		/* if too busy, scale up max/3, do not damp */
 		boost = max_boost;
 		damp = 10;
-
 	} else {
 		/* boost = bias * freq * (load - target)/target */
 		boost = (load - podgov->p_load_target);
@@ -604,7 +606,7 @@ static int nvhost_scale3d_set_throughput_hint(struct notifier_block *nb,
 
 	curr = podgov->power_manager->previous_freq;
 	idle = podgov->idle;
-	avg_idle = podgov->idle_avg;
+	avg_idle = podgov->idle_avg_short;
 	smooth = podgov->p_smooth;
 
 	/* compute averages usings exponential-moving-average */
@@ -687,6 +689,7 @@ static void nvhost_scale3d_debug_init(struct devfreq *df)
 	CREATE_PODGOV_FILE(scaleup_limit);
 	CREATE_PODGOV_FILE(scaledown_limit);
 	CREATE_PODGOV_FILE(smooth);
+	CREATE_PODGOV_FILE(smooth_long);
 	CREATE_PODGOV_FILE(slowdown_delay);
 #undef CREATE_PODGOV_FILE
 }
@@ -821,6 +824,8 @@ static int nvhost_pod_estimate_freq(struct devfreq *df,
 	int current_event;
 	int stat;
 	ktime_t now;
+	unsigned long time_diff;
+	unsigned int avg_window;
 
 	stat = df->profile->get_dev_status(df->dev.parent, &dev_stat);
 	if (stat < 0)
@@ -840,6 +845,11 @@ static int nvhost_pod_estimate_freq(struct devfreq *df,
 	current_event = DEVICE_IDLE;
 	stat = 0;
 	now = ktime_get();
+
+	/* calculate the time slice since we were last run */
+	time_diff = (unsigned long) ktime_us_delta(now,
+					 podgov->last_freq_estimate) + 1;
+	podgov->last_freq_estimate = now;
 
 	/* Local adjustments (i.e. requests from kernel threads) are
 	 * handled here */
@@ -877,9 +887,22 @@ static int nvhost_pod_estimate_freq(struct devfreq *df,
 	podgov->last_event_type = current_event;
 	podgov->idle = 1000 * (dev_stat.total_time - dev_stat.busy_time);
 	podgov->idle = podgov->idle / dev_stat.total_time;
-	podgov->idle_avg = (podgov->p_smooth * podgov->idle_avg) +
+
+	/* avg_window changes based on how long this sample was compared
+	 * to how long we want to smooth over.  If the time diff is high
+	 * enough then avg_window will go to 0, which will cause the calculated
+	 * average to be the current idle value.  This is desired behavior,
+	 * because if a long time interval has passed the previous averaging
+	 * data is no longer valid. */
+	avg_window = podgov->p_smooth * 1000 / time_diff;
+	podgov->idle_avg_short = (avg_window * podgov->idle_avg_short) +
 		podgov->idle;
-	podgov->idle_avg = podgov->idle_avg / (podgov->p_smooth + 1);
+	podgov->idle_avg_short = podgov->idle_avg_short / (avg_window + 1);
+
+	avg_window = podgov->p_smooth_long * 1000 / time_diff;
+	podgov->idle_avg_long = (avg_window * podgov->idle_avg_long) +
+		podgov->idle;
+	podgov->idle_avg_long = podgov->idle_avg_long / (avg_window + 1);
 
 	/* if throughput hint enabled, and last hint is recent enough, return */
 	if (podgov->p_use_throughput_hint &&
@@ -951,16 +974,18 @@ static int nvhost_pod_init(struct devfreq *df)
 		podgov->p_scaleup_limit = 1100;
 		podgov->p_scaledown_limit = 1300;
 		podgov->p_smooth = 10;
+		podgov->p_smooth_long = 10;
 		podgov->p_damp = 7;
 	} else {
-		podgov->p_load_max = 900;
-		podgov->p_load_target = 500;
+		podgov->p_load_max = 400;
+		podgov->p_load_target = 250;
 		podgov->p_bias = 80;
 		podgov->p_hint_lo_limit = 500;
 		podgov->p_hint_hi_limit = 997;
 		podgov->p_scaleup_limit = 1100;
 		podgov->p_scaledown_limit = 1300;
 		podgov->p_smooth = 10;
+		podgov->p_smooth_long = 40;
 		podgov->p_damp = 7;
 	}
 
@@ -972,6 +997,7 @@ static int nvhost_pod_init(struct devfreq *df)
 	/* Reset clock counters */
 	podgov->last_throughput_hint = now;
 	podgov->last_scale = now;
+	podgov->last_freq_estimate = now;
 
 	podgov->power_manager = df;
 
@@ -1010,7 +1036,8 @@ static int nvhost_pod_init(struct devfreq *df)
 	if (!podgov->freq_count || !podgov->freqlist)
 		goto err_get_freqs;
 
-	podgov->idle_avg = 0;
+	podgov->idle_avg_short = 0;
+	podgov->idle_avg_long = 0;
 	podgov->freq_avg = 0;
 	podgov->hint_avg = 0;
 
