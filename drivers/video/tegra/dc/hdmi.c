@@ -768,29 +768,26 @@ static int tegra_dc_hdmi_init(struct tegra_dc *dc)
 		goto err_put_clock;
 	}
 
-	/* HACK: disbale hdmi audio request */
-#if 0
-	hdmi->hda_clk = clk_get_sys("tegra30-hda", "hda");
+	hdmi->hda_clk = clk_get_sys("tegra-hda", "hda");
 	if (IS_ERR_OR_NULL(hdmi->hda_clk)) {
 		dev_err(&dc->ndev->dev, "hdmi: can't get hda clock\n");
 		err = -ENOENT;
 		goto err_put_clock;
 	}
 
-	hdmi->hda2codec_clk = clk_get_sys("tegra30-hda", "hda2codec");
+	hdmi->hda2codec_clk = clk_get_sys("tegra-hda", "hda2codec_2x");
 	if (IS_ERR_OR_NULL(hdmi->hda2codec_clk)) {
 		dev_err(&dc->ndev->dev, "hdmi: can't get hda2codec clock\n");
 		err = -ENOENT;
 		goto err_put_clock;
 	}
 
-	hdmi->hda2hdmi_clk = clk_get_sys("tegra30-hda", "hda2hdmi");
+	hdmi->hda2hdmi_clk = clk_get_sys("tegra-hda", "hda2hdmi");
 	if (IS_ERR_OR_NULL(hdmi->hda2hdmi_clk)) {
 		dev_err(&dc->ndev->dev, "hdmi: can't get hda2hdmi clock\n");
 		err = -ENOENT;
 		goto err_put_clock;
 	}
-#endif
 
 	/* Get the pointer of board file settings */
 	hdmi_out = dc->pdata->default_out->hdmi_out;
@@ -1571,8 +1568,6 @@ static void tegra_dc_hdmi_enable(struct tegra_dc *dc)
 
 	hdmi->clk_enabled = true;
 
-	/* HACK: force dvi mode until hdmi audio is setup */
-	hdmi->dvi = true;
 	if (!hdmi->dvi) {
 		err = tegra_dc_hdmi_setup_audio(dc, hdmi->audio_freq,
 			hdmi->audio_source);
