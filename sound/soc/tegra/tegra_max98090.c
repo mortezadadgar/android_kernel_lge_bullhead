@@ -298,11 +298,27 @@ static const struct of_device_id tegra_max98090_of_match[] = {
 	{},
 };
 
+int snd_soc_tegra_max98090_resume(struct device *dev)
+{
+	snd_soc_jack_gpio_detect(&tegra_max98090_mic_jack_gpio);
+	snd_soc_jack_gpio_detect(&tegra_max98090_hp_jack_gpio);
+	return snd_soc_resume(dev);
+}
+
+const struct dev_pm_ops snd_soc_tegra_max98090_pm_ops = {
+	.suspend = snd_soc_suspend,
+	.resume = snd_soc_tegra_max98090_resume,
+	.freeze = snd_soc_suspend,
+	.thaw = snd_soc_resume,
+	.poweroff = snd_soc_poweroff,
+	.restore = snd_soc_resume,
+};
+
 static struct platform_driver tegra_max98090_driver = {
 	.driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
-		.pm = &snd_soc_pm_ops,
+		.pm = &snd_soc_tegra_max98090_pm_ops,
 		.of_match_table = tegra_max98090_of_match,
 	},
 	.probe = tegra_max98090_probe,
