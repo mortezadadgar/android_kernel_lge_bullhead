@@ -28,7 +28,55 @@
 #define __SST_PLATFORMDRV_H__
 
 #include "sst_dsp.h"
-#include <uapi/sound/compress_offload.h>
+
+#define SST_MONO		1
+#define SST_STEREO		2
+#define SST_MAX_CAP		5
+
+#define SST_MIN_RATE		8000
+#define SST_MAX_RATE		48000
+#define SST_MIN_CHANNEL		1
+#define SST_MAX_CHANNEL		5
+#define SST_MAX_BUFFER		(800*1024)
+#define SST_MIN_BUFFER		(800*1024)
+#define SST_MIN_PERIOD_BYTES	32
+#define SST_MAX_PERIOD_BYTES	SST_MAX_BUFFER
+#define SST_MIN_PERIODS		2
+#define SST_MAX_PERIODS		(1024*2)
+#define SST_FIFO_SIZE		0
+
+struct pcm_stream_info {
+	int str_id;
+	void *mad_substream;
+	void (*period_elapsed) (void *mad_substream);
+	unsigned long long buffer_ptr;
+	int sfreq;
+};
+
+enum sst_drv_status {
+	SST_PLATFORM_INIT = 1,
+	SST_PLATFORM_STARTED,
+	SST_PLATFORM_RUNNING,
+	SST_PLATFORM_PAUSED,
+	SST_PLATFORM_DROPPED,
+};
+
+enum sst_controls {
+	SST_SND_ALLOC =			0x00,
+	SST_SND_PAUSE =			0x01,
+	SST_SND_RESUME =		0x02,
+	SST_SND_DROP =			0x03,
+	SST_SND_FREE =			0x04,
+	SST_SND_BUFFER_POINTER =	0x05,
+	SST_SND_STREAM_INIT =		0x06,
+	SST_SND_START	 =		0x07,
+	SST_MAX_CONTROLS =		0x07,
+};
+
+enum sst_stream_ops {
+	STREAM_OPS_PLAYBACK = 0,
+	STREAM_OPS_CAPTURE,
+};
 
 enum sst_audio_device_type {
 	SND_SST_DEVICE_HEADSET = 1,
@@ -39,56 +87,26 @@ enum sst_audio_device_type {
 	SND_SST_DEVICE_COMPRESS,
 };
 
-enum snd_sst_input_stream {
-	SST_INPUT_STREAM_PCM = 0x2,
-	SST_INPUT_STREAM_COMPRESS = 0x8,
-	SST_INPUT_STREAM_MIXED = 0xA,
+/* PCM Parameters */
+struct sst_pcm_params {
+	u16 codec;	/* codec type */
+	u8 num_chan;	/* 1=Mono, 2=Stereo */
+	u8 pcm_wd_sz;	/* 16/24 - bit*/
+	u32 reserved;	/* Bitrate in bits per second */
+	u32 sfreq;	/* Sampling rate in Hz */
+	u32 ring_buffer_size;
+	u32 period_count;	/* period elapsed in samples*/
+	u32 ring_buffer_addr;
 };
 
-enum sst_stream_ops {
-	STREAM_OPS_PLAYBACK = 0,        /* Decode */
-	STREAM_OPS_CAPTURE,             /* Encode */
-	STREAM_OPS_COMPRESSED_PATH,     /* Offload playback/capture */
-};
-
-enum snd_sst_stream_type {
-	SST_STREAM_DEVICE_HS = 32,
-	SST_STREAM_DEVICE_IHF = 33,
-	SST_STREAM_DEVICE_MIC0 = 34,
-	SST_STREAM_DEVICE_MIC1 = 35,
-};
-
-enum sst_controls {
-	SST_SND_ALLOC =                 0x1000,
-	SST_SND_PAUSE =                 0x1001,
-	SST_SND_RESUME =                0x1002,
-	SST_SND_DROP =                  0x1003,
-	SST_SND_FREE =                  0x1004,
-	SST_SND_BUFFER_POINTER =        0x1005,
-	SST_SND_STREAM_INIT =           0x1006,
-	SST_SND_START    =              0x1007,
-	SST_SET_RUNTIME_PARAMS =        0x1008,
-	SST_SET_ALGO_PARAMS =           0x1009,
-	SST_MAX_CONTROLS =              0x1010,
-};
-
-struct pcm_stream_info {
-	int str_id;
-	void *mad_substream;
-	void (*period_elapsed) (void *mad_substream);
-	unsigned long long buffer_ptr;
-	unsigned long long pcm_delay;
-	int sfreq;
-};
-
-enum lpe_param_types_mixer {
-	SST_ALGO_PARAM_MIXER_STREAM_CFG = 0x801,
-};
-
-struct mad_ops_wq {
-	int stream_id;
-	enum sst_controls control_op;
-	struct work_struct wq;
+struct sst_stream_params {
+	u32 result;
+	u32 stream_id;
+	u8 codec;
+	u8 ops;
+	u8 stream_type;
+	u8 device_type;
+	struct sst_pcm_params sparams;
 };
 
 struct sst_compress_cb {
@@ -112,9 +130,8 @@ struct compress_sst_ops {
 };
 
 struct sst_ops {
-	int (*open) (struct snd_sst_params *str_param);
+	int (*open) (struct sst_stream_params *str_param);
 	int (*device_control) (int cmd, void *arg);
-	int (*set_generic_params) (enum sst_controls cmd, void *arg);
 	int (*close) (unsigned int str_id);
 };
 
@@ -133,12 +150,8 @@ struct sst_device {
 	struct device *dev;
 	struct sst_ops *ops;
 	struct compress_sst_ops *compr_ops;
-	struct platform_device *pdev;
-	unsigned int usage_count;
 };
 
 int sst_register_dsp(struct sst_device *sst);
 int sst_unregister_dsp(struct sst_device *sst);
-/* FIXME: remove once vibra becomes PCI driver */
-void intel_sst_pwm_suspend(unsigned int suspend);
 #endif

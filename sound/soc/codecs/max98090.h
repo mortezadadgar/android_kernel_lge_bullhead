@@ -1519,8 +1519,6 @@ struct max98090_cdata {
 	unsigned int fmt;
 };
 
-struct regulator;
-
 struct max98090_priv {
 	struct regmap *regmap;
 	struct snd_soc_codec *codec;
@@ -1543,7 +1541,6 @@ struct max98090_priv {
 	unsigned int pa2en;
 	unsigned int extmic_mux;
 	unsigned int sidetone;
-	struct regulator *dvdd;
 };
 
 int max98090_mic_detect(struct snd_soc_codec *codec,

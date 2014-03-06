@@ -11,6 +11,3 @@ obj-y	+= sfi/
 obj-y	+= ts5500/
 obj-y	+= visws/
 obj-y	+= uv/
-ifeq ($(CONFIG_SND_INTEL_SST),y)
-obj-y	+= intel-common/
-endif

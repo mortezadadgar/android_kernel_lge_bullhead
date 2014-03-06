@@ -465,19 +465,6 @@ config X86_MDFLD
 	  nor standard legacy replacement devices/features. e.g. Medfield does
 	  not contain i8259, i8254, HPET, legacy BIOS, most of the io ports.
 
-config X86_BYT
-	bool "Baytrail platform"
-	 depends on PCI
-	 depends on PCI_GOANY
-	 depends on X86_IO_APIC
-	 select INTEL_SCU_IPC
-	 select X86_PLATFORM_DEVICES
-	 select X86_INTEL_MID
-	 select APB_TIMER
-	 select DW_APB_TIMER
-	 ---help---
-	   Baytrail is Intel's Low Power Intel Architecture (LPIA) based platform.
-
 endif
 
 config X86_INTEL_LPSS

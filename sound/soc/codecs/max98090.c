@@ -8,14 +8,12 @@
  * published by the Free Software Foundation.
  */
 
-#include <linux/acpi.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
-#include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <sound/jack.h>
 #include <sound/pcm.h>
@@ -841,45 +839,6 @@ static int max98090_micinput_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-/* Save state when temporarily shutting down the codec to change registers that
- * must only be changes while in software shutdown.
- */
-struct max98090_shdn_state {
-	int old_shdn;
-	int old_level_control;
-};
-
-static void max98090_shdn_save(struct snd_soc_codec *codec,
-			       struct max98090_shdn_state *state)
-{
-	regmap_read(codec->control_data, M98090_REG_DEVICE_SHUTDOWN,
-			&state->old_shdn);
-	if (state->old_shdn & M98090_SHDNN_MASK) {
-		regmap_read(codec->control_data,
-			M98090_REG_LEVEL_CONTROL, &state->old_level_control);
-		/* Enable volume smoothing, disable zero cross.  This will cause
-		 * a quick 40ms ramp to mute on shutdown.
-		 */
-		regmap_write(codec->control_data,
-			M98090_REG_LEVEL_CONTROL, M98090_VSENN_MASK);
-		regmap_write(codec->control_data,
-			M98090_REG_DEVICE_SHUTDOWN, 0x00);
-		msleep(40);
-	}
-}
-
-static void max98090_shdn_restore(struct snd_soc_codec *codec,
-				  struct max98090_shdn_state *state)
-{
-	if (state->old_shdn & M98090_SHDNN_MASK) {
-		regmap_write(codec->control_data,
-			M98090_REG_LEVEL_CONTROL, state->old_level_control);
-		mdelay(1); /* Let input path stablize before releasing shdn. */
-		regmap_write(codec->control_data,
-			M98090_REG_DEVICE_SHUTDOWN, state->old_shdn);
-	}
-}
-
 static const char *mic1_mux_text[] = { "IN12", "IN56" };
 
 static const struct soc_enum mic1_mux_enum =
@@ -903,25 +862,8 @@ static const char *dmic_mux_text[] = { "ADC", "DMIC" };
 static const struct soc_enum dmic_mux_enum =
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(dmic_mux_text), dmic_mux_text);
 
-static int put_dmic_mux_shdn(struct snd_kcontrol *kcontrol,
-			     struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_dapm_widget_list *wlist = snd_kcontrol_chip(kcontrol);
-	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
-	struct snd_soc_codec *codec = widget->codec;
-	int ret = 0;
-	struct max98090_shdn_state state;
-
-	max98090_shdn_save(codec, &state);
-	ret = snd_soc_dapm_put_enum_virt(kcontrol, ucontrol);
-	max98090_shdn_restore(codec, &state);
-
-	return ret;
-}
-
 static const struct snd_kcontrol_new max98090_dmic_mux =
-	SOC_DAPM_ENUM_EXT("DMIC Mux", dmic_mux_enum,
-		snd_soc_dapm_get_enum_virt, put_dmic_mux_shdn);
+	SOC_DAPM_ENUM_VIRT("DMIC Mux", dmic_mux_enum);
 
 static const char *max98090_micpre_text[] = { "Off", "On" };
 
@@ -1866,7 +1808,7 @@ static const int comp_pclk_rates[] = {
 };
 
 static const int dmic_micclk[] = {
-	2, 2, 2, 2, 4, 4
+	2, 2, 2, 2, 4, 2
 };
 
 static const int comp_lrclk_rates[] = {
@@ -1879,7 +1821,7 @@ static const int dmic_comp[6][6] = {
 	{7, 8, 3, 3, 3, 3},
 	{7, 8, 3, 1, 1, 1},
 	{7, 8, 3, 1, 2, 2},
-	{7, 8, 1, 1, 2, 2}
+	{7, 8, 3, 3, 3, 3}
 };
 
 static int max98090_dai_hw_params(struct snd_pcm_substream *substream,
@@ -1890,10 +1832,6 @@ static int max98090_dai_hw_params(struct snd_pcm_substream *substream,
 	struct max98090_priv *max98090 = snd_soc_codec_get_drvdata(codec);
 	struct max98090_cdata *cdata;
 	int i, j;
-	struct max98090_shdn_state state;
-	int ret = 0;
-
-	max98090_shdn_save(codec, &state);
 
 	cdata = &max98090->dai[0];
 	max98090->bclk = snd_soc_params_to_bclk(params);
@@ -1908,8 +1846,7 @@ static int max98090_dai_hw_params(struct snd_pcm_substream *substream,
 			M98090_WS_MASK, 0);
 		break;
 	default:
-		ret = -EINVAL;
-		goto exit_reset_shdn;
+		return -EINVAL;
 	}
 
 	max98090_configure_bclk(codec);
@@ -1954,10 +1891,7 @@ static int max98090_dai_hw_params(struct snd_pcm_substream *substream,
 			M98090_DMIC_COMP_MASK,
 			dmic_comp[j][i] << M98090_DMIC_COMP_SHIFT);
 
-
-exit_reset_shdn:
-	max98090_shdn_restore(codec, &state);
-	return ret;
+	return 0;
 }
 
 /*
@@ -2318,11 +2252,6 @@ static int max98090_probe(struct snd_soc_codec *codec)
 	if (ret < 0) {
 		dev_err(codec->dev, "request_irq failed: %d\n",
 			ret);
-		/*
-		 * Workaround for static probing without defined
-		 * interrupt: Don't fail on interrupt registration
-		 */
-		ret = 0;
 	}
 
 	/*
@@ -2395,27 +2324,7 @@ static int max98090_i2c_probe(struct i2c_client *i2c,
 	if (max98090 == NULL)
 		return -ENOMEM;
 
-	max98090->dvdd = devm_regulator_get(&i2c->dev, "dvdd");
-
-	if (IS_ERR(max98090->dvdd)) {
-		if (PTR_ERR(max98090->dvdd) == -EPROBE_DEFER)
-			return -EPROBE_DEFER;
-
-		dev_info(&i2c->dev, "no dvdd regulator found\n");
-		return PTR_ERR(max98090->dvdd);
-	}
-
-	ret = regulator_enable(max98090->dvdd);
-	if (ret) {
-		dev_err(&i2c->dev, "failed to enable dvdd regulator %d\n", ret);
-		return ret;
-	}
-
-	/* id is NULL if probed from ACPI ID, use default devtype instead */
-	if (id)
-		max98090->devtype = id->driver_data;
-	else
-		max98090->devtype = MAX98090;
+	max98090->devtype = id->driver_data;
 	i2c_set_clientdata(i2c, max98090);
 	max98090->control_data = i2c;
 	max98090->pdata = i2c->dev.platform_data;
@@ -2437,9 +2346,7 @@ err_enable:
 
 static int max98090_i2c_remove(struct i2c_client *client)
 {
-	struct max98090_priv *max98090 = dev_get_drvdata(&client->dev);
 	snd_soc_unregister_codec(&client->dev);
-	regulator_disable(max98090->dvdd);
 	return 0;
 }
 
@@ -2474,29 +2381,11 @@ static const struct i2c_device_id max98090_i2c_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, max98090_i2c_id);
 
-#ifdef CONFIG_OF
-static const struct of_device_id max98090_of_match[] = {
-	{ .compatible = "maxim,max98090", },
-	{},
-};
-MODULE_DEVICE_TABLE(of, max98090_of_match);
-#endif
-
-#ifdef CONFIG_ACPI
-static const struct acpi_device_id max98090_acpi_id[] = {
-	{ "193C9890", MAX98090 },
-	{ }
-};
-MODULE_DEVICE_TABLE(acpi, max98090_acpi_id);
-#endif
-
 static struct i2c_driver max98090_i2c_driver = {
 	.driver = {
 		.name = "max98090",
 		.owner = THIS_MODULE,
 		.pm = &max98090_pm,
-		.acpi_match_table = ACPI_PTR(max98090_acpi_id),
-		.of_match_table = of_match_ptr(max98090_of_match),
 	},
 	.probe  = max98090_i2c_probe,
 	.remove = max98090_i2c_remove,

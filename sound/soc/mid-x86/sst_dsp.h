@@ -23,8 +23,6 @@
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 
-#define MAX_NUM_SCATTER_BUFFERS 8
-
 enum sst_codec_types {
 	/*  AUDIO/MUSIC	CODEC Type Definitions */
 	SST_CODEC_TYPE_UNKNOWN = 0,
@@ -34,24 +32,11 @@ enum sst_codec_types {
 	SST_CODEC_TYPE_AAC,
 	SST_CODEC_TYPE_AACP,
 	SST_CODEC_TYPE_eAACP,
-	SST_CODEC_TYPE_WMA9,
-	SST_CODEC_TYPE_WMA10,
-	SST_CODEC_TYPE_WMA10P,
-	SST_CODEC_TYPE_RA,
-	SST_CODEC_TYPE_DDAC3,
-	SST_CODEC_TYPE_STEREO_TRUE_HD,
-	SST_CODEC_TYPE_STEREO_HD_PLUS,
-
-	/*  VOICE CODEC Type Definitions */
-	SST_CODEC_TYPE_VOICE_PCM = 0x21, /* Pass through voice codec */
 };
 
 enum stream_type {
 	SST_STREAM_TYPE_NONE = 0,
 	SST_STREAM_TYPE_MUSIC = 1,
-	SST_STREAM_TYPE_NORMAL = 2,
-	SST_STREAM_TYPE_LONG_PB = 3,
-	SST_STREAM_TYPE_LOW_LATENCY = 4,
 };
 
 struct snd_pcm_params {
@@ -111,11 +96,7 @@ struct snd_wma_params {
 
 /* Codec params struture */
 union  snd_sst_codec_params {
-#ifdef SST_DRV_BYT
-	struct snd_pcm_params_byt pcm_params;
-#else
 	struct snd_pcm_params pcm_params;
-#endif
 	struct snd_mp3_params mp3_params;
 	struct snd_aac_params aac_params;
 	struct snd_wma_params wma_params;
@@ -127,22 +108,8 @@ struct sst_address_info {
 	u32 size; /* Size of the buffer */
 };
 
-/* Additional param for alloc_param specific to BYT (refer to intel_sst_fw_ipc.h) 
- * This frames_info structure is very similar to <snd_sst_alloc_params_ext> 
- * which is used in different LPE FW however the layout is different.
- * [ToDo] To remove this info later: for LPE Core layout, please see <ipc_fw.h> 
- */
-/* Frames info to play or record */
-struct snd_sst_frames_info {
-	__u16  num_entries;	/*  number of entries to follow */
-	__u16  rsrvd;
-	__u32  frag_size;	/*Number of bytes after which period elapsed 
-				 * message is sent valid only if path  = 0*/
-	struct sst_address_info ring_buf_info[MAX_NUM_SCATTER_BUFFERS];
-} __packed;
-
 struct snd_sst_alloc_params_ext {
-	struct sst_address_info  ring_buf_info[MAX_NUM_SCATTER_BUFFERS];
+	struct sst_address_info  ring_buf_info[8];
 	u8 sg_count;
 	u8 reserved;
 	u16 reserved2;
@@ -155,24 +122,13 @@ struct snd_sst_stream_params {
 } __packed;
 
 struct snd_sst_params {
-	__u32 stream_id;
-	__u8 codec;	/* PCM, AAC, MP3 */
-	__u8 ops;
-	__u8 stream_type;
-	__u8 device_type;
+	u32 stream_id;
+	u8 codec;
+	u8 ops;
+	u8 stream_type;
+	u8 device_type;
 	struct snd_sst_stream_params sparams;
-
-#ifdef SST_DRV_BYT
-	__u32 result;
-        struct snd_sst_frames_info frame_info;
-#else
 	struct snd_sst_alloc_params_ext aparams;
-#endif /* SST_DRV_BYT */
-};
-
-struct snd_sst_get_stream_params {
-	struct snd_sst_params codec_params;
-	struct snd_sst_pmic_config pcm_params;
 };
 
 #endif /* __SST_DSP_H__ */

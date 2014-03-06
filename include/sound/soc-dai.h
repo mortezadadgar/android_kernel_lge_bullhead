@@ -33,8 +33,7 @@ struct snd_compr_stream;
 #define SND_SOC_DAIFMT_DSP_B		5 /* L data MSB during FRM LRC */
 #define SND_SOC_DAIFMT_AC97		6 /* AC97 */
 #define SND_SOC_DAIFMT_PDM		7 /* Pulse density modulation */
-#define SND_SOC_DAIFMT_TDM256_RIGHT_J   8 /* TDM RIGHT Justified mode */
-#define SND_SOC_DAIFMT_TDM256_LEFT_J    9 /* TDM LEFT Justified mode */
+
 /* left and right justified also known as MSB and LSB respectively */
 #define SND_SOC_DAIFMT_MSB		SND_SOC_DAIFMT_LEFT_J
 #define SND_SOC_DAIFMT_LSB		SND_SOC_DAIFMT_RIGHT_J
