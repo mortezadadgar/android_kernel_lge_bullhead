@@ -12,17 +12,6 @@
 
 	host1x@50000000 {
 		dc@54200000 {
-			pclk = <76416000>;
-			h-ref-to-sync = <68>;
-			v-ref-to-sync = <4>;
-			h-sync-width = <30>;
-			v-sync-width = <12>;
-			h-back-porch = <60>;
-			v-back-porch = <12>;
-			h-active = <1366>;
-			v-active = <768>;
-			h-front-porch = <136>;
-			v-front-porch = <8>;
 			depth = <18>;
 			width = <256>;
 			height = <144>;
