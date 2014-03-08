@@ -142,6 +142,9 @@ void gk20a_fecs_dump_falcon_stats(struct gk20a *g)
 {
 	int i;
 
+	/* Enable GR engine to ensure FECS is active */
+	gk20a_reset(g, mc_enable_pgraph_enabled_f());
+
 	nvhost_err(dev_from_gk20a(g), "gr_fecs_os_r : %d",
 		gk20a_readl(g, gr_fecs_os_r()));
 	nvhost_err(dev_from_gk20a(g), "gr_fecs_cpuctl_r : 0x%x",
