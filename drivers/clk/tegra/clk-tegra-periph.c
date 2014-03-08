@@ -543,7 +543,7 @@ static struct tegra_periph_init_data gate_clks[] = {
 	GATE("vim2_clk", "clk_m", 11, 0, tegra_clk_vim2_clk, 0),
 	GATE("pcie", "clk_m", 70, 0, tegra_clk_pcie, 0),
 	GATE("dpaux", "clk_m", 181, 0, tegra_clk_dpaux, 0),
-	GATE("gpu", "pll_ref", 184, 0, tegra_clk_gpu, 0),
+	GATE("gpu", "pll_ref", 184, TEGRA_PERIPH_MANUAL_RESET, tegra_clk_gpu, 0),
 };
 
 struct pll_out_data {
