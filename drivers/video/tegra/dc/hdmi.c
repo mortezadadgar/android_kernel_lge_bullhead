@@ -74,6 +74,7 @@ const struct tmds_config tmds_config[] = {
 	.pe_current = 0x00000000,
 	.drive_current = 0x1a1a1a1a,
 	.peak_current = 0x00000000,
+	.bg_vref_level = 4,
 	},
 	{ /* 720p / 74.25MHz modes */
 	.pclk = 74250000,
@@ -83,6 +84,7 @@ const struct tmds_config tmds_config[] = {
 	.pe_current = 0x0f0f0f0f,
 	.drive_current = 0x1a1a1a1a,
 	.peak_current = 0x00000000,
+	.bg_vref_level = 4,
 	},
 	{ /* 1080p / 148.5MHz modes */
 	.pclk = 148500000,
@@ -92,6 +94,7 @@ const struct tmds_config tmds_config[] = {
 	.pe_current = 0x0a0a0a0a,
 	.drive_current = 0x1f1f1f1f,
 	.peak_current = 0x00000000,
+	.bg_vref_level = 4,
 	},
 	{ /* 225/297MHz modes */
 	.pclk = INT_MAX,
@@ -102,6 +105,7 @@ const struct tmds_config tmds_config[] = {
 	.pe_current = 0x00000000,
 	.drive_current = 0x303f3f3f, /* lane3 needs a slightly lower current */
 	.peak_current = 0x040f0f0f,
+	.bg_vref_level = 6,
 	/* Alternative settings:
 	.drive_current = 0x2c333333,
 	.pll1 = SOR_PLL_LOADADJ(3) | SOR_PLL_TMDS_TERMADJ(6)
@@ -1463,8 +1467,11 @@ static void tegra_dc_hdmi_setup_tmds(struct tegra_dc_hdmi_data *hdmi,
 
 	tegra_hdmi_writel(hdmi, tc->drive_current,
 		HDMI_NV_PDISP_SOR_LANE_DRIVE_CURRENT);
+
 	val = tegra_hdmi_readl(hdmi, HDMI_NV_PDISP_SOR_PAD_CTLS0);
 	val |= DRIVE_CURRENT_FUSE_OVERRIDE_T11x;
+	val &= BG_VREF_LEVEL_MASK;
+	val |= BG_VREF_LEVEL(tc->bg_vref_level);
 	tegra_hdmi_writel(hdmi, val, HDMI_NV_PDISP_SOR_PAD_CTLS0);
 
 	tegra_hdmi_writel(hdmi, tc->peak_current,

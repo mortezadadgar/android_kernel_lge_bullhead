@@ -824,6 +824,7 @@ struct tmds_config {
 	u32 pe_current; /* pre-emphasis */
 	u32 drive_current;
 	u32 peak_current; /* for TEGRA_11x_SOC */
+	u32 bg_vref_level;
 };
 
 struct tegra_hdmi_out {

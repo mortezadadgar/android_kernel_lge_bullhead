@@ -318,44 +318,48 @@ static int venice_hdmi_hotplug_init(struct device *dev)
 	return ret;
 }
 
-struct tmds_config norrin_tmds_config[] = {
+struct tmds_config nyan_tmds_config[] = {
 	{ /* 480p/576p / 25.2MHz/27MHz modes */
 	.pclk = 27000000,
-	.pll0 = 0x01003110,
-	.pll1 = 0x00300F00,
-	.pe_current = 0x08080808,
-	.drive_current = 0x2e2e2e2e,
-	.peak_current = 0x00000000,
+	.pll0 = 0x01003010,
+	.pll1 = 0x00301B00,
+	.pe_current = 0x00000000,
+	.drive_current = 0x1F1F1F1F,
+	.peak_current = 0x03030303,
+	.bg_vref_level = 4,
 	},
 	{ /* 720p / 74.25MHz modes */
 	.pclk = 74250000,
-	.pll0 =	 0x01003310,
-	.pll1 = 0x10300F00,
-	.pe_current = 0x08080808,
-	.drive_current = 0x20202020,
-	.peak_current = 0x00000000,
+	.pll0 = 0x01003110,
+	.pll1 = 0x00301500,
+	.pe_current = 0x00000000,
+	.drive_current = 0x2C2C2C2C,
+	.peak_current = 0x07070707,
+	.bg_vref_level = 4,
 	},
 	{ /* 1080p / 148.5MHz modes */
 	.pclk = 148500000,
 	.pll0 = 0x01003310,
-	.pll1 = 0x10300F00,
-	.pe_current = 0x08080808,
-	.drive_current = 0x20202020,
-	.peak_current = 0x00000000,
+	.pll1 = 0x00301500,
+	.pe_current = 0x00000000,
+	.drive_current = 0x33333333,
+	.peak_current = 0x0C0C0C0C,
+	.bg_vref_level = 4,
 	},
 	{
 	.pclk = INT_MAX,
-	.pll0 = 0x01003310,
-	.pll1 = 0x10300F00,
-	.pe_current = 0x08080808,
-	.drive_current = 0x3A353536, /* lane3 needs a slightly lower current */
-	.peak_current = 0x00000000,
+	.pll0 = 0x01003F10,
+	.pll1 = 0x00300F00,
+	.pe_current = 0x00000000,
+	.drive_current = 0x37373737, /* lane3 needs a slightly lower current */
+	.peak_current = 0x17171717,
+	.bg_vref_level = 6,
 	},
 };
 
-struct tegra_hdmi_out norrin_hdmi_out = {
-	.tmds_config = norrin_tmds_config,
-	.n_tmds_config = ARRAY_SIZE(norrin_tmds_config),
+struct tegra_hdmi_out nyan_hdmi_out = {
+	.tmds_config = nyan_tmds_config,
+	.n_tmds_config = ARRAY_SIZE(nyan_tmds_config),
 };
 
 static struct tegra_dc_out venice_disp2_out = {
@@ -370,7 +374,7 @@ static struct tegra_dc_out venice_disp2_out = {
 	.disable	 = venice_hdmi_disable,
 	.hotplug_init	 = venice_hdmi_hotplug_init,
 	.regulator_probe = venice_hdmi_regulator_probe,
-	.hdmi_out	 = &norrin_hdmi_out,
+	.hdmi_out	 = &nyan_hdmi_out,
 };
 
 static struct tegra_fb_data venice_disp2_fb_data = {
