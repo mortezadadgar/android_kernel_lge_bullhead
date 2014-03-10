@@ -23,11 +23,6 @@
 
 #define TEGRA124_POWERGATE_NUM (TEGRA_POWERGATE_VIC + 1)
 
-#define MC_CLIENT_HOTRESET_CTRL		0x200
-#define MC_CLIENT_HOTRESET_STAT		0x204
-#define MC_CLIENT_HOTRESET_CTRL_1	0x970
-#define MC_CLIENT_HOTRESET_STAT_1	0x974
-
 #define MAX_HOTRESET_CLIENT_NUM 4
 
 enum mc_client {
@@ -341,31 +336,10 @@ static int reset_module(int id)
  * MC related internal functions
  */
 
-#define HOTRESET_READ_COUNT	5
-
-/* Should be called from mc_flush() only */
-static bool stable_hotreset_check(u32 stat_reg, u32 *stat)
-{
-	int i;
-	u32 cur_stat;
-	u32 prv_stat;
-
-	prv_stat = tegra124_mc_readl(stat_reg);
-	for (i = 0; i < HOTRESET_READ_COUNT; i++) {
-		cur_stat = tegra124_mc_readl(stat_reg);
-		if (cur_stat != prv_stat)
-			return false;
-	}
-	*stat = cur_stat;
-	return true;
-}
-
 static int mc_flush(int id)
 {
-	u32 i, rst_ctrl, rst_stat;
-	u32 rst_ctrl_reg, rst_stat_reg;
+	u32 i;
 	enum mc_client mc_client_bit;
-	bool ret;
 
 	if (!tegra124_mc_is_ready()) {
 		WARN(1, "Tegra124 memory controller is not ready\n");
@@ -377,26 +351,7 @@ static int mc_flush(int id)
 			tegra124_pg_mc_info[id].hot_reset_clients[i];
 		if (mc_client_bit == MC_CLIENT_LAST)
 			break;
-		if (mc_client_bit < 32) {
-			rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL;
-			rst_stat_reg = MC_CLIENT_HOTRESET_STAT;
-		} else {
-			mc_client_bit %= 32;
-			rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL_1;
-			rst_stat_reg = MC_CLIENT_HOTRESET_STAT_1;
-		}
-
-		rst_ctrl = tegra124_mc_readl(rst_ctrl_reg);
-		rst_ctrl |= (1 << mc_client_bit);
-		tegra124_mc_writel(rst_ctrl, rst_ctrl_reg);
-
-		do {
-			udelay(10);
-			rst_stat = 0;
-			ret = stable_hotreset_check(rst_stat_reg, &rst_stat);
-			if (!ret)
-				continue;
-		} while (!(rst_stat & (1 << mc_client_bit)));
+		tegra_mc_flush(mc_client_bit);
 	}
 
 	return 0;
@@ -404,7 +359,7 @@ static int mc_flush(int id)
 
 static int mc_flush_done(int id)
 {
-	u32 i, rst_ctrl, rst_ctrl_reg;
+	u32 i;
 	enum mc_client mc_client_bit;
 
 	if (!tegra124_mc_is_ready()) {
@@ -417,20 +372,8 @@ static int mc_flush_done(int id)
 			tegra124_pg_mc_info[id].hot_reset_clients[i];
 		if (mc_client_bit == MC_CLIENT_LAST)
 			break;
-
-		if (mc_client_bit < 32)
-			rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL;
-		else {
-			mc_client_bit %= 32;
-			rst_ctrl_reg = MC_CLIENT_HOTRESET_CTRL_1;
-		}
-
-		rst_ctrl = tegra124_mc_readl(rst_ctrl_reg);
-		rst_ctrl &= ~(1 << mc_client_bit);
-		tegra124_mc_writel(rst_ctrl, rst_ctrl_reg);
+		tegra_mc_flush_done(mc_client_bit);
 	}
-
-	wmb();
 
 	return 0;
 }
