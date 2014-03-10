@@ -31,10 +31,7 @@
 #include "gk20a_dvfs.h"
 #include "gk20a_power.h"
 
-#define MC_CLIENT_HOTRESET_CTRL_1	0x970
-#define MC_CLIENT_HOTRESET_STAT_1	0x974
-
-#define GPU_FLUSH_ENABLE_SHIFT 2
+#define MC_CLIENT_GPU 34
 
 #define TEGRA_PMC_BASE 0x7000E400
 
@@ -43,66 +40,6 @@
 #define HOTRESET_READ_COUNT	5
 
 static struct clk *ref_clk, *pwr_clk;
-
-/* Should be called from mc_flush() only */
-static bool stable_hotreset_check(u32 *stat)
-{
-	int i;
-	u32 cur_stat;
-	u32 prv_stat;
-
-	prv_stat = tegra124_mc_readl(MC_CLIENT_HOTRESET_STAT_1);
-	for (i = 0; i < HOTRESET_READ_COUNT; i++) {
-		cur_stat = tegra124_mc_readl(MC_CLIENT_HOTRESET_STAT_1);
-		if (cur_stat != prv_stat)
-			return false;
-	}
-	*stat = cur_stat;
-	return true;
-}
-
-static int mc_flush(void)
-{
-	bool ret;
-	u32 rst_ctrl, rst_stat;
-
-	if (!tegra124_mc_is_ready()) {
-		WARN(1, "Tegra124 memory controller is not ready\n");
-		return -EPERM;
-	}
-
-	rst_ctrl = tegra124_mc_readl(MC_CLIENT_HOTRESET_CTRL_1);
-	rst_ctrl |= (1 << GPU_FLUSH_ENABLE_SHIFT);
-	tegra124_mc_writel(rst_ctrl, MC_CLIENT_HOTRESET_CTRL_1);
-
-	do {
-		udelay(10);
-		rst_stat = 0;
-		ret = stable_hotreset_check(&rst_stat);
-		if (!ret)
-			continue;
-	} while (!(rst_stat & (1 << GPU_FLUSH_ENABLE_SHIFT)));
-
-	return 0;
-}
-
-static int mc_flush_done(void)
-{
-	u32 rst_ctrl;
-
-	if (!tegra124_mc_is_ready()) {
-		WARN(1, "Tegra124 memory controller is not ready\n");
-		return -EPERM;
-	}
-
-	rst_ctrl = tegra124_mc_readl(MC_CLIENT_HOTRESET_CTRL_1);
-	rst_ctrl &= ~(1 << GPU_FLUSH_ENABLE_SHIFT);
-	tegra124_mc_writel(rst_ctrl, MC_CLIENT_HOTRESET_CTRL_1);
-
-	wmb();
-
-	return 0;
-}
 
 static void __iomem *pmc_base;
 
@@ -199,7 +136,7 @@ int gk20a_power_on(struct platform_device *pdev, struct gk20a *g)
 	udelay(10);
 
 	/* mc flush done */
-	mc_flush_done();
+	tegra_mc_flush_done(MC_CLIENT_GPU);
 	udelay(10);
 
 	return 0;
@@ -221,7 +158,7 @@ int gk20a_power_off(struct platform_device *pdev, struct gk20a *g)
 	if (ret)
 		return ret;
 
-	mc_flush();
+	tegra_mc_flush(MC_CLIENT_GPU);
 	udelay(10);
 
 	/* enable clamp */
