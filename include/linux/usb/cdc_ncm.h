@@ -94,6 +94,7 @@ struct cdc_ncm_ctx {
 
 	const struct usb_cdc_ncm_desc *func_desc;
 	const struct usb_cdc_mbim_desc   *mbim_desc;
+	const struct usb_cdc_mbim_extended_desc *mbim_extended_desc;
 	const struct usb_cdc_header_desc *header_desc;
 	const struct usb_cdc_union_desc *union_desc;
 	const struct usb_cdc_ether_desc *ether_desc;

@@ -87,6 +87,7 @@ static u8 cdc_ncm_setup(struct cdc_ncm_ctx *ctx)
 	u8 iface_no;
 	int err;
 	int eth_hlen;
+	u16 mbim_mtu;
 	u16 ntb_fmt_supported;
 	u32 min_dgram_size;
 	u32 min_hdr_size;
@@ -289,6 +290,13 @@ max_dgram_err:
 	if (ctx->netdev->mtu != (ctx->max_datagram_size - eth_hlen))
 		ctx->netdev->mtu = ctx->max_datagram_size - eth_hlen;
 
+	/* do not exceed operater preferred MTU */
+	if (ctx->mbim_extended_desc) {
+		mbim_mtu = le16_to_cpu(ctx->mbim_extended_desc->wMTU);
+		if (mbim_mtu != 0 && mbim_mtu < ctx->netdev->mtu)
+			ctx->netdev->mtu = mbim_mtu;
+	}
+
 	return 0;
 }
 
@@ -425,6 +433,14 @@ int cdc_ncm_bind_common(struct usbnet *dev, struct usb_interface *intf, u8 data_
 				break;
 
 			ctx->mbim_desc = (const struct usb_cdc_mbim_desc *)buf;
+			break;
+
+		case USB_CDC_MBIM_EXTENDED_TYPE:
+			if (buf[0] < sizeof(*(ctx->mbim_extended_desc)))
+				break;
+
+			ctx->mbim_extended_desc =
+				(const struct usb_cdc_mbim_extended_desc *)buf;
 			break;
 
 		default:
