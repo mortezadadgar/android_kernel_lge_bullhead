@@ -143,6 +143,9 @@ static inline int tegra_apb_writel_using_dma(u32 value, unsigned long offset)
 }
 #endif
 
+void tegra_pmc_remove_dpd_req(void);
+void tegra_pmc_clear_dpd_sample(void);
+
 #endif /* __ASSEMBLY__ */
 
 #endif /* __LINUX_TEGRA_SOC_H_ */

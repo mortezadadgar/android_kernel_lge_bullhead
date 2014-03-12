@@ -648,6 +648,21 @@ static void set_power_timers(u32 us_on, u32 us_off, unsigned long rate)
 	tegra_last_pclk = pclk;
 }
 
+void tegra_pmc_remove_dpd_req(void)
+{
+	/* Clear DPD req */
+	tegra_pmc_writel(io_dpd_reg | IO_DPD_OFF, PMC_IO_DPD_REQ);
+	tegra_pmc_writel(io_dpd2_reg | IO_DPD_OFF, PMC_IO_DPD2_REQ);
+}
+EXPORT_SYMBOL(tegra_pmc_remove_dpd_req);
+
+void tegra_pmc_clear_dpd_sample(void)
+{
+	/* Clear DPD sample */
+	tegra_pmc_writel(0x0, PMC_DPD_SAMPLE);
+}
+EXPORT_SYMBOL(tegra_pmc_clear_dpd_sample);
+
 enum tegra_suspend_mode tegra_pmc_get_suspend_mode(void)
 {
 	return pmc_pm_data.suspend_mode;
