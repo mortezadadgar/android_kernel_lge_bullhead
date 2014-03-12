@@ -30,6 +30,7 @@
 #include <linux/pinctrl/pinconf.h>
 #include <linux/slab.h>
 #include <linux/syscore_ops.h>
+#include <linux/tegra-soc.h>
 
 #include "core.h"
 #include "pinctrl-tegra.h"
@@ -728,11 +729,13 @@ static void pinctrl_resume(void)
 	u32 *pg_data = pmx->pg_data;
 	u32 *regs;
 
+	tegra_pmc_remove_dpd_req();
 	for (i = 0; i < pmx->nbanks; i++) {
 		regs = pmx->regs[i];
 		for (j = 0; j < pmx->reg_bank_size[i] / 4; j++)
 			writel(*pg_data++, regs++);
 	}
+	tegra_pmc_clear_dpd_sample();
 }
 
 static struct syscore_ops pinctrl_syscore_ops = {
