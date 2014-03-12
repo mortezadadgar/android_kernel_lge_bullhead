@@ -2,6 +2,7 @@
 
 #include "tegra124.dtsi"
 #include "tegra124-nyan.dtsi"
+#include "tegra124-nyan-big-emc.dtsi"
 
 / {
 	model = "Google Nyan Big Rev 0+";
