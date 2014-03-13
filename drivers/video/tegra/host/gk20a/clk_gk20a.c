@@ -206,6 +206,7 @@ int gk20a_init_clk_support(struct gk20a *g)
 {
 	struct clk_gk20a *clk = &g->clk;
 	u32 err;
+	int min_rate;
 
 	nvhost_dbg_fn("");
 
@@ -226,6 +227,28 @@ int gk20a_init_clk_support(struct gk20a *g)
 	mutex_unlock(&clk->clk_mutex);
 	if (err)
 		return err;
+
+	/* Get the minimal rate */
+	min_rate = gk20a_clk_round_rate(g, 0);
+	if (!min_rate) {
+		nvhost_err(dev_from_gk20a(g),
+				"failed to get gpcpll init rate\n");
+		return -EINVAL;
+	}
+
+	err = gk20a_dvfs_adjust_voltage(g, min_rate);
+	if (err) {
+		nvhost_err(dev_from_gk20a(g),
+				"failed to set voltage for %d MHz\n", min_rate);
+		return err;
+	}
+
+	err = gk20a_clk_set_rate(g, min_rate);
+	if (err) {
+		nvhost_err(dev_from_gk20a(g),
+				"failed to set gpcpll to %d MHz\n", min_rate);
+		return err;
+	}
 
 	/* FIXME: this effectively prevents host level clock gating */
 	err = clk_prepare_enable(g->clk.tegra_clk);
