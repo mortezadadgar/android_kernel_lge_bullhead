@@ -896,8 +896,6 @@ static void tegra_dc_sor_enable_dc(struct tegra_dc_sor_data *sor)
 	tegra_dc_writel(dc, reg_val | WRITE_MUX_ACTIVE, DC_CMD_STATE_ACCESS);
 	tegra_dc_writel(dc, VSYNC_H_POSITION(1), DC_DISP_DISP_TIMING_OPTIONS);
 
-	/* Enable DC */
-	tegra_dc_writel(dc, DISP_CTRL_MODE_C_DISPLAY, DC_CMD_DISPLAY_COMMAND);
 	tegra_dc_writel(dc, reg_val, DC_CMD_STATE_ACCESS);
 }
 
@@ -1001,8 +999,6 @@ void tegra_dc_sor_enable_dp(struct tegra_dc_sor_data *sor)
 
 void tegra_dc_sor_attach(struct tegra_dc_sor_data *sor)
 {
-	u32 reg_val;
-
 	tegra_dc_sor_enable_dc(sor);
 	tegra_dc_sor_config_panel(sor, false);
 
@@ -1013,34 +1009,32 @@ void tegra_dc_sor_attach(struct tegra_dc_sor_data *sor)
 		PW3_ENABLE | PW4_ENABLE | PM0_ENABLE | PM1_ENABLE,
 		DC_CMD_DISPLAY_POWER_CONTROL);
 
-	tegra_dc_writel(sor->dc, GENERAL_ACT_REQ << 8, DC_CMD_STATE_CONTROL);
-	tegra_dc_writel(sor->dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
+	tegra_sor_writel(sor, NV_SOR_SUPER_STATE1,
+			NV_SOR_SUPER_STATE1_ATTACHED_NO);
 
+	/*
+	 * Enable display2sor clock at least 2 cycles before DC start,
+	 * to clear sor internal valid signal.
+	 */
 	tegra_dc_writel(sor->dc, SOR_ENABLE, DC_DISP_DISP_WIN_OPTIONS);
-
-	reg_val = tegra_sor_readl(sor, NV_SOR_TEST);
-	if (reg_val & NV_SOR_TEST_ATTACHED_TRUE)
-		return;
+	tegra_dc_writel(sor->dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
+	tegra_dc_writel(sor->dc, 0, DC_DISP_DISP_WIN_OPTIONS);
+	tegra_dc_writel(sor->dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
 
 	/* Attach head */
 	tegra_dc_sor_update(sor);
-	reg_val = NV_SOR_SUPER_STATE1_ASY_HEAD_OP_AWAKE |
-		NV_SOR_SUPER_STATE1_ASY_ORMODE_NORMAL |
-		NV_SOR_SUPER_STATE1_ATTACHED_NO;
-	tegra_sor_writel(sor, NV_SOR_SUPER_STATE1, reg_val);
+	tegra_sor_writel(sor, NV_SOR_SUPER_STATE1,
+			NV_SOR_SUPER_STATE1_ATTACHED_YES);
+	tegra_sor_writel(sor, NV_SOR_SUPER_STATE1,
+		NV_SOR_SUPER_STATE1_ATTACHED_YES |
+		NV_SOR_SUPER_STATE1_ASY_HEAD_OP_AWAKE |
+		NV_SOR_SUPER_STATE1_ASY_ORMODE_NORMAL);
 	tegra_dc_sor_super_update(sor);
 
-	reg_val |= NV_SOR_SUPER_STATE1_ATTACHED_YES;
-	tegra_sor_writel(sor, NV_SOR_SUPER_STATE1, reg_val);
-	tegra_dc_sor_super_update(sor);
-
-	if (tegra_dc_sor_poll_register(sor, NV_SOR_TEST,
-			NV_SOR_TEST_ATTACHED_DEFAULT_MASK,
-			NV_SOR_TEST_ATTACHED_TRUE,
-			100, TEGRA_SOR_ATTACH_TIMEOUT_MS)) {
-		dev_err(&sor->dc->ndev->dev,
-			"dc timeout waiting for ATTACHED = TRUE\n");
-	}
+	tegra_dc_writel(sor->dc, DISP_CTRL_MODE_C_DISPLAY,
+			DC_CMD_DISPLAY_COMMAND);
+	tegra_dc_writel(sor->dc, SOR_ENABLE, DC_DISP_DISP_WIN_OPTIONS);
+	tegra_dc_writel(sor->dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
 
 	if (tegra_dc_sor_poll_register(sor, NV_SOR_TEST,
 			NV_SOR_TEST_ACT_HEAD_OPMODE_DEFAULT_MASK,

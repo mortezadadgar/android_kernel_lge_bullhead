@@ -87,7 +87,7 @@ struct tegra_dc_sor_data {
 };
 
 #define TEGRA_SOR_TIMEOUT_MS		1000
-#define TEGRA_SOR_ATTACH_TIMEOUT_MS	100000
+#define TEGRA_SOR_ATTACH_TIMEOUT_MS	1000
 
 #define CHECK_RET(x)			\
 	do {				\
