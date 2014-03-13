@@ -687,13 +687,6 @@ void tegra_pmc_resume(void)
 	if (tegra_chip_id == TEGRA124)
 		tegra_pmc_writel(0x0, PMC_DPD_ENABLE);
 
-	/* Clear DPD req */
-	tegra_pmc_writel(io_dpd_reg | IO_DPD_OFF, PMC_IO_DPD_REQ);
-	tegra_pmc_writel(io_dpd2_reg | IO_DPD_OFF, PMC_IO_DPD2_REQ);
-
-	/* Clear DPD sample */
-	tegra_pmc_writel(0x0, PMC_DPD_SAMPLE);
-
 	tegra_pmc_writel(0x0, PMC_SCRATCH41);
 }
 
