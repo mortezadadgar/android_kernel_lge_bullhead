@@ -1327,6 +1327,7 @@ static int reiserfs_remount(struct super_block *s, int *mount_flags, char *arg)
 	int i;
 #endif
 
+	sync_filesystem(s);
 	reiserfs_write_lock(s);
 
 #ifdef CONFIG_QUOTA
