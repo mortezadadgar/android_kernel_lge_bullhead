@@ -1652,6 +1652,7 @@ static int max98090_dai_set_fmt(struct snd_soc_dai *codec_dai,
 				M98090_REG_CLOCK_RATIO_NI_LSB, 0x00);
 			snd_soc_update_bits(codec, M98090_REG_CLOCK_MODE,
 				M98090_USE_M1_MASK, 0);
+			max98090->master = false;
 			break;
 		case SND_SOC_DAIFMT_CBM_CFM:
 			/* Set to master mode */
@@ -1668,6 +1669,7 @@ static int max98090_dai_set_fmt(struct snd_soc_dai *codec_dai,
 				regval |= M98090_MAS_MASK |
 					M98090_BSEL_32;
 			}
+			max98090->master = true;
 			break;
 		case SND_SOC_DAIFMT_CBS_CFM:
 		case SND_SOC_DAIFMT_CBM_CFS:
@@ -1851,7 +1853,8 @@ static int max98090_dai_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
-	max98090_configure_bclk(codec);
+	if (max98090->master)
+		max98090_configure_bclk(codec);
 
 	cdata->rate = max98090->lrclk;
 
@@ -1929,8 +1932,6 @@ static int max98090_dai_set_sysclk(struct snd_soc_dai *dai,
 	}
 
 	max98090->sysclk = freq;
-
-	max98090_configure_bclk(codec);
 
 	return 0;
 }
@@ -2209,6 +2210,7 @@ static int max98090_probe(struct snd_soc_codec *codec)
 	/* Initialize private data */
 
 	max98090->sysclk = (unsigned)-1;
+	max98090->master = false;
 
 	cdata = &max98090->dai[0];
 	cdata->rate = (unsigned)-1;
