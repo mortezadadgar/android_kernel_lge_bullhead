@@ -59,7 +59,7 @@ struct platform_device * __init venice_host1x_init(void)
 static struct regulator *avdd_lcd_3v3;
 static struct regulator *vdd_lcd_bl;
 static struct regulator *lcd_bl_en;
-static bool edp_probed;
+static bool edp_probed, edp_enabled;
 
 static int venice_edp_regulator_probe(struct device *dev)
 {
@@ -93,6 +93,9 @@ static int venice_edp_enable(struct device *dev)
 {
 	int err = 0;
 
+	if (edp_enabled)
+		return 0;
+
 	err = regulator_enable(avdd_lcd_3v3);
 	if (err) {
 		dev_err(dev, "Enable regulator avdd_lcd failed: %d\n", err);
@@ -101,14 +104,18 @@ static int venice_edp_enable(struct device *dev)
 	err = regulator_enable(vdd_lcd_bl);
 	if (err) {
 		dev_err(dev, "Enable regulator vdd_lcd_bl failed: %d\n", err);
+		regulator_disable(avdd_lcd_3v3);
 		goto fail;
 	}
 	err = regulator_enable(lcd_bl_en);
 	if (err) {
 		dev_err(dev, "Enable regulator lcd_bl_en failed: %d\n", err);
+		regulator_disable(vdd_lcd_bl);
+		regulator_disable(avdd_lcd_3v3);
 		goto fail;
 	}
 
+	edp_enabled = 1;
 	return 0;
 fail:
 	return err;
@@ -116,6 +123,9 @@ fail:
 
 static int venice_edp_disable(void)
 {
+	if (!edp_enabled)
+		return 1;
+
 	if (lcd_bl_en)
 		regulator_disable(lcd_bl_en);
 
@@ -127,6 +137,7 @@ static int venice_edp_disable(void)
 
 	msleep(power_off_time);
 
+	edp_enabled = 0;
 	return 0;
 }
 
