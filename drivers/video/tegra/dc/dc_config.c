@@ -241,6 +241,7 @@ long *tegra_dc_parse_feature(struct tegra_dc *dc, int win_idx, int operation)
 		break;
 	case HAS_HI_CURSOR_REGS:
 		option = TEGRA_DC_FEATURE_CURSOR_HI_REGS;
+		break;
 	default:
 		return NULL;
 	}
