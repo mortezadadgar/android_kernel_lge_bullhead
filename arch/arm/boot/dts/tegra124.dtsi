@@ -669,6 +669,38 @@
 		status = "disabled";
 	};
 
+	usb@70090000 {
+		compatible = "nvidia,tegra124-xhci";
+		reg = <0x0 0x70090000 0x8000>,
+		      <0x0 0x70098000 0x1000>,
+		      <0x0 0x70099000 0x1000>;
+		interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&tegra_car TEGRA124_CLK_XUSB_HOST>,
+			 <&tegra_car TEGRA124_CLK_XUSB_FALCON_SRC>,
+			 <&tegra_car TEGRA124_CLK_XUSB_EMC>;
+		clock-names = "xusb_host", "xusb_falcon_src", "xusb.emc";
+		nvidia,xusb-phy = <&xusb_phy>;
+		status = "disabled";
+	};
+
+	xusb_phy: phy@7009f000 {
+		compatible = "nvidia,tegra124-xusb-phy";
+		reg = <0x0 0x7009f000 0x1000>,
+		      <0x0 0x7000e400 0x800>;
+		interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&tegra_car TEGRA124_CLK_XUSB_SS>,
+			 <&tegra_car TEGRA124_CLK_XUSB_SS_SRC>,
+			 <&tegra_car TEGRA124_CLK_PLL_U_480M>,
+			 <&tegra_car TEGRA124_CLK_CLK_M>,
+			 <&tegra_car TEGRA124_CLK_USBD>;
+		clock-names = "xusb_ss", "xusb_ss_src", "pll_u_480M",
+			      "clk_m", "pad_clk";
+		nvidia,pmc = <&pmc>;
+		nvidia,clkrst = <&tegra_car>;
+		status = "disabled";
+	};
+
 	dfll@70110000 {
 		compatible = "nvidia,tegra124-dfll";
 		reg = <0x0 0x70110000 0x400>;
