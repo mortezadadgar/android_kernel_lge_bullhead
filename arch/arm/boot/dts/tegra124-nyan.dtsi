@@ -679,7 +679,6 @@
 					regulator-min-microvolt = <1050000>;
 					regulator-max-microvolt = <1050000>;
 					regulator-boot-on;
-					regulator-always-on;
 					regulator-suspend-mem-disabled;
 					ams,standby-sequence = <3>;
 				};
@@ -951,6 +950,37 @@
 		i2s@70301100 {
 			status = "okay";
 		};
+	};
+
+	usb@70090000 {
+		status = "okay";
+		s1p05v-supply = <&avdd_hdmi_pex>; /* avddio_usb */
+		s3p3v-supply = <&_3v3_lp0>; /* hvdd_pex_pll_e */
+		s1p8v-supply = <&vddio_1v8>; /* avdd_pll_utmip */
+		xusb-utmi0-wake {
+			nvidia,pmc-wakeup = <&pmc 1 39 4>;
+		};
+		xusb-utmi2-wake {
+			nvidia,pmc-wakeup = <&pmc 1 41 4>;
+		};
+		xusb-ss-wake {
+			nvidia,pmc-wakeup = <&pmc 1 58 4>;
+		};
+	};
+
+	phy@7009f000 {
+		status = "okay";
+		nvidia,ss-pads = <0x3>; /* SSP0, SSP1 */
+		nvidia,hsic-pads = <0x0>;
+		nvidia,utmi-pads = <0x7>; /* USB2P0, USB2P1, USB2P2 */
+		nvidia,ss-portmap = <0x20>; /* SSP0->USB2P0, SSP1->USB2P2 */
+		nvidia,lane-owner = <0x6>; /* USB3P0 USB3P1 */
+		nvidia,hsic-remote-wakeup = <0x0>;
+		nvidia,utmi-remote-wakeup = <0x5>; /* USB2P0, USB2P2 */
+		vbus1-supply = <&usb1_vbus_reg>;
+		vbus2-supply = <&run_cam_2v8>;
+		vbus3-supply = <&usb3_vbus_reg>;
+		vddio-hsic-supply = <&gen_avdd_1v2>;
 	};
 
 	sdhci@700b0000 {
@@ -1277,33 +1307,14 @@
 			regulator-always-on;
 			gpio = <&gpio TEGRA_GPIO(K, 1) GPIO_ACTIVE_HIGH>;
 		};
-	};
 
-	usb-phy@7d000000 {
-		status = "disabled";
-		vbus-supply = <&usb1_vbus_reg>;
-	};
-
-	usb@7d000000 {
-		status = "disabled";
-	};
-
-	usb-phy@7d004000 {
-		status = "disabled";
-		vbus-supply = <&run_cam_2v8>;
-	};
-
-	usb@7d004000 {
-		status = "disabled";
-	};
-
-	usb-phy@7d008000 {
-		status = "disabled";
-		vbus-supply = <&usb3_vbus_reg>;
-	};
-
-	usb@7d008000 {
-		status = "disabled";
+		_3v3_lp0: regulator@11 {
+			compatible = "regulator-fixed";
+			reg = <11>;
+			regulator-name = "3v3-lp0";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+		};
 	};
 
 	soc_therm {
