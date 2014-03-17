@@ -148,7 +148,7 @@
 	};
 
 	tegra_car: clock {
-		compatible = "nvidia,tegra124-car";
+		compatible = "nvidia,tegra124-car", "syscon";
 		reg = <0x0 0x60006000 0x1000>;
 		#clock-cells = <1>;
 	};
