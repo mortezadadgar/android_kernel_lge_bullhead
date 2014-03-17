@@ -847,7 +847,12 @@ static int rcu_is_cpu_rrupt_from_idle(void)
 static int dyntick_save_progress_counter(struct rcu_data *rdp)
 {
 	rdp->dynticks_snap = atomic_add_return(0, &rdp->dynticks->dynticks);
-	return (rdp->dynticks_snap & 0x1) == 0;
+	if ((rdp->dynticks_snap & 0x1) == 0) {
+		trace_rcu_fqs(rdp->rsp->name, rdp->gpnum, rdp->cpu, TPS("dti"));
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 /*
