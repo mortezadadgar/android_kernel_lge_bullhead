@@ -2440,13 +2440,7 @@ static int tegra_dc_create_fb(struct notifier_block *nb,
 	if (dc->fb)
 		return NOTIFY_DONE;
 
-	mode = tegra_dc_get_override_mode(dc);
-	if (mode) {
-		dc->pdata->fb->xres = mode->h_active;
-		dc->pdata->fb->yres = mode->v_active;
-	} else {
-		mode = &dc->mode;
-	}
+	mode = &dc->mode;
 
 	if (dc->enabled && dc->pdata->fb->bits_per_pixel == -1) {
 		unsigned long fmt;
