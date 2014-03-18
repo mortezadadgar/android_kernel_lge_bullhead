@@ -1482,7 +1482,7 @@ static __init void tegra124_shared_clk_init(void)
 
 	clk = tegra_clk_register_sbus_cmplx("sbus", "sclk", 0, "pclk",
 					"hclk", "pll_p_out2", "pll_c_out1",
-					108000000, 12000000, 384000000);
+					108000000, 102000000, 384000000);
 	clk_register_clkdev(clk, "sbus", NULL);
 	clks[TEGRA124_CLK_SBUS] = clk;
 
