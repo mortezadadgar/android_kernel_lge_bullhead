@@ -1429,6 +1429,7 @@ static const struct sdhci_ops tegra_sdhci_ops = {
 	.platform_execute_tuning = tegra_sdhci_execute_tuning,
 	.platform_reset_exit = tegra_sdhci_reset_exit,
 	.set_uhs_signaling	= tegra_sdhci_set_uhs_signaling,
+	.switch_signal_voltage_exit = tegra_sdhci_do_calibration,
 };
 
 static const struct sdhci_pltfm_data sdhci_tegra20_pdata = {
