@@ -1009,6 +1009,8 @@
 		vqmmc-supply = <&vddio_sdmmc3>;
 		uhs-mask = <0x3f>;
 
+		nvidia,disable-ext-loopback;
+
 		nvidia,vmax = <1250>;
 		nvidia,vmin = <950>;
 		nvidia,t2t-vnom-slope = <29>;
