@@ -1445,6 +1445,7 @@ typedef struct drm_i915_private {
 
 	struct drm_property *broadcast_rgb_property;
 	struct drm_property *force_audio_property;
+	struct drm_property *psr_property;
 	bool hw_contexts_disabled;
 	uint32_t hw_context_size;
 	struct list_head context_list;
@@ -1494,6 +1495,11 @@ enum hdmi_force_audio {
 	HDMI_AUDIO_OFF,			/* force turn off HDMI audio */
 	HDMI_AUDIO_AUTO,		/* trust EDID */
 	HDMI_AUDIO_ON,			/* force turn on HDMI audio */
+};
+
+enum psr_state {
+	EDP_PSR_ON,
+	EDP_PSR_OFF
 };
 
 #define I915_GTT_OFFSET_NONE ((u32)-1)
