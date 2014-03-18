@@ -999,6 +999,8 @@ void tegra_dc_sor_enable_dp(struct tegra_dc_sor_data *sor)
 
 void tegra_dc_sor_attach(struct tegra_dc_sor_data *sor)
 {
+	u32 reg_val;
+
 	tegra_dc_sor_enable_dc(sor);
 	tegra_dc_sor_config_panel(sor, false);
 
@@ -1008,6 +1010,10 @@ void tegra_dc_sor_attach(struct tegra_dc_sor_data *sor)
 	tegra_dc_writel(sor->dc, PW0_ENABLE | PW1_ENABLE | PW2_ENABLE |
 		PW3_ENABLE | PW4_ENABLE | PM0_ENABLE | PM1_ENABLE,
 		DC_CMD_DISPLAY_POWER_CONTROL);
+
+	reg_val = tegra_sor_readl(sor, NV_SOR_TEST);
+	if (reg_val & NV_SOR_TEST_ATTACHED_TRUE)
+		return;
 
 	tegra_sor_writel(sor, NV_SOR_SUPER_STATE1,
 			NV_SOR_SUPER_STATE1_ATTACHED_NO);
