@@ -20,6 +20,7 @@
 #include <linux/acpi.h>
 #include <linux/device.h>
 #include <linux/gpio.h>
+#include <linux/acpi_gpio.h>
 #include <linux/slab.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -95,14 +96,12 @@ static struct snd_soc_jack_gpio hp_jack_gpio = {
 	.name			= "hp-gpio",
 	.report			= SND_JACK_HEADPHONE,
 	.debounce_time		= 200,
-	.gpio			= CONFIG_SND_BYT_RAMBI_HPDET_GPIO,
 };
 
 static struct snd_soc_jack_gpio mic_jack_gpio = {
 	.name			= "mic-gpio",
 	.report			= SND_JACK_MICROPHONE,
 	.debounce_time		= 200,
-	.gpio			= CONFIG_SND_BYT_RAMBI_MICDET_GPIO,
 	.invert			= 1,
 };
 
@@ -251,6 +250,18 @@ static int snd_byt_mc_probe(struct platform_device *pdev)
 	if (!drv) {
 		pr_err("allocation failed\n");
 		return -ENOMEM;
+	}
+
+	hp_jack_gpio.gpio = acpi_get_gpio_by_index(pdev->dev.parent, 0, NULL);
+	if (!gpio_is_valid(hp_jack_gpio.gpio)) {
+		dev_err(&pdev->dev, "gpio invalid %d\n", hp_jack_gpio.gpio);
+		return hp_jack_gpio.gpio;
+	}
+
+	mic_jack_gpio.gpio = acpi_get_gpio_by_index(pdev->dev.parent, 1, NULL);
+	if (!gpio_is_valid(mic_jack_gpio.gpio)) {
+		dev_err(&pdev->dev, "gpio invalid %d\n", mic_jack_gpio.gpio);
+		return mic_jack_gpio.gpio;
 	}
 
 	/* register the soc card */
