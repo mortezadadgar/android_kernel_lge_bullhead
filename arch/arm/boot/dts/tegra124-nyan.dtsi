@@ -755,7 +755,7 @@
 
 				vddio_sdmmc3: ldo6 {
 					regulator-name = "vddio_sdmmc";
-					regulator-min-microvolt = <3300000>;
+					regulator-min-microvolt = <1800000>;
 					regulator-max-microvolt = <3300000>;
 					regulator-suspend-mem-disabled;
 				};
@@ -1006,7 +1006,7 @@
 		no-1-8-v;
 		bus-width = <4>;
 		status = "okay";
-		vmmc-supply = <&vddio_sdmmc3>;
+		vqmmc-supply = <&vddio_sdmmc3>;
 		uhs-mask = <0x3f>;
 
 		nvidia,vmax = <1250>;
