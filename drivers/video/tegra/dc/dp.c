@@ -1876,6 +1876,7 @@ static bool tegra_dc_dp_early_enable(struct tegra_dc *dc)
 	}
 
 	tegra_dc_set_fb_mode(dc, specs.modedb, false);
+	fb_destroy_modedb(specs.modedb);
 
 	tegra_dc_powergate_locked(dc);
 	msleep(50);
