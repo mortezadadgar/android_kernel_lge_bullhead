@@ -61,6 +61,7 @@
 	};
 
 	sdhci@700b0400 {
+		wp-gpios = <&gpio TEGRA_GPIO(Q, 4) GPIO_ACTIVE_HIGH>;
 		cd-inverted;
 		wp-inverted;
 		trim-delay = <0x3>;
