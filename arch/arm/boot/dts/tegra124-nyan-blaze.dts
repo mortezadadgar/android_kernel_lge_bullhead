@@ -1,0 +1,203 @@
+/dts-v1/;
+
+#include "tegra124.dtsi"
+#include "tegra124-nyan.dtsi"
+
+/ {
+	model = "Google Nyan Blaze Rev 0+";
+
+	compatible = "google,nyan-blaze-rev5", "google,nyan-blaze-rev4",
+			"google,nyan-blaze-rev3", "google,nyan-blaze-rev2",
+			"google,nyan-blaze-rev1", "google,nyan-blaze-rev0",
+			"google,nyan", "nvidia,tegra124";
+
+	host1x@50000000 {
+		dc@54200000 {
+			depth = <18>;
+			width = <256>;
+			height = <144>;
+			power-off-time = <500>;
+		};
+	};
+
+	pinmux {
+		pinmux@0 {
+			hp_det_l {
+				nvidia,pins = "pi7";
+				nvidia,function = "rsvd1";
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
+			soc_warm_reset_l {
+				nvidia,pins = "pi5";
+				nvidia,function = "gmi";
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+		};
+	};
+
+	i2c@7000c400 {
+		trackpad@0a {
+			compatible = "elan_i2c";
+			reg = <0x0a>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(W, 3) GPIO_ACTIVE_HIGH>;
+			nvidia,pmc-wakeup = <&pmc 1 11 2>;
+			wakeup-source;
+		};
+	};
+
+	i2c@7000d000 {
+		pmic@40 {
+			pinctrl@0 {
+				gpio6 {
+					pins = "gpio6";
+					function = "clk32k-out";
+					bias-pull-down;
+				};
+			};
+		};
+	};
+
+	sdhci@700b0000 {
+		trim-delay = <0x2>;
+		calib-3v3-offsets = <0x7676>;
+		calib-1v8-offsets = <0x7676>;
+		calib-1v8-offsets-uhs-modes = <0x2f>;
+	};
+
+	sdhci@700b0400 {
+		cd-inverted;
+		trim-delay = <0x3>;
+		calib-3v3-offsets = <0x7676>;
+		calib-1v8-offsets = <0x7676>;
+		calib-1v8-offsets-uhs-modes = <0x2f>;
+	};
+
+	sdhci@700b0600 {
+		trim-delay = <0x4>;
+		ddr-trim-delay = <0x4>;
+		calib-3v3-offsets = <0x0202>;
+		calib-1v8-offsets = <0x0202>;
+		calib-1v8-offsets-uhs-modes = <0x2f>;
+	};
+
+	pmc {
+		nvidia,reset-gpio = <&gpio TEGRA_GPIO(I, 5) GPIO_ACTIVE_LOW>;
+	};
+
+	sound {
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(I, 7) GPIO_ACTIVE_HIGH>;
+		nvidia,mic-det-gpios = <&gpio TEGRA_GPIO(R, 7)
+							GPIO_ACTIVE_HIGH>;
+	};
+
+	skin_temp: therm-est {
+		compatible = "nvidia,tegra124-therm-est";
+		toffset = <9793>;
+		tc1 = <10>;
+		tc2 = <1>;
+		polling-period = <1100>;
+
+		#thermal-sensor-cells = <0>;
+
+		sub-devs {
+			dev@0 {
+				dev = <&diode_thermal_sensor>;
+				coeffs = "2 1 1 1 1 1 1 1 1 1 1 0 1 1 0 0 0 0 -1 -7";
+			};
+
+			dev@1 {
+				dev = <&board_thermal_sensor>;
+				coeffs = "-11 -7 -5 -3 -3 -2 -1 0 0 0 1 1 1 2 2 3 4 6 11 18";
+			};
+		};
+	};
+
+	thermal-zones {
+		skin-therm {
+			polling-delay-passive = <15000>; /* milliseconds */
+			polling-delay = <0>; /* milliseconds */
+
+			thermal-sensors = <&skin_temp>;
+
+			trips {
+				balance_trip0: balance_trip {
+					temperature = <45000>; /* millicelsius */
+					hysteresis = <0>; /* millicelsius */
+					type = "passive";
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&balance_trip0>;
+					cooling-device = <&throttle0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+		as3722-cpu-therm {
+			polling-delay-passive = <25>; /* milliseconds */
+			polling-delay = <0>; /* milliseconds */
+			thermal-sensors = <&ams3722 AS3722_SD0_SENSOR>;
+
+			trips {
+				balance_trip1: balance_trip {
+					temperature = <110000>; /* millicelsius */
+					hysteresis = <0>; /* millicelsius */
+					type = "passive";
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&balance_trip1>;
+					cooling-device = <&throttle0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+		as3722-core-therm {
+			polling-delay-passive = <25>; /* milliseconds */
+			polling-delay = <0>; /* milliseconds */
+			thermal-sensors = <&ams3722 AS3722_SD1_SENSOR>;
+
+			trips {
+				balance_trip2: balance_trip {
+					temperature = <110000>; /* millicelsius */
+					hysteresis = <0>; /* millicelsius */
+					type = "passive";
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&balance_trip2>;
+					cooling-device = <&throttle0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+		as3722-gpu-therm {
+			polling-delay-passive = <25>; /* milliseconds */
+			polling-delay = <0>; /* milliseconds */
+			thermal-sensors = <&ams3722 AS3722_SD6_SENSOR>;
+
+			trips {
+				balance_trip3: balance_trip {
+					temperature = <110000>; /* millicelsius */
+					hysteresis = <0>; /* millicelsius */
+					type = "passive";
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&balance_trip3>;
+					cooling-device = <&throttle0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+				};
+			};
+		};
+	};
+};
