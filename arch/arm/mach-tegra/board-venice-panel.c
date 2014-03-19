@@ -41,6 +41,9 @@ atomic_t sd_brightness = ATOMIC_INIT(255);
 EXPORT_SYMBOL(sd_brightness);
 
 static int power_off_time;
+static int pwm_to_bl_on;
+static int bl_off_to_pwm;
+static bool bl_enabled;
 
 struct platform_device * __init venice_host1x_init(void)
 {
@@ -63,6 +66,8 @@ static bool edp_probed, edp_enabled;
 
 static int venice_edp_regulator_probe(struct device *dev)
 {
+	int ret;
+
 	avdd_lcd_3v3 = devm_regulator_get_optional(dev, "avdd-lcd");
 	if (IS_ERR(avdd_lcd_3v3)) {
 		dev_err(dev, "edp: avdd_lcd regulator get failed: %ld\n",
@@ -81,7 +86,9 @@ static int venice_edp_regulator_probe(struct device *dev)
 	if (IS_ERR(lcd_bl_en)) {
 		dev_err(dev, "edp: bl_en regulator get failed: %ld\n",
 				PTR_ERR(lcd_bl_en));
-		return PTR_ERR(lcd_bl_en);
+		ret = PTR_ERR(lcd_bl_en);
+		lcd_bl_en = NULL;
+		return ret;
 	}
 
 	edp_probed = true;
@@ -107,13 +114,6 @@ static int venice_edp_enable(struct device *dev)
 		regulator_disable(avdd_lcd_3v3);
 		goto fail;
 	}
-	err = regulator_enable(lcd_bl_en);
-	if (err) {
-		dev_err(dev, "Enable regulator lcd_bl_en failed: %d\n", err);
-		regulator_disable(vdd_lcd_bl);
-		regulator_disable(avdd_lcd_3v3);
-		goto fail;
-	}
 
 	edp_enabled = 1;
 	return 0;
@@ -126,9 +126,6 @@ static int venice_edp_disable(void)
 	if (!edp_enabled)
 		return 1;
 
-	if (lcd_bl_en)
-		regulator_disable(lcd_bl_en);
-
 	if (vdd_lcd_bl)
 		regulator_disable(vdd_lcd_bl);
 
@@ -139,6 +136,21 @@ static int venice_edp_disable(void)
 
 	edp_enabled = 0;
 	return 0;
+}
+
+static int venice_edp_prepoweroff(void)
+{
+	int ret;
+
+	if (lcd_bl_en && bl_enabled) {
+		ret = regulator_disable(lcd_bl_en);
+		if (ret)
+			pr_err("Disable lcd_bl_en failed: %d\n", ret);
+		else
+			bl_enabled = false;
+	}
+
+	return ret;
 }
 
 static struct tegra_dc_sd_settings venice_sd_settings = {
@@ -224,6 +236,7 @@ static struct tegra_dc_out venice_disp1_out = {
 	.n_out_pins	 = ARRAY_SIZE(venice_edp_out_pins),
 	.enable		 = venice_edp_enable,
 	.disable	 = venice_edp_disable,
+	.prepoweroff	 = venice_edp_prepoweroff,
 	.regulator_probe = venice_edp_regulator_probe,
 };
 
@@ -427,9 +440,38 @@ static int venice_bl_init(struct device *dev)
 static int venice_bl_notify(struct device *unused, int brightness)
 {
 	int cur_sd_brightness = atomic_read(&sd_brightness);
+	int ret;
 
+	ret = (brightness * cur_sd_brightness) / 255;
+
+	if (lcd_bl_en) {
+		if (!brightness && bl_enabled) {
+			ret = regulator_disable(lcd_bl_en);
+			if (ret)
+				pr_err("Disable lcd_bl_en failed: %d\n", ret);
+			else
+				bl_enabled = false;
+			msleep(bl_off_to_pwm);
+		}
+	}
 	/* SD brightness is a percentage, max SD brightness is 255. */
-	return (brightness * cur_sd_brightness) / 255;
+	return ret;
+}
+
+static void venice_bl_notify_after(struct device *unused, int brightness)
+{
+	int ret;
+
+	if (lcd_bl_en) {
+		if (brightness && !bl_enabled) {
+			msleep(pwm_to_bl_on);
+			ret = regulator_enable(lcd_bl_en);
+			if (ret)
+				pr_err("Enable lcd_bl_en failed: %d\n", ret);
+			else
+				bl_enabled = true;
+		}
+	}
 }
 
 static int venice_check_fb(struct device *dev, struct fb_info *info)
@@ -440,6 +482,7 @@ static int venice_check_fb(struct device *dev, struct fb_info *info)
 struct platform_pwm_backlight_data venice_bl_data = {
 	.init		= venice_bl_init,
 	.notify         = venice_bl_notify,
+	.notify_after	= venice_bl_notify_after,
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb       = venice_check_fb,
 	.enable_gpio	= -1,
@@ -479,6 +522,18 @@ static int venice_panel_mode_init(struct platform_device *dcs)
 		power_off_time = 0;
 	else
 		power_off_time = val;
+
+	ret = of_property_read_u32(dev->of_node, "pwm-to-bl-on", &val);
+	if (ret < 0)
+		pwm_to_bl_on = 0;
+	else
+		pwm_to_bl_on = val;
+
+	ret = of_property_read_u32(dev->of_node, "bl-off-to-pwm", &val);
+	if (ret < 0)
+		bl_off_to_pwm = 0;
+	else
+		bl_off_to_pwm = val;
 
 	/* Optional mode definitions follows */
 	ret = of_property_read_u32(dev->of_node, "pclk", &val);
