@@ -145,8 +145,11 @@ static int byt_init(struct snd_soc_pcm_runtime *runtime)
 	if (ret)
 		return ret;
 
-	snd_soc_update_bits(codec, M98090_REG_INTERRUPT_S, M98090_IJDET_MASK,
-				1 << M98090_IJDET_SHIFT);
+
+	/* enabled codec jack and PLL interrupts */
+	snd_soc_update_bits(codec, M98090_REG_INTERRUPT_S,
+		M98090_IJDET_MASK | M98090_IULK_MASK,
+		1 << M98090_IJDET_SHIFT | 1 << M98090_IULK_SHIFT);
 
 	ret = snd_soc_jack_add_gpios(hp_jack, 1, &hp_jack_gpio);
 	if (ret)
