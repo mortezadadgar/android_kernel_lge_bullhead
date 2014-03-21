@@ -44,7 +44,6 @@ static struct clk *pll_backup_clk;
 static struct clk *cpu_dfll_clk;
 static struct clk *emc_clk;
 
-static bool is_dfll_clk_enabled;
 static unsigned long dfll_mode_threshold;
 static struct cpufreq_frequency_table
 		tegra124_cpufreq_tables[CPU_FREQ_TABLE_MAX_SIZE];
@@ -71,9 +70,6 @@ static int tegra124_cpu_clk_dfll_on(struct clk *cpu_clk,
 		unsigned long new_rate, unsigned long old_rate)
 {
 	int ret;
-
-	if (!is_dfll_clk_enabled && !clk_prepare_enable(cpu_dfll_clk))
-		is_dfll_clk_enabled = true;
 
 	ret = clk_set_rate(cpu_dfll_clk, new_rate);
 	if (ret) {
@@ -152,9 +148,6 @@ int tegra124_cpu_clk_dfll_off(struct clk *cpu_clk,
 	}
 
 	tegra_dvfs_set_rate(cpu_clk, new_rate);
-
-	clk_disable_unprepare(cpu_dfll_clk);
-	is_dfll_clk_enabled = false;
 
 	pr_debug("CPU DFLL Mode ----> OFF\n");
 
