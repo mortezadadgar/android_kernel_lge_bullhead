@@ -1748,10 +1748,6 @@ static void tegra124_clk_resume(void)
 	val &= ~(0xf << 16);
 	car_writel(val | pll_re_out_div, PLLRE_BASE, 0);
 
-	/* CPU G clock restored after DFLL and PLLs */
-	for (i = 0; i < BURST_POLICY_REG_SIZE; i++)
-		car_writel(cclkg_burst_policy_ctx[i], CCLKG_BURST_POLICY, i);
-
 	tegra_clk_pll_resume(clks[TEGRA124_CLK_PLL_A], pll_a_rate);
 	tegra_clk_pll_resume(clks[TEGRA124_CLK_PLL_D], pll_d_rate);
 
@@ -1833,6 +1829,10 @@ static void tegra124_clk_resume(void)
 	 * across suspend/resume.
 	 */
 	clk_get_rate(clks[TEGRA124_CLK_PLL_M]);
+
+	/* CPU G clock restored after DFLL and PLLs */
+	for (i = 0; i < BURST_POLICY_REG_SIZE; i++)
+		car_writel(cclkg_burst_policy_ctx[i], CCLKG_BURST_POLICY, i);
 }
 
 static struct syscore_ops tegra_clk_syscore_ops = {
