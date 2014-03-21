@@ -30,6 +30,14 @@
 
 #define ZBC_MASK(i)			(~(~(0) << ((i)+1)) & 0xfffe)
 
+#define APP_VERSION_1 17997577
+#define APP_VERSION_0 16856675
+
+
+enum pmu_perfmon_cmd_start_fields {
+	COUNTER_ALLOC
+};
+
 enum {
 	GK20A_PMU_DMAIDX_UCODE		= 0,
 	GK20A_PMU_DMAIDX_VIRT		= 1,
@@ -41,10 +49,17 @@ enum {
 	GK20A_PMU_DMAIDX_END		= 7
 };
 
-struct pmu_mem {
+struct pmu_mem_v0 {
 	u32 dma_base;
 	u8  dma_offset;
 	u8  dma_idx;
+};
+
+struct pmu_mem_v1 {
+	u32 dma_base;
+	u8  dma_offset;
+	u8  dma_idx;
+	u16 fb_size;
 };
 
 struct pmu_dmem {
@@ -53,13 +68,21 @@ struct pmu_dmem {
 };
 
 /* Make sure size of this structure is a multiple of 4 bytes */
-struct pmu_cmdline_args {
-	u32 cpu_freq_hz;		/* Frequency of the clock driving
-					   the PMU */
+struct pmu_cmdline_args_v0 {
+	u32 cpu_freq_hz;		/* Frequency of the clock driving PMU */
 	u32 falc_trace_size;		/* falctrace buffer size (bytes) */
 	u32 falc_trace_dma_base;	/* 256-byte block address */
 	u32 falc_trace_dma_idx;		/* dmaIdx for DMA operations */
-	struct pmu_mem gc6_ctx;		/* dmem offset of gc6 context */
+	struct pmu_mem_v0 gc6_ctx;		/* dmem offset of gc6 context */
+};
+
+struct pmu_cmdline_args_v1 {
+	u32 cpu_freq_hz;		/* Frequency of the clock driving PMU */
+	u32 falc_trace_size;		/* falctrace buffer size (bytes) */
+	u32 falc_trace_dma_base;	/* 256-byte block address */
+	u32 falc_trace_dma_idx;		/* dmaIdx for DMA operations */
+	u8 secure_mode;
+	struct pmu_mem_v1 gc6_ctx;		/* dmem offset of gc6 context */
 };
 
 #define GK20A_PMU_DMEM_BLKSIZE2		8
@@ -163,12 +186,19 @@ struct pmu_hdr {
 
 #define PMU_QUEUE_COUNT		5
 
-struct pmu_allocation {
+struct pmu_allocation_v0 {
 	u8 pad[3];
 	u8 fb_mem_use;
 	struct {
 		struct pmu_dmem dmem;
-		struct pmu_mem fb;
+		struct pmu_mem_v0 fb;
+	} alloc;
+};
+
+struct pmu_allocation_v1 {
+	struct {
+		struct pmu_dmem dmem;
+		struct pmu_mem_v1 fb;
 	} alloc;
 };
 
@@ -176,7 +206,7 @@ enum {
 	PMU_INIT_MSG_TYPE_PMU_INIT = 0,
 };
 
-struct pmu_init_msg_pmu {
+struct pmu_init_msg_pmu_v0 {
 	u8 msg_type;
 	u8 pad;
 
@@ -191,10 +221,32 @@ struct pmu_init_msg_pmu {
 	u16 sw_managed_area_size;
 };
 
+struct pmu_init_msg_pmu_v1 {
+	u8 msg_type;
+	u8 pad;
+	u16  os_debug_entry_point;
+
+	struct {
+		u16 size;
+		u16 offset;
+		u8  index;
+		u8  pad;
+	} queue_info[PMU_QUEUE_COUNT];
+
+	u16 sw_managed_area_offset;
+	u16 sw_managed_area_size;
+};
+
+union pmu_init_msg_pmu {
+	struct pmu_init_msg_pmu_v0 v0;
+	struct pmu_init_msg_pmu_v1 v1;
+};
+
 struct pmu_init_msg {
 	union {
 		u8 msg_type;
-		struct pmu_init_msg_pmu pmu_init;
+		struct pmu_init_msg_pmu_v1 pmu_init_v1;
+		struct pmu_init_msg_pmu_v0 pmu_init_v0;
 	};
 };
 
@@ -276,6 +328,8 @@ enum {
 	PMU_PG_CMD_ID_ELPG_DISALLOW,
 	PMU_PG_CMD_ID_ELPG_ALLOW,
 	PMU_PG_CMD_ID_AP,
+	RM_PMU_PG_CMD_ID_PSI,
+	RM_PMU_PG_CMD_ID_CG,
 	PMU_PG_CMD_ID_ZBC_TABLE_UPDATE,
 	PMU_PG_CMD_ID_PWR_RAIL_GATE_DISABLE = 0x20,
 	PMU_PG_CMD_ID_PWR_RAIL_GATE_ENABLE,
@@ -357,24 +411,43 @@ enum {
 	PMU_PERFMON_CMD_ID_INIT  = 2
 };
 
-struct pmu_perfmon_cmd_start {
+struct pmu_perfmon_cmd_start_v1 {
 	u8 cmd_type;
 	u8 group_id;
 	u8 state_id;
 	u8 flags;
-	struct pmu_allocation counter_alloc;
+	struct pmu_allocation_v1 counter_alloc;
+};
+
+struct pmu_perfmon_cmd_start_v0 {
+	u8 cmd_type;
+	u8 group_id;
+	u8 state_id;
+	u8 flags;
+	struct pmu_allocation_v0 counter_alloc;
 };
 
 struct pmu_perfmon_cmd_stop {
 	u8 cmd_type;
 };
 
-struct pmu_perfmon_cmd_init {
+struct pmu_perfmon_cmd_init_v1 {
 	u8 cmd_type;
 	u8 to_decrease_count;
 	u8 base_counter_id;
 	u32 sample_period_us;
-	struct pmu_allocation counter_alloc;
+	struct pmu_allocation_v1 counter_alloc;
+	u8 num_counters;
+	u8 samples_in_moving_avg;
+	u16 sample_buffer;
+};
+
+struct pmu_perfmon_cmd_init_v0 {
+	u8 cmd_type;
+	u8 to_decrease_count;
+	u8 base_counter_id;
+	u32 sample_period_us;
+	struct pmu_allocation_v0 counter_alloc;
 	u8 num_counters;
 	u8 samples_in_moving_avg;
 	u16 sample_buffer;
@@ -383,9 +456,11 @@ struct pmu_perfmon_cmd_init {
 struct pmu_perfmon_cmd {
 	union {
 		u8 cmd_type;
-		struct pmu_perfmon_cmd_start start;
+		struct pmu_perfmon_cmd_start_v0 start_v0;
+		struct pmu_perfmon_cmd_start_v1 start_v1;
 		struct pmu_perfmon_cmd_stop stop;
-		struct pmu_perfmon_cmd_init init;
+		struct pmu_perfmon_cmd_init_v0 init_v0;
+		struct pmu_perfmon_cmd_init_v1 init_v1;
 	};
 };
 
@@ -590,8 +665,14 @@ struct pmu_sequence {
 	u32 state;
 	u32 desc;
 	struct pmu_msg *msg;
-	struct pmu_allocation in;
-	struct pmu_allocation out;
+	union {
+		struct pmu_allocation_v0 in_v0;
+		struct pmu_allocation_v1 in_v1;
+	};
+	union {
+		struct pmu_allocation_v0 out_v0;
+		struct pmu_allocation_v1 out_v1;
+	};
 	u8 *out_payload;
 	pmu_callback callback;
 	void *cb_params;
@@ -679,7 +760,6 @@ struct pmu_gk20a {
 	struct pmu_mem_desc seq_buf;
 	bool buf_loaded;
 
-	struct pmu_cmdline_args args;
 	struct pmu_sha1_gid gid_info;
 
 	struct pmu_queue queue[PMU_QUEUE_COUNT];
@@ -732,6 +812,10 @@ struct pmu_gk20a {
 
 	struct mutex isr_mutex;
 	bool zbc_ready;
+	union {
+		struct pmu_cmdline_args_v0 args_v0;
+		struct pmu_cmdline_args_v1 args_v1;
+	};
 };
 
 struct gk20a_pmu_save_state {
