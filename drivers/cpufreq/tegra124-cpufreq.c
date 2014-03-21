@@ -320,7 +320,7 @@ static int tegra124_prepare_tables(struct tegra_cpufreq_data *data)
 	}
 
 	g_vmin_freq = freqs_g[0];
-	if (g_vmin_freq <= LP_BACKUP_FREQ * 1000) {
+	if (g_vmin_freq < LP_BACKUP_FREQ * 1000) {
 		WARN(1, "%s: LP CPU backup rate exceeds G CPU rate at Vmin\n",
 				__func__);
 		return -EINVAL;
@@ -344,7 +344,8 @@ static int tegra124_prepare_tables(struct tegra_cpufreq_data *data)
 
 		if (!g_vmin_done && freq >= g_vmin_freq) {
 			g_vmin_done = true;
-			if (freq > g_vmin_freq)
+			if (freq > g_vmin_freq && g_vmin_freq / 1000 >
+			    tegra124_cpufreq_tables[i - 1].frequency)
 				tegra124_cpufreq_tables[i++].frequency
 					= g_vmin_freq / 1000;
 		}
