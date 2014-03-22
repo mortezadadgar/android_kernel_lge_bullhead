@@ -42,8 +42,8 @@ static struct tegra_cooling_device core_vmin_cdev = {
 
 static struct dvfs_rail tegra124_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
-	.max_millivolts = 1400,
-	.min_millivolts = 800,
+	.max_millivolts = 1300,
+	.min_millivolts = 700,
 	.step = VDD_SAFE_STEP,
 	.jmp_to_zero = true,
 	.alignment = {
@@ -83,13 +83,14 @@ static struct cpu_dvfs cpu_fv_dvfs_table[] = {
 	{
 		.speedo_id = -1,
 		.process_id = -1,
-		.min_mv = 800,
+		.min_mv = 720,
 		.max_mv = 1260,
 		.fv_table = {
-			{306000,  740},
-			{408000,  750},
-			{510000,  760},
-			{612000,  780},
+			{204000,  800},
+			{306000,  800},
+			{408000,  800},
+			{510000,  800},
+			{612000,  800},
 			{714000,  800},
 			{816000,  820},
 			{918000,  840},
