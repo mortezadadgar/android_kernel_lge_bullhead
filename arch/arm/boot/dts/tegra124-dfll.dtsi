@@ -11,7 +11,7 @@
 			tune1 = <0x00000060>;
 			droop-rate-min = <1000000>;
 			tune_high_min_millivolts = <900>;
-			min-millivolts = <800>;
+			min-millivolts = <720>;
 		};
 
 		characterization@1 {
@@ -22,7 +22,7 @@
 			tune1 = <0x00000060>;
 			droop-rate-min = <1000000>;
 			tune_high_min_millivolts = <900>;
-			min-millivolts = <800>;
+			min-millivolts = <720>;
 		};
 
 		characterization@2 {
@@ -33,7 +33,7 @@
 			tune1 = <0x00000060>;
 			droop-rate-min = <1000000>;
 			tune_high_min_millivolts = <900>;
-			min-millivolts = <800>;
+			min-millivolts = <720>;
 		};
 	};
 };
