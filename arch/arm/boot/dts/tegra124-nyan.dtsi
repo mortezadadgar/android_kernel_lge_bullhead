@@ -1041,7 +1041,7 @@
 
 		nvidia,disable-ext-loopback;
 
-		nvidia,vmax = <1250>;
+		nvidia,vmax = <1150>;
 		nvidia,vmin = <950>;
 		nvidia,t2t-vnom-slope = <29>;
 		nvidia,t2t-vnom-int = <124427>;
