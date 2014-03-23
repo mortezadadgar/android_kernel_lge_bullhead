@@ -54,9 +54,9 @@
 
 	sdhci@700b0000 {
 		trim-delay = <0x2>;
-		calib-3v3-offsets = <0x7676>;
-		calib-1v8-offsets = <0x7676>;
-		calib-1v8-offsets-uhs-modes = <0x2f>;
+		calib-3v3-offsets = <0x0000>;
+		calib-1v8-offsets = <0x0000>;
+		calib-1v8-offsets-uhs-modes = <0x3f>;
 	};
 
 	sdhci@700b0400 {
@@ -64,9 +64,9 @@
 		cd-inverted;
 		wp-inverted;
 		trim-delay = <0x3>;
-		calib-3v3-offsets = <0x7676>;
-		calib-1v8-offsets = <0x7676>;
-		calib-1v8-offsets-uhs-modes = <0x2f>;
+		calib-3v3-offsets = <0x0000>;
+		calib-1v8-offsets = <0x0000>;
+		calib-1v8-offsets-uhs-modes = <0x3f>;
 	};
 
 	sdhci@700b0600 {
@@ -74,7 +74,7 @@
 		ddr-trim-delay = <0x4>;
 		calib-3v3-offsets = <0x0202>;
 		calib-1v8-offsets = <0x0202>;
-		calib-1v8-offsets-uhs-modes = <0x2f>;
+		calib-1v8-offsets-uhs-modes = <0x3f>;
 	};
 
 	pmc {
