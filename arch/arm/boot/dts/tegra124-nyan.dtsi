@@ -642,6 +642,7 @@
 					regulator-name = "vdd_cpu";
 					regulator-min-microvolt = <700000>;
 					regulator-max-microvolt = <1350000>;
+					regulator-max-microamp = <3500000>;
 					regulator-always-on;
 					regulator-suspend-mem-disabled;
 					ams,ext-control = <2>;
@@ -695,6 +696,7 @@
 					regulator-name = "vdd_gpu";
 					regulator-min-microvolt = <610000>;
 					regulator-max-microvolt = <1200000>;
+					regulator-max-microamp = <3500000>;
 					regulator-boot-on;
 					regulator-always-on;
 					regulator-suspend-mem-enabled;
