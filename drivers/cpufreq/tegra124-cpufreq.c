@@ -302,6 +302,7 @@ static const struct tegra_cpufreq_config tegra124_cpufreq_config = {
 static int tegra124_prepare_tables(struct tegra_cpufreq_data *data)
 {
 	int i, j, ret, num_lp_freqs, num_g_freqs;
+	int suspend_idx = 0;
 	int *g_millivolts;
 	bool g_vmin_done = false;
 	unsigned long *freqs_lp, *freqs_g;
@@ -354,9 +355,7 @@ static int tegra124_prepare_tables(struct tegra_cpufreq_data *data)
 		if (freq == max_freq)
 			break;
 	}
-
-	/* Suspend index at max LP CPU */
-	data->suspend_index = i - 1;
+	suspend_idx = i;
 
 	/*  Fill in the non-DFLL CPU G frequencies above LP CPU maximum rate */
 	if (freq < g_vmin_freq) {
@@ -377,27 +376,10 @@ static int tegra124_prepare_tables(struct tegra_cpufreq_data *data)
 	}
 	tegra124_cpufreq_tables[i].frequency = CPUFREQ_TABLE_END;
 
-	/*
-	 * Don't suspend with DFLL mode, so update suspend index to be highest
-	 * rate under dfll_mode_threshold
-	 */
-	if (!IS_ERR(cpu_dfll_clk)) {
-		for (j = 0; j < i; j++) {
-			if (tegra124_cpufreq_tables[j].frequency * 1000 >=
-					dfll_mode_threshold)
-				break;
-		}
-
-		if (j) {
-			data->suspend_index = j - 1;
-		} else {
-			pr_err("Can't find non-DFLL frequency to suspend at\n");
-			data->suspend_index = 0;
-		}
-
-		/* Set dfll mode rate range */
-		tegra_dvfs_set_dfll_range(cpu_clk, DFLL_RANGE_HIGH_RATES);
-	}
+	if (i > suspend_idx)
+		data->suspend_index = suspend_idx;
+	else
+		data->suspend_index = i - 1;
 
 	return 0;
 out:
