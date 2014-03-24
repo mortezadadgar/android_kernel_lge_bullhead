@@ -489,6 +489,7 @@ struct tegra_dfll_dvfs_info {
  * @last_req: most recent closed-loop output frequency request
  * @tune_state: in closed-loop mode: is the DFLL in low- or high-voltage regime?
  * @mode: DFLL hardware operating mode: disabled, open-loop, or closed-loop
+ * @resume_mode: DFLL mode to be set to when resuming
  * @tune_timer: timer used to wait during TUNE_HIGH_REQUEST for high Vdd
  * @tune_delay: interval between tune_timer_cb calls during TUNE_HIGH_REQUEST
  * @flags: (see "Possible values for struct tegra_dfll.flags" above)
@@ -573,6 +574,7 @@ struct tegra_dfll {
 	struct dfll_rate_req		last_req;
 	enum tegra_dfll_tune_state	tune_state;
 	enum tegra_dfll_ctrl_mode	mode;
+	enum tegra_dfll_ctrl_mode	resume_mode;
 
 	struct timer_list		tune_timer;
 	unsigned long			tune_delay;
@@ -4064,6 +4066,11 @@ int tegra124_dfll_suspend(struct platform_device *pdev)
 
 	spin_unlock_irqrestore(&td->lock, flags);
 
+	if (td->mode == TEGRA_DFLL_CLOSED_LOOP) {
+		tegra_dfll_unlock(pdev);
+		td->resume_mode = TEGRA_DFLL_CLOSED_LOOP;
+	}
+
 	return 0;
 }
 
@@ -4106,6 +4113,11 @@ void tegra124_dfll_resume(struct platform_device *pdev)
 	}
 
 	spin_unlock_irqrestore(&td->lock, flags);
+
+	if (td->resume_mode == TEGRA_DFLL_CLOSED_LOOP) {
+		tegra_dfll_lock(pdev);
+		td->resume_mode = TEGRA_DFLL_UNINITIALIZED;
+	}
 }
 
 /* Match table for OF platform binding */
