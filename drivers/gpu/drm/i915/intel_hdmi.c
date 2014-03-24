@@ -851,6 +851,10 @@ static int hdmi_portclock_limit(struct intel_hdmi *hdmi)
 {
 	struct drm_device *dev = intel_hdmi_to_dev(hdmi);
 
+	/* If we're in DVI mode, the limit is 165MHz per port */
+	if (!hdmi->has_hdmi_sink)
+		return 165000;
+
 	if (IS_G4X(dev))
 		return 165000;
 	else if (IS_HASWELL(dev))
