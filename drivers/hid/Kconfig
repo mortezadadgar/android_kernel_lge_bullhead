@@ -587,6 +587,13 @@ config HID_PS3REMOTE
 
 	Support for the 6-axis controllers is provided by HID_SONY.
 
+config HID_QUICKSTEP
+	tristate "ChromeOS Touch Latency Measurement Device -- Quickstep"
+	depends on USB_HID
+	---help---
+	This module is the driver for the ChromeOS Touch Latency Measurement
+	Device known as Quickstep.
+
 config HID_ROCCAT
 	tristate "Roccat device support"
 	depends on USB_HID
