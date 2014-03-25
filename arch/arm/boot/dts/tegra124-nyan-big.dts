@@ -67,6 +67,17 @@
 		calib-3v3-offsets = <0x0000>;
 		calib-1v8-offsets = <0x0000>;
 		calib-1v8-offsets-uhs-modes = <0x3f>;
+
+		tuning-data@2 {
+			compatible = "nvidia,sdhci-tuning-data";
+			clock-frequency = <204000000>;
+			nvidia,thole-vnom-slope = <468>;
+			nvidia,thole-vnom-int = <36031>;
+			nvidia,thole-vmax-slope = <468>;
+			nvidia,thole-vmax-int = <36031>;
+			nvidia,thole-vmin-slope = <253>;
+			nvidia,thole-vmin-int = <21264>;
+		};
 	};
 
 	sdhci@700b0600 {
