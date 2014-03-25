@@ -83,7 +83,7 @@ static unsigned int set_cursor_start_addr(struct tegra_dc *dc,
 	/* Get the cursor clip window number */
 	clip_win = CURSOR_CLIP_GET_WINDOW(tegra_dc_readl(dc,
 					  DC_DISP_CURSOR_START_ADDR));
-	val |= clip_win;
+	val |= CURSOR_CLIP_SHIFT_BITS(clip_win);
 
 	tegra_dc_writel(dc, val | CURSOR_START_ADDR_LOW(phys_addr),
 			DC_DISP_CURSOR_START_ADDR);
@@ -383,6 +383,14 @@ int tegra_dc_ext_cursor_clip(struct tegra_dc_ext_user *user,
 	reg_val &= ~CURSOR_CLIP_SHIFT_BITS(3); /* Clear out the old value */
 	tegra_dc_writel(dc, reg_val | CURSOR_CLIP_SHIFT_BITS(*args),
 			DC_DISP_CURSOR_START_ADDR);
+	if(is_tegra124()) {
+		tegra_dc_writel(dc, CURSOR_UPDATE, DC_CMD_STATE_CONTROL);
+		tegra_dc_writel(dc, CURSOR_ACT_REQ, DC_CMD_STATE_CONTROL);
+	}
+	else {
+		tegra_dc_writel(dc, GENERAL_UPDATE, DC_CMD_STATE_CONTROL);
+		tegra_dc_writel(dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
+	}
 
 	tegra_dc_put(dc);
 	mutex_unlock(&dc->lock);
