@@ -1097,7 +1097,8 @@ static int tegra_output_sor_disable(struct tegra_output *output)
 }
 
 static int tegra_output_sor_setup_clock(struct tegra_output *output,
-					struct clk *clk, unsigned long pclk)
+					struct clk *clk, unsigned long pclk,
+					unsigned int *div)
 {
 	struct tegra_sor *sor = to_sor(output);
 	int err;
@@ -1108,12 +1109,13 @@ static int tegra_output_sor_setup_clock(struct tegra_output *output,
 		return err;
 	}
 
-	err = clk_set_rate(sor->clk_parent, pclk / 2);
+	err = clk_set_rate(sor->clk_parent, pclk);
 	if (err < 0) {
-		dev_err(sor->dev, "failed to set base clock rate to %lu Hz\n",
-			pclk);
+		dev_err(sor->dev, "failed to set clock rate to %lu Hz\n", pclk);
 		return err;
 	}
+
+	*div = 0;
 
 	return 0;
 }
