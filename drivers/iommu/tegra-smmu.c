@@ -37,6 +37,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/tegra-ahb.h>
+#include <linux/syscore_ops.h>
 
 #include <asm/page.h>
 #include <asm/cacheflush.h>
@@ -1281,10 +1282,10 @@ err_out:
 	smmu_debugfs_delete(smmu);
 }
 
-static int tegra_smmu_suspend(struct device *dev)
+static int tegra_smmu_suspend(void)
 {
 	int i;
-	struct smmu_device *smmu = dev_get_drvdata(dev);
+	struct smmu_device *smmu = smmu_handle;
 
 	for (i = 0; i < smmu->nr_xlats; i++)
 		smmu->xlat[i] = smmu_read(smmu,
@@ -1296,17 +1297,20 @@ static int tegra_smmu_suspend(struct device *dev)
 	return 0;
 }
 
-static int tegra_smmu_resume(struct device *dev)
+static void tegra_smmu_resume(void)
 {
-	struct smmu_device *smmu = dev_get_drvdata(dev);
+	struct smmu_device *smmu = smmu_handle;
 	unsigned long flags;
-	int err;
 
 	spin_lock_irqsave(&smmu->lock, flags);
-	err = smmu_setup_regs(smmu);
+	smmu_setup_regs(smmu);
 	spin_unlock_irqrestore(&smmu->lock, flags);
-	return err;
 }
+
+static struct syscore_ops tegra_smmu_syscore_ops = {
+	.suspend	= tegra_smmu_suspend,
+	.resume		= tegra_smmu_resume,
+};
 
 static void tegra_smmu_create_default_map(struct smmu_device *smmu)
 {
@@ -1455,6 +1459,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	smmu_handle = smmu;
 	bus_set_iommu(&platform_bus_type, &smmu_iommu_ops);
 	tegra_smmu_create_default_map(smmu);
+	register_syscore_ops(&tegra_smmu_syscore_ops);
 
 	iommu_add(&smmu->iommu);
 	return 0;
@@ -1467,6 +1472,7 @@ static int tegra_smmu_remove(struct platform_device *pdev)
 
 	smmu_debugfs_delete(smmu);
 
+	unregister_syscore_ops(&tegra_smmu_syscore_ops);
 	smmu_write(smmu, SMMU_CONFIG_DISABLE, SMMU_CONFIG);
 	for (i = 0; i < smmu->num_as; i++)
 		free_pdir(&smmu->as[i]);
@@ -1476,18 +1482,12 @@ static int tegra_smmu_remove(struct platform_device *pdev)
 	return 0;
 }
 
-const struct dev_pm_ops tegra_smmu_pm_ops = {
-	.suspend	= tegra_smmu_suspend,
-	.resume		= tegra_smmu_resume,
-};
-
 static struct platform_driver tegra_smmu_driver = {
 	.probe		= tegra_smmu_probe,
 	.remove		= tegra_smmu_remove,
 	.driver = {
 		.owner	= THIS_MODULE,
 		.name	= "tegra-smmu",
-		.pm	= &tegra_smmu_pm_ops,
 		.of_match_table = tegra_smmu_of_match,
 	},
 };
