@@ -1326,13 +1326,6 @@ typedef struct drm_i915_private {
 	struct drm_display_mode *lfp_lvds_vbt_mode; /* if any */
 	struct drm_display_mode *sdvo_lvds_vbt_mode; /* if any */
 
-	/* Backlight driver */
-	u32 (*get_backlight)(struct drm_device *dev, enum pipe pipe);
-	u32 (*get_max_backlight)(struct drm_device *dev, enum pipe pipe);
-	void (*set_backlight)(struct intel_connector *connector, u32 level, u32 max);
-	void (*disable_backlight)(struct intel_connector *connector);
-	void (*enable_backlight)(struct intel_connector *connector);
-
 	/* Feature bits from the VBIOS */
 	unsigned int int_tv_support:1;
 	unsigned int lvds_dither:1;

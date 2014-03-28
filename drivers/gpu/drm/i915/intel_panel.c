@@ -479,7 +479,7 @@ static u32 intel_panel_compute_brightness(struct drm_device *dev,
 
 	if (i915_panel_invert_brightness > 0 ||
 	    dev_priv->quirks & QUIRK_INVERT_BRIGHTNESS)
-		return dev_priv->get_max_backlight(dev, pipe) - val;
+		return intel_panel_get_max_backlight(dev, pipe) - val;
 
 	return val;
 }
@@ -543,7 +543,7 @@ static void intel_panel_actually_set_backlight(struct drm_device *dev,
 		return intel_pch_panel_set_backlight(dev, level);
 
 	if (is_backlight_combination_mode(dev)) {
-		u32 max = dev_priv->get_max_backlight(dev, pipe);
+		u32 max = intel_panel_get_max_backlight(dev, pipe);
 		u8 lbpc;
 
 		/* we're screwed, but keep behaviour backwards compatible */
@@ -675,7 +675,7 @@ void intel_panel_enable_backlight(struct intel_connector *connector)
 	 * they know what they're doing and will raise the level themselves. */
 	if (dev_priv->backlight.level == 0 &&
 	    !dev_priv->backlight.level_has_been_set) {
-		dev_priv->backlight.level = dev_priv->get_max_backlight(dev, pipe);
+		dev_priv->backlight.level = intel_panel_get_max_backlight(dev, pipe);
 		if (dev_priv->backlight.device)
 			dev_priv->backlight.device->props.brightness =
 				dev_priv->backlight.level;
@@ -758,23 +758,6 @@ static void intel_panel_init_backlight_regs(struct drm_device *dev)
 	}
 }
 
-static void intel_panel_init_backlight(struct drm_device *dev)
-{
-	struct drm_i915_private *dev_priv = dev->dev_private;
-
-	intel_panel_init_backlight_regs(dev);
-
-	dev_priv->get_backlight = intel_panel_get_backlight;
-	dev_priv->get_max_backlight = intel_panel_get_max_backlight;
-	dev_priv->set_backlight = intel_panel_set_backlight;
-	dev_priv->disable_backlight = intel_panel_disable_backlight;
-	dev_priv->enable_backlight = intel_panel_enable_backlight;
-
-	dev_priv->backlight.level = dev_priv->get_backlight(dev, 0);
-	dev_priv->backlight.level_has_been_set = false;
-	dev_priv->backlight.enabled = dev_priv->backlight.level != 0;
-}
-
 enum drm_connector_status
 intel_panel_detect(struct drm_device *dev)
 {
@@ -802,13 +785,12 @@ static int intel_backlight_device_update_status(struct backlight_device *bd)
 {
 	struct intel_connector *connector = bl_get_data(bd);
 	struct drm_device *dev = connector->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	mutex_lock(&dev->mode_config.mutex);
 	DRM_DEBUG_KMS("updating intel_backlight, brightness=%d/%d\n",
 		      bd->props.brightness, bd->props.max_brightness);
-	dev_priv->set_backlight(connector, bd->props.brightness,
-				bd->props.max_brightness);
+	intel_panel_set_backlight(connector, bd->props.brightness,
+				  bd->props.max_brightness);
 	mutex_unlock(&dev->mode_config.mutex);
 	return 0;
 }
@@ -840,8 +822,6 @@ static int intel_backlight_device_register(struct intel_connector *connector)
 	struct backlight_properties props;
 	unsigned long flags;
 
-	intel_panel_init_backlight(dev);
-
 	if (WARN_ON(dev_priv->backlight.device))
 		return -ENODEV;
 
@@ -850,7 +830,7 @@ static int intel_backlight_device_register(struct intel_connector *connector)
 
 	props.brightness = dev_priv->backlight.level;
 	spin_lock_irqsave(&dev_priv->backlight.lock, flags);
-	props.max_brightness = dev_priv->get_max_backlight(dev, 0);
+	props.max_brightness = intel_panel_get_max_backlight(dev, 0);
 	spin_unlock_irqrestore(&dev_priv->backlight.lock, flags);
 
 	if (props.max_brightness == 0) {
