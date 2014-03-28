@@ -114,7 +114,7 @@ static int tegra_fb_set_par(struct fb_info *info)
 			var->blue.length = 8;
 			var->transp.offset = 24;
 			var->transp.length = 8;
-			tegra_fb->win->fmt = TEGRA_WIN_FMT_R8G8B8A8;
+			tegra_fb->win->fmt = TEGRA_WIN_FMT_B8G8R8A8;
 			break;
 		case 16:
 			var->red.offset = 11;
