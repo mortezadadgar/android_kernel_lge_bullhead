@@ -42,6 +42,8 @@
 	};
 
 	i2c@7000c400 {
+		clock-frequency = <400000>;
+
 		trackpad@15 {
 			compatible = "elan_i2c";
 			reg = <0x15>;

@@ -39,6 +39,8 @@
 	};
 
 	i2c@7000c400 {
+		clock-frequency = <100000>;
+
 		trackpad {
 			compatible = "cypress,cyapa";
 			reg = <0x67>;

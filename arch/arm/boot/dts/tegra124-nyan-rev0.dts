@@ -143,6 +143,8 @@
 	};
 
 	i2c@7000c400 {
+		clock-frequency = <100000>;
+
 		light-sensor {
 			compatible = "isil,isl29018";
 			reg = <0x44>;

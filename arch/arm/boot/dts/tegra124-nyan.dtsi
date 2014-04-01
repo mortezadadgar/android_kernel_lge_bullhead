@@ -534,7 +534,6 @@
 
 	i2c@7000c400 {
 		status = "okay";
-		clock-frequency = <100000>;
 
 		touchscreen {
 			compatible = "atmel,atmel_mxt_ts";
