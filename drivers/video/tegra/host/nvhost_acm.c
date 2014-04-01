@@ -566,6 +566,7 @@ int nvhost_module_init(struct platform_device *dev)
 	pm_runtime_enable(&dev->dev);
 	if (!pm_runtime_enabled(&dev->dev))
 		nvhost_module_enable_clk(&dev->dev);
+	device_enable_async_suspend(&dev->dev);
 	return 0;
 
 fail_powergatedelay:
