@@ -2708,6 +2708,7 @@ static int tegra_dc_probe(struct platform_device *ndev)
 	pm_runtime_use_autosuspend(&ndev->dev);
 	pm_runtime_set_autosuspend_delay(&ndev->dev, 100);
 	pm_runtime_enable(&ndev->dev);
+	device_enable_async_suspend(&ndev->dev);
 
 	if (dc->pdata->flags & TEGRA_DC_FLAG_ENABLED) {
 		_tegra_dc_set_default_videomode(dc);
