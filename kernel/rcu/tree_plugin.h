@@ -2576,10 +2576,12 @@ static void __maybe_unused rcu_kick_nohz_cpu(int cpu)
  */
 static void rcu_bind_gp_kthread(void)
 {
+#ifdef CONFIG_NO_HZ_FULL
 	int cpu = ACCESS_ONCE(tick_do_timer_cpu);
 
 	if (cpu < 0 || cpu >= nr_cpu_ids)
 		return;
 	if (raw_smp_processor_id() != cpu)
 		set_cpus_allowed_ptr(current, cpumask_of(cpu));
+#endif /* #ifdef CONFIG_NO_HZ_FULL */
 }
