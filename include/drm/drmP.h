@@ -428,6 +428,12 @@ struct drm_prime_file_private {
 /** File private data */
 struct drm_file {
 	int authenticated;
+	/*
+	 * true if client understands CRTC primary planes and cursor planes
+	 * in the plane list
+	 */
+	unsigned universal_planes:1;
+
 	struct pid *pid;
 	kuid_t uid;
 	drm_magic_t magic;
@@ -1458,6 +1464,7 @@ extern void drm_put_dev(struct drm_device *dev);
 extern int drm_put_minor(struct drm_minor **minor);
 extern void drm_unplug_dev(struct drm_device *dev);
 extern unsigned int drm_debug;
+extern unsigned int drm_universal_planes;
 
 extern unsigned int drm_vblank_offdelay;
 extern unsigned int drm_timestamp_precision;

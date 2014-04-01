@@ -41,6 +41,11 @@ unsigned int drm_debug = 0;	/* 1 to enable debug output */
 EXPORT_SYMBOL(drm_debug);
 
 unsigned int drm_vblank_offdelay = 1000;    /* Default to 1000 msecs. */
+
+/* 1 to allow user space to request universal planes (experimental) */
+unsigned int drm_universal_planes = 0;
+EXPORT_SYMBOL(drm_universal_planes);
+
 EXPORT_SYMBOL(drm_vblank_offdelay);
 
 unsigned int drm_timestamp_precision = 20;  /* Default to 20 usecs. */
@@ -61,6 +66,7 @@ MODULE_PARM_DESC(timestamp_precision_usec, "Max. error on timestamps [usecs]");
 MODULE_PARM_DESC(timestamp_monotonic, "Use monotonic timestamps");
 
 module_param_named(debug, drm_debug, int, 0600);
+module_param_named(universal_planes, drm_universal_planes, int, 0600);
 module_param_named(vblankoffdelay, drm_vblank_offdelay, int, 0600);
 module_param_named(timestamp_precision_usec, drm_timestamp_precision, int, 0600);
 module_param_named(timestamp_monotonic, drm_timestamp_monotonic, int, 0600);
