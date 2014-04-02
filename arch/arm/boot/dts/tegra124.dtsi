@@ -724,7 +724,7 @@
 	xusb_phy: phy@7009f000 {
 		compatible = "nvidia,tegra124-xusb-phy";
 		reg = <0x0 0x7009f000 0x1000>,
-		      <0x0 0x7000e400 0x800>;
+		      <0x0 0x7d000000 0x4000>;
 		interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&tegra_car TEGRA124_CLK_XUSB_SS>,
 			 <&tegra_car TEGRA124_CLK_XUSB_SS_SRC>,
