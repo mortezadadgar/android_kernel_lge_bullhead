@@ -151,18 +151,20 @@ static inline unsigned long tegra_dc_kbps_to_emc(struct tegra_dc *dc,
 	struct clk *emc_master;
 	unsigned long freq;
 
+	emc_master = clk_get_parent(dc->emc_clk);
 	if (bw == ULONG_MAX)
-		return ULONG_MAX;
+		return clk_round_rate(emc_master, ULONG_MAX);
 
 	freq = tegra_emc_bw_to_freq_req(bw);
+	/* freq too big - clamp at max */
 	if (freq >= (ULONG_MAX / 1000))
-		return ULONG_MAX; /* freq too big - clamp at max */
+		return clk_round_rate(emc_master, ULONG_MAX);
 
+	/* should never occur because of above */
 	if (WARN_ONCE((freq * 1000) < freq, "Bandwidth Overflow"))
-		return ULONG_MAX; /* should never occur because of above. */
+		return clk_round_rate(emc_master, ULONG_MAX);
 
 	freq *= 1000;
-	emc_master = clk_get_parent(dc->emc_clk);
 	freq = clk_round_rate(emc_master, freq);
 	/*
 	 * tegra_emc_bw_to_freq_req() appears to underestimate the required
@@ -185,9 +187,8 @@ void tegra_dc_program_bandwidth(struct tegra_dc *dc, bool use_new)
 	unsigned i;
 
 	if (use_new || dc->bw_kbps != dc->new_bw_kbps) {
-		long bw = max(dc->bw_kbps, dc->new_bw_kbps);
-
-		int emc_freq;
+		unsigned long bw = max(dc->bw_kbps, dc->new_bw_kbps);
+		unsigned long emc_freq;
 
 		/* going from 0 to non-zero */
 		if (!dc->bw_kbps && dc->new_bw_kbps &&

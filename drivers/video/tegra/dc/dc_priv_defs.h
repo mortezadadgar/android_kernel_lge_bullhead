@@ -135,8 +135,8 @@ struct tegra_dc {
 
 	struct clk			*clk;
 	struct clk			*emc_clk;
-	long				bw_kbps; /* bandwidth in KBps */
-	long				new_bw_kbps;
+	unsigned long			bw_kbps; /* bandwidth in KBps */
+	unsigned long			new_bw_kbps;
 	struct tegra_dc_shift_clk_div	shift_clk_div;
 
 	u32				powergate_id;
