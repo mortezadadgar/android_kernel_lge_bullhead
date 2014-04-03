@@ -651,7 +651,7 @@
 					regulator-name = "vdd_core";
 					regulator-min-microvolt = <700000>;
 					regulator-max-microvolt = <1350000>;
-					regulator-max-microamp = <3500000>;
+					regulator-max-microamp = <4000000>;
 					regulator-always-on;
 					regulator-suspend-mem-disabled;
 					ams,ext-control = <1>;
