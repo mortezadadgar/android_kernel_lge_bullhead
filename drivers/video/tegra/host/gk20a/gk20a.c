@@ -669,7 +669,6 @@ int nvhost_gk20a_finalize_poweron(struct platform_device *dev)
 	gk20a_writel(g, mc_intr_mask_0_r(),
 			mc_intr_0_pgraph_pending_f() |
 			mc_intr_0_pfifo_pending_f() |
-			mc_intr_0_pmu_pending_f() |
 			mc_intr_0_priv_ring_pending_f() |
 			mc_intr_0_ltc_pending_f() |
 			mc_intr_0_pbus_pending_f());
