@@ -177,7 +177,10 @@ static int dw_i2c_probe(struct platform_device *pdev)
 		I2C_FUNC_SMBUS_WORD_DATA |
 		I2C_FUNC_SMBUS_I2C_BLOCK;
 	dev->master_cfg =  DW_IC_CON_MASTER | DW_IC_CON_SLAVE_DISABLE |
-		DW_IC_CON_RESTART_EN | DW_IC_CON_SPEED_STD;
+		DW_IC_CON_RESTART_EN;
+
+	dev->master_cfg |= (force_std_mode ? DW_IC_CON_SPEED_STD :
+		DW_IC_CON_SPEED_FAST);
 
 	/* Try first if we can configure the device from ACPI */
 	r = dw_i2c_acpi_configure(pdev);
