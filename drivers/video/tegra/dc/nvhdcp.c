@@ -748,6 +748,11 @@ static int verify_link(struct tegra_nvhdcp *nvhdcp, bool wait_ri)
 	tx = 0;
 	/* retry 3 times to deal with I2C link issues */
 	do {
+		if (!nvhdcp_is_plugged(nvhdcp)) {
+			nvhdcp_err("abort verify link: lost hdmi connection\n");
+			return -EIO;
+		}
+
 		if (wait_ri)
 			old = get_transmitter_ri(hdmi);
 
@@ -767,11 +772,6 @@ static int verify_link(struct tegra_nvhdcp *nvhdcp, bool wait_ri)
 	} while (wait_ri && --retries && old != tx);
 
 	nvhdcp_debug("R0 Ri poll:rx=0x%04x tx=0x%04x\n", rx, tx);
-
-	if (!nvhdcp_is_plugged(nvhdcp)) {
-		nvhdcp_err("aborting verify links - lost hdmi connection\n");
-		return -EIO;
-	}
 
 	if (rx != tx)
 		return -EINVAL;
@@ -1088,6 +1088,7 @@ void tegra_nvhdcp_set_plug(struct tegra_nvhdcp *nvhdcp, bool hpd)
 		nvhdcp_set_plugged(nvhdcp, true);
 		tegra_nvhdcp_on(nvhdcp);
 	} else {
+		nvhdcp_set_plugged(nvhdcp, false);
 		tegra_nvhdcp_off(nvhdcp);
 	}
 }
