@@ -2,6 +2,7 @@
 
 #include "tegra124.dtsi"
 #include "tegra124-nyan.dtsi"
+#include "tegra124-nyan-blaze-emc.dtsi"
 
 / {
 	model = "Google Nyan Blaze Rev 0+";
