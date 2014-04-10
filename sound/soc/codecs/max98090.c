@@ -2031,6 +2031,10 @@ static void max98090_jack_work(struct work_struct *work)
 			    SND_JACK_HEADSET | SND_JACK_BTN_0);
 
 	snd_soc_dapm_sync(dapm);
+
+	/* unmask the IRQ */
+	snd_soc_update_bits(codec, M98090_REG_INTERRUPT_S,
+		M98090_IJDET_MASK, 1 << M98090_IJDET_SHIFT);
 }
 
 
@@ -2040,24 +2044,36 @@ static void max98090_pll_work(struct work_struct *work)
 		struct max98090_priv,
 		pll_work);
 	struct snd_soc_codec *codec = max98090->codec;
-
-	dev_err(codec->dev, "PLL unlocked\n");
+	unsigned int pll;
+	int i;
 
 	if (!codec->active)
 		return;
 
+	for (i = 0; i < 10; i++) {
 
-	/* toggle shutdown OFF then ON */
-	snd_soc_update_bits(codec, M98090_REG_DEVICE_SHUTDOWN,
-		M98090_SHDNN_MASK, 0);
+		/* toggle shutdown OFF then ON */
+		snd_soc_update_bits(codec, M98090_REG_DEVICE_SHUTDOWN,
+			M98090_SHDNN_MASK, 0);
+		snd_soc_update_bits(codec, M98090_REG_DEVICE_SHUTDOWN,
+			M98090_SHDNN_MASK, M98090_SHDNN_MASK);
 
-	msleep(50);
+		/* give PLL time to lock */
+		msleep(1);
 
-	snd_soc_update_bits(codec, M98090_REG_DEVICE_SHUTDOWN,
-		M98090_SHDNN_MASK, M98090_SHDNN_MASK);
+		/* check that we have lock now */
+		regmap_read(max98090->regmap,
+			M98090_REG_DEVICE_STATUS, &pll);
+		if (!(pll & M98090_ULK_MASK))
+			goto unmask;
+	}
+	dev_err(codec->dev, "PLL lock failed 0x%x retrying\n", pll);
 
-	/* give PLL time to lock */
-	msleep(10);
+unmask:
+	/* unmask the PLL interrupt */
+	snd_soc_update_bits(codec, M98090_REG_INTERRUPT_S,
+		M98090_IULK_MASK, 1 << M98090_IULK_SHIFT);
+	dev_err(codec->dev, "PLL after IRQ active fix %d is  0x%x\n", i, pll);
 }
 
 static irqreturn_t max98090_interrupt(int irq, void *data)
@@ -2088,13 +2104,17 @@ static irqreturn_t max98090_interrupt(int irq, void *data)
 		return IRQ_NONE;
 	}
 
-	dev_err(codec->dev, "active=0x%02x mask=0x%02x -> active=0x%02x\n",
+	dev_dbg(codec->dev, "active=0x%02x mask=0x%02x -> active=0x%02x\n",
 		active, mask, active & mask);
 
 	active &= mask;
 
 	if (!active)
 		return IRQ_NONE;
+
+	/* mask the interrupts - unmask after handlers/work completed */
+	snd_soc_update_bits(codec, M98090_REG_INTERRUPT_S,
+			active, active);
 
 	if (active & M98090_CLD_MASK)
 		dev_err(codec->dev, "M98090_CLD_MASK\n");
