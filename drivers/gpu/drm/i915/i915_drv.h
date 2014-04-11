@@ -1899,6 +1899,8 @@ extern void intel_irq_init(struct drm_device *dev);
 extern void intel_pm_init(struct drm_device *dev);
 extern void intel_hpd_init(struct drm_device *dev);
 extern void intel_pm_init(struct drm_device *dev);
+extern void vlv_set_power_well(struct drm_i915_private *dev_priv, u32 val);
+
 
 extern void intel_uncore_sanitize(struct drm_device *dev);
 extern void intel_uncore_early_sanitize(struct drm_device *dev);
