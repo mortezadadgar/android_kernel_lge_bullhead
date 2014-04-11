@@ -1,1 +1,1 @@
-obj-$(CONFIG_ARCH_TEGRA)		+= nvavp/
+obj-$(CONFIG_TEGRA_NVAVP)		+= nvavp/
