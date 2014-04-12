@@ -774,12 +774,6 @@ void intel_crt_init(struct drm_device *dev)
 	struct intel_connector *intel_connector;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
-	/* TODO(crosbug.com/p/27652): remove below once VBIOS settings for
-	   int_crt_support can be properly configured and consumed by driver.
-	*/
-	if (IS_VALLEYVIEW(dev))
-		return;
-
 	/* Skip machines without VGA that falsely report hotplug events */
 	if (dmi_check_system(intel_no_crt))
 		return;
