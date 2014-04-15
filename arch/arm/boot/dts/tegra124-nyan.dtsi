@@ -1000,6 +1000,7 @@
 		status = "okay";
 		nvidia,host-off-card-on;
 		keep-power-in-suspend;
+		tap-delay = <2>;
 
 		nvidia,vmax = <1150>;
 		nvidia,vmin = <950>;
@@ -1042,6 +1043,7 @@
 		bus-width = <4>;
 		status = "okay";
 		vqmmc-supply = <&vddio_sdmmc3>;
+		tap-delay = <3>;
 
 		nvidia,disable-ext-loopback;
 
@@ -1085,6 +1087,7 @@
 		no-1-8-v;
 		non-removable;
 		status = "okay";
+		tap-delay = <5>;
 
 		nvidia,vmax = <1150>;
 		nvidia,vmin = <950>;
