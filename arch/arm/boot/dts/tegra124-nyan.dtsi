@@ -794,7 +794,7 @@
 		status = "okay";
 		ec: cros-ec@0 {
 			compatible = "google,cros-ec-spi";
-			spi-max-frequency = <4000000>;
+			spi-max-frequency = <3000000>;
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(C, 7) IRQ_TYPE_LEVEL_LOW>;
 			nvidia,pmc-wakeup = <&pmc 1 8 8>;
