@@ -3260,6 +3260,10 @@ int gr_gk20a_add_zbc(struct gk20a *g, struct gr_gk20a *gr,
 	u32 i, ret = -ENOMEM;
 	bool added = false;
 	u32 entries;
+	struct fifo_gk20a *f = &g->fifo;
+	struct fifo_engine_info_gk20a *gr_info =
+		f->engine_info + ENGINE_GR_GK20A;
+	unsigned long end_jiffies;
 
 	/* no endian swap ? */
 
@@ -3342,7 +3346,33 @@ int gr_gk20a_add_zbc(struct gk20a *g, struct gr_gk20a *gr,
 		/* update zbc for elpg only when new entry is added */
 		entries = max(gr->max_used_color_index,
 					gr->max_used_depth_index);
-		gk20a_pmu_save_zbc(g, entries);
+		if (g->pmu.zbc_ready) {
+			ret = gk20a_fifo_disable_engine_activity(g,
+				gr_info, true);
+			if (ret) {
+				nvhost_err(dev_from_gk20a(g),
+					"failed to disable gr engine activity");
+				return ret;
+			}
+
+			end_jiffies = jiffies +
+				msecs_to_jiffies(gk20a_get_gr_idle_timeout(g));
+			ret = gr_gk20a_wait_idle(g,
+				end_jiffies, GR_IDLE_CHECK_DEFAULT);
+			if (ret) {
+				nvhost_err(dev_from_gk20a(g),
+					"failed to idle graphics");
+			}
+
+			gk20a_pmu_save_zbc(g, entries);
+
+			ret = gk20a_fifo_enable_engine_activity(g, gr_info);
+			if (ret) {
+				nvhost_err(dev_from_gk20a(g),
+					"failed to enable gr engine activity");
+			}
+		}
+
 	}
 
 	return ret;
