@@ -20,10 +20,6 @@
 		};
 	};
 
-	phy@7009f000 {
-		nvidia,utmi-remote-wakeup = <0x7>; /* USB2P0,  USB2P1, USB2P2 */
-	};
-
 	pinmux {
 		pinmux@0 {
 			hp_det_l {
@@ -80,6 +76,11 @@
 				};
 			};
 		};
+	};
+
+	phy@7009f000 {
+		nvidia,utmi-remote-wakeup = <0x7>; /* USB2P0,  USB2P1, USB2P2 */
+		nvidia,xusb-hs-xcvr-setup-offset = <0x020004>;
 	};
 
 	sdhci@700b0000 {
