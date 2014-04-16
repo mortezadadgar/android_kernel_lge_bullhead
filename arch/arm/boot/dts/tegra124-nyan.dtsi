@@ -1037,11 +1037,11 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		power-gpios = <&gpio TEGRA_GPIO(R, 0) GPIO_ACTIVE_HIGH>;
 		cd-gpios = <&gpio TEGRA_GPIO(V, 2) GPIO_ACTIVE_HIGH>;
 		no-1-8-v;
 		bus-width = <4>;
 		status = "okay";
+		vmmc-supply = <&_3v3_sd_card>;
 		vqmmc-supply = <&vddio_sdmmc3>;
 		tap-delay = <3>;
 
@@ -1324,6 +1324,17 @@
 			regulator-name = "3v3-lp0";
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
+		};
+
+		_3v3_sd_card: regulator@12 {
+			compatible = "regulator-fixed";
+			reg = <12>;
+			regulator-name = "3v3-sd-card";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			enable-active-high;
+			regulator-boot-on;
+			gpio = <&gpio TEGRA_GPIO(R, 0) GPIO_ACTIVE_HIGH>;
 		};
 	};
 
