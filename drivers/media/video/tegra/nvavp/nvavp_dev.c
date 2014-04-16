@@ -2026,7 +2026,7 @@ static int tegra_nvavp_probe(struct platform_device *ndev)
 		goto err_clk;
 	}
 
-	nvavp->vde_clk = devm_clk_get(&ndev->dev, "vde.cbus");
+	nvavp->vde_clk = devm_clk_get(&ndev->dev, "vde");
 	if (IS_ERR(nvavp->vde_clk)) {
 		dev_err(&ndev->dev, "cannot get vde clock\n");
 		ret = -ENOENT;
