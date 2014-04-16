@@ -127,14 +127,14 @@
 		nvavp {
 			compatible = "nvidia,tegra124-nvavp";
 			interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&tegra_car TEGRA124_CLK_VDE_CBUS>,
+			clocks = <&tegra_car TEGRA124_CLK_VDE>,
 				   <&tegra_car TEGRA124_CLK_AVP_SCLK>,
 				   <&tegra_car TEGRA124_CLK_BSEV>,
 				   <&tegra_car TEGRA124_CLK_AVP_EMC>,
 				   <&tegra_car TEGRA124_CLK_COP>,
 				   <&tegra_car TEGRA124_CLK_BSEA>,
 				   <&tegra_car TEGRA124_CLK_VCP>;
-			clock-names = "vde.cbus", "avp.sclk", "bsev", "avp.emc",
+			clock-names = "vde", "avp.sclk", "bsev", "avp.emc",
 					"cop", "bsea", "vcp";
 			nvidia,use-smmu;
 			nvidia,use-nvavp-audio;
