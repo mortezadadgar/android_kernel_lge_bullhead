@@ -1618,31 +1618,11 @@ static long tegra_dc_hdmi_setup_clk(struct tegra_dc *dc, struct clk *clk)
 	unsigned long rate;
 	struct clk *parent_clk = clk_get_sys(NULL,
 		dc->out->parent_clk ? : "pll_d_out0");
-	struct clk *base_clk = clk_get_parent(parent_clk);
 
-	/*
-	 * Providing dynamic frequency rate setting for T20/T30 HDMI.
-	 * The required rate needs to be setup at 4x multiplier,
-	 * as out0 is 1/2 of the actual PLL output.
-	 */
-	if (is_tegra124()) {
-		if (dc->mode.pclk == 25200000)
-			rate = dc->mode.pclk  * 10;
-		else
-			rate = dc->mode.pclk;
-	} else {
-		rate = dc->mode.pclk * 2;
-		while (rate < 500000000)
-			rate *= 2;
-	}
+	rate = dc->mode.pclk;
 
-	if (!is_tegra124()) {
-		if (rate != clk_get_rate(base_clk))
-			clk_set_rate(base_clk, rate);
-	} else {
-		if (rate != clk_get_rate(parent_clk))
-			clk_set_rate(parent_clk, rate);
-	}
+	if (rate != clk_get_rate(parent_clk))
+		clk_set_rate(parent_clk, rate);
 
 	if (clk_get_parent(clk) != parent_clk)
 		clk_set_parent(clk, parent_clk);
