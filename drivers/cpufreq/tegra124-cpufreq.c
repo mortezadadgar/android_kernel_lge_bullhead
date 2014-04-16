@@ -168,24 +168,23 @@ static void tegra124_emc_clk_set_rate(unsigned long cpu_rate)
 		return;
 
 	emc_max_rate = clk_round_rate(emc_clk, ULONG_MAX);
+
 	/* Vote on memory bus frequency based on cpu frequency */
-	if (cpu_rate >= 1300000)
-		/* cpu >= 1.3GHz, emc max */
+	if (cpu_rate >= 1400000)
 		clk_set_rate(emc_clk, emc_max_rate);
-	else if (cpu_rate >= 975000)
-		/* cpu >= 975 MHz, emc 400 MHz */
-		clk_set_rate(emc_clk, 400000000);
-	else if (cpu_rate >= 725000)
-		/* cpu >= 725 MHz, emc 200 MHz */
-		clk_set_rate(emc_clk, 200000000);
+	else if (cpu_rate >= 1200000)
+		clk_set_rate(emc_clk, 750000000);
+	else if (cpu_rate >= 1100000)
+		clk_set_rate(emc_clk, 600000000);
+	else if (cpu_rate >= 1000000)
+		clk_set_rate(emc_clk, 500000000);
+	else if (cpu_rate >= 800000)
+		clk_set_rate(emc_clk, 375000000);
 	else if (cpu_rate >= 500000)
-		/* cpu >= 500 MHz, emc 100 MHz */
+		clk_set_rate(emc_clk, 200000000);
+	else if (cpu_rate >= 250000)
 		clk_set_rate(emc_clk, 100000000);
-	else if (cpu_rate >= 275000)
-		/* cpu >= 275 MHz, emc 50 MHz */
-		clk_set_rate(emc_clk, 50000000);
 	else
-		/* emc min */
 		clk_set_rate(emc_clk, 0);
 }
 
