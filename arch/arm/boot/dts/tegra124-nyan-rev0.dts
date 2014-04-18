@@ -187,6 +187,7 @@
 		calib-3v3-offsets = <0x7676>;
 		calib-1v8-offsets = <0x7676>;
 		calib-1v8-offsets-uhs-modes = <0x08>; /* DDR50 */
+		max-frequency = <204000000>;
 	};
 
 	sdhci@700b0400 {
@@ -196,6 +197,7 @@
 		calib-3v3-offsets = <0x7676>;
 		calib-1v8-offsets = <0x7676>;
 		calib-1v8-offsets-uhs-modes = <0x08>; /* DDR50 */
+		max-frequency = <136000000>;
 	};
 
 	sdhci@700b0600 {
@@ -204,6 +206,7 @@
 		calib-3v3-offsets = <0x0202>;
 		calib-1v8-offsets = <0x0202>;
 		calib-1v8-offsets-uhs-modes = <0x28>; /* DDR50 | HS200 */
+		max-frequency = <200000000>;
 	};
 
 	sound {

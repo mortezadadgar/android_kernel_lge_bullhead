@@ -68,6 +68,7 @@
 		calib-3v3-offsets = <0x7676>;
 		calib-1v8-offsets = <0x7676>;
 		calib-1v8-offsets-uhs-modes = <0x3f>;
+		max-frequency = <204000000>;
 	};
 
 	sdhci@700b0400 {
@@ -77,6 +78,7 @@
 		calib-3v3-offsets = <0x7676>;
 		calib-1v8-offsets = <0x0000>;
 		calib-1v8-offsets-uhs-modes = <0x3f>;
+		max-frequency = <136000000>;
 	};
 
 	sdhci@700b0600 {
@@ -85,6 +87,7 @@
 		calib-3v3-offsets = <0x0202>;
 		calib-1v8-offsets = <0x0202>;
 		calib-1v8-offsets-uhs-modes = <0x3f>;
+		max-frequency = <200000000>;
 	};
 
 	backlight {
