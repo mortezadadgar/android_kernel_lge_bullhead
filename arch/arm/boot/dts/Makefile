@@ -200,6 +200,7 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra114-pluto.dtb \
 	tegra124-nyan-rev0.dtb \
 	tegra124-nyan-rev1.dtb \
+	tegra124-nyan-big-rev0_3.dtb \
 	tegra124-nyan-big.dtb \
 	tegra124-nyan-blaze.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += versatile-ab.dtb \
