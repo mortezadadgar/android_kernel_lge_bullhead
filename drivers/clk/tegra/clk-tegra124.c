@@ -629,9 +629,6 @@ static struct tegra_clk_pll_params pll_d_params = {
 };
 
 static struct tegra_clk_pll_freq_table tegra124_pll_d2_freq_table[] = {
-	{ 12000000,  53896000,  90, 1, 20},
-	{ 12000000,  74250000,  99, 1, 16},
-	{ 12000000, 122339000,  82, 1,  8},
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
