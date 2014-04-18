@@ -27,7 +27,10 @@
 #include "dc_config.h"
 #include "dc_priv.h"
 
-#define EMC_LOW_FREQ_THRESHOLD	20400000
+/* Need to set higher EMC than normal usage in case of latency */
+#define EMC_BW_USAGE_CUTOFF		2041 /* (100 / 49) * 1000 */
+#define EMC_FREQ_CUTOFF_USE_130_PERCENT	100000000
+#define EMC_FREQ_CUTOFF_USE_140_PERCENT	50000000
 
 static int use_dynamic_emc = 1;
 
@@ -167,12 +170,31 @@ static inline unsigned long tegra_dc_kbps_to_emc(struct tegra_dc *dc,
 	freq *= 1000;
 	freq = clk_round_rate(emc_master, freq);
 	/*
-	 * tegra_emc_bw_to_freq_req() appears to underestimate the required
-	 * DRAM rate for low bandwidth requests.  If it results in a low DRAM
-	 * rate (<= 20.4Mhz), bump it up to the next available DRAM rate.
+	 * Ensure that the normal bw used by the display is no more than 49%
+	 * of the total bandwidth set since we will need enough in our
+	 * display FIFOs to survive any latency (due to DVFS freq change, etc.)
+	 * and we need to fill up the FIFOs before the next latency.
 	 */
-	if (freq <= EMC_LOW_FREQ_THRESHOLD)
+	while (tegra_emc_freq_req_to_bw(freq) < EMC_BW_USAGE_CUTOFF * bw) {
 		freq = clk_round_rate(emc_master, freq + 1);
+	}
+	/* Depending on frequency value, the amount of bandwidth usage % of
+	 * total we should use is different. Thus we should request a multiple of
+	 * original bandwidth on this.  Use 1.4 for < 50MHz, 1.3 for < 100MHz,
+	 * else 1.1 */
+	if (freq < EMC_FREQ_CUTOFF_USE_140_PERCENT)
+		bw += 4 * bw / 10; /* 1.4 */
+	else if (freq < EMC_FREQ_CUTOFF_USE_130_PERCENT)
+		bw += 3 * bw / 10; /* 1.3 */
+	else
+		bw += bw / 10; /* 1.1 */
+	freq = tegra_emc_bw_to_freq_req(bw);
+	freq *= 1000;
+	freq = clk_round_rate(emc_master, freq);
+	/* Again ensure the bw used is no more than the cutoff */
+	while (tegra_emc_freq_req_to_bw(freq) < EMC_BW_USAGE_CUTOFF * bw) {
+		freq = clk_round_rate(emc_master, freq + 1);
+	}
 	return freq;
 }
 
