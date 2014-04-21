@@ -1814,7 +1814,6 @@ static void tegra124_clk_resume(void)
 	if (dfll_pdev)
 		tegra124_dfll_resume(dfll_pdev);
 
-	tegra_clk_emc_resume(clks[TEGRA124_CLK_EMC]);
 	tegra_clk_sync_state_iddq(clks[TEGRA124_CLK_PLL_M]);
 
 	tegra124_emc_timing_invalidate();
@@ -1822,12 +1821,6 @@ static void tegra124_clk_resume(void)
 	tegra124_utmi_param_configure(clk_base);
 
 	tegra_clk_plle_tegra114_resume(clks[TEGRA124_CLK_PLL_E]);
-
-	/*
-	 * Force PLLM rate to be recalculated as it may have changed
-	 * across suspend/resume.
-	 */
-	clk_get_rate(clks[TEGRA124_CLK_PLL_M]);
 
 	/* CPU G clock restored after DFLL and PLLs */
 	for (i = 0; i < BURST_POLICY_REG_SIZE; i++)

@@ -748,7 +748,6 @@ void tegra_clk_pllss_resume(struct clk *c, unsigned long rate);
 void tegra_clk_divider_resume(struct clk *c, unsigned long rate);
 void tegra_clk_pll_out_resume(struct clk *clk, unsigned long rate);
 void tegra_clk_plle_tegra114_resume(struct clk *c);
-void tegra_clk_emc_resume(struct clk *clk);
 void tegra_clk_sync_state_pllcx(struct clk *c);
 void tegra_clk_sync_state_iddq(struct clk *c);
 void tegra_clk_sync_state_pll(struct clk *c);
