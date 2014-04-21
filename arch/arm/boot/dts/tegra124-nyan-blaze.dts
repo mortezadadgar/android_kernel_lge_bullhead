@@ -64,6 +64,12 @@
 			nvidia,pmc-wakeup = <&pmc 1 11 2>;
 			wakeup-source;
 		};
+		touchscreen {
+			compatible = "elants_i2c";
+			reg = <0x10>;
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(K, 2) GPIO_ACTIVE_HIGH>;
+		};
 	};
 
 	i2c@7000d000 {
