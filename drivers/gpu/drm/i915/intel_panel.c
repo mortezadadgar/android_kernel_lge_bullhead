@@ -42,8 +42,6 @@
 #define DEFAULT_BACKLIGHT_PWM_FREQ   200
 #define BACKLIGHT_REFCLK_DIVISOR     128
 
-#define VLV_DEFAULT_BACKLIGHT_MOD_FREQ  0x0f42
-
 void
 intel_fixed_panel_mode(const struct drm_display_mode *fixed_mode,
 		       struct drm_display_mode *adjusted_mode)
@@ -412,6 +410,14 @@ static u32 i965_get_max_backlight(struct intel_connector *connector)
 	return val;
 }
 
+static u16 __vlv_calculate_mod_freq(u16 hz, bool s0ix)
+{
+	if (!s0ix)
+		return 100000000 / (128 * hz);
+	else
+		return 25000000 / (16 * hz);
+}
+
 static u32 _vlv_get_max_backlight(struct drm_device *dev, enum pipe pipe)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -429,9 +435,8 @@ static u32 _vlv_get_max_backlight(struct drm_device *dev, enum pipe pipe)
 			   dev_priv->regfile.saveBLC_PWM_CTL2);
 	}
 
-	if (!val)
-		val = (VLV_DEFAULT_BACKLIGHT_MOD_FREQ << 16) |
-		       VLV_DEFAULT_BACKLIGHT_MOD_FREQ;
+	if (val == 0)
+		val = __vlv_calculate_mod_freq(dev_priv->vbt.backlight.pwm_freq_hz, true) << 16;
 
 	val >>= 16;
 
@@ -1001,21 +1006,24 @@ static int vlv_setup_backlight(struct intel_connector *connector)
 	for_each_pipe(pipe) {
 		u32 duty = I915_READ(VLV_BLC_PWM_CTL(pipe)) & BACKLIGHT_DUTY_CYCLE_MASK;
 		u32 freq = I915_READ(VLV_BLC_PWM_CTL(pipe)) & ~BACKLIGHT_DUTY_CYCLE_MASK;
+		u32 vbt_val = __vlv_calculate_mod_freq(dev_priv->vbt.backlight.pwm_freq_hz, true);
 
 		if (freq) {
-			/* Skip if the modulation freq is already set */
-			continue;
-		}
-
-		if (WARN_ON(pipe == PIPE_A)) {
-			/* Assume BLC for pipe A is the default. Therefore, A
-			 * must be non-zero. */
-			freq = (VLV_DEFAULT_BACKLIGHT_MOD_FREQ << 16);
+			if (vbt_val != freq >> 16) {
+				DRM_DEBUG_KMS("reg doesn't match VBT value 0x%x != 0x%x\n",
+					      freq >> 16, vbt_val);
+				freq = vbt_val << 16;
+			} else
+				continue;
+		} else if (WARN_ON(pipe == PIPE_A)) {
+			/* VLV will always have a vbt value, fake or other.  */
+			BUG_ON(IS_VALLEYVIEW(dev) && !vbt_val);
+			freq = vbt_val << 16;
 		} else
 			freq = I915_READ(VLV_BLC_PWM_CTL(PIPE_A)) & ~BACKLIGHT_DUTY_CYCLE_MASK;
 
 		if (WARN_ON(freq == 0))
-			freq = (VLV_DEFAULT_BACKLIGHT_MOD_FREQ << 16);
+			freq = vbt_val << 16;
 		I915_WRITE(VLV_BLC_PWM_CTL(pipe), freq | duty);
 	}
 
