@@ -262,6 +262,7 @@ struct tegra_clk_pll {
 #define TEGRA_PLL_BYPASS BIT(9)
 #define TEGRA_PLL_HAS_LOCK_ENABLE BIT(10)
 #define TEGRA_PLL_ACCURATE BIT(11)
+#define TEGRA_PLLDP BIT(12)
 
 extern const struct clk_ops tegra_clk_pll_ops;
 extern const struct clk_ops tegra_clk_plle_ops;

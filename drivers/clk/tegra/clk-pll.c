@@ -173,6 +173,20 @@
 			((PLLSS_SDM_SSC_MAX << 16) | PLLSS_SDM_SSC_MIN)
 #define PLLSS_CTRL2_DEFAULT \
 			((PLLSS_SDM_SSC_STEP << 16) | PLLSS_SDM_DIN)
+
+#define PLLDP_EN_SDM		1
+#define PLLDP_EN_SSC		1
+#define PLLDP_SDM_SSC_MAX	0xf000
+#define PLLDP_SDM_SSC_MIN	0xe5ec
+#define PLLDP_SDM_SSC_STEP	0x101b
+#define PLLDP_SDM_DIN		0xf000
+#define PLLDP_SS_CFG_DEFAULT ((PLLDP_EN_SDM << 31) | \
+				(PLLDP_EN_SSC << 30))
+#define PLLDP_SS_CTRL1_DEFAULT ((PLLDP_SDM_SSC_MAX << 16) | \
+				PLLDP_SDM_SSC_MIN)
+#define PLLDP_SS_CTRL2_DEFAULT ((PLLDP_SDM_SSC_STEP << 16) | \
+				PLLDP_SDM_DIN)
+
 #define PLLSS_LOCK_OVERRIDE	BIT(24)
 #define PLLSS_REF_SRC_SEL_SHIFT	25
 #define PLLSS_REF_SRC_SEL_MASK	(3 << PLLSS_REF_SRC_SEL_SHIFT)
@@ -2022,9 +2036,22 @@ static void _pllss_set_defaults(struct tegra_clk_pll *pll)
 	u32 val;
 
 	pll_writel_misc(PLLSS_MISC_DEFAULT, pll);
-	pll_writel(PLLSS_CFG_DEFAULT, pll->params->ext_misc_reg[0], pll);
-	pll_writel(PLLSS_CTRL1_DEFAULT, pll->params->ext_misc_reg[1], pll);
-	pll_writel(PLLSS_CTRL1_DEFAULT, pll->params->ext_misc_reg[2], pll);
+
+	if (pll->params->flags & TEGRA_PLLDP) {
+		pll_writel(PLLDP_SS_CFG_DEFAULT,
+			pll->params->ext_misc_reg[0], pll);
+		pll_writel(PLLDP_SS_CTRL1_DEFAULT,
+			pll->params->ext_misc_reg[1], pll);
+		pll_writel(PLLDP_SS_CTRL2_DEFAULT,
+			pll->params->ext_misc_reg[2], pll);
+	} else {
+		pll_writel(PLLSS_CFG_DEFAULT,
+			pll->params->ext_misc_reg[0], pll);
+		pll_writel(PLLSS_CTRL1_DEFAULT,
+			pll->params->ext_misc_reg[1], pll);
+		pll_writel(PLLSS_CTRL2_DEFAULT,
+			pll->params->ext_misc_reg[2], pll);
+	}
 
 	val = pll_readl_base(pll);
 	val &= ~PLLSS_LOCK_OVERRIDE;

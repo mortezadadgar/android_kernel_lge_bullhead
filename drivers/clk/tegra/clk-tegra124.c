@@ -686,6 +686,7 @@ static struct tegra_clk_pll_params pll_dp_params = {
 	.ext_misc_reg[2] = 0x5a0,
 	.max_p = 5,
 	.freq_table = pll_dp_freq_table,
+	.flags = TEGRA_PLLDP,
 };
 
 static struct pdiv_map pllu_p[] = {
