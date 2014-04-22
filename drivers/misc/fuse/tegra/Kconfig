@@ -1,0 +1,9 @@
+config TEGRA_KFUSE
+	tristate "Tegra KFuse Support"
+	depends on ARCH_TEGRA_124_SOC
+	help
+	  Tegra KFuse support.
+	  Say Y here to enable the Tegra Kfuse driver. The kfuse block
+	  stores both downstream and upstream HDCP keys for use by the
+	  HDMI module on Tegra.
+

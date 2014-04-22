@@ -114,6 +114,13 @@ static inline int tegra_cpuquiet_init(void)
 
 u32 tegra30_fuse_readl(const unsigned int offset);
 
+#ifdef CONFIG_TEGRA_KFUSE
+/* there are 144 32-bit values in total */
+#define TEGRA_KFUSE_DATA_SZ (144 * 4)
+
+int tegra_kfuse_read(void *dest, size_t len);
+#endif
+
 struct gpu_info {
 	int num_pixel_pipes;
 	int num_alus_per_pixel_pipe;
