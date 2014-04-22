@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/nvhdcp.c
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -25,6 +25,7 @@
 #include <linux/wait.h>
 #include <linux/workqueue.h>
 #include <linux/atomic.h>
+#include <linux/tegra-soc.h>
 #include <video/nvhdcp.h>
 
 #include "dc_reg.h"
@@ -481,6 +482,7 @@ static int get_nvhdcp_state(struct tegra_nvhdcp *nvhdcp,
 		for (i = 0; i < pkt->num_bksv_list; i++)
 			pkt->bksv_list[i] = nvhdcp->bksv_list[i];
 		pkt->b_status = nvhdcp->b_status;
+		pkt->b_ksv = nvhdcp->b_ksv;
 		memcpy(pkt->v_prime, nvhdcp->v_prime, sizeof(nvhdcp->v_prime));
 		pkt->packet_results = TEGRA_NVHDCP_RESULT_SUCCESS;
 	}
@@ -665,7 +667,7 @@ err:
 
 static int load_kfuse(struct tegra_dc_hdmi_data *hdmi)
 {
-	unsigned buf[KFUSE_DATA_SZ / 4];
+	unsigned buf[TEGRA_KFUSE_DATA_SZ / 4];
 	int e, i;
 	u32 ctrl;
 	u32 tmp;
@@ -684,8 +686,6 @@ static int load_kfuse(struct tegra_dc_hdmi_data *hdmi)
 
 	/* issue a reload */
 	ctrl = tegra_hdmi_readl(hdmi, HDMI_NV_PDISP_KEY_CTRL);
-	tegra_hdmi_writel(hdmi, ctrl | PKEY_REQUEST_RELOAD_TRIGGER
-					| LOCAL_KEYS , HDMI_NV_PDISP_KEY_CTRL);
 
 	e = wait_key_ctrl(hdmi, PKEY_LOADED, PKEY_LOADED);
 	if (e) {
@@ -709,7 +709,7 @@ static int load_kfuse(struct tegra_dc_hdmi_data *hdmi)
 		return -EIO;
 	}
 
-	for (i = 0; i < KFUSE_DATA_SZ / 4; i += 4) {
+	for (i = 0; i < TEGRA_KFUSE_DATA_SZ / 4; i += 4) {
 
 		/* load 128-bits*/
 		tegra_hdmi_writel(hdmi, buf[i], HDMI_NV_PDISP_KEY_HDCP_KEY_0);
@@ -1224,6 +1224,9 @@ static const struct file_operations nvhdcp_fops = {
 	.unlocked_ioctl	= nvhdcp_dev_ioctl,
 	.open		= nvhdcp_dev_open,
 	.release	= nvhdcp_dev_release,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl   = nvhdcp_dev_ioctl,
+#endif
 };
 
 /* we only support one AP right now, so should only call this once. */

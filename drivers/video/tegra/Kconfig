@@ -339,6 +339,7 @@ config TEGRA_LVDS
 config TEGRA_NVHDCP
 	bool "Support NVHDCP content protection on HDMI"
 	default n
+	select TEGRA_KFUSE
 	help
 	  Say Y here to support NVHDCP upstream and downstream protocols, this
 	  requires a correctly fused chip to negotiate keys.
