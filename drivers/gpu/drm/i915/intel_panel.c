@@ -637,8 +637,19 @@ void intel_panel_set_backlight(struct intel_connector *connector, u32 level,
 		goto out;
 	}
 
-	/* scale to hardware, but be careful to not overflow */
-	if (freq < max)
+	/* XXX: we probably want to do this for all platforms. */
+	if (IS_VALLEYVIEW(dev)) {
+		/* It's always safe to use vbt values for VLV since we fake them
+		 * if they don't actually exist. */
+		const int min_duty = (dev_priv->vbt.backlight.min_duty_cycle_percentage *
+				      __vlv_calculate_mod_freq(dev_priv->vbt.backlight.pwm_freq_hz, true)) / 100;
+		BUG_ON(min_duty == 0);
+		/* linear conversion to new range */
+#define FIXED_POINT_SCALE 1000
+		level = ((level * FIXED_POINT_SCALE / max) * (max - min_duty) / FIXED_POINT_SCALE) + min_duty;
+#undef FIXED_POINT_SCALE
+	} else if (freq < max)
+		/* scale to hardware, but be careful to not overflow */
 		level = level * freq / max;
 	else
 		level = freq / max * level;
