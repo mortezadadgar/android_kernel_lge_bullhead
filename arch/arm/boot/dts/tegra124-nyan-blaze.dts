@@ -89,7 +89,6 @@
 	};
 
 	phy@7009f000 {
-		nvidia,utmi-remote-wakeup = <0x7>; /* USB2P0,  USB2P1, USB2P2 */
 		nvidia,xusb-hs-xcvr-setup-offset = <0x020004>;
 	};
 
