@@ -451,6 +451,13 @@
 		clocks = <&tegra_car TEGRA124_CLK_FUSE>;
 	};
 
+	kfuse@7000fc00 {
+		compatible = "nvidia,tegra-kfuse";
+		reg = <0x0 0x7000fc00 0x400>;
+		clocks = <&tegra_car TEGRA124_CLK_KFUSE>;
+		clock-names = "kfuse";
+	};
+
 	mc: memory-controller@70019000 {
 		compatible = "nvidia,tegra124-mc";
 		reg = <0x0 0x70019000 0x1000>;
