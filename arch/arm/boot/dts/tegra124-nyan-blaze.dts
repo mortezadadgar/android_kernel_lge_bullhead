@@ -103,7 +103,7 @@
 		calib-3v3-offsets = <0x7676>;
 		calib-1v8-offsets = <0x7676>;
 		calib-1v8-offsets-uhs-modes = <0x2f>;
-		max-frequency = <136000000>;
+		max-frequency = <204000000>;
 	};
 
 	sdhci@700b0600 {
