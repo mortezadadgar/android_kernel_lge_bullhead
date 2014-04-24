@@ -148,6 +148,8 @@ static int venice_edp_prepoweroff(void)
 			pr_err("Disable lcd_bl_en failed: %d\n", ret);
 		else
 			bl_enabled = false;
+
+		msleep(bl_off_to_pwm);
 	}
 
 	return ret;
