@@ -17,6 +17,8 @@
 			width = <256>;
 			height = <144>;
 			power-off-time = <500>;
+			drive-current = <0x13131313>;
+			preemphasis = <0x00000000>;
 		};
 	};
 
