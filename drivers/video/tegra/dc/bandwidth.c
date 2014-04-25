@@ -152,7 +152,7 @@ static inline unsigned long tegra_dc_kbps_to_emc(struct tegra_dc *dc,
 						 unsigned long bw)
 {
 	struct clk *emc_master;
-	unsigned long freq;
+	unsigned long freq, old_freq;
 
 	emc_master = clk_get_parent(dc->emc_clk);
 	if (bw == ULONG_MAX)
@@ -176,7 +176,10 @@ static inline unsigned long tegra_dc_kbps_to_emc(struct tegra_dc *dc,
 	 * and we need to fill up the FIFOs before the next latency.
 	 */
 	while (tegra_emc_freq_req_to_bw(freq) < EMC_BW_USAGE_CUTOFF * bw) {
+		old_freq = freq;
 		freq = clk_round_rate(emc_master, freq + 1);
+		if (old_freq == freq)
+			return freq;
 	}
 	/* Depending on frequency value, the amount of bandwidth usage % of
 	 * total we should use is different. Thus we should request a multiple of
