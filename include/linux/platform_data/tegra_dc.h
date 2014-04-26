@@ -514,6 +514,7 @@ struct tegra_dc_out {
 	struct tegra_dsi_out		*dsi;
 	struct tegra_hdmi_out		*hdmi_out;
 	struct tegra_stereo_out		*stereo;
+	struct tegra_dp_out		*dp;
 
 	unsigned			height; /* mm */
 	unsigned			width; /* mm */
@@ -832,4 +833,8 @@ struct tegra_hdmi_out {
 	int n_tmds_config;
 };
 
+struct tegra_dp_out {
+	u32 drive_current;
+	u32 preemphasis;
+};
 #endif

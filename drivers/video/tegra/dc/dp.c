@@ -1753,6 +1753,9 @@ static void tegra_dc_dp_enable(struct tegra_dc *dc)
 	 */
 	tegra_dc_sor_power_down_unused_lanes(dp->sor);
 
+	tegra_dc_sor_set_voltage_swing(dp->sor, dc->out->dp->drive_current,
+		dc->out->dp->preemphasis);
+
 	dp->enabled = true;
 
 error_enable:

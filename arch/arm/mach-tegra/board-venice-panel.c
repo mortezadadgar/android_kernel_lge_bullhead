@@ -225,6 +225,7 @@ static struct tegra_dc_out_pin venice_edp_out_pins[] = {
 };
 
 static struct tegra_dc_mode venice_mode;
+static struct tegra_dp_out venice_dp;
 
 static struct tegra_dc_out venice_disp1_out = {
 	.type		 = TEGRA_DC_OUT_DP,
@@ -240,6 +241,7 @@ static struct tegra_dc_out venice_disp1_out = {
 	.disable	 = venice_edp_disable,
 	.prepoweroff	 = venice_edp_prepoweroff,
 	.regulator_probe = venice_edp_regulator_probe,
+	.dp		 = &venice_dp,
 };
 
 static struct tegra_fb_data venice_disp1_fb_data = {
@@ -536,6 +538,16 @@ static int venice_panel_mode_init(struct platform_device *dcs)
 		bl_off_to_pwm = 0;
 	else
 		bl_off_to_pwm = val;
+
+	ret = of_property_read_u32(dev->of_node, "drive-current",
+		&venice_dp.drive_current);
+	if (ret < 0)
+		venice_dp.drive_current = 0;
+
+	ret = of_property_read_u32(dev->of_node, "preemphasis",
+		&venice_dp.preemphasis);
+	if (ret < 0)
+		venice_dp.preemphasis = 0;
 
 	/* Optional mode definitions follows */
 	ret = of_property_read_u32(dev->of_node, "pclk", &val);

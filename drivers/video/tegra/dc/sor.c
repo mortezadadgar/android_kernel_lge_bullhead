@@ -1300,11 +1300,42 @@ void tegra_dc_sor_set_lane_parm(struct tegra_dc_sor_data *sor,
 		0xf0, 0x0);
 }
 
+void tegra_dc_sor_set_voltage_swing(struct tegra_dc_sor_data *sor,
+	u32 cust_drive_current, u32 cust_preemphasis)
+{
+	u32 drive_current = 0;
+	u32 pre_emphasis = 0;
+
+	/* Set to a known-good pre-calibrated setting */
+	switch (sor->link_cfg->link_bw) {
+	case SOR_LINK_SPEED_G1_62:
+	case SOR_LINK_SPEED_G2_7:
+		drive_current = 0x13131313;
+		pre_emphasis = 0;
+		break;
+	case SOR_LINK_SPEED_G5_4:
+		drive_current = 0x19191919;
+		pre_emphasis = 0x09090909;
+	default:
+		WARN(1, "Invalid sor link bandwidth: %d\n",
+			sor->link_cfg->link_bw);
+		return;
+	}
+
+	/* override to board customized setting if any */
+	if (cust_drive_current)
+		drive_current = cust_drive_current;
+	if (cust_preemphasis)
+		pre_emphasis = cust_preemphasis;
+
+	tegra_sor_writel(sor, NV_SOR_LANE_DRIVE_CURRENT(sor->portnum),
+				drive_current);
+	tegra_sor_writel(sor, NV_SOR_PR(sor->portnum), pre_emphasis);
+}
+
 void tegra_dc_sor_power_down_unused_lanes(struct tegra_dc_sor_data *sor)
 {
 	u32 pad_ctrl = 0;
-	u32 drive_current = 0;
-	u32 pre_emphasis = 0;
 	int err = 0;
 
 	switch (sor->link_cfg->lane_count) {
@@ -1341,24 +1372,4 @@ void tegra_dc_sor_power_down_unused_lanes(struct tegra_dc_sor_data *sor)
 			"Wait for lane power down failed: %d\n", err);
 		return;
 	}
-
-	/* Set to a known-good pre-calibrated setting */
-	switch (sor->link_cfg->link_bw) {
-	case SOR_LINK_SPEED_G1_62:
-	case SOR_LINK_SPEED_G2_7:
-		drive_current = 0x13131313;
-		pre_emphasis = 0;
-		break;
-	case SOR_LINK_SPEED_G5_4:
-		drive_current = 0x19191919;
-		pre_emphasis = 0x09090909;
-	default:
-		WARN(1, "Invalid sor link bandwidth: %d\n",
-			sor->link_cfg->link_bw);
-		return;
-	}
-
-	tegra_sor_writel(sor, NV_SOR_LANE_DRIVE_CURRENT(sor->portnum),
-				drive_current);
-	tegra_sor_writel(sor, NV_SOR_PR(sor->portnum), pre_emphasis);
 }
