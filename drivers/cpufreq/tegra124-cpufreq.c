@@ -301,7 +301,6 @@ static const struct tegra_cpufreq_config tegra124_cpufreq_config = {
 static int tegra124_prepare_tables(struct tegra_cpufreq_data *data)
 {
 	int i, j, ret, num_lp_freqs, num_g_freqs;
-	int suspend_idx = 0;
 	int *g_millivolts;
 	bool g_vmin_done = false;
 	unsigned long *freqs_lp, *freqs_g;
@@ -354,7 +353,6 @@ static int tegra124_prepare_tables(struct tegra_cpufreq_data *data)
 		if (freq == max_freq)
 			break;
 	}
-	suspend_idx = i;
 
 	/*  Fill in the non-DFLL CPU G frequencies above LP CPU maximum rate */
 	if (freq < g_vmin_freq) {
@@ -375,10 +373,7 @@ static int tegra124_prepare_tables(struct tegra_cpufreq_data *data)
 	}
 	tegra124_cpufreq_tables[i].frequency = CPUFREQ_TABLE_END;
 
-	if (i > suspend_idx)
-		data->suspend_index = suspend_idx;
-	else
-		data->suspend_index = i - 1;
+	data->suspend_index = i - 1;
 
 	return 0;
 out:
