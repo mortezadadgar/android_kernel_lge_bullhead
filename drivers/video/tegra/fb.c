@@ -68,9 +68,16 @@ static int tegra_fb_check_var(struct fb_var_screeninfo *var,
 	struct tegra_dc_out_ops *ops = dc->out_ops;
 	struct fb_videomode mode;
 
-	if ((var->yres * var->xres * var->bits_per_pixel / 8 * 2) >
-	    info->screen_size)
-		return -EINVAL;
+	/* We create a dummy FB for HDMI so not check this for HDMI. */
+	if (tegra_fb->win->dc->out->type != TEGRA_DC_OUT_HDMI) {
+		if ((var->yres * var->xres * var->bits_per_pixel / 8) >
+				info->screen_size) {
+			dev_err(&tegra_fb->win->dc->ndev->dev,
+				"Request FB: %u:%u is larger than allocated.\n",
+				var->xres, var->yres);
+			return -EINVAL;
+		}
+	}
 
 	/* Apply mode filter for HDMI only -LVDS supports only fix mode */
 	if (ops && ops->mode_filter) {
@@ -89,9 +96,6 @@ static int tegra_fb_check_var(struct fb_var_screeninfo *var,
 		var->xoffset = xoffset;
 		var->yoffset = yoffset;
 	}
-
-	/* Double yres_virtual to allow double buffering through pan_display */
-	var->yres_virtual = var->yres * 2;
 
 	return 0;
 }
@@ -560,13 +564,20 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 	}
 
 	event.info = fb_info->info;
+
+	if (fb_info->win->dc->out->type == TEGRA_DC_OUT_HDMI) {
+		dev_info(&fb_info->win->dc->ndev->dev,
+			"Don't notify FB changes on HDMI. \n");
+	} else {
 #ifdef CONFIG_FRAMEBUFFER_CONSOLE
-	console_lock();
-	fb_notifier_call_chain(FB_EVENT_NEW_MODELIST, &event);
-	console_unlock();
+		console_lock();
+		fb_notifier_call_chain(FB_EVENT_NEW_MODELIST, &event);
+		console_unlock();
 #else
-	fb_notifier_call_chain(FB_EVENT_NEW_MODELIST, &event);
+		fb_notifier_call_chain(FB_EVENT_NEW_MODELIST, &event);
 #endif
+	}
+
 	mutex_unlock(&fb_info->info->lock);
 }
 
@@ -639,7 +650,7 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 	tegra_dc_to_fb_videomode(&m, &dc->mode);
 	fb_videomode_to_var(&info->var, &m);
 	info->var.xres_virtual		= fb_data->xres;
-	info->var.yres_virtual		= fb_data->yres * 2;
+	info->var.yres_virtual		= fb_data->yres;
 	info->var.bits_per_pixel	= fb_data->bits_per_pixel;
 	info->var.activate		= FB_ACTIVATE_VBL;
 	info->var.height		= tegra_dc_get_out_height(dc);

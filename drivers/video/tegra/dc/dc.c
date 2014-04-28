@@ -2455,16 +2455,21 @@ static int tegra_dc_create_fb(struct notifier_block *nb,
 	if (dev == &pdc0->dev) {
 		stride = round_up(mode->h_active * bpp,
 					TEGRA_LINEAR_PITCH_ALIGNMENT);
-		fb_size = round_up(stride * mode->v_active * 2, PAGE_SIZE);
+		fb_size = round_up(stride * mode->v_active, PAGE_SIZE);
 	} else {
 		/*
-		 * Ideally, the framebuffer should be created/destroyed when
-		 * the HDMI devices plugs in/removed. But we don't have the
-		 * codes yet. So set a 4K framebuffer(32MB, 32bpp) here,
-		 * which is the upper limitation of current tegra.
+		 * On ChromeOS, dc.1 doesn't need framebuffer at all because
+		 * HDMI is managed by X server and we don't have framebuffer
+		 * console on dc.1 as well.
+		 *
+		 * There are only 2 user cases which requires framebuffer:
+		 * 1. FB blank is used to enable/disable corresponding dc
+		 * 2. Userspace uses FB ioctls to retrieve display infos
+		 *
+		 * So here we create a dummy framebuffer for dc.1 to save mem.
 		 */
-		stride = round_up(3840 * bpp, TEGRA_LINEAR_PITCH_ALIGNMENT);
-		fb_size = round_up(stride * 2160, PAGE_SIZE);
+		stride = round_up(640 * bpp, TEGRA_LINEAR_PITCH_ALIGNMENT);
+		fb_size = round_up(stride * 480, PAGE_SIZE);
 	}
 
 	fb_cpuva = dma_alloc_writecombine(dev, fb_size, &fb_iova, GFP_KERNEL);
