@@ -182,7 +182,7 @@ dtb-$(CONFIG_ARCH_SUNXI) += \
 	sun4i-a10-mini-xplus.dtb \
 	sun4i-a10-hackberry.dtb \
 	sun5i-a13-olinuxino.dtb
-dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
+dtb-$(CONFIG_ARCH_TEGRA_2X_SOC) += tegra20-harmony.dtb \
 	tegra20-iris-512.dtb \
 	tegra20-medcom-wide.dtb \
 	tegra20-paz00.dtb \
@@ -191,14 +191,14 @@ dtb-$(CONFIG_ARCH_TEGRA) += tegra20-harmony.dtb \
 	tegra20-tec.dtb \
 	tegra20-trimslice.dtb \
 	tegra20-ventana.dtb \
-	tegra20-whistler.dtb \
-	tegra30-beaver.dtb \
+	tegra20-whistler.dtb
+dtb-$(CONFIG_ARCH_TEGRA_3X_SOC) += tegra30-beaver.dtb \
 	tegra30-cardhu-a02.dtb \
-	tegra30-cardhu-a04.dtb \
-	tegra114-dalmore.dtb \
+	tegra30-cardhu-a04.dtb
+dtb-$(CONFIG_ARCH_TEGRA_114_SOC) += tegra114-dalmore.dtb \
 	tegra114-venice.dtb \
-	tegra114-pluto.dtb \
-	tegra124-nyan-rev0.dtb \
+	tegra114-pluto.dtb
+dtb-$(CONFIG_ARCH_TEGRA_124_SOC) += tegra124-nyan-rev0.dtb \
 	tegra124-nyan-rev1.dtb \
 	tegra124-nyan-big-rev0_3.dtb \
 	tegra124-nyan-big.dtb \
