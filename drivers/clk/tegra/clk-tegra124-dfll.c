@@ -3596,6 +3596,7 @@ static int parse_of_cvbs(struct platform_device *pdev, struct device_node *dn)
 		dev_err(&pdev->dev, "missing %s in DT data\n", "cvb");
 		return -EINVAL;
 	}
+	l /= sizeof(__be32);
 
 	rem = l % CVB_ROW_WIDTH;
 	if (rem > 0) {
@@ -3603,6 +3604,7 @@ static int parse_of_cvbs(struct platform_device *pdev, struct device_node *dn)
 		return -EINVAL;
 	}
 
+	l /= CVB_ROW_WIDTH;
 	tdc = devm_kzalloc(&pdev->dev, l * sizeof(struct tegra_dfll_cvb),
 			GFP_KERNEL);
 	if (!tdc)
