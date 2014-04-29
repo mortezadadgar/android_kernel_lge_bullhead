@@ -148,6 +148,9 @@ static void hdmi_state_machine_handle_hpd_l(int cur_hpd)
  ************************************************************/
 static void hdmi_disable_l(struct tegra_dc_hdmi_data *hdmi, bool power_gate)
 {
+	/* First tell HDMI so it can do any fast unplug actions. */
+	tegra_dc_hdmi_unplugged(hdmi);
+
 	tegra_nvhdcp_set_plug(hdmi->nvhdcp, 0);
 	if (hdmi->dc->connected) {
 		pr_info("HDMI from connected to disconnected\n");

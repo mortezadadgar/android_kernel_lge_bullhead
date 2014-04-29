@@ -1598,6 +1598,12 @@ static void tegra_dc_hdmi_enable(struct tegra_dc *dc)
 	tegra_dc_io_end(dc);
 }
 
+void tegra_dc_hdmi_unplugged(struct tegra_dc_hdmi_data *hdmi)
+{
+	tegra_hdmi_writel(hdmi, 0, HDMI_NV_PDISP_SOR_AUDIO_HDA_PRESENSE_0);
+}
+EXPORT_SYMBOL(tegra_dc_hdmi_unplugged);
+
 static void tegra_dc_hdmi_disable(struct tegra_dc *dc)
 {
 	struct tegra_dc_hdmi_data *hdmi = tegra_dc_get_outdata(dc);
