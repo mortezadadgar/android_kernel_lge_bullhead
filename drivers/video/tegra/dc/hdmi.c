@@ -931,8 +931,10 @@ static void tegra_dc_hdmi_setup_eld_buff(struct tegra_dc *dc)
 			(hdmi->eld.sad[j]),
 			  HDMI_NV_PDISP_SOR_AUDIO_HDA_ELD_BUFWR_0);
 	}
-		/* set presence andvalid bit  */
-	tegra_hdmi_writel(hdmi, 3, HDMI_NV_PDISP_SOR_AUDIO_HDA_PRESENSE_0);
+	/* set presence and valid bit if not DVI mode */
+	if (!hdmi->dvi)
+		tegra_hdmi_writel(hdmi, 3,
+				  HDMI_NV_PDISP_SOR_AUDIO_HDA_PRESENSE_0);
 }
 
 static int tegra_dc_hdmi_setup_audio(struct tegra_dc *dc, unsigned audio_freq,
