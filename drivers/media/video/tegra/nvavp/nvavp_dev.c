@@ -1175,16 +1175,17 @@ static int nvavp_init(struct nvavp_info *nvavp, int channel_id)
 		}
 
 		nvavp_reset_vde(nvavp);
-		nvavp_reset_avp(nvavp, nvavp->os_info.reset_addr);
-
 		nvavp->video_initialized = 1;
 	}
 	if (nvavp->nvavp_audio_on && NVAVP_IS_AUDIO_CHANNEL_ID(channel_id) &&
 			(!nvavp->audio_initialized)) {
 		pr_debug("nvavp_init : channel_ID (%d)\n", channel_id);
-		nvavp_reset_avp(nvavp, nvavp->os_info.reset_addr);
 		nvavp->audio_initialized = 1;
 	}
+
+	/*Reset avp only once */
+	if (!(nvavp->video_initialized && nvavp->audio_initialized))
+		nvavp_reset_avp(nvavp, nvavp->os_info.reset_addr);
 
 err_exit:
 	return ret;
