@@ -966,6 +966,8 @@ static int _calc_dynamic_ramp_rate(struct clk_hw *hw,
 	p = DIV_ROUND_UP(pll->params->vco_min, rate);
 	cfg->m = _pll_fixed_mdiv(pll->params, parent_rate);
 	cfg->output_rate = rate * p;
+	if (cfg->output_rate > pll->params->vco_max)
+		cfg->output_rate = pll->params->vco_max;
 	cfg->n = cfg->output_rate * cfg->m / parent_rate;
 
 	p_div = _p_div_to_hw(hw, p);
@@ -974,7 +976,7 @@ static int _calc_dynamic_ramp_rate(struct clk_hw *hw,
 	else
 		cfg->p = p_div;
 
-	if (cfg->n > divn_max(pll) || cfg->output_rate > pll->params->vco_max)
+	if (cfg->n > divn_max(pll))
 		return -EINVAL;
 
 	return 0;
