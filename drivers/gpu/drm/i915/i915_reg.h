@@ -453,6 +453,9 @@
 #define DPIO_TX3_SWING_CTL4(pipe) _PIPE(pipe, _DPIO_TX_SWING_CTL4_A, \
 					_DPIO_TX3_SWING_CTL4_B)
 
+#define DPIO_PHY(pipe)			((pipe) >> 1)
+#define DPIO_PHY_IOSF_PORT(phy)		(dev_priv->dpio_phy_iosf_port[phy])
+
 /*
  * Per pipe/PLL DPIO regs
  */
