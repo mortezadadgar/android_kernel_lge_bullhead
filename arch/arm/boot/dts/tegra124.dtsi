@@ -96,6 +96,17 @@
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(MSENC)>;
 		};
 
+		tsec@54500000 {
+			compatible = "nvidia,tegra124-tsec";
+			reg = <0x54500000 0x00040000>;
+			interrupts = <GIC_SPI 50 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&tegra_car TEGRA124_CLK_TSEC>,
+				 <&tegra_car TEGRA124_CLK_TSEC_EMC>,
+				 <&tegra_car TEGRA124_CLK_TSEC_CBUS>;
+			clock-names = "tsec", "emc", "cbus";
+			iommus = <&smmu TEGRA_SWGROUP_CELLS(TSEC)>;
+		};
+
 		/*
 		 * Host1x driver registers ispb device, so we don't
 		 * define ispb here.
