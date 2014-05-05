@@ -76,7 +76,7 @@ struct tegra_wdt {
 	void __iomem		*tmr_regs;
 };
 
-#define WDT_HEARTBEAT 120
+#define WDT_HEARTBEAT 30
 static int heartbeat = WDT_HEARTBEAT;
 module_param(heartbeat, int, 0);
 MODULE_PARM_DESC(heartbeat,
