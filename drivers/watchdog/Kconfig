@@ -395,6 +395,7 @@ config TEGRA_WATCHDOG
 	tristate "Tegra watchdog"
 	depends on ARCH_TEGRA || COMPILE_TEST
 	select WATCHDOG_CORE
+	select MFD_SYSCON
 	help
 	  Say Y here to include support for the watchdog timer
 	  embedded in NVIDIA Tegra SoCs.

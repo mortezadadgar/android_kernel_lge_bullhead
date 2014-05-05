@@ -16,7 +16,9 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/of.h>
+#include <linux/mfd/syscon.h>
 #include <linux/platform_device.h>
+#include <linux/regmap.h>
 #include <linux/watchdog.h>
 
 /* minimum and maximum watchdog trigger timeout, in seconds */
@@ -63,6 +65,10 @@
 #define TIMER_PTV			0x0
 #define TIMER_EN			(1 << 31)
 #define TIMER_PERIODIC			(1 << 30)
+
+/* PMC registers */
+#define PMC_RST_STATUS			0x1b4
+#define PMC_RST_STATUS_WATCHDOG		0x1
 
 struct tegra_wdt {
 	struct watchdog_device	wdd;
@@ -185,11 +191,23 @@ static struct watchdog_ops tegra_wdt_ops = {
 	.get_timeleft = tegra_wdt_get_timeleft,
 };
 
+static int tegra_wdt_get_bootstatus(struct regmap *pmc_regs)
+{
+	unsigned int val;
+
+	if (regmap_read(pmc_regs, PMC_RST_STATUS, &val) < 0)
+		return WDIOF_UNKNOWN;
+	if (val == PMC_RST_STATUS_WATCHDOG)
+		return WDIOF_CARDRESET;
+	return 0;
+}
+
 static int tegra_wdt_probe(struct platform_device *pdev)
 {
 	struct watchdog_device *wdd;
 	struct tegra_wdt *wdt;
 	struct resource *res;
+	struct regmap *pmc_regs;
 	void __iomem *regs;
 	int ret;
 
@@ -198,6 +216,11 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	regs = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(regs))
 		return PTR_ERR(regs);
+
+	pmc_regs = syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
+						   "nvidia,pmc");
+	if (IS_ERR(pmc_regs))
+		return PTR_ERR(pmc_regs);
 
 	/*
 	 * Allocate our watchdog driver data, which has the
@@ -218,6 +241,7 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	wdd->ops = &tegra_wdt_ops;
 	wdd->min_timeout = MIN_WDT_TIMEOUT;
 	wdd->max_timeout = MAX_WDT_TIMEOUT;
+	wdd->bootstatus = tegra_wdt_get_bootstatus(pmc_regs);
 
 	watchdog_set_drvdata(wdd, wdt);
 

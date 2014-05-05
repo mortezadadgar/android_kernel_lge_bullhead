@@ -10,6 +10,7 @@ Required properties:
 - reg : Specifies base physical address and size of the registers.
 - interrupts : A list of 6 interrupts; one per each of timer channels 1
     through 5, and one for the shared interrupt for the remaining channels.
+- nvidia,pmc : phandle to the PMC syscon node.
 
 timer {
 	compatible = "nvidia,tegra30-timer", "nvidia,tegra20-timer";
