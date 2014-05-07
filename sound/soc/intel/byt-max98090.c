@@ -99,7 +99,7 @@ static struct snd_soc_jack_pin mic_jack_pin = {
 static struct snd_soc_jack_gpio hp_jack_gpio = {
 	.name			= "hp-gpio",
 	.report			= SND_JACK_HEADPHONE,
-	.debounce_time		= 200,
+	.debounce_time		= 600,
 };
 
 static struct snd_soc_jack_gpio mic_jack_gpio = {
