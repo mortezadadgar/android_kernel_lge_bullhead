@@ -109,7 +109,7 @@ static struct snd_soc_jack_pin tegra_max98090_hp_jack_pins[] = {
 static struct snd_soc_jack_gpio tegra_max98090_hp_jack_gpio = {
 	.name = "Headphone detection",
 	.report = SND_JACK_HEADPHONE,
-	.debounce_time = 150,
+	.debounce_time = 550,
 	.invert = 0,
 };
 
