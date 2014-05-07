@@ -405,7 +405,7 @@ int tegra_dc_to_fb_videomode(struct fb_videomode *fbmode,
 
 int tegra_dc_update_mode(struct tegra_dc *dc)
 {
-	if (dc->mode_dirty)
+	if (dc->mode_dirty && dc->mode.pclk)
 		return tegra_dc_program_mode(dc, &dc->mode);
 	return 0;
 }
