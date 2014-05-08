@@ -13,6 +13,29 @@
 			pwm-to-bl-on = <20>;
 			bl-off-to-pwm = <10>;
 		};
+
+		sor@54540000 {
+			status = "okay";
+
+			nvidia,dpaux = <&dpaux>;
+			nvidia,panel = <&panel>;
+		};
+
+		hdmi@54280000 {
+			nvidia,ddc-i2c-bus = <&hdmi_ddc>;
+		};
+
+		panel: panel {
+			compatible = "auo,b133xtn01.2", "simple-panel";
+		};
+
+		dpaux: dpaux@545c0000 {
+			status = "okay";
+		};
+	};
+
+	hdmi_ddc: i2c@7000c700 {
+		status = "okay";
 	};
 
 	pinmux {

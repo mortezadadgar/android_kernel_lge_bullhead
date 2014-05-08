@@ -51,13 +51,17 @@
 				     <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "dc", "dp";
 			clocks = <&tegra_car TEGRA124_CLK_DISP1>,
+				 <&tegra_car TEGRA124_CLK_PLL_P>,
 				 <&tegra_car TEGRA124_CLK_DISP1_EMC>,
 				 <&tegra_car TEGRA124_CLK_SOR0>,
 				 <&tegra_car TEGRA124_CLK_CLK_M>,
 				 <&tegra_car TEGRA124_CLK_PLL_DP>,
 				 <&tegra_car TEGRA124_CLK_DPAUX>;
-			clock-names = "dc", "emc", "sor0", "clk_m", "pll_dp", "dpaux";
+			clock-names = "dc", "parent", "emc", "sor0", "clk_m", "pll_dp", "dpaux";
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(DC)>;
+			resets = <&tegra_car TEGRA124_CLK_DISP1>;
+			reset-names = "dc";
+			nvidia,head = <0>;
 		};
 
 		dc@54240000 {
@@ -68,10 +72,53 @@
 			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "dc";
 			clocks = <&tegra_car TEGRA124_CLK_DISP2>,
+				 <&tegra_car TEGRA124_CLK_PLL_P>,
 				 <&tegra_car TEGRA124_CLK_DISP2_EMC>,
 				 <&tegra_car TEGRA124_CLK_HDMI>;
-			clock-names = "dc", "emc", "hdmi";
+			clock-names = "dc", "parent", "emc", "hdmi";
 			iommus = <&smmu TEGRA_SWGROUP_CELLS(DCB)>;
+			resets = <&tegra_car TEGRA124_CLK_DISP2>;
+			reset-names = "dc";
+			nvidia,head = <1>;
+		};
+
+		sor@54540000 {
+			compatible = "nvidia,tegra124-sor";
+			reg = <0x54540000 0x00040000>;
+			interrupts = <GIC_SPI 76 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&tegra_car TEGRA124_CLK_SOR0>,
+				 <&tegra_car TEGRA124_CLK_PLL_D_OUT0>,
+				 <&tegra_car TEGRA124_CLK_PLL_DP>,
+				 <&tegra_car TEGRA124_CLK_CLK_M>;
+			clock-names = "sor", "parent", "dp", "safe";
+			resets = <&tegra_car TEGRA124_CLK_SOR0>;
+			reset-names = "sor";
+			status = "disabled";
+		};
+
+		hdmi@54280000 {
+			compatible = "nvidia,tegra114-hdmi";
+			reg = <0x54280000 0x00040000>;
+			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&tegra_car TEGRA124_CLK_HDMI>,
+			       <&tegra_car TEGRA124_CLK_PLL_D2_OUT0>;
+			clock-names = "hdmi", "parent";
+			resets = <&tegra_car TEGRA124_CLK_HDMI>;
+			reset-names = "hdmi";
+			nvidia,hpd-gpio =
+				<&gpio TEGRA_GPIO(N, 7) GPIO_ACTIVE_HIGH>;
+		};
+
+		dpaux@545c0000 {
+			compatible = "nvidia,tegra124-dpaux";
+			reg = <0x545c0000 0x00040000>;
+			interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&tegra_car TEGRA124_CLK_DPAUX>,
+			       <&tegra_car TEGRA124_CLK_PLL_DP>;
+			clock-names = "dpaux", "parent";
+			resets = <&tegra_car TEGRA124_CLK_DPAUX>;
+			reset-names = "dpaux";
+			status = "disabled";
 		};
 
 		vic@54340000 {
@@ -188,6 +235,7 @@
 		compatible = "nvidia,tegra124-car", "syscon";
 		reg = <0x0 0x60006000 0x1000>;
 		#clock-cells = <1>;
+		#reset-cells = <1>;
 	};
 
 	apbdma: dma@60020000 {
@@ -347,7 +395,7 @@
 		status = "disabled";
 	};
 
-	i2c@7000c700 {
+	hdmi_ddc: i2c@7000c700 {
 		compatible = "nvidia,tegra124-i2c", "nvidia,tegra114-i2c";
 		reg = <0x0 0x7000c700 0x100>;
 		interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
