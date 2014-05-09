@@ -3467,20 +3467,19 @@ static int mxt_suspend(struct device *dev)
 		/* Save 1 byte T9 Ctrl config */
 		ret = mxt_save_regs(data, MXT_TOUCH_MULTI_T9, 0, 0,
 				    &current_T9_ctrl, 1);
-		if (ret)
+		if (ret) {
 			dev_err(dev, "Save T9 ctrl config failed, %d\n", ret);
-		if (!data->T9_ctrl_valid && !ret) {
+		} else {
 			data->T9_ctrl_valid = true;
 			data->T9_ctrl = current_T9_ctrl;
 		}
-	}
-	if (data->has_T100) {
+	} else if (data->has_T100) {
 		/* Save 1 byte T100 Ctrl config */
 		ret = mxt_save_regs(data, MXT_TOUCH_MULTI_T100, 0, 0,
 				    &current_T100_ctrl, 1);
-		if (ret)
+		if (ret) {
 			dev_err(dev, "Save T100 ctrl config failed, %d\n", ret);
-		if (!data->T100_ctrl_valid && !ret) {
+		} else {
 			data->T100_ctrl_valid = true;
 			data->T100_ctrl = current_T100_ctrl;
 		}
@@ -3566,23 +3565,33 @@ static int mxt_resume(struct device *dev)
 
 	mutex_lock(&input_dev->mutex);
 
-	/* Restore the T9 Ctrl config to before-suspend value */
-	if (data->has_T9 && data->T9_ctrl_valid) {
-		ret = mxt_set_regs(data, MXT_TOUCH_MULTI_T9, 0, 0,
-				   &data->T9_ctrl, 1);
-		if (ret)
-			dev_err(dev, "Set T9 ctrl config failed, %d\n", ret);
+	if (data->has_T9) {
+		/* Restore the T9 Ctrl config to before-suspend value */
+		if (data->T9_ctrl_valid) {
+			ret = mxt_set_regs(data, MXT_TOUCH_MULTI_T9, 0, 0,
+					   &data->T9_ctrl, 1);
+			if (ret)
+				dev_err(dev, "Set T9 ctrl config failed, %d\n",
+					ret);
+		} else {
+			/* No valid saved value. By default, mxt_start. */
+			mxt_start(data);
+		}
+		data->T9_ctrl_valid = false;
+	} else if (data->has_T100) {
+		/* Restore the T100 Ctrl config to before-suspend value */
+		if (data->T100_ctrl_valid) {
+			ret = mxt_set_regs(data, MXT_TOUCH_MULTI_T100, 0, 0,
+					   &data->T100_ctrl, 1);
+			if (ret)
+				dev_err(dev, "Set T100 ctrl config failed, %d\n",
+					ret);
+		} else {
+			/* No valid saved value. By default, mxt_start. */
+			mxt_start(data);
+		}
+		data->T100_ctrl_valid = false;
 	}
-	data->T9_ctrl_valid = false;
-
-	if (data->has_T100 && data->T100_ctrl_valid) {
-		ret = mxt_set_regs(data, MXT_TOUCH_MULTI_T100, 0, 0,
-				   &data->T100_ctrl, 1);
-		if (ret)
-			dev_err(dev, "Set T100 ctrl config failed, %d\n", ret);
-	}
-	data->T100_ctrl_valid = false;
-
 	/* Restore the T7 Power config to before-suspend value */
 	if (data->T7_config_valid) {
 		ret = mxt_set_regs(data, MXT_GEN_POWER_T7, 0, 0,
@@ -3701,16 +3710,18 @@ static bool lid_event_filter(struct input_handle *handle,
 			     unsigned int type, unsigned int code, int value)
 {
 	struct mxt_data *data = handle->private;
+	struct input_dev *input_dev = data->input_dev;
 	struct device *dev = &data->client->dev;
-	int ret;
 
 	if (type == EV_SW && code == SW_LID) {
 		if (mxt_in_bootloader(data))
 			return false;
 
 		pr_info("atmel_mxt_ts %s: %s touch device\n",
-			dev_name(&data->client->dev),
+			dev_name(dev),
 			(value ? "disable" : "enable"));
+
+		mutex_lock(&input_dev->mutex);
 		if (data->suspended) {
 			/*
 			 * If the lid event filter is called while suspended,
@@ -3720,30 +3731,35 @@ static bool lid_event_filter(struct input_handle *handle,
 			 * Instead, rely on mxt_resume to resume the device.
 			 */
 			pr_info("atmel_mxt_ts %s: skipping lid pm change in suspend\n",
-				dev_name(&data->client->dev));
+				dev_name(dev));
+
+			if (data->has_T9) {
+				/*
+				 * If this was an open event, invalidate the
+				 * last stored value, forcing a mxt_start
+				 * on resume. On the other hand, if it was an
+				 * close event, then the touch device should
+				 * be disabled.
+				 */
+				data->T9_ctrl_valid = (value == 1);
+				if (value == 1)
+					data->T9_ctrl = MXT_TOUCH_CTRL_OFF;
+			} else if (data->has_T100) {
+				data->T100_ctrl_valid = (value == 1);
+				if (value == 1)
+					data->T100_ctrl = MXT_TOUCH_CTRL_OFF;
+			}
+			mutex_unlock(&input_dev->mutex);
 			return false;
 		}
-		if (value == 0) {
-			data->T9_ctrl_valid = false;
+
+		/* 0 == open. Otherwise, closed. */
+		if (value == 0)
 			mxt_start(data);
-		} else {
-			/* Save 1 byte T9/T100 Ctrl config */
-			if (data->has_T9) {
-				ret = mxt_save_regs(data, MXT_TOUCH_MULTI_T9, 0, 0,
-						    &data->T9_ctrl, 1);
-				if (ret)
-					dev_err(dev, "Save T9 ctrl config failed, %d\n", ret);
-				data->T9_ctrl_valid = (ret == 0);
-			}
-			if (data->has_T100) {
-				ret = mxt_save_regs(data, MXT_TOUCH_MULTI_T100, 0, 0,
-						    &data->T100_ctrl, 1);
-				if (ret)
-					dev_err(dev, "Save T100 ctrl config failed, %d\n", ret);
-				data->T100_ctrl_valid = (ret == 0);
-			}
+		else
 			mxt_stop(data);
-		}
+
+		mutex_unlock(&input_dev->mutex);
 	}
 	return false;
 }
