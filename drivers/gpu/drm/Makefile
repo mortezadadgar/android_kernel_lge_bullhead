@@ -55,5 +55,6 @@ obj-$(CONFIG_DRM_SHMOBILE) +=shmobile/
 obj-$(CONFIG_DRM_OMAP)	+= omapdrm/
 obj-$(CONFIG_DRM_TILCDC)	+= tilcdc/
 obj-$(CONFIG_DRM_QXL) += qxl/
+obj-$(CONFIG_DRM_TEGRA) += tegra/
 obj-y			+= i2c/
 obj-y			+= panel/
