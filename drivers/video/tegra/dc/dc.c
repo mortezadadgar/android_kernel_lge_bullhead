@@ -2104,6 +2104,14 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 
 	tegra_dc_ext_enable(dc->ext);
 
+	/* initialize cursor to defaults, as driver depends on HW state */
+	tegra_dc_writel(dc, 0, DC_DISP_CURSOR_START_ADDR);
+	tegra_dc_writel(dc, 0, DC_DISP_CURSOR_START_ADDR_NS);
+	tegra_dc_writel(dc, 0, DC_DISP_CURSOR_POSITION);
+	tegra_dc_writel(dc, 0, DC_DISP_CURSOR_POSITION_NS);
+	tegra_dc_writel(dc, 0xffffff, DC_DISP_CURSOR_FOREGROUND); /* white */
+	tegra_dc_writel(dc, 0x000000, DC_DISP_CURSOR_BACKGROUND); /* black */
+
 	trace_display_enable(dc);
 
 	tegra_dc_writel(dc, GENERAL_UPDATE, DC_CMD_STATE_CONTROL);
