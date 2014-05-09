@@ -251,6 +251,7 @@ void snd_soc_jack_gpio_detect(struct snd_soc_jack_gpio *gpio)
 
 	snd_soc_jack_report(jack, report, gpio->report);
 }
+EXPORT_SYMBOL(snd_soc_jack_gpio_detect);
 
 /* irq handler for gpio pin */
 static irqreturn_t gpio_handler(int irq, void *data)
