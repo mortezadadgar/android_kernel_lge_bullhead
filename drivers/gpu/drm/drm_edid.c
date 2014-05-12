@@ -145,6 +145,8 @@ static struct edid_quirk {
 	{ "CMN", 0x1132, EDID_QUIRK_SHORT_BLANKING },
 	/* CMN N116BGE-EB2 */
 	{ "CMN", 0x4400, EDID_QUIRK_SHORT_BLANKING },
+	/* AUO B116XTN02.2 */
+	{ "AUO", 0x225c, EDID_QUIRK_SHORT_BLANKING },
 };
 
 static struct downclock_rate {
@@ -171,6 +173,8 @@ static struct short_blanking {
 	{ "CMN", 0x1132, 1512, 790, 71693 },
 	/* CMN N116BGE-EB2 */
 	{ "CMN", 0x4400, 1512, 790, 71693 },
+	/* AUO B116XTN02.2 */
+	{ "AUO", 0x225c, 1512, 790, 71693 },
 };
 
 /*
