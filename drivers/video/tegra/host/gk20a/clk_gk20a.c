@@ -347,7 +347,7 @@ int tegra_gpu_set_speed_cap(unsigned long *speed_cap)
 	mutex_unlock(&clk->clk_mutex);
 
 	if (*speed_cap)
-		return gk20a_clk_set_rate(gk20a, *speed_cap * KHZ);
+		return gk20a_clk_set_rate(gk20a, *speed_cap / KHZ);
 	else
 		return 0;
 }
