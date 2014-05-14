@@ -207,7 +207,7 @@ static irqreturn_t as3722_thermal_irq(int irq, void *data)
 			 * interrupts due to high temp alarm.
 			 */
 			mutex_lock(&ptherm_zone->update_lock);
-			disable_irq(irq);
+			disable_irq_nosync(irq);
 			ptherm_zone->irq_masked[i] = true;
 			mutex_unlock(&ptherm_zone->update_lock);
 			thermal_zone_device_update(ptherm_zone->tzd[i]);
