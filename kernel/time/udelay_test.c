@@ -39,6 +39,8 @@ static int udelay_test_single(struct seq_file *s, int usecs, int iters)
 	long long sum = 0;
 	long long avg;
 	int i;
+	/* Allow udelay to be up to 0.5% fast */
+	int allowed_error_ns = usecs * 5;
 
 	if (iters <= 0)
 		return 0;
@@ -56,15 +58,16 @@ static int udelay_test_single(struct seq_file *s, int usecs, int iters)
 			min = time_passed;
 		if (i == 0 || time_passed > max)
 			max = time_passed;
-		if (time_passed / 1000 < usecs)
+		if ((time_passed + allowed_error_ns) / 1000 < usecs)
 			++fail_count;
 		sum += time_passed;
 	}
 
 	avg = sum;
 	do_div(avg, iters);
-	seq_printf(s, "%d usecs x %d: exp=%d min=%d avg=%lld max=%d", usecs,
-			iters, usecs * 1000, min, avg, max);
+	seq_printf(s, "%d usecs x %d: exp=%d allowed=%d min=%d avg=%lld max=%d",
+			usecs, iters, usecs * 1000,
+			(usecs * 1000) - allowed_error_ns, min, avg, max);
 	if (fail_count)
 		seq_printf(s, " FAIL=%d", fail_count);
 	seq_puts(s, "\n");
