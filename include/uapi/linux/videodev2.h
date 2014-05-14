@@ -1722,6 +1722,7 @@ struct v4l2_streamparm {
 #define V4L2_EVENT_CTRL				3
 #define V4L2_EVENT_FRAME_SYNC			4
 #define V4L2_EVENT_RESOLUTION_CHANGE		5
+#define V4L2_EVENT_SOURCE_CHANGE		5
 #define V4L2_EVENT_PRIVATE_START		0x08000000
 
 /* Payload for V4L2_EVENT_VSYNC */
@@ -1753,12 +1754,19 @@ struct v4l2_event_frame_sync {
 	__u32 frame_sequence;
 };
 
+#define V4L2_EVENT_SRC_CH_RESOLUTION		(1 << 0)
+
+struct v4l2_event_src_change {
+	__u32 changes;
+};
+
 struct v4l2_event {
 	__u32				type;
 	union {
 		struct v4l2_event_vsync		vsync;
 		struct v4l2_event_ctrl		ctrl;
 		struct v4l2_event_frame_sync	frame_sync;
+		struct v4l2_event_src_change	src_change;
 		__u8				data[64];
 	} u;
 	__u32				pending;
