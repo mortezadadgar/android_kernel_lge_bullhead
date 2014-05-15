@@ -188,6 +188,12 @@
 			30, MASK(2), 0, 0, 16, 0, 0, _clk_num,	\
 			0, _clk_id, _parents##_idx, 0, NULL)
 
+#define I2C8(_name, _parents, _offset,\
+			     _clk_num, _clk_id)			\
+	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset,\
+			29, MASK(3), 0, 0, 16, 0, 0, _clk_num,	\
+			0, _clk_id, _parents##_idx, 0, NULL)
+
 #define XUSB(_name, _parents, _offset, \
 			     _clk_num, _gate_flags, _clk_id)	 \
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset, \
@@ -264,6 +270,13 @@ static const char *mux_pllp_pllc_clk32_clkm[] = {
 	"pll_p", "pll_c", "clk_32k", "clk_m"
 };
 #define mux_pllp_pllc_clk32_clkm_idx NULL
+
+static const char *mux_pllp_pllc2_c_c3_clk32_clkm[] = {
+	"pll_p", "pll_c2", "pll_c", "pll_c3", "clk_32k", "clk_m"
+};
+static u32 mux_pllp_pllc2_c_c3_clk32_clkm_idx[] = {
+	[0] = 0, [1] = 1, [2] = 2, [3] = 3, [4] = 4, [5] = 6,
+};
 
 static const char *mux_plla_pllc_pllp_clkm[] = {
 	"pll_a_out0", "pll_c", "pll_p", "clk_m"
@@ -390,11 +403,11 @@ static struct tegra_periph_init_data periph_clks[] = {
 	AUDIO("dam0", CLK_SOURCE_DAM0, 108, TEGRA_PERIPH_ON_APB, tegra_clk_dam0),
 	AUDIO("dam1", CLK_SOURCE_DAM1, 109, TEGRA_PERIPH_ON_APB, tegra_clk_dam1),
 	AUDIO("dam2", CLK_SOURCE_DAM2, 110, TEGRA_PERIPH_ON_APB, tegra_clk_dam2),
-	I2C("i2c1", mux_pllp_clkm, CLK_SOURCE_I2C1, 12, tegra_clk_i2c1),
-	I2C("i2c2", mux_pllp_clkm, CLK_SOURCE_I2C2, 54, tegra_clk_i2c2),
-	I2C("i2c3", mux_pllp_clkm, CLK_SOURCE_I2C3, 67, tegra_clk_i2c3),
-	I2C("i2c4", mux_pllp_clkm, CLK_SOURCE_I2C4, 103, tegra_clk_i2c4),
-	I2C("i2c5", mux_pllp_clkm, CLK_SOURCE_I2C5, 47, tegra_clk_i2c5),
+	I2C("i2c1", mux_pllp_pllc_pllm_clkm, CLK_SOURCE_I2C1, 12, tegra_clk_i2c1),
+	I2C("i2c2", mux_pllp_pllc_pllm_clkm, CLK_SOURCE_I2C2, 54, tegra_clk_i2c2),
+	I2C("i2c3", mux_pllp_pllc_pllm_clkm, CLK_SOURCE_I2C3, 67, tegra_clk_i2c3),
+	I2C("i2c4", mux_pllp_pllc_pllm_clkm, CLK_SOURCE_I2C4, 103, tegra_clk_i2c4),
+	I2C("i2c5", mux_pllp_pllc_pllm_clkm, CLK_SOURCE_I2C5, 47, tegra_clk_i2c5),
 	INT("vde", mux_pllp_pllc_pllm_clkm, CLK_SOURCE_VDE, 61, 0, tegra_clk_vde),
 	INT("vi", mux_pllm_pllc_pllp_plla, CLK_SOURCE_VI, 20, 0, tegra_clk_vi),
 	INT("epp", mux_pllm_pllc_pllp_plla, CLK_SOURCE_EPP, 19, 0, tegra_clk_epp),
@@ -469,6 +482,13 @@ static struct tegra_periph_init_data periph_clks[] = {
 	MUX("afc4", mux_plla_pllc_pllp_clkm, CLK_SOURCE_AMX1, 190, TEGRA_PERIPH_ON_APB, tegra_clk_afc4),
 	MUX("afc5", mux_plla_pllc_pllp_clkm, CLK_SOURCE_AMX1, 191, TEGRA_PERIPH_ON_APB, tegra_clk_afc5),
 	MUX("vi_sensor2", mux_pllm_pllc2_c_c3_pllp_plla, CLK_SOURCE_VI_SENSOR2, 20, TEGRA_PERIPH_NO_RESET, tegra_clk_vi_sensor2),
+	I2C8("i2c1", mux_pllp_pllc2_c_c3_pllm_clkm, CLK_SOURCE_I2C1, 12, tegra_clk_i2c1_8),
+	I2C8("i2c2", mux_pllp_pllc2_c_c3_pllm_clkm, CLK_SOURCE_I2C2, 54, tegra_clk_i2c2_8),
+	I2C8("i2c3", mux_pllp_pllc2_c_c3_pllm_clkm, CLK_SOURCE_I2C3, 67, tegra_clk_i2c3_8),
+	I2C8("i2c4", mux_pllp_pllc2_c_c3_pllm_clkm, CLK_SOURCE_I2C4, 103, tegra_clk_i2c4_8),
+	I2C8("i2c5", mux_pllp_pllc2_c_c3_pllm_clkm, CLK_SOURCE_I2C5, 47, tegra_clk_i2c5_8),
+	I2C8("i2c6", mux_pllp_pllc2_c_c3_pllm_clkm, CLK_SOURCE_I2C6, 166, tegra_clk_i2c6),
+	MUX8("i2cslow", mux_pllp_pllc2_c_c3_clk32_clkm, CLK_SOURCE_I2CSLOW, 81, TEGRA_PERIPH_ON_APB, tegra_clk_i2cslow_8),
 	MUX8("sdmmc1", mux_pllp_pllc2_c_c3_pllm_clkm, CLK_SOURCE_SDMMC1, 14, TEGRA_PERIPH_ON_APB, tegra_clk_sdmmc1_8),
 	MUX8("sdmmc2", mux_pllp_pllc2_c_c3_pllm_clkm, CLK_SOURCE_SDMMC2, 9, TEGRA_PERIPH_ON_APB, tegra_clk_sdmmc2_8),
 	MUX8("sdmmc3", mux_pllp_pllc2_c_c3_pllm_clkm, CLK_SOURCE_SDMMC3, 69, TEGRA_PERIPH_ON_APB, tegra_clk_sdmmc3_8),
