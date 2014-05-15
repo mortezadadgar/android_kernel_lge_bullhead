@@ -79,6 +79,7 @@
 
 	i2c@7000d000 {
 		pmic@40 {
+			ams,sd6-adc-ch = <AS3722_TEMP1_SD6>;
 			pinctrl@0 {
 				gpio6 {
 					pins = "gpio6";
