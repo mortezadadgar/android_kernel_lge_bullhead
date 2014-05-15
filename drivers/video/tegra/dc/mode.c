@@ -438,10 +438,16 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 		unsigned h_size = dc->out->h_size;
 		unsigned v_size = dc->out->v_size;
 
-		/* get aspect ratio */
-		if (h_size * 18 > v_size * 31 && h_size * 18 < v_size * 33)
+		/* get aspect ratio from physical size or resolution */
+		if (mode.h_active * 9 / 16 == mode.v_active)
 			mode.avi_m = TEGRA_DC_MODE_AVI_M_16_9;
-		if (h_size * 18 > v_size * 23 && h_size * 18 < v_size * 25)
+		else if (mode.h_active * 3 / 4 == mode.v_active)
+			mode.avi_m = TEGRA_DC_MODE_AVI_M_4_3;
+		else if (h_size * 18 > v_size * 31 && h_size * 18 < v_size * 33)
+			mode.avi_m = TEGRA_DC_MODE_AVI_M_16_9;
+		else if (h_size * 18 > v_size * 23 && h_size * 18 < v_size * 25)
+			mode.avi_m = TEGRA_DC_MODE_AVI_M_4_3;
+		else
 			mode.avi_m = TEGRA_DC_MODE_AVI_M_4_3;
 	}
 
