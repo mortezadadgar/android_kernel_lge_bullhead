@@ -399,7 +399,7 @@ static int tegra_sdhci_issue_tuning_cmd(struct sdhci_host *sdhci)
 			goto out;
 		}
 		timeout--;
-		mdelay(1);
+		usleep_range(1000, 1100);
 	}
 
 	ctrl = sdhci_readb(sdhci, SDHCI_HOST_CONTROL2);
@@ -435,7 +435,7 @@ static int tegra_sdhci_issue_tuning_cmd(struct sdhci_host *sdhci)
 
 	timeout = TUNING_OP_TIMEOUT;
 	do {
-		mdelay(1);
+		usleep_range(1000, 1100);
 		intstatus = sdhci_readl(sdhci, SDHCI_INT_STATUS);
 		if (intstatus) {
 			sdhci_writel(sdhci, intstatus, SDHCI_INT_STATUS);
@@ -463,7 +463,7 @@ static int tegra_sdhci_issue_tuning_cmd(struct sdhci_host *sdhci)
 		err = -EIO;
 	}
 
-	mdelay(1);
+	usleep_range(1000, 1100);
 out:
 	return err;
 }
