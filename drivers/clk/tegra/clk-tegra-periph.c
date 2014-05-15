@@ -185,14 +185,14 @@
 #define I2C(_name, _parents, _offset,\
 			     _clk_num, _clk_id)			\
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset,\
-			30, MASK(2), 0, 0, 16, 0, 0, _clk_num,	\
-			0, _clk_id, _parents##_idx, 0, NULL)
+			30, MASK(2), 0, 0, 16, 0, TEGRA_DIVIDER_ROUND_UP,\
+			_clk_num, 0, _clk_id, _parents##_idx, 0, NULL)
 
 #define I2C8(_name, _parents, _offset,\
 			     _clk_num, _clk_id)			\
 	TEGRA_INIT_DATA_TABLE(_name, NULL, NULL, _parents, _offset,\
-			29, MASK(3), 0, 0, 16, 0, 0, _clk_num,	\
-			0, _clk_id, _parents##_idx, 0, NULL)
+			29, MASK(3), 0, 0, 16, 0, TEGRA_DIVIDER_ROUND_UP,\
+			_clk_num, 0, _clk_id, _parents##_idx, 0, NULL)
 
 #define XUSB(_name, _parents, _offset, \
 			     _clk_num, _gate_flags, _clk_id)	 \
