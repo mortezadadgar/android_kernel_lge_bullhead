@@ -13,4 +13,8 @@
 	sdhci@700b0600 {
 		max-frequency = <200000000>;
 	};
+
+	i2c@7000c400 {
+		clock-frequency = <400000>;
+	};
 };
