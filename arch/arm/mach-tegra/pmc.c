@@ -25,6 +25,7 @@
 #include <linux/irq.h>
 #include <linux/firmware.h>
 #include <linux/memblock.h>
+#include <linux/delay.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_gpio.h>
@@ -121,6 +122,8 @@
 #define IO_DPD2_CSIC			(1 << 10)
 #define IO_DPD2_CSID			(1 << 11)
 #define IO_DPD2_CSIE			(1 << 12)
+
+#define DPD_STATE_CHANGE_DELAY		700
 
 static u8 tegra_cpu_domains[] = {
 	0xFF,			/* not available for CPU0 */
@@ -652,7 +655,13 @@ void tegra_pmc_remove_dpd_req(void)
 {
 	/* Clear DPD req */
 	tegra_pmc_writel(io_dpd_reg | IO_DPD_OFF, PMC_IO_DPD_REQ);
+	tegra_pmc_readl(PMC_IO_DPD_REQ); /* unblock posted write */
+	/* delay apb_clk * (SEL_DPD_TIM*5) */
+	udelay(DPD_STATE_CHANGE_DELAY);
+
 	tegra_pmc_writel(io_dpd2_reg | IO_DPD_OFF, PMC_IO_DPD2_REQ);
+	tegra_pmc_readl(PMC_IO_DPD2_REQ); /* unblock posted write */
+	udelay(DPD_STATE_CHANGE_DELAY);
 }
 EXPORT_SYMBOL(tegra_pmc_remove_dpd_req);
 
@@ -753,7 +762,14 @@ void tegra_pmc_pm_set(enum tegra_suspend_mode mode)
 			break;
 		}
 		tegra_pmc_writel(io_dpd_reg | IO_DPD_ON, PMC_IO_DPD_REQ);
+		tegra_pmc_readl(PMC_IO_DPD_REQ); /* unblock posted write */
+
+		/* delay apb_clk * (SEL_DPD_TIM*5) */
+		udelay(DPD_STATE_CHANGE_DELAY);
+
 		tegra_pmc_writel(io_dpd2_reg | IO_DPD_ON, PMC_IO_DPD2_REQ);
+		tegra_pmc_readl(PMC_IO_DPD2_REQ); /* unblock posted write */
+		udelay(DPD_STATE_CHANGE_DELAY);
 
 		/* Set warmboot flag */
 		boot_flag = tegra_pmc_readl(PMC_SCRATCH0);
