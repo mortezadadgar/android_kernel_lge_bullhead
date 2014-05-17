@@ -863,19 +863,16 @@ static int tegra_output_sor_setup_clock(struct tegra_output *output,
 	struct tegra_sor *sor = to_sor(output);
 	int err;
 
-	/* round to next MHz */
-	pclk = DIV_ROUND_UP(pclk / 2, 1000000) * 1000000;
-
 	err = clk_set_parent(clk, sor->clk_parent);
 	if (err < 0) {
 		dev_err(sor->dev, "failed to set parent clock: %d\n", err);
 		return err;
 	}
 
-	err = clk_set_rate(sor->clk_parent, pclk);
+	err = clk_set_rate(sor->clk_parent, pclk / 2);
 	if (err < 0) {
 		dev_err(sor->dev, "failed to set base clock rate to %lu Hz\n",
-			pclk * 2);
+			pclk);
 		return err;
 	}
 
