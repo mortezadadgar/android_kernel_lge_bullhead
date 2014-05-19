@@ -1037,10 +1037,17 @@ void tegra_dc_sor_attach(struct tegra_dc_sor_data *sor)
 		NV_SOR_SUPER_STATE1_ASY_ORMODE_NORMAL);
 	tegra_dc_sor_super_update(sor);
 
+	/*
+	 * Active our SOR/DC enable immediately, to avoid missing the
+	 * attach timing.
+	 */
+	reg_val = tegra_dc_readl(sor->dc, DC_CMD_STATE_ACCESS);
+	tegra_dc_writel(sor->dc, reg_val | WRITE_MUX_ACTIVE, DC_CMD_STATE_ACCESS);
 	tegra_dc_writel(sor->dc, DISP_CTRL_MODE_C_DISPLAY,
 			DC_CMD_DISPLAY_COMMAND);
 	tegra_dc_writel(sor->dc, SOR_ENABLE, DC_DISP_DISP_WIN_OPTIONS);
 	tegra_dc_writel(sor->dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
+	tegra_dc_writel(sor->dc, reg_val, DC_CMD_STATE_ACCESS);
 
 	if (tegra_dc_sor_poll_register(sor, NV_SOR_TEST,
 			NV_SOR_TEST_ACT_HEAD_OPMODE_DEFAULT_MASK,
