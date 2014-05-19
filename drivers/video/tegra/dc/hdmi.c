@@ -64,6 +64,8 @@
 #define TEGRA_DC_HDMI_MIN_ASPECT_RATIO_PERCENT	80
 #define TEGRA_DC_HDMI_MAX_ASPECT_RATIO_PERCENT	320
 
+#define HDMI_PIXEL_CLOCK_TOLERANCE		6
+
 struct tegra_dc_hdmi_data *dc_hdmi;
 
 const struct tmds_config tmds_config[] = {
@@ -1162,7 +1164,8 @@ static int tegra_dc_find_cea_vic(const struct tegra_dc_mode *mode)
 	for (i = 1; i < CEA_MODEDB_SIZE; i++) {
 		const struct fb_videomode *curr = &cea_modes[i];
 
-		if (!fb_mode_is_equal(&m, curr))
+		if (!fb_mode_is_equal_tolerance(&m, curr,
+						HDMI_PIXEL_CLOCK_TOLERANCE))
 			continue;
 
 		if (!best)
