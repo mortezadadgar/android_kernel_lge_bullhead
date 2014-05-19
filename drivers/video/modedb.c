@@ -1293,6 +1293,38 @@ int fb_mode_is_equal(const struct fb_videomode *mode1,
 }
 
 /**
+ * fb_mode_is_equal_tolerance - compare 2 videomodes with tolerance
+ * @mode1: first videomode
+ * @mode2: second videomode
+ * @tolerance: tolerance allowed for pixel clock in tenths of a percent
+ *
+ * Allows comparison between two video modes but allowing mode1's pixel
+ * clock to deviate from mode2's pixel clock by a specified amount.
+ *
+ * RETURNS:
+ * 1 if equal, 0 if not
+ */
+int fb_mode_is_equal_tolerance(const struct fb_videomode *mode1,
+			       const struct fb_videomode *mode2,
+			       unsigned int tolerance)
+{
+	return (mode1->xres         == mode2->xres &&
+		mode1->yres         == mode2->yres &&
+		mode1->hsync_len    == mode2->hsync_len &&
+		mode1->vsync_len    == mode2->vsync_len &&
+		mode1->left_margin  == mode2->left_margin &&
+		mode1->right_margin == mode2->right_margin &&
+		mode1->upper_margin == mode2->upper_margin &&
+		mode1->lower_margin == mode2->lower_margin &&
+		mode1->sync         == mode2->sync &&
+		mode1->vmode        == mode2->vmode &&
+		mode1->pixclock     <=
+			mode2->pixclock * (1000 + tolerance) / 1000 &&
+		mode1->pixclock     >=
+			mode2->pixclock * (1000 - tolerance) / 1000);
+}
+
+/**
  * fb_find_best_mode - find best matching videomode
  * @var: pointer to struct fb_var_screeninfo
  * @head: pointer to struct list_head of modelist

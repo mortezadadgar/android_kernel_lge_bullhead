@@ -735,6 +735,9 @@ extern void fb_videomode_to_var(struct fb_var_screeninfo *var,
 				const struct fb_videomode *mode);
 extern int fb_mode_is_equal(const struct fb_videomode *mode1,
 			    const struct fb_videomode *mode2);
+extern int fb_mode_is_equal_tolerance(const struct fb_videomode *mode1,
+				      const struct fb_videomode *mode2,
+				      unsigned int tolerance);
 extern int fb_add_videomode(const struct fb_videomode *mode,
 			    struct list_head *head);
 extern void fb_delete_videomode(const struct fb_videomode *mode,
