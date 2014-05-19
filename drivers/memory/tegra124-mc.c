@@ -27,6 +27,8 @@
 static void __iomem *tegra_mc_base;
 static bool tegra_mc_init_done;
 
+static BLOCKING_NOTIFIER_HEAD(tegra124_mc_notify_list);
+
 #define MC_CLIENT_HOTRESET_CTRL		0x200
 #define MC_CLIENT_HOTRESET_STAT		0x204
 #define MC_CLIENT_HOTRESET_CTRL_1	0x970
@@ -46,11 +48,10 @@ void tegra124_mc_writel(u32 val, u32 offs)
 }
 EXPORT_SYMBOL(tegra124_mc_writel);
 
-bool tegra124_mc_is_ready(void)
+int tegra124_mc_register_notify(struct notifier_block *nb)
 {
-	return tegra_mc_init_done;
+	return blocking_notifier_chain_register(&tegra124_mc_notify_list, nb);
 }
-EXPORT_SYMBOL(tegra124_mc_is_ready);
 
 #define HOTRESET_READ_COUNT	5
 static bool tegra_stable_hotreset_check(u32 stat_reg, u32 *stat)
@@ -143,6 +144,9 @@ static int tegra124_mc_probe(struct platform_device *pdev)
 
 	if (tegra_mc_base)
 		tegra_mc_init_done = true;
+
+	/* Notify MC is ready. */
+	blocking_notifier_call_chain(&tegra124_mc_notify_list, 0, NULL);
 
 	return 0;
 }

@@ -18,6 +18,7 @@
 #include <linux/io.h>
 #include <linux/platform_data/tegra_mc.h>
 #include <linux/tegra-powergate.h>
+#include <linux/notifier.h>
 
 #include "iomap.h"
 
@@ -196,6 +197,8 @@ static atomic_t ref_count_venc = ATOMIC_INIT(0);
 static DEFINE_MUTEX(tegra124_powergate_lock);
 
 static bool is_clk_inited;
+static bool is_mc_ready;
+static struct notifier_block nb;
 
 static void release_clk(struct powergate_partition_info *pg_info, int last)
 {
@@ -341,7 +344,7 @@ static int mc_flush(int id)
 	u32 i;
 	enum mc_client mc_client_bit;
 
-	if (!tegra124_mc_is_ready()) {
+	if (!is_mc_ready) {
 		WARN(1, "Tegra124 memory controller is not ready\n");
 		return -EPERM;
 	}
@@ -362,7 +365,7 @@ static int mc_flush_done(int id)
 	u32 i;
 	enum mc_client mc_client_bit;
 
-	if (!tegra124_mc_is_ready()) {
+	if (!is_mc_ready) {
 		WARN(1, "Tegra124 memory controller is not ready\n");
 		return -EPERM;
 	}
@@ -648,24 +651,25 @@ static struct powergate t124_powergate = {
 	.ops = &tegra124_powergate_ops,
 };
 
+static int tegra124_powergate_clean(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	is_mc_ready = true;
+
+	/* Powergate venc/dis/disb/sor to get a clean hardware environment. */
+	WARN(do_powergate(TEGRA_POWERGATE_VENC), "Powergate VENC failed.");
+	WARN(do_powergate(TEGRA_POWERGATE_DISB), "Powergate DISB failed.");
+	WARN(do_powergate(TEGRA_POWERGATE_DIS), "Powergate DIS failed.");
+	WARN(do_powergate(TEGRA_POWERGATE_SOR), "Powergate SOR failed.");
+
+	return NOTIFY_DONE;
+}
+
 struct powergate * __init tegra124_powergate_init(void)
 {
-	if (tegra_powergate_is_powered(TEGRA_POWERGATE_DIS)) {
-		atomic_inc(&ref_count_dispa);
-		atomic_inc(&ref_count_sor);
-	}
-	if (tegra_powergate_is_powered(TEGRA_POWERGATE_DISB)) {
-		atomic_inc(&ref_count_dispb);
-		atomic_inc(&ref_count_dispa);
-		atomic_inc(&ref_count_sor);
-	}
-	if (tegra_powergate_is_powered(TEGRA_POWERGATE_VENC)) {
-		atomic_inc(&ref_count_venc);
-		atomic_inc(&ref_count_dispa);
-		atomic_inc(&ref_count_sor);
-	}
-	if (tegra_powergate_is_powered(TEGRA_POWERGATE_SOR))
-		atomic_inc(&ref_count_sor);
+	memset(&nb, 0, sizeof(nb));
+	nb.notifier_call = tegra124_powergate_clean;
+	tegra124_mc_register_notify(&nb);
 
 	return &t124_powergate;
 }
