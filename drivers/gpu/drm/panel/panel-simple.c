@@ -291,8 +291,6 @@ static int panel_simple_remove(struct device *dev)
 	if (gpio_is_valid(panel->enable_gpio))
 		gpio_free(panel->enable_gpio);
 
-	regulator_disable(panel->supply);
-
 	return 0;
 }
 
