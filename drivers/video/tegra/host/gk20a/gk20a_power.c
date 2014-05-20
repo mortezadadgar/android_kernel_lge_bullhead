@@ -111,6 +111,13 @@ int gk20a_power_on(struct platform_device *pdev, struct gk20a *g)
 
 	dev_info(&pdev->dev, "%s\n", __func__);
 
+	ret = tegra124_mc_check_vpr();
+	if (ret) {
+		dev_err(&pdev->dev, "%s aborting due to incorrect vpr setting\n",
+				__func__);
+		return ret;
+	}
+
 	ret = gk20a_dvfs_enable_rail(pdev, g);
 	if (ret) {
 		WARN(1, "failed to power on gk20a rail\n");
