@@ -9,7 +9,7 @@
 			depth = <18>;
 			width = <256>;
 			height = <144>;
-			power-off-time = <150>;
+			power-off-time = <500>;
 			pwm-to-bl-on = <20>;
 			bl-off-to-pwm = <10>;
 		};
