@@ -33,6 +33,8 @@ static BLOCKING_NOTIFIER_HEAD(tegra124_mc_notify_list);
 #define MC_CLIENT_HOTRESET_STAT		0x204
 #define MC_CLIENT_HOTRESET_CTRL_1	0x970
 #define MC_CLIENT_HOTRESET_STAT_1	0x974
+#define MC_VIDEO_PROTECT_REG_CTRL	0x650
+ #define VIDEO_PROTECT_WRITE_ACCESS	BIT(0)
 
 static DEFINE_SPINLOCK(tegra_mc_lock);
 
@@ -47,6 +49,20 @@ void tegra124_mc_writel(u32 val, u32 offs)
 	writel(val, tegra_mc_base + offs);
 }
 EXPORT_SYMBOL(tegra124_mc_writel);
+
+int tegra124_mc_check_vpr(void)
+{
+	u32 val;
+
+	val = readl(tegra_mc_base + MC_VIDEO_PROTECT_REG_CTRL);
+	if ((val & VIDEO_PROTECT_WRITE_ACCESS) == 0) {
+		WARN(1, "VPR configuration not locked down\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(tegra124_mc_check_vpr);
 
 int tegra124_mc_register_notify(struct notifier_block *nb)
 {

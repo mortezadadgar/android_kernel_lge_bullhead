@@ -30,9 +30,11 @@ static inline void tegra114_mc_writel(u32 val, u32 offs) {}
 #ifdef CONFIG_TEGRA124_MC
 u32 tegra124_mc_readl(u32 offs);
 void tegra124_mc_writel(u32 val, u32 offs);
+int tegra124_mc_check_vpr(void);
 #else
 static inline u32 tegra124_mc_readl(u32 offs) { return -ENODEV; }
 static inline void tegra124_mc_writel(u32 val, u32 offs) {}
+static int tegra124_mc_check_vpr(void) { return -ENODEV; }
 #endif
 
 #define TEGRA_MC_CLIENT_AFI		0
