@@ -70,6 +70,10 @@ struct esif_link_list {
 	u32 nodes;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Linked List Node */
 struct esif_link_list_node *esif_link_list_create_node(void *data_ptr);
 void esif_link_list_destroy_node(struct esif_link_list_node *node_ptr);
@@ -84,6 +88,10 @@ void esif_link_list_node_add(struct esif_link_list *list_ptr,
 /* Init */
 enum esif_rc esif_link_list_init(void);
 void esif_link_list_exit(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef ESIF_ATTR_USER
 typedef struct esif_link_list EsifLinkList, *EsifLinkListPtr,

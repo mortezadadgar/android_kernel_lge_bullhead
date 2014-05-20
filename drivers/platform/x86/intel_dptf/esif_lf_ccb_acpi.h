@@ -57,7 +57,6 @@
 #include "esif_data.h"		/* ESIF Data Buffer                 */
 #include "esif_debug.h"
 
-#ifdef ESIF_ATTR_KERNEL
 
 #ifdef ESIF_ATTR_OS_LINUX
 #define esif_ccb_acpi_get_name acpi_get_name
@@ -335,65 +334,85 @@ static ESIF_INLINE enum esif_rc esif_handle_osc_buf(
 	struct esif_data *req_data_ptr
 	)
 {
+	enum esif_rc rc = ESIF_E_ACPI_EVAL_FAILURE;
 	struct esif_data_complex_osc *osc_ptr =
 		(struct esif_data_complex_osc *)req_data_ptr->buf_ptr;
-	acpi_status rc = 0;
+	acpi_status acpi_stat = 0;
 
 #ifdef ESIF_ATTR_OS_LINUX
-	union acpi_object *out_obj = output->pointer;
+	union acpi_object *out_obj = NULL;
+	
+	if ((NULL == output) || (NULL == output->pointer))
+		goto exit;
+
+	out_obj = (union acpi_object *)output->pointer;
+
+	if (NULL == out_obj->buffer.pointer)
+		goto exit;
 
 	osc_ptr->status = *((u32 *)out_obj->buffer.pointer);
-	rc = *((u32 *)out_obj->buffer.pointer) & ~(1 << 0);
+	acpi_stat = *((u32 *)out_obj->buffer.pointer) & ~(1 << 0);
 #endif
 #ifdef ESIF_ATTR_OS_WINDOWS
 	PACPI_EVAL_OUTPUT_BUFFER aeob_ptr = NULL;
 	PACPI_METHOD_ARGUMENT method_arg  = NULL;
 	PULONG temp = NULL;
 
-	if (NULL == output)
-		return ESIF_E_ACPI_EVAL_FAILURE;
+	if ((NULL == output) || (NULL == output->pointer))
+		goto exit;
 
-	aeob_ptr        = (ACPI_EVAL_OUTPUT_BUFFER *)output->pointer;
-	method_arg      = aeob_ptr->Argument;
-	temp            = (PULONG)method_arg->Data;
+	aeob_ptr = (ACPI_EVAL_OUTPUT_BUFFER *)output->pointer;
+
+	method_arg = aeob_ptr->Argument;
+	if (NULL == method_arg)
+		goto exit;
+
+	temp = (PULONG)method_arg->Data;
+	if (NULL == temp)
+		goto exit;
+
 	osc_ptr->status = *temp;
-	rc = osc_ptr->status;
+	acpi_stat = osc_ptr->status;
 #endif
-	if (rc) {
+	if (acpi_stat) {
 		/*
 		 * OSC_REQUEST_ERROR(1), OSC_INVALID_UUID_ERROR(4),
-		 *OSC_INVALID_REVISION_ERROR(8),
+		 * OSC_INVALID_REVISION_ERROR(8),
 		 * OSC_CAPABILITIES_MASK_ERROR(16)
 		 */
 		ESIF_TRACE_DYN(ESIF_DEBUG_MOD_ACTION_ACPI,
 			       ESIF_TRACE_CATEGORY_ERROR,
-			       "%s: _OSC set error, rc 0x%x\n",
-			       ESIF_FUNC,
-			       rc);
-		if (rc & 0x2) {
+			       "_OSC set error, acpi_stat 0x%x\n",
+			       acpi_stat);
+		if (acpi_stat & 0x2) {
 			ESIF_TRACE_DYN(ESIF_DEBUG_MOD_ACTION_ACPI,
-				       ESIF_TRACE_CATEGORY_ERROR,
-				       "_OSC error - Platform Support _OSC but unable to process _OSC request\n");
+				ESIF_TRACE_CATEGORY_ERROR,
+				"_OSC error - Platform Support _OSC but "
+				"unable to process _OSC request\n");
 		}
-		if (rc & 0x4) {
+		if (acpi_stat & 0x4) {
 			ESIF_TRACE_DYN(ESIF_DEBUG_MOD_ACTION_ACPI,
-				       ESIF_TRACE_CATEGORY_ERROR,
-				       "_OSC error - Platform failed _OSC reason: Unrecognized UUID\n");
+				ESIF_TRACE_CATEGORY_ERROR,
+				"_OSC error - Platform failed _OSC reason: "
+				"Unrecognized UUID\n");
 		}
-		if (rc & 0x8) {
+		if (acpi_stat & 0x8) {
 			ESIF_TRACE_DYN(ESIF_DEBUG_MOD_ACTION_ACPI,
-				       ESIF_TRACE_CATEGORY_ERROR,
-				       "_OSC error - Platform failed _OSC reason: Unrecognized revision\n");
+				ESIF_TRACE_CATEGORY_ERROR,
+				"_OSC error - Platform failed _OSC reason: "
+				"Unrecognized revision\n");
 		}
-		if (rc & 0x10) {
+		if (acpi_stat & 0x10) {
 			ESIF_TRACE_DYN(ESIF_DEBUG_MOD_ACTION_ACPI,
-				       ESIF_TRACE_CATEGORY_ERROR,
-				       "_OSC error - Platform failed _OSC reason: Unrecognized capability mask\n");
+				ESIF_TRACE_CATEGORY_ERROR,
+				"_OSC error - Platform failed _OSC reason: "
+				"Unrecognized capability mask\n");
 		}
-		return ESIF_E_ACPI_EVAL_FAILURE;
-	} else {
-		return ESIF_OK;
+		goto exit;
 	}
+	rc = ESIF_OK;
+exit:
+	return rc;
 }
 
 
@@ -528,7 +547,6 @@ static ESIF_INLINE void esif_create_acpi_buffer(
 				break;
 
 			case ESIF_DATA_UINT32:
-			case ESIF_DATA_TEMPERATURE:
 				acpi_obj->integer.value = *((u32 *)buf_ptr);
 				buf_ptr += sizeof(u32);
 				break;
@@ -651,9 +669,8 @@ static ESIF_INLINE u32 esif_ccb_acpi_pkg_count(union acpi_object *obj_ptr)
 		obj_len -= pkg_len;
 		count++;
 		NO_ESIF_DEBUG(
-			"%s: <object addr %p type %d len %d> "
+			"<object addr %p type %d len %d> "
 			"<pkg addr %p type %d len %d> count %d\n",
-			ESIF_FUNC,
 			obj_ptr,
 			obj_ptr->package.type,
 			obj_ptr->package.count,
@@ -690,15 +707,16 @@ static ESIF_INLINE union acpi_object
 
 	/*
 	 * Windows: first element is actually Data[0], while the rest are
-	 * (2 * sizeof(USHORT) + DataLength)
+	 * (2 * sizeof(USHORT) + DataLength) also make sure if DataLength count is less than 4 to account for the union
 	 */
 	if (0 == item)
 		offset = 2 * sizeof(esif_acpi_p_type);
 	else
-		offset = (2 * sizeof(esif_acpi_p_type)) + method->string.length;
+		offset = (2 * sizeof(esif_acpi_p_type)) +
+          		 ( method->string.length < sizeof(ULONG) ? sizeof(ULONG): 
+			      method->string.length);
 
-	NO_ESIF_DEBUG("%s - orignal obj addr %p offset %ld, new addr %p\n",
-		      ESIF_FUNC,
+	NO_ESIF_DEBUG("orignal obj addr %p offset %ld, new addr %p\n",
 		      method,
 		      offset,
 		      (u8 *)obj_ptr + offset);
@@ -718,7 +736,12 @@ static ESIF_INLINE int esif_ccb_has_acpi_failure(
 	)
 {
 #ifdef ESIF_ATTR_OS_WINDOWS
-	if (!NT_SUCCESS(status))
+	/*
+	 * We check against STATUS_SUCCESS as the NTSTATUS from
+	 * esif_ccb_acpi_evaluate_object is translated into an Linux AE code.
+	 * STATUS_SUCCESS has the same value as AE_OK, which is 0.
+	 */
+	if (status != STATUS_SUCCESS)
 		return ESIF_TRUE;
 
 	/* buf_ptr could be NULL for SET operation */
@@ -733,7 +756,6 @@ static ESIF_INLINE int esif_ccb_has_acpi_failure(
 	return ESIF_FALSE;
 }
 
-#endif /* ESIF_ATTR_KERNEL */
 #endif /* _ESIF_CCB_ACPI_H_ */
 
 /******************************************************************************/

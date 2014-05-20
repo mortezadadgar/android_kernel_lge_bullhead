@@ -74,8 +74,10 @@
 
 #ifdef ESIF_ATTR_OS_WINDOWS
 #define ESIF_IPC_CODE(x) CTL_CODE(FILE_DEVICE_NETWORK, x, METHOD_BUFFERED, FILE_ANY_ACCESS)
-#define ESIF_IOCTL_IPC_NOOP ESIF_IPC_CODE(0)
-#define ESIF_IOCTL_IPC      ESIF_IPC_CODE(1)
+#define ESIF_IOCTL_IPC_NOOP		ESIF_IPC_CODE(0)
+#define ESIF_IOCTL_IPC			ESIF_IPC_CODE(1)
+#define ESIF_IOCTL_IPC_IPC_SUSPEND      ESIF_IPC_CODE(2)
+#define ESIF_IOCTL_IPC_IPC_RESUME	ESIF_IPC_CODE(3)
 #endif
 
 /* IPC Types May There Be Few */
@@ -212,7 +214,7 @@ struct esif_ipc_event_data_create_participant {
 	char  device_path[ESIF_PATH_LEN];	/* Device Path */
 	char  acpi_device[ESIF_SCOPE_LEN];	/* Scope/REGEX e.g. \_SB.PCI0.TPCH  */
 	char  acpi_scope[ESIF_SCOPE_LEN];	/* Scope/REGEX e.g. \_SB.PCI0.TPCH  */
-	u32   acpi_uid;				/* Unique ID If Any */
+	char  acpi_uid[ESIF_ACPI_UID_LEN];	/* Unique ID If Any */
 	u32   acpi_type;			/* Participant Type If Any */
 	u32   pci_vendor;			/* PCI Vendor For PCI Devices */
 	u32   pci_device;			/* PCE Device For PCI Devices */
@@ -271,10 +273,6 @@ esif_handle_t esif_ipc_connect(char *session_id);
 void esif_ipc_disconnect(esif_handle_t handle);
 enum esif_rc esif_ipc_execute(esif_handle_t handle, struct esif_ipc *ipc_ptr);
 
-#ifdef __cplusplus
-}
-#endif
-
 
 /* IPC Connect */
 esif_handle_t esif_os_ipc_connect(char *session_id);
@@ -285,6 +283,11 @@ void esif_os_ipc_disconnect(esif_handle_t handle);
 /* IPC Execute */
 enum esif_rc esif_os_ipc_execute(esif_handle_t handle,
 				 struct esif_ipc *ipc_ptr);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef ESIF_ATTR_KERNEL
 

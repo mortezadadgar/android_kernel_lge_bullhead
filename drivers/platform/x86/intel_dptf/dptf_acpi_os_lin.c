@@ -279,10 +279,21 @@ static int acpi_add(struct acpi_device *acpi_dev_ptr)
 				status);
 		} else {
 			union acpi_object *acpi_obj = acpi_uid.pointer;
-			pi_ptr->acpi_uid = acpi_obj->integer.value;
-			ESIF_TRACE_DEBUG("%s: UID %llu\n",
+
+			if (acpi_obj->type == ACPI_TYPE_STRING) {
+				esif_ccb_memcpy(pi_ptr->acpi_uid,
+					acpi_obj->string.pointer,
+					sizeof(pi_ptr->acpi_uid));
+			} else if (acpi_obj->type == ACPI_TYPE_INTEGER) {
+				esif_ccb_sprintf(sizeof(pi_ptr->acpi_uid), 
+					pi_ptr->acpi_uid, 
+					"%llx",
+					(u64) acpi_obj->integer.value);
+			};
+
+			ESIF_TRACE_DEBUG("%s: UID %s\n",
 					 ESIF_FUNC,
-					 (u64)pi_ptr->acpi_uid);
+					 pi_ptr->acpi_uid);
 			kfree(acpi_uid.pointer);
 		}
 	}

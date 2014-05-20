@@ -71,6 +71,8 @@
 /* Have ESIF Allocate Buffer */
 #define ESIF_DATA_ALLOCATE 0xFFFFFFFF
 
+#pragma pack(push,1)
+
 /* All ESIF Data Buffers Are Of This Form */
 struct esif_data {
 	enum esif_data_type  type;	/* Buffer Type */
@@ -121,7 +123,6 @@ struct esif_table_hdr {
 /* Binary data shall be identical to what upper framework sees */
 /* Pack so we end up with exactly 12 bytes always */
 
-#pragma pack(push, 1)
 union esif_data_variant {
 	enum esif_data_type  type;
 
@@ -148,6 +149,10 @@ union esif_data_variant {
 
 #pragma pack(pop)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Allocate */
 struct esif_data *esif_data_alloc(enum esif_data_type type, u32 data_len);
 void esif_data_free(struct esif_data *data_ptr);
@@ -155,6 +160,10 @@ void esif_data_free(struct esif_data *data_ptr);
 /* Init */
 enum esif_rc esif_data_init(void);
 void esif_data_exit(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef ESIF_ATTR_USER
 

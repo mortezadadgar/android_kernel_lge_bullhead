@@ -110,15 +110,15 @@ static ESIF_INLINE int esif_ccb_sem_try_down (
 
 /* Semphore */
 typedef sem_t esif_ccb_sem_t;
-#define esif_ccb_sem_init(semPtr) sem_init(semPtr, 0, 0);
-#define esif_ccb_sem_uninit(semPtr) sem_destroy(semPtr);
+#define esif_ccb_sem_init(semPtr) sem_init(semPtr, 0, 0)
+#define esif_ccb_sem_uninit(semPtr) sem_destroy(semPtr)
 #define esif_ccb_sem_up(semPtr) sem_wait(semPtr)
 #define esif_ccb_sem_down(semPtr) sem_post(semPtr)
 
 /* Event */
 typedef sem_t esif_ccb_event_t;
-#define esif_ccb_event_create(eventPtr) sem_init(eventPtr, 0, 0);
-#define esif_ccb_event_destroy(eventPtr) sem_destroy(semPtr);
+#define esif_ccb_event_create(eventPtr) sem_init(eventPtr, 0, 0)
+#define esif_ccb_event_destroy(eventPtr) sem_destroy(semPtr)
 #define esif_ccb_event_set(eventPtr) sem_wait(*eventPtr)
 #define esif_ccb_event_reset(eventPtr) sem_post(*eventPtr)
 

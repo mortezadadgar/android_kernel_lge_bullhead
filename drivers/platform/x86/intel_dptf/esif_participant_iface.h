@@ -87,10 +87,10 @@ struct esif_participant_iface {
 				    struct esif_data *data);
 
 	/* ACPI */
-	char  acpi_device[ESIF_SCOPE_LEN];	/* Device INT340X */
+	char  acpi_device[ESIF_SCOPE_LEN];/* Device INT340X */
 	char  acpi_scope[ESIF_SCOPE_LEN]; /* Scope/REGEX e.g. \_SB.PCI0.TPCH  */
-	u32   acpi_uid;				/* Unique ID If Any */
-	u32   acpi_type;			/* Participant Type If Any */
+	char  acpi_uid[ESIF_ACPI_UID_LEN];   /* Unique ID If Any        */
+	u32   acpi_type;                  /* Participant Type If Any */
 
 	/* PCI */
 	u32  pci_vendor;	/* PCI Vendor e.g. 0x8086 For Intel */
@@ -112,6 +112,8 @@ struct esif_participant_iface {
 #endif /* ESIF ATTR_KERNEL */
 #ifdef ESIF_ATTR_USER
 
+#pragma pack(push,1)
+
 /* Conjure Participant INTERFACE */
 typedef struct _t_EsifParticipantIface {
 	esif_ver_t    version;				/* Version */
@@ -127,12 +129,14 @@ typedef struct _t_EsifParticipantIface {
 	char          object_id[ESIF_SCOPE_LEN];	/* Scope/REGEX e.g.\_UF.CNJR.WIDI  */
 
 	/* EVENT Send Event From Conjure To Framework */
-	enum esif_rc (*send_event)(struct _t_EsifParticipantIface *pi,
+	enum esif_rc (ESIF_CALLCONV *send_event)(struct _t_EsifParticipantIface *pi,
 				   enum esif_event_type type, void *data);
 	/* EVENT Receive Event From Framework To Conjure */
-	enum esif_rc (*recv_event)(enum esif_event_type type, void *data);
+	enum esif_rc (ESIF_CALLCONV *recv_event)(enum esif_event_type type, void *data);
 } EsifParticipantIface, *EsifParticipantIfacePtr,
 **EsifParticipantIfacePtrLocation;
+
+#pragma pack(pop)
 
 #endif /* ESIF_ATTR_USER */
 #endif /* _ESIF_PARTICIPANT_IFACE_H_ */

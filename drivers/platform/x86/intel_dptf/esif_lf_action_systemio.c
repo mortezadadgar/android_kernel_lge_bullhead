@@ -51,7 +51,7 @@
 **
 *******************************************************************************/
 
-#include "esif_action.h"
+#include "esif_lf_action.h"
 
 #ifdef ESIF_ATTR_OS_WINDOWS
 
@@ -89,16 +89,27 @@
 static esif_ccb_lock_t g_esif_action_systemio_lock;
 
 enum esif_rc esif_get_action_systemio(
-	const struct esif_data *req_data_ptr,
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
+	struct esif_data *req_data_ptr,
 	struct esif_data *rsp_data_ptr
 	)
 {
 	enum esif_rc rc = ESIF_OK;
 	u32 val         = 1234;
 
+	UNREFERENCED_PARAMETER(lp_ptr);
+	UNREFERENCED_PARAMETER(primitive_ptr);
+	UNREFERENCED_PARAMETER(action_ptr);
 	UNREFERENCED_PARAMETER(req_data_ptr);
 
-	ESIF_TRACE_DYN_GET("%s: io_port = %d, val = %d\n", ESIF_FUNC, 0, val);
+	if (NULL == rsp_data_ptr) {
+		    rc = ESIF_E_PARAMETER_IS_NULL;
+		    goto exit;
+	}
+
+	ESIF_TRACE_DYN_GET("val = %d\n", val);
 
 	switch (rsp_data_ptr->type) {
 	case ESIF_DATA_UINT8:
@@ -126,23 +137,29 @@ enum esif_rc esif_get_action_systemio(
 		break;
 
 	default:
-		ESIF_TRACE_DYN_GET("%s: Data Type Not Implemented = %d\n",
-				   ESIF_FUNC,
-				   rsp_data_ptr->type);
+		ESIF_TRACE_DYN_GET("Data Type Not Implemented = %s\n",
+				   esif_data_type_str(rsp_data_ptr->type));
 		rc = ESIF_E_NOT_IMPLEMENTED;
 		break;
 	}
+exit:
+	ESIF_TRACE_DYN_GET("RC: %s(%d)\n", esif_rc_str(rc), rc);
 	return rc;
 }
 
 
 enum esif_rc esif_set_action_systemio(
-	const struct esif_data *req_data_ptr,
-	struct esif_data *rsp_data_ptr
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
+	struct esif_data *req_data_ptr
 	)
 {
+	UNREFERENCED_PARAMETER(lp_ptr);
+	UNREFERENCED_PARAMETER(primitive_ptr);
+	UNREFERENCED_PARAMETER(action_ptr);
 	UNREFERENCED_PARAMETER(req_data_ptr);
-	UNREFERENCED_PARAMETER(rsp_data_ptr);
+
 	return ESIF_E_NOT_IMPLEMENTED;
 }
 
@@ -150,7 +167,7 @@ enum esif_rc esif_set_action_systemio(
 /* Init */
 enum esif_rc esif_action_systemio_init(void)
 {
-	ESIF_TRACE_DYN_INIT("%s: Initialize SYSTEMIO Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Initialize SYSTEMIO Action\n");
 	esif_ccb_lock_init(&g_esif_action_systemio_lock);
 	return ESIF_OK;
 }
@@ -159,7 +176,7 @@ enum esif_rc esif_action_systemio_init(void)
 /* Exit */
 void esif_action_systemio_exit(void)
 {
-	ESIF_TRACE_DYN_INIT("%s: Exit SYSTEMIO Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Exit SYSTEMIO Action\n");
 	esif_ccb_lock_uninit(&g_esif_action_systemio_lock);
 }
 

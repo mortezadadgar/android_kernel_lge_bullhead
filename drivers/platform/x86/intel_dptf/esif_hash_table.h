@@ -62,6 +62,10 @@ struct esif_hash_table {
 	struct esif_link_list **table;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct esif_hash_table *esif_hash_table_create (u32 size);
 void esif_hash_table_destroy(struct esif_hash_table *hash_table_ptr);
 
@@ -77,6 +81,10 @@ enum esif_rc esif_hash_table_put_item(u8 *key_ptr,
 /* Init */
 enum esif_rc esif_hash_table_init (void);
 void esif_hash_table_exit (void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef ESIF_ATTR_USER
 typedef struct esif_hash_table EsifHashTable, *EsifHashTablePtr,

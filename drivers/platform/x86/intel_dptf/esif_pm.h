@@ -74,7 +74,7 @@
 
 /* Participant State Machine States */
 enum esif_pm_participant_state {
-	/* Waiting For Registration Event */
+	/* Slot is open and never been used */
 	ESIF_PM_PARTICIPANT_STATE_AVAILABLE = 0,
 	/* Removed participant */
 	ESIF_PM_PARTICIPANT_REMOVED,
@@ -83,11 +83,9 @@ enum esif_pm_participant_state {
 	/* In The Process Of Registering */
 	ESIF_PM_PARTICIPANT_STATE_REGISTERING,  /* Notifying UF and part. */
 	ESIF_PM_PARTICIPANT_STATE_NEEDDSP,	/* DSP unloaded */
-	ESIF_PM_PARTICIPANT_STATE_REQUESTDSP,	/* Requested DSP */
-	ESIF_PM_PARTICIPANT_STATE_REGISTERED,	/* DSP Read */
+	ESIF_PM_PARTICIPANT_STATE_REGISTERED,	/* DSP Ready */
 	ESIF_PM_PARTICIPANT_STATE_SUSPENDED,	/* Part out of D0 */
-	ESIF_PM_PARTICIPANT_STATE_RESUMED,	/* Returned to D0 */
-	ESIF_PM_PARTICIPANT_STATE_OPERATIONAL	/* Upper and Lower Ready */
+	ESIF_PM_PARTICIPANT_STATE_RESUMED	/* Returned to D0 */
 };
 
 /* Participant State Machine Descriptions */
@@ -103,11 +101,9 @@ static ESIF_INLINE esif_string esif_pm_participant_state_str(
 		CREATE_STATE(ESIF_PM_PARTICIPANT_STATE_CREATED, "CREATED", str)
 		CREATE_STATE(ESIF_PM_PARTICIPANT_STATE_REGISTERING, "REGISTERING", str)
 		CREATE_STATE(ESIF_PM_PARTICIPANT_STATE_NEEDDSP, "NEED_DSP", str)
-		CREATE_STATE(ESIF_PM_PARTICIPANT_STATE_REQUESTDSP, "REQUESTED_DSP", str)
 		CREATE_STATE(ESIF_PM_PARTICIPANT_STATE_REGISTERED, "REGISTERED", str)
 		CREATE_STATE(ESIF_PM_PARTICIPANT_STATE_SUSPENDED, "SUSPENDED", str)
 		CREATE_STATE(ESIF_PM_PARTICIPANT_STATE_RESUMED, "RESUMED", str)
-		CREATE_STATE(ESIF_PM_PARTICIPANT_STATE_OPERATIONAL, "OPERATIONAL", str)
 	}
 	return str;
 }
@@ -185,6 +181,10 @@ typedef struct _t_EsifUppMgr {
 } EsifUppMgr, *EsifUppMgrPtr, **EsifUppMgrPtrLocation;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 EsifUpPtr EsifUpManagerGetAvailableParticipantByInstance(const UInt8 instance);
 Bool EsifUpManagerDoesAvailableParticipantExistByName(char *participantName);
 EsifUpPtr EsifUpManagerGetAvailableParticipantByName(char *participantName);
@@ -211,6 +211,10 @@ eEsifError EsifUpManagerDestroyParticipantsInApp(EsifAppPtr aAppPtr);
 
 eEsifError EsifUppMgrInit(void);
 void EsifUppMgrExit(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ESIF_ATTR_USER */
 #endif /* _ESIF_PM_H_    */

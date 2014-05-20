@@ -62,7 +62,15 @@ typedef char *esif_string;		/* Opaque ESIF String ASCIIZ Today */
     	defined(ESIF_ATTR_OS_ANDROID) || \
 	defined(ESIF_ATTR_OS_CHROME)
 
+#define ESIF_CALLCONV	
+
 #define ESIF_ATTR_OS "linux"	/* OS Is Linux             */
+/* 
+ * ESIF_FEAT_OPT_SYSFS exports SYSFS entries. It is defined 
+ * in ESIF_LF/Linuxx64/Debug/makefile and
+ * ESIF_LF/Linuxx64/Release/makefile. It is disabled by default.
+ * To enable it, it must be uncommented out in makefile.
+ */
 #define ESIF_INLINE  inline	/* Normalize Compiler      */
 #define ESIF_FUNC __func__	/* Normalize Compiler      */
 #define ESIF_PATH_SEP "/"	/* Path Seperator          */
@@ -93,6 +101,9 @@ typedef char *esif_string;		/* Opaque ESIF String ASCIIZ Today */
 #endif /* ESIF_ATTR_OS_CHROME */
 
 #ifdef ESIF_ATTR_OS_WINDOWS
+
+#define ESIF_CALLCONV	__cdecl
+
 #define ESIF_ATTR_OS "windows"	/* OS Is Windows             */
 #define ESIF_INLINE __inline	/* Normalize Compiler        */
 #define ESIF_FUNC __FUNCTION__	/* Normalize Compiler        */
@@ -102,7 +113,7 @@ typedef char *esif_string;		/* Opaque ESIF String ASCIIZ Today */
 				/* In Structure Order        */
 
 /* Build option to enable coalescable timers in Windows */
-/* #define ESIF_ATTR_USE_COALESCABLE_TIMERS */
+#define ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS
 
 /* We Use The Linux Dictionary So Add For Windows */
 typedef unsigned char u8;	/* A BYTE  */
@@ -224,13 +235,14 @@ typedef esif_string EsifString;
 #define ESIF_NOT_AVAILABLE "NA"
 
 /* Data Lengths */
-#define ESIF_NAME_LEN    64	/* Maximum Name Length        */
-#define ESIF_DESC_LEN    64	/* Maximum Description Length */
-#define ESIF_SCOPE_LEN   64	/* Maximum ACPI Scope Length  */
-#define ESIF_OBJ_LEN     64	/* Maximum Object Name Length */
-#define ESIF_GUID_LEN    16	/* Length of a GUID In Bytes  */
-#define ESIF_PATH_LEN    128	/* Maximum Path Length        */
-#define ESIF_LIBPATH_LEN 128	/* Maximum Lib Path Length    */
+#define ESIF_NAME_LEN		64	/* Maximum Name Length        */
+#define ESIF_DESC_LEN		64	/* Maximum Description Length */
+#define ESIF_SCOPE_LEN		64	/* Maximum ACPI Scope Length  */
+#define ESIF_OBJ_LEN		64	/* Maximum Object Name Length */
+#define ESIF_GUID_LEN		16	/* Length of a GUID In Bytes  */
+#define ESIF_PATH_LEN		128	/* Maximum Path Length        */
+#define ESIF_LIBPATH_LEN	128	/* Maximum Lib Path Length    */
+#define ESIF_ACPI_UID_LEN	64	/* Maximum ACPI UID Length  */
 
 #define ESIF_TRUE 1		/* C True */
 #define ESIF_FALSE 0		/* C False */
@@ -281,7 +293,6 @@ extern esif_ccb_lock_t g_mempool_lock;
 
 #ifdef ESIF_ATTR_USER
 	#include "esif_data.h"
-	#include "esif_uf_app_event_type.h"
 	/* Include All Headers Here */
 	#include "esif_uf.h"
 	#include "esif_uf_iface.h"

@@ -57,18 +57,21 @@
 #include "esif_ccb_lock.h"
 
 #ifdef ESIF_ATTR_USER
-# include "esif.h"
-# include "esif_ccb_atomic.h"
+#include "esif.h"
+#include "esif_ccb_atomic.h"
 
 /* Enable Detailed Memory Tracing? */
-# ifdef ESIF_ATTR_MEMTRACE
+#ifdef ESIF_ATTR_MEMTRACE
+
+#pragma pack(push,1)
+
 	struct memalloc_s {
+		struct memalloc_s	*next;
 		void			*mem_ptr;
 		size_t			size;
 		const char		*func;
 		const char		*file;
 		int			line;
-		struct memalloc_s	*next;
 	};
 	struct memtrace_s {
 		esif_ccb_lock_t		lock;
@@ -77,8 +80,19 @@
 		struct memalloc_s	*allocated;
 	};
 
+#pragma pack(pop)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 	extern struct memtrace_s g_memtrace;
-# endif
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 #endif
 
 /* memstat counters interface */
@@ -92,7 +106,16 @@
 # define memstat_read(intptr)		atomic_read(intptr)
 # define memstat_set(intptr, val)	atomic_set(intptr, val)
 #else
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern esif_ccb_lock_t g_memstat_lock;
+
+#ifdef __cplusplus
+}
+#endif
 
 static ESIF_INLINE void memstat_inc(u32 *intptr)
 {
@@ -197,10 +220,18 @@ static ESIF_INLINE void *esif_ccb_memset(
 
 #ifdef ESIF_ATTR_MEMTRACE
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void *esif_memtrace_alloc(void *old_ptr, size_t size, const char *func, const char *file, int line);
 extern void  esif_memtrace_free(void *mem_ptr);
 extern void  esif_memtrace_init();
 extern void  esif_memtrace_exit();
+
+#ifdef __cplusplus
+}
+#endif
 
 #define esif_ccb_malloc(size)			esif_memtrace_alloc(0, size, __FUNCTION__, __FILE__, __LINE__)
 #define esif_ccb_realloc(old_ptr, size)	esif_memtrace_alloc(old_ptr, size, __FUNCTION__, __FILE__, __LINE__)

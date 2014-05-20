@@ -52,7 +52,7 @@
 *******************************************************************************/
 
 #include "esif_lf.h"
-#include "esif_action.h"
+#include "esif_lf_action.h"
 #include "esif_ipc.h"
 #include "esif_queue.h"
 #include "esif_hash_table.h"
@@ -113,12 +113,6 @@ static struct esif_init_module esif_initializers[] = {
 };
 static enum esif_rc esif_start_initializers(void);
 static void esif_stop_initializers(void);
-
-static enum esif_rc esif_lf_allocate_and_queue_event(
-	struct esif_lp *lp_ptr,
-	enum esif_event_type type,
-	struct esif_event **event_locPtr
-);
 
 /*
  *******************************************************************************
@@ -281,13 +275,13 @@ exit:
  *  207     |   10
  */
 
-static ESIF_INLINE enum esif_rc esif_xform_temp(
+static enum esif_rc esif_xform_temp(
 	const enum esif_temperature_type type,
 	esif_temp_t *temp_ptr,
 	const enum esif_action_type action,
 	const struct esif_lp_dsp *dsp_ptr,
 	const struct esif_lp_primitive *primitive_ptr,
-	struct esif_lp *lp_ptr
+	const struct esif_lp *lp_ptr
 	)
 {
 	enum esif_rc rc = ESIF_OK;
@@ -341,7 +335,7 @@ static ESIF_INLINE enum esif_rc esif_xform_temp(
 	case ESIF_ALGORITHM_TYPE_TEMP_TJMAX_CORE:
 	{
 		/* LIFU Get TJMAX from GET_PROC_TJ_MAX */
-		struct esif_lp_domain *lpd_ptr = NULL;
+		const struct esif_lp_domain *lpd_ptr = NULL;
 		u32 tjmax = 0;
 
 		/*
@@ -360,7 +354,7 @@ static ESIF_INLINE enum esif_rc esif_xform_temp(
 			lpd_ptr->temp_tjmax);
 
 		if (opcode == ESIF_PRIMITIVE_OP_GET) {
-			temp_out      = tjmax - temp_out;
+			temp_out = (temp_out > tjmax) ? 0 : tjmax - temp_out;
 			temp_in_type  = ESIF_TEMP_C;
 			temp_out_type = type;
 			esif_convert_temp(temp_in_type, temp_out_type,
@@ -370,7 +364,7 @@ static ESIF_INLINE enum esif_rc esif_xform_temp(
 			temp_out_type = ESIF_TEMP_C;
 			esif_convert_temp(temp_in_type, temp_out_type,
 					  &temp_out);
-			temp_out = tjmax - temp_out;
+			temp_out = (temp_out > tjmax) ? 0 : tjmax - temp_out;
 		}
 		break;
 	}
@@ -400,7 +394,7 @@ static ESIF_INLINE enum esif_rc esif_xform_temp(
 
 	case ESIF_ALGORITHM_TYPE_TEMP_TJMAX_ATOM:
 	{
-		struct esif_lp_domain *lpd_ptr = NULL;
+		const struct esif_lp_domain *lpd_ptr = NULL;
 		u32 tjmax = 0;
 
 		/*
@@ -541,7 +535,7 @@ static ESIF_INLINE enum esif_rc esif_xform_temp(
 
 
 /* Power Transform */
-static ESIF_INLINE enum esif_rc esif_xform_power(
+static enum esif_rc esif_xform_power(
 	const enum esif_power_unit_type type,
 	esif_power_t *power_ptr,
 	const enum esif_action_type action,
@@ -695,302 +689,41 @@ static ESIF_INLINE enum esif_rc esif_xform_power(
 }
 
 
-enum esif_rc esif_lf_event(
-	struct esif_participant_iface *pi_ptr,
-	enum esif_event_type type,
-	u16 domain,
-	struct esif_data *data_ptr
+/* Execute Xform Function */
+enum esif_rc esif_execute_xform_func(
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const enum esif_action_type action,
+	const enum esif_data_type data_type,
+	u64 *temp_ptr
 	)
 {
-	enum esif_rc rc        = ESIF_OK;
-	struct esif_lp *lp_ptr = NULL;
-	struct esif_event *event_ptr         = NULL;
-	struct esif_ipc *ipc_ptr             = NULL;
-	struct esif_cpc_event *cpc_event_ptr = NULL;
+	enum esif_rc rc = ESIF_E_XFORM_NOT_AVAILABLE;
 
-	u16 ipc_data_len                     = 0;
-	struct esif_ipc_event_header evt_hdr = {0};
-	struct esif_ipc_event_data_create_participant evt_data = {0};
-
-	lp_ptr = esif_lf_pm_lp_get_by_pi(pi_ptr);
-	if (NULL == lp_ptr) {
-		rc = ESIF_E_PARTICIPANT_NOT_FOUND;
-		goto exit;
-	}
-
-	/* Create An Event */
-	switch (type) {
-	/* Special Event Create Send Entire PI Information */
-	case ESIF_EVENT_PARTICIPANT_CREATE:
-	{
-		event_ptr = esif_event_allocate(ESIF_EVENT_PARTICIPANT_CREATE,
-					sizeof(evt_data),
-					ESIF_EVENT_PRIORITY_NORMAL,
-					lp_ptr->instance,
-					ESIF_INSTANCE_UF,
-					domain,
-					pi_ptr);
-
-		if (NULL == event_ptr) {
-			rc = ESIF_E_NO_MEMORY;
-			goto exit;
-		}
-
-		ipc_data_len = sizeof(struct esif_ipc_event_header) +
-			sizeof(struct esif_ipc_event_data_create_participant);
-		ipc_ptr = esif_ipc_alloc(ESIF_IPC_TYPE_EVENT, ipc_data_len);
-
-		if (NULL == ipc_ptr) {
-			rc = ESIF_E_NO_MEMORY;
-			esif_event_free(event_ptr);
-			goto exit;
-		}
-
-		/* Setup Event Header And Copy To IPC Buffer */
-		evt_hdr.version       = event_ptr->version;
-		evt_hdr.type          = event_ptr->type;
-		evt_hdr.id            = event_ptr->id;
-		evt_hdr.timestamp     = event_ptr->timestamp;
-		evt_hdr.priority      = event_ptr->priority;
-		evt_hdr.src_id        = event_ptr->src;
-		evt_hdr.dst_id        = event_ptr->dst;
-		evt_hdr.dst_domain_id = 'NA';	/* event_ptr->dst_domain_id; */
-		evt_hdr.data_len =
-			sizeof(struct esif_ipc_event_data_create_participant);
-
-		esif_ccb_memcpy(ipc_ptr + 1,
-				&evt_hdr,
-				sizeof(struct esif_ipc_event_header));
-
-		/* Setup Event Data Structure */
-		evt_data.id = lp_ptr->instance;
-		evt_data.version        = lp_ptr->pi_ptr->version;
-		evt_data.enumerator     = lp_ptr->pi_ptr->enumerator;
-		evt_data.flags          = lp_ptr->pi_ptr->flags;
-		evt_data.pci_vendor     = lp_ptr->pi_ptr->pci_vendor;
-		evt_data.pci_device     = lp_ptr->pi_ptr->pci_device;
-		evt_data.pci_bus        = lp_ptr->pi_ptr->pci_bus;
-		evt_data.pci_bus_device = lp_ptr->pi_ptr->pci_bus_device;
-		evt_data.pci_function   = lp_ptr->pi_ptr->pci_function;
-		evt_data.pci_revision   = lp_ptr->pi_ptr->pci_revision;
-		evt_data.pci_class      = lp_ptr->pi_ptr->pci_class;
-		evt_data.pci_sub_class  = lp_ptr->pi_ptr->pci_sub_class;
-		evt_data.pci_prog_if    = lp_ptr->pi_ptr->pci_prog_if;
-
-		/*
-		** Handle these slow but safe.
-		*/
-		esif_ccb_memcpy(&evt_data.class_guid,
-				lp_ptr->pi_ptr->class_guid,
-				ESIF_GUID_LEN);
-		esif_ccb_memcpy(&evt_data.name,
-				lp_ptr->pi_ptr->name,
-				ESIF_NAME_LEN);
-		esif_ccb_memcpy(&evt_data.desc,
-				lp_ptr->pi_ptr->desc,
-				ESIF_DESC_LEN);
-		esif_ccb_memcpy(&evt_data.driver_name,
-				lp_ptr->pi_ptr->driver_name,
-				ESIF_NAME_LEN);
-		esif_ccb_memcpy(&evt_data.device_name,
-				lp_ptr->pi_ptr->device_name,
-				ESIF_NAME_LEN);
-		esif_ccb_memcpy(&evt_data.device_path,
-				lp_ptr->pi_ptr->device_path,
-				ESIF_PATH_LEN);
-		esif_ccb_memcpy(&evt_data.acpi_device,
-				lp_ptr->pi_ptr->acpi_device,
-				ESIF_SCOPE_LEN);
-		esif_ccb_memcpy(&evt_data.acpi_scope,
-				lp_ptr->pi_ptr->acpi_scope,
-				ESIF_SCOPE_LEN);
-		evt_data.acpi_uid  = lp_ptr->pi_ptr->acpi_uid;
-		evt_data.acpi_type = lp_ptr->pi_ptr->acpi_type;
-
-		esif_ccb_memcpy(((u8 *)(ipc_ptr + 1) +
-				   sizeof(struct esif_ipc_event_header)),
-			&evt_data,
-			sizeof(evt_data));
-
-		/* IPC will be freed on othre side of queue operation */
-		esif_event_queue_push(ipc_ptr);
-		break;
-	}
-
-	/* ACPI Events are special the incoming data will contain the OS notify
-	 * type.
-	 * We will map
-	 * that to an ESIF DSP event with the aide of the DSP.
-	 */
-	case ESIF_EVENT_ACPI:
-	{
-		u32 acpi_notify = 0;
-
-		/* Map ACPI into ESIF event number (if DSP is loaded) in
-		 *interrupt context */
-		if ((NULL != lp_ptr) &&
-		    (NULL != lp_ptr->dsp_ptr) &&
-		    (NULL != data_ptr)) {
-			/* Be paranoid make sue this is truly our EVENT data */
-			if (data_ptr->buf_len == sizeof(u32) &&
-			    data_ptr->data_len == sizeof(u32) &&
-			    ESIF_DATA_UINT32 == data_ptr->type) {
-				acpi_notify = *(u32 *)data_ptr->buf_ptr;
-			}
-
-			cpc_event_ptr = lp_ptr->dsp_ptr->get_event(
+	switch (data_type) {
+	case ESIF_DATA_TEMPERATURE:
+		if (lp_ptr->xform_temp != NULL)
+			rc = lp_ptr->xform_temp(NORMALIZE_TEMP_TYPE,
+					(esif_temp_t *) temp_ptr, 
+					action, 
 					lp_ptr->dsp_ptr,
-					acpi_notify);
-			if (NULL != cpc_event_ptr) {
-				/* Translate ESIF_EVENT_ACPI->real ESIF event */
-				type = cpc_event_ptr->esif_event;
-				ESIF_TRACE_DYN_EVENT(
-					"%s: Mapped ACPI event 0x%08x to "
-					"ESIF Event %s(%d)\n",
-					ESIF_FUNC,
-					acpi_notify,
-					esif_event_type_str(type),
-					type);
-			} else {
-				ESIF_TRACE_DYN_EVENT(
-					"%s: Undefined ACPI event 0x%08x in "
-					"DSP! Cannot map to ESIF event!\n",
-					ESIF_FUNC,
-					acpi_notify);
-				rc = ESIF_E_UNSPECIFIED;
-				goto exit;
-			}
-		} else {
-			ESIF_TRACE_DYN_EVENT(
-				"%s: lp_ptr %p dsp_ptr %p data_ptr %p, none "
-				"cannot be null\n",
-				ESIF_FUNC,
-				lp_ptr,
-				lp_ptr->dsp_ptr,
-				data_ptr);
-			rc = ESIF_E_UNSPECIFIED;
-			goto exit;
-		}
-		rc = esif_lf_allocate_and_queue_event(lp_ptr, type, &event_ptr);
-		if (rc != ESIF_OK)
-			goto exit;
+					primitive_ptr,
+					lp_ptr);
 		break;
-	}
-
-	case ESIF_EVENT_PARTICIPANT_SUSPEND:
-	{
-		if (ESIF_PM_PARTICIPANT_STATE_REGISTERED ==
-		    esif_lf_pm_lp_get_state(lp_ptr))
-			esif_lf_pm_lp_set_state(lp_ptr,
-			ESIF_PM_PARTICIPANT_STATE_SUSPENDED);
-
-		rc = esif_lf_allocate_and_queue_event(lp_ptr, type, &event_ptr);
-		if(rc != ESIF_OK)
-			goto exit;
+	case ESIF_DATA_POWER:
+		if (lp_ptr->xform_power != NULL)
+			rc = lp_ptr->xform_power(NORMALIZE_POWER_UNIT_TYPE,
+					(esif_power_t *) temp_ptr, 
+					action,
+					lp_ptr->dsp_ptr,
+					primitive_ptr->opcode);
 		break;
-	}
-
-	case ESIF_EVENT_PARTICIPANT_RESUME:
-	{
-		if (ESIF_PM_PARTICIPANT_STATE_SUSPENDED ==
-		    esif_lf_pm_lp_get_state(lp_ptr))
-			esif_lf_pm_lp_set_state(lp_ptr,
-			ESIF_PM_PARTICIPANT_STATE_RESUMED);
-
-		rc = esif_lf_allocate_and_queue_event(lp_ptr, type, &event_ptr);
-		if(rc != ESIF_OK)
-			goto exit;
-		break;
-	}
-
-	/* Everything Else Just Send The Handle */
 	default:
-	{
-		rc = esif_lf_allocate_and_queue_event(lp_ptr, type, &event_ptr);
-		if(rc != ESIF_OK)
-			goto exit;
+		rc = ESIF_E_UNSUPPORTED_ACTION_TYPE;
 		break;
 	}
-	}	/* End of case */
-
-	/* Send Our Event */
-	ESIF_TRACE_DYN_LF("%s: type %s(%d)\n", ESIF_FUNC,
-			  esif_event_type_str(type), type);
-
-	esif_lf_send_all_events_in_queue_to_uf_by_ipc();
-	esif_lf_send_event(lp_ptr->pi_ptr, event_ptr);
-	esif_event_free(event_ptr);
-
-exit:
 	return rc;
-}
-
-
-static enum esif_rc esif_lf_allocate_and_queue_event(
-	struct esif_lp *lp_ptr,
-	enum esif_event_type type,
-	struct esif_event **event_locPtr
-	)
-{
-	enum esif_rc rc = ESIF_OK;
-	struct esif_event *event_ptr         = NULL;
-	struct esif_ipc *ipc_ptr             = NULL;
-	u16 ipc_data_len                     = 0;
-	struct esif_ipc_event_header evt_hdr = {0};
-
-	if ((NULL == lp_ptr) || (NULL == event_locPtr)) {
-		rc = ESIF_E_UNSPECIFIED;
-		goto exit;
-	}
-
-	event_ptr  = esif_event_allocate(type,
-					sizeof(lp_ptr->instance),
-					ESIF_EVENT_PRIORITY_NORMAL,
-					lp_ptr->instance,
-					ESIF_INSTANCE_UF,
-					'NA',
-					&lp_ptr->instance);
-	if (NULL == event_ptr) {
-		rc = ESIF_E_NO_MEMORY;
-		goto exit;
-	}
-
-	ipc_data_len = sizeof(struct esif_ipc_event_header);
-	ipc_ptr = esif_ipc_alloc(ESIF_IPC_TYPE_EVENT, ipc_data_len);
-
-	if (NULL == ipc_ptr) {
-		esif_event_free(event_ptr);
-		event_ptr = NULL;
-		rc = ESIF_E_NO_MEMORY;
-		goto exit;
-	}
-
-	/* Setup Event Header And Copy To IPC Buffer */
-	evt_hdr.version       = event_ptr->version;
-	evt_hdr.type          = event_ptr->type;
-	evt_hdr.id            = event_ptr->id;
-	evt_hdr.timestamp     = event_ptr->timestamp;
-	evt_hdr.priority      = event_ptr->priority;
-	evt_hdr.src_id        = event_ptr->src;
-	evt_hdr.dst_id        = event_ptr->dst;
-	evt_hdr.dst_domain_id = 'NA';	/* event_ptr->dst_domain_id; */
-	evt_hdr.data_len      = 0;
-
-	esif_ccb_memcpy(ipc_ptr + 1,
-			&evt_hdr,
-			sizeof(struct esif_ipc_event_header));
-
-	/* IPC will be freed on other side of queue operation */
-	esif_event_queue_push(ipc_ptr);
-
-	*event_locPtr = event_ptr;
-
-exit:
-	return rc;
-}
-
-
-
+} 
 
 
 
@@ -1017,7 +750,7 @@ enum esif_rc esif_lf_register_participant(struct esif_participant_iface *pi_ptr)
 {
 	enum esif_rc rc        = ESIF_OK;
 	struct esif_lp *lp_ptr = NULL;
-	ESIF_TRACE_DYN_LF("%s: Register Send_Event Handler\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_LF("Register Send_Event Handler\n");
 
 	ESIF_TRACE_DYN_DECODE(
 		"Version:        %d\n"
@@ -1030,7 +763,7 @@ enum esif_rc esif_lf_register_participant(struct esif_participant_iface *pi_ptr)
 		"Device Path:    %s\n"
 		"ACPI Device:    %s\n"
 		"ACPI Scope:     %s\n"
-		"ACPI UID:       %x\n"
+		"ACPI UID:       %s\n"
 		"ACPI Type:      %x\n"
 		"PCI Vendor:     %x\n"
 		"PCI Device:     %x\n"
@@ -1093,9 +826,6 @@ enum esif_rc esif_lf_register_participant(struct esif_participant_iface *pi_ptr)
 	if (ESIF_OK != rc)
 		goto exit;
 
-	/* Transition State To REQUEST DSP Next State Registered */
-	rc = esif_lf_pm_lp_set_state(lp_ptr,
-				     ESIF_PM_PARTICIPANT_STATE_REQUESTDSP);
 exit:
 	return rc;
 }
@@ -1130,7 +860,7 @@ enum esif_rc esif_lf_unregister_participant(
 	if (NULL != lp_ptr->dsp_ptr)
 		esif_dsp_unload(lp_ptr);
 
-	ESIF_TRACE_DYN_LF("%s: instance %d.\n", ESIF_FUNC, lp_ptr->instance);
+	ESIF_TRACE_DYN_LF("instance %d.\n", lp_ptr->instance);
 
 	/* Notify Upper Framework */
 	rc = esif_lf_event(lp_ptr->pi_ptr,

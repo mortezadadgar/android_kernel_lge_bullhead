@@ -57,7 +57,9 @@
 #include "esif.h"
 #include "esif_participant_iface.h"
 #include "esif_event.h"
-#include "esif_domain.h"
+
+#define ESIF_PARTICIPANT_INVALID_TYPE 0xFFFFFFFF
+#define ESIF_PARTICIPANT_INVALID_UID "" 
 
 #ifdef ESIF_ATTR_KERNEL
 
@@ -65,12 +67,11 @@
 #include "esif_temp.h"
 #include "esif_power.h"
 #include "esif_primitive.h"
+#include "esif_lf_domain.h"
 
 /*
 ** TODO: Hookup CCB Debug
 */
-#define ESIF_PARTICIPANT_INVALID_TYPE 0xFFFFFFFF
-#define ESIF_PARTICIPANT_INVALID_UID 0xFFFFFFFF
 
 /* Lower Participant */
 #ifndef ESIF_ATTR_OS_LINUX_DRIVER
@@ -91,7 +92,7 @@ struct esif_lp {
 				    const enum esif_action_type action,
 				    const struct esif_lp_dsp *dsp,
 				    const struct esif_lp_primitive *primitive_ptr,
-				    struct esif_lp *lp_ptr);
+				    const struct esif_lp *lp_ptr);
 
 	/* XFORM Power */
 	enum esif_rc  (*xform_power)(const enum esif_power_unit_type,
@@ -130,7 +131,7 @@ typedef struct _t_EsifUpData {
 	/* ACPI */
 	char  fAcpiDevice[ESIF_NAME_LEN]; /* Device INT340X */
 	char  fAcpiScope[ESIF_SCOPE_LEN]; /* Scope/REGEX e.g. \_SB.PCI0.TPCH */
-	UInt32       fAcpiUID;				/* Unique ID If Any */
+	char  fAcpiUID[ESIF_ACPI_UID_LEN];	/* Unique ID If Any */
 	eDomainType  fAcpiType;			/* Participant Type If Any */
 
 	/* PCI */

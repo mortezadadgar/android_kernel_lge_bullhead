@@ -98,6 +98,7 @@
 	ENUM##_VAL(GET_DISPLAY_DEPTH_LIMIT, 160) \
 	ENUM##_VAL(GET_DISPLAY_PANEL_TYPE, 179) \
 	ENUM##_VAL(GET_DOMAIN_PRIORITY, 178) \
+	ENUM##_VAL(GET_DYNAMIC_BATTERY_POWER_ACTION, 279) \
 	ENUM##_VAL(GET_FAN_INFORMATION, 84) \
 	ENUM##_VAL(GET_FAN_PERFORMANCE_STATES, 85) \
 	ENUM##_VAL(GET_FAN_STATUS, 86) \
@@ -110,8 +111,10 @@
 	ENUM##_VAL(GET_PARTICIPANT_SKU, 141) \
 	ENUM##_VAL(GET_PARTICIPANT_TYPE, 139) \
 	ENUM##_VAL(GET_PARTICIPANT_UTILIZATION, 138) \
+	ENUM##_VAL(GET_PDR_TABLE, 239) \
 	ENUM##_VAL(GET_PERF_PSTATE_DEPTH_LIMIT, 76) \
 	ENUM##_VAL(GET_PERF_SUPPORT_STATES, 137) \
+	ENUM##_VAL(GET_PLATFORM_STATE_OF_CHARGE, 278) \
 	ENUM##_VAL(GET_POWER_THRESHOLD_COUNT, 196) \
 	ENUM##_VAL(GET_POWER_THRESHOLD_HYSTERESIS, 197) \
 	ENUM##_VAL(GET_POWER_THRESHOLDS, 198) \
@@ -139,6 +142,7 @@
 	ENUM##_VAL(GET_PROC_PERF_THROTTLE_PRESENT_CAPABILITY, 62) \
 	ENUM##_VAL(GET_PROC_PERF_TSTATE_DEPTH_LIMIT, 61) \
 	ENUM##_VAL(GET_PROC_RF_TUNING_AVAILABLE, 268) \
+	ENUM##_VAL(GET_PROC_RP_STATE_CAPABILITY, 277) \
 	ENUM##_VAL(GET_PROC_THERMAL_DESIGN_POWER, 21) \
 	ENUM##_VAL(GET_PROC_TJMAX, 20) \
 	ENUM##_VAL(GET_PROC_TURBO_ACTIVATION_RATIO, 219) \
@@ -159,21 +163,21 @@
 	ENUM##_VAL(GET_RAPL_POWER_UNIT, 124) \
 	ENUM##_VAL(GET_RAPL_TIME_UNIT, 122) \
 	ENUM##_VAL(GET_RAPL_TIME_WINDOW, 39) \
-     	ENUM##_VAL(GET_RFPROFILE_BIT_ERROR, 265) \
-     	ENUM##_VAL(GET_RFPROFILE_CENTER_FREQUENCY, 245) \
-     	ENUM##_VAL(GET_RFPROFILE_CHANNEL_NUMBER, 260) \
-     	ENUM##_VAL(GET_RFPROFILE_CLIP_PERCENT_LEFT, 255) \
-     	ENUM##_VAL(GET_RFPROFILE_CLIP_PERCENT_RIGHT, 256) \
-     	ENUM##_VAL(GET_RFPROFILE_CONNECTION_STATUS, 264) \
-     	ENUM##_VAL(GET_RFPROFILE_DEFAULT_CENTER_FREQUENCY, 254) \
+	ENUM##_VAL(GET_RFPROFILE_BIT_ERROR, 265) \
+	ENUM##_VAL(GET_RFPROFILE_CENTER_FREQUENCY, 245) \
+	ENUM##_VAL(GET_RFPROFILE_CHANNEL_NUMBER, 260) \
+	ENUM##_VAL(GET_RFPROFILE_CLIP_PERCENT_LEFT, 255) \
+	ENUM##_VAL(GET_RFPROFILE_CLIP_PERCENT_RIGHT, 256) \
+	ENUM##_VAL(GET_RFPROFILE_CONNECTION_STATUS, 264) \
+	ENUM##_VAL(GET_RFPROFILE_DEFAULT_CENTER_FREQUENCY, 254) \
 	ENUM##_VAL(GET_RFPROFILE_FREQUENCY_ADJUST_RESOLUTION, 257) \
 	ENUM##_VAL(GET_RFPROFILE_FREQUENCY_SPREAD_LEFT, 246) \
 	ENUM##_VAL(GET_RFPROFILE_FREQUENCY_SPREAD_RIGHT, 251) \
-     	ENUM##_VAL(GET_RFPROFILE_NOISE_POWER, 261) \
-     	ENUM##_VAL(GET_RFPROFILE_NOTCH_LEFT, 258) \
-     	ENUM##_VAL(GET_RFPROFILE_NOTCH_RIGHT, 259) \
-     	ENUM##_VAL(GET_RFPROFILE_RSSI, 263) \
-     	ENUM##_VAL(GET_RFPROFILE_SHAPE_LEFT, 247) \
+	ENUM##_VAL(GET_RFPROFILE_NOISE_POWER, 261) \
+	ENUM##_VAL(GET_RFPROFILE_NOTCH_LEFT, 258) \
+	ENUM##_VAL(GET_RFPROFILE_NOTCH_RIGHT, 259) \
+	ENUM##_VAL(GET_RFPROFILE_RSSI, 263) \
+	ENUM##_VAL(GET_RFPROFILE_SHAPE_LEFT, 247) \
 	ENUM##_VAL(GET_RFPROFILE_SHAPE_RIGHT, 253) \
 	ENUM##_VAL(GET_RFPROFILE_SIGNAL_TO_NOISE_RATIO, 262) \
 	ENUM##_VAL(GET_SUPPORTED_POLICIES, 92) \
@@ -203,8 +207,10 @@
 	ENUM##_VAL(SET_DISPLAY_BRIGHTNESS_SOFT, 163) \
 	ENUM##_VAL(SET_DSP, 200) \
 	ENUM##_VAL(SET_FAN_LEVEL, 87) \
+	ENUM##_VAL(SET_GFX_RPCP, 281) \
 	ENUM##_VAL(SET_LPM_TABLE, 238) \
 	ENUM##_VAL(SET_OPERATING_SYSTEM_CAPABILITIES, 93) \
+	ENUM##_VAL(SET_PDR_TABLE, 240) \
 	ENUM##_VAL(SET_PERF_PRESENT_CAPABILITY, 82) \
 	ENUM##_VAL(SET_PERF_SUPPORT_STATE, 227) \
 	ENUM##_VAL(SET_POWER_THRESHOLD_HYSTERESIS, 233) \
@@ -230,6 +236,7 @@
 	ENUM##_VAL(SET_SYSTEM_SHUTDOWN, 173) \
 	ENUM##_VAL(SET_SYSTEM_SLEEP, 174) \
 	ENUM##_VAL(SET_TEMPERATURE, 241) \
+	ENUM##_VAL(SET_TEMPERATURE_INTERRUPT_STATE, 280) \
 	ENUM##_VAL(SET_TEMPERATURE_THRESHOLD_HYSTERESIS, 232) \
 	ENUM##_VAL(SET_TEMPERATURE_THRESHOLDS, 47) \
 	ENUM##_VAL(SET_THERMAL_RELATIONSHIP_TABLE, 231) \
@@ -268,6 +275,7 @@ enum esif_primitive_type {
 	GET_DISPLAY_DEPTH_LIMIT           = 160,
 	GET_DISPLAY_PANEL_TYPE            = 179,
 	GET_DOMAIN_PRIORITY               = 178,
+	GET_DYNAMIC_BATTERY_POWER_ACTION  = 279,
 	GET_FAN_INFORMATION               = 84,
 	GET_FAN_PERFORMANCE_STATES                   = 85,
 	GET_FAN_STATUS                    = 86,
@@ -280,8 +288,10 @@ enum esif_primitive_type {
 	GET_PARTICIPANT_SKU                          = 141,
 	GET_PARTICIPANT_TYPE                         = 139,
 	GET_PARTICIPANT_UTILIZATION                  = 138,
+	GET_PDR_TABLE                                = 239,
 	GET_PERF_PSTATE_DEPTH_LIMIT                  = 76,
 	GET_PERF_SUPPORT_STATES                      = 137,
+	GET_PLATFORM_STATE_OF_CHARGE                 = 278,
 	GET_POWER_THRESHOLD_COUNT                    = 196,
 	GET_POWER_THRESHOLD_HYSTERESIS               = 197,
 	GET_POWER_THRESHOLDS                         = 198,
@@ -310,6 +320,7 @@ enum esif_primitive_type {
 	GET_PROC_PERF_THROTTLE_PRESENT_CAPABILITY    = 62,
 	GET_PROC_PERF_TSTATE_DEPTH_LIMIT             = 61,
 	GET_PROC_RF_TUNING_AVAILABLE                 = 268,
+	GET_PROC_RP_STATE_CAPABILITY		     = 277,
 	GET_PROC_THERMAL_DESIGN_POWER                = 21,
 	GET_PROC_TJMAX = 20,
 	GET_PROC_TURBO_ACTIVATION_RATIO              = 219,
@@ -375,8 +386,10 @@ enum esif_primitive_type {
 	SET_DISPLAY_BRIGHTNESS_SOFT                  = 163,
 	SET_DSP       = 200,
 	SET_FAN_LEVEL = 87,
+	SET_GFX_RPCP = 281,
 	SET_LPM_TABLE = 238,
 	SET_OPERATING_SYSTEM_CAPABILITIES    = 93,
+	SET_PDR_TABLE                        = 240,
 	SET_PERF_PRESENT_CAPABILITY          = 82,
 	SET_PERF_SUPPORT_STATE               = 227,
 	SET_POWER_THRESHOLD_HYSTERESIS       = 233,
@@ -401,6 +414,7 @@ enum esif_primitive_type {
 	SET_SYSTEM_SHUTDOWN                  = 173,
 	SET_SYSTEM_SLEEP                     = 174,
 	SET_TEMPERATURE                      = 241,
+	SET_TEMPERATURE_INTERRUPT_STATE      = 280,
 	SET_TEMPERATURE_THRESHOLD_HYSTERESIS = 232,
 	SET_TEMPERATURE_THRESHOLDS           = 47,
 	SET_THERMAL_RELATIONSHIP_TABLE       = 231,
@@ -416,9 +430,17 @@ enum esif_primitive_type {
 };
 
 /* Implement these if they are needed */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern enum esif_primitive_type esif_primitive_type_string2enum (esif_string str);
 extern esif_string esif_primitive_type_enum2string (
 	enum esif_primitive_type type);
+
+#ifdef __cplusplus
+}
+#endif
 
 static ESIF_INLINE esif_string esif_primitive_str (enum esif_primitive_type type)
 {
@@ -456,6 +478,7 @@ static ESIF_INLINE esif_string esif_primitive_str (enum esif_primitive_type type
 		CREATE_PRIMITIVE_TYPE(GET_DISPLAY_DEPTH_LIMIT)
 		CREATE_PRIMITIVE_TYPE(GET_DISPLAY_PANEL_TYPE)
 		CREATE_PRIMITIVE_TYPE(GET_DOMAIN_PRIORITY)
+		CREATE_PRIMITIVE_TYPE(GET_DYNAMIC_BATTERY_POWER_ACTION)
 		CREATE_PRIMITIVE_TYPE(GET_FAN_INFORMATION)
 		CREATE_PRIMITIVE_TYPE(GET_FAN_PERFORMANCE_STATES)
 		CREATE_PRIMITIVE_TYPE(GET_FAN_STATUS)
@@ -468,8 +491,10 @@ static ESIF_INLINE esif_string esif_primitive_str (enum esif_primitive_type type
 		CREATE_PRIMITIVE_TYPE(GET_PARTICIPANT_SKU)
 		CREATE_PRIMITIVE_TYPE(GET_PARTICIPANT_TYPE)
 		CREATE_PRIMITIVE_TYPE(GET_PARTICIPANT_UTILIZATION)
+		CREATE_PRIMITIVE_TYPE(GET_PDR_TABLE)
 		CREATE_PRIMITIVE_TYPE(GET_PERF_PSTATE_DEPTH_LIMIT)
 		CREATE_PRIMITIVE_TYPE(GET_PERF_SUPPORT_STATES)
+		CREATE_PRIMITIVE_TYPE(GET_PLATFORM_STATE_OF_CHARGE)
 		CREATE_PRIMITIVE_TYPE(GET_POWER_THRESHOLD_COUNT)
 		CREATE_PRIMITIVE_TYPE(GET_POWER_THRESHOLD_HYSTERESIS)
 		CREATE_PRIMITIVE_TYPE(GET_POWER_THRESHOLDS)
@@ -498,6 +523,7 @@ static ESIF_INLINE esif_string esif_primitive_str (enum esif_primitive_type type
 		CREATE_PRIMITIVE_TYPE(GET_PROC_PERF_THROTTLE_PRESENT_CAPABILITY)
 		CREATE_PRIMITIVE_TYPE(GET_PROC_PERF_TSTATE_DEPTH_LIMIT)
 		CREATE_PRIMITIVE_TYPE(GET_PROC_RF_TUNING_AVAILABLE)
+		CREATE_PRIMITIVE_TYPE(GET_PROC_RP_STATE_CAPABILITY)
 		CREATE_PRIMITIVE_TYPE(GET_PROC_THERMAL_DESIGN_POWER)
 		CREATE_PRIMITIVE_TYPE(GET_PROC_TJMAX)
 		CREATE_PRIMITIVE_TYPE(GET_PROC_TURBO_ACTIVATION_RATIO)
@@ -562,8 +588,10 @@ static ESIF_INLINE esif_string esif_primitive_str (enum esif_primitive_type type
 		CREATE_PRIMITIVE_TYPE(SET_DISPLAY_BRIGHTNESS_SOFT)
 		CREATE_PRIMITIVE_TYPE(SET_DSP)
 		CREATE_PRIMITIVE_TYPE(SET_FAN_LEVEL)
+		CREATE_PRIMITIVE_TYPE(SET_GFX_RPCP)
 		CREATE_PRIMITIVE_TYPE(SET_LPM_TABLE)
 		CREATE_PRIMITIVE_TYPE(SET_OPERATING_SYSTEM_CAPABILITIES)
+		CREATE_PRIMITIVE_TYPE(SET_PDR_TABLE)
 		CREATE_PRIMITIVE_TYPE(SET_PERF_PRESENT_CAPABILITY)
 		CREATE_PRIMITIVE_TYPE(SET_PERF_SUPPORT_STATE)
 		CREATE_PRIMITIVE_TYPE(SET_POWER_THRESHOLD_HYSTERESIS)
@@ -589,6 +617,7 @@ static ESIF_INLINE esif_string esif_primitive_str (enum esif_primitive_type type
 		CREATE_PRIMITIVE_TYPE(SET_SYSTEM_SHUTDOWN)
 		CREATE_PRIMITIVE_TYPE(SET_SYSTEM_SLEEP)
 		CREATE_PRIMITIVE_TYPE(SET_TEMPERATURE)
+		CREATE_PRIMITIVE_TYPE(SET_TEMPERATURE_INTERRUPT_STATE)
 		CREATE_PRIMITIVE_TYPE(SET_TEMPERATURE_THRESHOLD_HYSTERESIS)
 		CREATE_PRIMITIVE_TYPE(SET_TEMPERATURE_THRESHOLDS)
 		CREATE_PRIMITIVE_TYPE(SET_THERMAL_RELATIONSHIP_TABLE)
@@ -611,6 +640,7 @@ static ESIF_INLINE esif_string esif_primitive_str (enum esif_primitive_type type
 */
 
 #define ENUM_ESIF_DATA_TYPE(ENUM) \
+	ENUM##_VAL(ESIF_DATA_ANGLE, 41) \
 	ENUM##_VAL(ESIF_DATA_AUTO, 36) \
 	ENUM##_VAL(ESIF_DATA_BINARY, 7) \
 	ENUM##_VAL(ESIF_DATA_BIT, 27) \
@@ -648,6 +678,7 @@ static ESIF_INLINE esif_string esif_primitive_str (enum esif_primitive_type type
 
 enum esif_data_type {
 #ifdef ESIF_ATTR_KERNEL
+	ESIF_DATA_ANGLE       = 41,
 	ESIF_DATA_AUTO        = 36,
 	ESIF_DATA_BINARY      = 7,
 	ESIF_DATA_BIT         = 27,
@@ -688,8 +719,16 @@ enum esif_data_type {
 };
 
 /* Implement these if they are needed */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern enum esif_data_type esif_data_type_string2enum (esif_string str);
 extern esif_string esif_data_type_enum2string (enum esif_data_type type);
+
+#ifdef __cplusplus
+}
+#endif
 
 static ESIF_INLINE esif_string esif_data_type_str (enum esif_data_type type)
 {
@@ -701,6 +740,7 @@ static ESIF_INLINE esif_string esif_data_type_str (enum esif_data_type type)
 	esif_string str = (esif_string)ESIF_NOT_AVAILABLE;
 	switch (type) {
 #ifdef ESIF_ATTR_KERNEL
+		CREATE_DATA_TYPE(ESIF_DATA_ANGLE)
 		CREATE_DATA_TYPE(ESIF_DATA_AUTO)
 		CREATE_DATA_TYPE(ESIF_DATA_BINARY)
 		CREATE_DATA_TYPE(ESIF_DATA_BIT)
@@ -763,6 +803,7 @@ static ESIF_INLINE esif_string esif_data_type_str (enum esif_data_type type)
 	ENUM##_VAL(ESIF_ACTION_LAL, 11) \
 	ENUM##_VAL(ESIF_ACTION_IOSF, 34) \
 	ENUM##_VAL(ESIF_ACTION_MMIO, 2) \
+	ENUM##_VAL(ESIF_ACTION_MMIOTJMAX, 48) \
 	ENUM##_VAL(ESIF_ACTION_MSR, 22) \
 	ENUM##_VAL(ESIF_ACTION_PSM, 44) \
 	ENUM##_VAL(ESIF_ACTION_RFPWIFI, 43) \
@@ -793,6 +834,7 @@ enum esif_action_type {
 	ESIF_ACTION_LAL        = 11,
 	ESIF_ACTION_IOSF       = 34,
 	ESIF_ACTION_MMIO       = 2,
+	ESIF_ACTION_MMIOTJMAX  = 48,
 	ESIF_ACTION_MSR        = 22,
 	ESIF_ACTION_PSM        = 44,
 	ESIF_ACTION_RFPWIFI    = 43,
@@ -817,8 +859,16 @@ enum esif_action_msr_hint {
 };
 
 /* Implement these if they are needed */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern enum esif_action_type esif_action_type_string2enum (esif_string str);
 extern esif_string esif_action_type_enum2string (enum esif_action_type type);
+
+#ifdef __cplusplus
+}
+#endif
 
 static ESIF_INLINE esif_string esif_action_type_str (enum esif_action_type type)
 {
@@ -844,6 +894,7 @@ static ESIF_INLINE esif_string esif_action_type_str (enum esif_action_type type)
 		CREATE_ACTION_TYPE(ESIF_ACTION_LAL)
 		CREATE_ACTION_TYPE(ESIF_ACTION_IOSF)
 		CREATE_ACTION_TYPE(ESIF_ACTION_MMIO)
+		CREATE_ACTION_TYPE(ESIF_ACTION_MMIOTJMAX)
 		CREATE_ACTION_TYPE(ESIF_ACTION_MSR)
 		CREATE_ACTION_TYPE(ESIF_ACTION_PSM)
 		CREATE_ACTION_TYPE(ESIF_ACTION_RFPWIFI)
@@ -925,10 +976,18 @@ enum esif_capability_type {
 };
 
 /* Implement these if they are needed */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern enum esif_capability_type esif_capability_type_string2enum (
 	esif_string str);
 extern esif_string esif_capability_type_enum2string (
 	enum esif_capability_type type);
+
+#ifdef __cplusplus
+}
+#endif
 
 static ESIF_INLINE esif_string esif_capability_type_str (
 	enum esif_capability_type type)
@@ -1033,8 +1092,16 @@ enum esif_pci_device_id {
 };
 
 /* Implement these if they are needed */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern enum esif_pci_device_id esif_pci_device_id_string2enum (esif_string str);
 extern esif_string esif_pci_device_id_enum2string (enum esif_pci_device_id type);
+
+#ifdef __cplusplus
+}
+#endif
 
 static ESIF_INLINE esif_string esif_device_str (u32 device_id)
 {
@@ -1067,6 +1134,9 @@ static ESIF_INLINE esif_string esif_device_str (u32 device_id)
 
 
 #if defined(ESIF_ATTR_OS_LINUX_DRIVER)
+
+#pragma pack(push,1)
+
 const struct pci_device_id esif_pci_cpu_ids[] = {
 	{
 		PCI_DEVICE(PCI_VENDOR_ID_INTEL, ESIF_PCI_DEVICE_ID_SNB)
@@ -1111,6 +1181,8 @@ const struct pci_device_id esif_pci_pch_ids[] = {
 		0,
 	}
 };
+
+#pragma pack(pop)
 
 #endif
 
@@ -1193,6 +1265,9 @@ static ESIF_INLINE esif_string esif_acpi_device_str (esif_string acpi_device)
 
 
 #if defined(ESIF_ATTR_OS_LINUX_DRIVER)
+
+#pragma pack(push,1)
+
 const struct acpi_device_id esif_acpi_ids[] = {
 	{
 		ESIF_ACPI_DEVICE_INT3400, 0
@@ -1237,6 +1312,8 @@ const struct acpi_device_id esif_acpi_ids[] = {
 		"", 0
 	},
 };
+
+#pragma pack(pop)
 
 #endif
 
@@ -1296,8 +1373,16 @@ enum esif_domain_type {
 };
 
 /* Implement these if they are needed */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern enum esif_domain_type esif_domain_type_string2enum (esif_string str);
 extern esif_string esif_domain_type_enum2string (enum esif_domain_type type);
+
+#ifdef __cplusplus
+}
+#endif
 
 static ESIF_INLINE esif_string esif_domain_type_str (enum esif_domain_type type)
 {
@@ -1413,9 +1498,17 @@ enum esif_algorithm_type {
 };
 
 /* Implement these if they are needed */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern enum esif_algorithm_type esif_algorithm_type_string2enum (esif_string str);
 extern esif_string esif_algorithm_type_enum2string (
 	enum esif_algorithm_type type);
+
+#ifdef __cplusplus
+}
+#endif
 
 static ESIF_INLINE esif_string esif_algorithm_type_str (
 	enum esif_algorithm_type type)
@@ -1470,18 +1563,26 @@ enum esif_participant_enum {
 };
 
 /* Implement these if they are needed */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern enum esif_participant_enum esif_participant_enum_string2enum (
 	esif_string str);
 extern esif_string esif_participant_enum_enum2string (
 	enum esif_participant_enum type);
+
+#ifdef __cplusplus
+}
+#endif
 
 /* Enumeration String */
 static ESIF_INLINE esif_string esif_participant_enum_str (
 	enum esif_participant_enum index)
 {
     #define CREATE_PARTICIPANT_ENUM(pe) case pe: \
-	str = #pe;break;
-	esif_string str = ESIF_NOT_AVAILABLE;
+	str = (esif_string) #pe;break;
+	esif_string str = (esif_string) ESIF_NOT_AVAILABLE;
 	switch (index) {
 		CREATE_PARTICIPANT_ENUM(ESIF_PARTICIPANT_ENUM_ACPI)
 		CREATE_PARTICIPANT_ENUM(ESIF_PARTICIPANT_ENUM_PCI)
@@ -1510,8 +1611,8 @@ static ESIF_INLINE esif_string esif_event_group_enum_str (
 	enum esif_event_group group)
 {
     #define CREATE_EV_GROUP_ENUM(eg) case eg: \
-	str = #eg;break;
-	esif_string str = ESIF_NOT_AVAILABLE;
+	str = (esif_string) #eg;break;
+	esif_string str = (esif_string) ESIF_NOT_AVAILABLE;
 	switch (group) {
 		CREATE_EV_GROUP_ENUM(ESIF_EVENT_GROUP_DPTF)
 		CREATE_EV_GROUP_ENUM(ESIF_EVENT_GROUP_POWER)

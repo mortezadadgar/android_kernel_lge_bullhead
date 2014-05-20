@@ -51,7 +51,8 @@
 **
 *******************************************************************************/
 
-#include "esif_action.h"
+#include "esif_lf_action.h"
+#include "esif_participant.h"
 
 #ifdef ESIF_ATTR_OS_WINDOWS
 
@@ -68,6 +69,7 @@
 #define INIT_DEBUG       0
 #define GET_DEBUG        1
 #define SET_DEBUG        2
+#define MMIO_ACCESS_SIZE    4
 
 #define ESIF_TRACE_DYN_INIT(format, ...) \
 	ESIF_TRACE_DYN(ESIF_DEBUG_MOD_ACTION_MMIO, \
@@ -90,25 +92,47 @@ static esif_ccb_lock_t g_esif_action_mmio_lock;
 
 /* Get */
 enum esif_rc esif_get_action_mmio(
-	const void __iomem *base_addr,
-	const u32 offset,
-	const u8 bit_from,
-	const u8 bit_to,
-	const struct esif_data *req_data_ptr,
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
+	struct esif_data *req_data_ptr,
 	struct esif_data *rsp_data_ptr
 	)
 {
 	enum esif_rc rc = ESIF_OK;
+	void __iomem *base_addr = NULL;
+	u32 offset;
+	u8 bit_from;
+	u8 bit_to;
 	int i = 0;		/* Loop Counter                            */
 	u32 val = 0;		/* Temporary MMIO Value MMIO Always 32 Bit */
 	u32 bit_mask = 0;	/* Bit Mask For MMIO Value                 */
 
+	UNREFERENCED_PARAMETER(primitive_ptr);
 	UNREFERENCED_PARAMETER(req_data_ptr);
-	ESIF_TRACE_DYN_GET("%s: base %p offset %x bit_from %d bit_to %d\n",
-			   ESIF_FUNC, base_addr, offset, bit_from, bit_to);
 
-	if (NULL == base_addr)
-		return ESIF_E_NO_MMIO_SUPPORT;
+	if ((NULL == lp_ptr) || (NULL == action_ptr) ||
+	    (NULL == rsp_data_ptr)) {
+		rc = ESIF_E_PARAMETER_IS_NULL;
+		goto exit;
+	}
+
+	base_addr = lp_ptr->pi_ptr->mem_base;
+	if (NULL == base_addr) {
+		rc = ESIF_E_NO_MMIO_SUPPORT;
+		goto exit;
+	}
+
+	offset = action_ptr->get_p1_u32(action_ptr);
+	bit_from = (u8)action_ptr->get_p3_u32(action_ptr);
+	bit_to  = (u8)action_ptr->get_p2_u32(action_ptr);
+
+#ifdef ESIF_ATTR_OS_WINDOWS
+	if ((offset + MMIO_ACCESS_SIZE) > lp_ptr->pi_ptr->mem_size) {
+		rc = ESIF_E_PARAMETER_IS_OUT_OF_BOUNDS;
+		goto exit;
+	}
+#endif
 
 	/* Read MMIO 32-Bit Always */
 	esif_ccb_read_lock(&g_esif_action_mmio_lock);
@@ -121,6 +145,9 @@ enum esif_rc esif_get_action_mmio(
 
 	val = val & bit_mask;
 	val = val >> bit_from;
+
+	ESIF_TRACE_DYN_GET("Base %p offset 0x%x[%d:%d] = 0x%x\n",
+			   base_addr, offset, bit_to, bit_from, val);
 
 	switch (rsp_data_ptr->type) {
 	case ESIF_DATA_UINT8:
@@ -140,8 +167,6 @@ enum esif_rc esif_get_action_mmio(
 		break;
 
 	case ESIF_DATA_UINT32:
-	case ESIF_DATA_POWER:
-	case ESIF_DATA_TEMPERATURE:
 	case ESIF_DATA_TIME:
 		rsp_data_ptr->data_len = sizeof(u32);
 		if (rsp_data_ptr->buf_len >= sizeof(u32))
@@ -154,37 +179,54 @@ enum esif_rc esif_get_action_mmio(
 		rc = ESIF_E_UNSUPPORTED_RESULT_DATA_TYPE;
 		break;
 	}
+exit:
+	ESIF_TRACE_DYN_GET("RC: %s(%d)\n", esif_rc_str(rc), rc);
 	return rc;
 }
 
 
 /* Set */
 enum esif_rc esif_set_action_mmio(
-	const void __iomem *base_addr,
-	const u32 offset,
-	const u8 bit_from,
-	const u8 bit_to,
-	const struct esif_data *req_data_ptr
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
+	struct esif_data *req_data_ptr
 	)
 {
 	enum esif_rc rc = ESIF_OK;
+	void __iomem *base_addr = NULL;
+	u32 offset;
+	u8 bit_from;
+	u8 bit_to;
 	int i = 0;	        /* Loop Counter                            */
 	u32 req_val     = 0;	/* Request MMIO Value                      */
 	u32 orig_val    = 0;	/* Original Value Of MMIO                  */
 	u32 bit_mask    = 0;	/* Bit Mask                                */
 
-	if (NULL == base_addr)
-		return ESIF_E_NO_MMIO_SUPPORT;
+	UNREFERENCED_PARAMETER(primitive_ptr);
 
-	ESIF_TRACE_DYN_SET(
-		"%s: req type %s, mmio base %p, offset 0x%x, bit_from %d, "
-		"bit_to %d\n",
-		ESIF_FUNC,
-		esif_data_type_str(req_data_ptr->type),
-		base_addr,
-		offset,
-		bit_from,
-		bit_to);
+	if ((NULL == lp_ptr) || (NULL == action_ptr) ||
+	    (NULL == req_data_ptr)) {
+		    rc = ESIF_E_PARAMETER_IS_NULL;
+		    goto exit;
+	}
+
+	base_addr = lp_ptr->pi_ptr->mem_base;
+	if (NULL == base_addr) {
+		rc = ESIF_E_NO_MMIO_SUPPORT;
+		goto exit;
+	}
+
+	offset = action_ptr->get_p1_u32(action_ptr);
+	bit_from = (u8)action_ptr->get_p3_u32(action_ptr);
+	bit_to  = (u8)action_ptr->get_p2_u32(action_ptr);
+
+#ifdef ESIF_ATTR_OS_WINDOWS
+	if ((offset + MMIO_ACCESS_SIZE) > lp_ptr->pi_ptr->mem_size) {
+		rc = ESIF_E_PARAMETER_IS_OUT_OF_BOUNDS;
+		goto exit;
+	}
+#endif
 
 	switch (req_data_ptr->type) {
 	case ESIF_DATA_UINT8:
@@ -202,8 +244,6 @@ enum esif_rc esif_set_action_mmio(
 		break;
 
 	case ESIF_DATA_UINT32:
-	case ESIF_DATA_POWER:
-	case ESIF_DATA_TEMPERATURE:
 	case ESIF_DATA_TIME:
 		if (req_data_ptr->buf_len >= sizeof(u32))
 			req_val = *((u32 *)req_data_ptr->buf_ptr);
@@ -215,6 +255,9 @@ enum esif_rc esif_set_action_mmio(
 		rc = ESIF_E_UNSUPPORTED_REQUEST_DATA_TYPE;
 		break;
 	}
+
+	ESIF_TRACE_DYN_SET("Base %p offset 0x%x[%d:%d] = 0x%x\n",
+			   base_addr, offset, bit_to, bit_from, req_val);
 
 	/* Read The Current Value Of The MMIO */
 	esif_ccb_write_lock(&g_esif_action_mmio_lock);
@@ -228,12 +271,13 @@ enum esif_rc esif_set_action_mmio(
 	orig_val &= ~(bit_mask);
 
 	/* Get the New Value */
-	req_val = (req_val << bit_from) | orig_val;
+	req_val = ((req_val << bit_from) & bit_mask) | orig_val;
 
 	/* Write MMIO 32-Bit Always */
 	esif_ccb_mmio_write(base_addr, offset, req_val);
 	esif_ccb_write_unlock(&g_esif_action_mmio_lock);
-
+exit:
+	ESIF_TRACE_DYN_SET("RC: %s(%d)\n", esif_rc_str(rc), rc);
 	return rc;
 }
 
@@ -241,7 +285,7 @@ enum esif_rc esif_set_action_mmio(
 /* Init */
 enum esif_rc esif_action_mmio_init(void)
 {
-	ESIF_TRACE_DYN_INIT("%s: Initialize MMIO Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Initialize MMIO Action\n");
 	esif_ccb_lock_init(&g_esif_action_mmio_lock);
 	return ESIF_OK;
 }
@@ -251,7 +295,7 @@ enum esif_rc esif_action_mmio_init(void)
 void esif_action_mmio_exit(void)
 {
 	esif_ccb_lock_uninit(&g_esif_action_mmio_lock);
-	ESIF_TRACE_DYN_INIT("%s: Exit MMIO Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Exit MMIO Action\n");
 }
 
 

@@ -133,7 +133,6 @@
 #ifndef _ESIF_LF_CCB_MBI_H_
 #define _ESIF_LF_CCB_MBI_H_
 
-#ifdef ESIF_ATTR_KERNEL
 
 #ifdef ESIF_ATTR_IOSF
 #include <asm/iosf_mbi.h>
@@ -189,7 +188,6 @@ static ESIF_INLINE enum esif_rc esif_ccb_mbi_write(
 }
 
 
-#endif /* ESIF_ATTR_KERNEL */
 #endif /* _ESIF_LF_CCB_MBI_H_ */
 
 /*****************************************************************************/

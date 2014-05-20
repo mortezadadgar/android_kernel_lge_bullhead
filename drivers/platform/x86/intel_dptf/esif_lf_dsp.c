@@ -54,7 +54,7 @@
 #include "esif_lf.h"
 #include "esif_dsp.h"
 #include "esif_hash_table.h"
-#include "esif_action.h"
+#include "esif_lf_action.h"
 #include "esif_participant.h"
 #include "esif_pm.h"
 

@@ -51,7 +51,9 @@
 **
 *******************************************************************************/
 
-#include "esif_action.h"
+#include "esif_lf_action.h"
+#include "esif_primitive.h"
+#include "esif_participant.h"
 
 #ifdef ESIF_ATTR_OS_WINDOWS
 
@@ -87,46 +89,98 @@
 
 /* Get Action VAR */
 enum esif_rc esif_get_action_var(
-	const struct esif_data *var_ptr,
-	const struct esif_data *req_data_ptr,
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
+	struct esif_data *req_data_ptr,
 	struct esif_data *rsp_data_ptr
 	)
 {
 	enum esif_rc rc = ESIF_OK;
+	u32 val;
+	struct esif_data local = {ESIF_DATA_UINT32, &val, sizeof(val)};
+	struct esif_data *var_ptr  = NULL;
+
+	UNREFERENCED_PARAMETER(lp_ptr);
 	UNREFERENCED_PARAMETER(req_data_ptr);
 
-	ESIF_TRACE_DYN_GET("%s:\n", ESIF_FUNC);
+	if ((NULL == primitive_ptr) || (NULL == action_ptr) ||
+	    (NULL == rsp_data_ptr)) {
+		    rc = ESIF_E_PARAMETER_IS_NULL;
+		    goto exit;
+	}
 
-	if (NULL == var_ptr)
-		return ESIF_E_PARAMETER_IS_NULL;
+	val = action_ptr->get_p1_u32(action_ptr);
 
-	if (rsp_data_ptr->buf_len < var_ptr->buf_len)
-		return ESIF_E_OVERFLOWED_RESULT_TYPE;
+	/* Use Context Variable If Available */
+	if (primitive_ptr->context_ptr != NULL)
+		var_ptr = primitive_ptr->context_ptr;
+	else
+		var_ptr = &local;
+
+	if (NULL == var_ptr) {
+		rc = ESIF_E_PARAMETER_IS_NULL;
+		goto exit;
+	}
+
+	if (rsp_data_ptr->buf_len < var_ptr->buf_len) {
+		rc = ESIF_E_OVERFLOWED_RESULT_TYPE;
+		goto exit;
+	}
 
 	rsp_data_ptr->type     = var_ptr->type;
 	rsp_data_ptr->data_len = var_ptr->buf_len;
+
 	esif_ccb_memcpy(rsp_data_ptr->buf_ptr,
 			var_ptr->buf_ptr,
 			var_ptr->buf_len);
 
+	ESIF_TRACE_DYN_GET("Value 0x%x, buf_type - %s, data_len - %d\n",
+			   val, esif_data_type_str(rsp_data_ptr->type),
+			   rsp_data_ptr->data_len);
+
+exit:
+	ESIF_TRACE_DYN_GET("RC: %s(%d)\n", esif_rc_str(rc), rc);
 	return rc;
 }
 
 
 /* Set Action VAR */
 enum esif_rc esif_set_action_var(
-	struct esif_data *var_ptr,
-	const struct esif_data *req_data_ptr
+	const struct esif_lp *lp_ptr,
+	struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
+	struct esif_data *req_data_ptr
 	)
 {
 	enum esif_rc rc = ESIF_OK;
-	ESIF_TRACE_DYN_SET("%s:\n", ESIF_FUNC);
+	struct esif_data *var_ptr = NULL;
+	struct esif_primitive_tuple tup;
+	struct esif_lp_primitive *p = NULL;
 
-	if (NULL == var_ptr)
-		return ESIF_E_PARAMETER_IS_NULL;
+	if ((NULL == lp_ptr) || (NULL == primitive_ptr) ||
+	    (NULL == action_ptr) || (NULL == req_data_ptr) ||
+	    (NULL == lp_ptr->dsp_ptr)) {
+		    rc = ESIF_E_PARAMETER_IS_NULL;
+		    goto exit;
+	}
 
-	if (req_data_ptr->buf_len > var_ptr->buf_len)
-		return ESIF_E_OVERFLOWED_RESULT_TYPE;
+	/* Create a State Variable To Hold Our Context */
+	if (NULL == primitive_ptr->context_ptr) {
+		primitive_ptr->context_ptr = esif_data_alloc(req_data_ptr->type,
+							req_data_ptr->buf_len);
+	}
+
+	var_ptr = primitive_ptr->context_ptr;
+	if (NULL == var_ptr) {
+		rc = ESIF_E_PARAMETER_IS_NULL;
+		goto exit;
+	}
+
+	if (req_data_ptr->buf_len > var_ptr->buf_len) {
+		rc = ESIF_E_OVERFLOWED_RESULT_TYPE;
+		goto exit;
+	}
 
 	var_ptr->type    = req_data_ptr->type;
 	var_ptr->buf_len = req_data_ptr->buf_len;
@@ -134,6 +188,25 @@ enum esif_rc esif_set_action_var(
 			req_data_ptr->buf_ptr,
 			req_data_ptr->buf_len);
 
+	ESIF_TRACE_DYN_SET("buf_type - %s, data_len - %d\n",
+			   esif_data_type_str(req_data_ptr->type),
+			   req_data_ptr->data_len);
+
+	/* Find Get To Go With This Set Relationship */
+	tup.id       = (u16)action_ptr->get_p1_u32( action_ptr);
+	tup.domain   = (u16)action_ptr->get_p2_u32( action_ptr);
+	tup.instance = (u8)action_ptr->get_p3_u32( action_ptr);
+
+	ESIF_TRACE_DYN_SET("Find Get For Set, data %d.%d.%d\n",
+			tup.id,
+			tup.domain,
+			tup.instance);
+
+	p = lp_ptr->dsp_ptr->get_primitive(lp_ptr->dsp_ptr, &tup);
+	p->context_ptr = primitive_ptr->context_ptr;
+
+exit:
+	ESIF_TRACE_DYN_SET("RC: %s(%d)\n", esif_rc_str(rc), rc);
 	return rc;
 }
 
@@ -141,7 +214,7 @@ enum esif_rc esif_set_action_var(
 /* Init */
 enum esif_rc esif_action_var_init(void)
 {
-	ESIF_TRACE_DYN_INIT("%s: Initialize VAR Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Initialize VAR Action\n");
 	return ESIF_OK;
 }
 
@@ -149,7 +222,7 @@ enum esif_rc esif_action_var_init(void)
 /* Exit */
 void esif_action_var_exit(void)
 {
-	ESIF_TRACE_DYN_INIT("%s: Exit VAR Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Exit VAR Action\n");
 }
 
 

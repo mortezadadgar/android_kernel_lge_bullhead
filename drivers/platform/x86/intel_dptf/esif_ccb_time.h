@@ -107,6 +107,7 @@ extern "C" {
 
 #ifdef ESIF_ATTR_OS_LINUX
 #include <sys/time.h>
+#include <errno.h>
 
 static void ESIF_INLINE esif_ccb_ctime(
 	EsifString time_str,
@@ -133,6 +134,13 @@ static void ESIF_INLINE esif_ccb_get_time(struct timeval *tv)
 	gettimeofday(tv, NULL);
 }
 
+static int ESIF_INLINE esif_ccb_localtime(
+	struct tm *tm_ptr,
+	const time_t *time
+	)
+{
+	return (localtime_r(time, tm_ptr) != NULL ? 0 : EINVAL);
+}
 
 #endif /* ESIF_ATTR_OS_LINUX */
 #ifdef ESIF_ATTR_OS_WINDOWS
@@ -180,6 +188,13 @@ static void ESIF_INLINE esif_ccb_get_time(struct timeval *tv)
 		(long)(tick.QuadPart / (tickPerSecond.QuadPart / 1000000));
 }
 
+static int ESIF_INLINE esif_ccb_localtime(
+	struct tm *tm_ptr,
+	const time_t *time
+	)
+{
+	return localtime_s(tm_ptr, time);
+}
 
 #endif /* ESIF_ATTR_OS_WINDOWS */
 

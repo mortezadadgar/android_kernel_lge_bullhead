@@ -113,7 +113,8 @@
  *                       Control     TripPoint  Speed       Acoustic    Power
  */
 
-#include "esif_action.h"
+#include "esif_lf_action.h"
+#include "esif_participant.h"
 
 #ifdef ESIF_ATTR_OS_WINDOWS
 
@@ -197,26 +198,6 @@ static enum esif_rc esif_acpi_xlate_error(
 }
 
 
-static ESIF_INLINE
-void esif_acpi_mem_dump(
-	const u8 *ch,
-	const u8 *what,
-	const int size
-	)
-{
-	int i;
-
-	what = what;	/* Avoid Compiler Warnings */
-	ESIF_TRACE_DYN_SET("%s: Dumping Memory for %s, size %d\n",
-			   ESIF_FUNC,
-			   what,
-			   size);
-	for (i = 0; i < size; i++, ch++)
-		ESIF_TRACE_DYN_SET("<%p> 0x%02X\n", (u8 *)ch, (u8) *ch);
-	ESIF_TRACE_DYN_SET("End of Memory Dump\n");
-}
-
-
 /*
  * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  *
@@ -225,14 +206,17 @@ void esif_acpi_mem_dump(
  * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  */
 enum esif_rc esif_get_action_acpi(
-	acpi_handle acpi_handle,
-	const u32 acpi_method,
-	const struct esif_data *req_data_ptr,
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
+	struct esif_data *req_data_ptr,
 	struct esif_data *rsp_data_ptr
 	)
 {
 	enum esif_rc rc = ESIF_OK;
 	acpi_status acpi_status;
+	acpi_handle acpi_handle = NULL;
+	u32 acpi_method;
 	char acpi_method_str[4 + 1];	/* _AC0 + NULL */
 	struct acpi_buffer buf = {ESIF_ELEMENT(.length) ACPI_ALLOCATE_BUFFER};
 	union  acpi_object *obj_ptr = NULL;
@@ -240,18 +224,28 @@ enum esif_rc esif_get_action_acpi(
 	u32 i = 0;		/* Loop Counter   */
 	u32 arg_count = 0;	/* Argument Count */
 
+	UNREFERENCED_PARAMETER(primitive_ptr);
+	UNREFERENCED_PARAMETER(req_data_ptr);
+
+	if ((NULL == lp_ptr)|| (NULL == lp_ptr->pi_ptr) ||
+	    (NULL == action_ptr) || (NULL == rsp_data_ptr)) {
+		rc = ESIF_E_PARAMETER_IS_NULL;
+		goto exit;
+	}
+
+	acpi_handle = lp_ptr->pi_ptr->acpi_handle;
+	if (NULL == acpi_handle) {
+		rc = ESIF_E_NO_ACPI_SUPPORT;
+		goto exit;
+	}
+
+	acpi_method = action_ptr->get_p1_u32(action_ptr);
 	esif_ccb_memcpy(&acpi_method_str, &acpi_method, 4);
 	acpi_method_str[4] = 0;
 
-	UNREFERENCED_PARAMETER(req_data_ptr);
-
-	if (NULL == acpi_handle)
-		return ESIF_E_NO_ACPI_SUPPORT;
-
 	ESIF_TRACE_DYN_GET(
-		"%s: handle %p method %s [request type %s len %d] "
+		"Handle %p method %s [request type %s len %d] "
 		"[respond type %s len %d buf_ptr %p]\n",
-		ESIF_FUNC,
 		acpi_handle,
 		acpi_method_str,
 		esif_data_type_str(req_data_ptr->type),
@@ -268,13 +262,13 @@ enum esif_rc esif_get_action_acpi(
 	if (esif_ccb_has_acpi_failure(acpi_status, &buf)) {
 		/* Translate AE error into ESIF error code */
 		rc = esif_acpi_xlate_error(acpi_status, acpi_method_str);
-		goto free_exit;
+		goto exit;
 	}
 
 	data_ptr = esif_ccb_malloc(sizeof(*data_ptr));
 	if (NULL == data_ptr) {
 		rc = ESIF_E_NO_MEMORY;
-		goto free_exit;
+		goto exit;
 	}
 
 	/*
@@ -325,8 +319,7 @@ enum esif_rc esif_get_action_acpi(
 			table->cols     = data_ptr->cols;
 
 			ESIF_TRACE_DYN_GET(
-				"%s: For ESIF_DATA_TABLE acpi %s rev %d rows %d cols %d data_len %d\n",
-				ESIF_FUNC,
+				"For ESIF_DATA_TABLE acpi %s rev %d rows %d cols %d data_len %d\n",
 				acpi_method_str,
 				table->revision,
 				table->rows,
@@ -343,10 +336,11 @@ enum esif_rc esif_get_action_acpi(
 
 	esif_ccb_free(data_ptr);
 
-free_exit:
+exit:
 	if (NULL != buf.pointer)
 		esif_ccb_free(buf.pointer);
 
+	ESIF_TRACE_DYN_GET("RC: %s(%d)\n", esif_rc_str(rc), rc);
 	return rc;
 }
 
@@ -359,33 +353,44 @@ free_exit:
  * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  */
 enum esif_rc esif_set_action_acpi(
-	acpi_handle acpi_handle,
-	const u32 acpi_method,
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
 	struct esif_data *req_data_ptr
 	)
 {
+	enum esif_rc rc = ESIF_OK;
+	acpi_handle acpi_handle = NULL;
+	u32 acpi_method;
 	union acpi_object *out_obj;
 	struct acpi_object_list arg_list = {0, NULL};
 	struct acpi_buffer output        = {ACPI_ALLOCATE_BUFFER, NULL};
-	enum esif_rc rc = ESIF_OK;
 	char acpi_method_str[4 + 1];	/* _AC0 + NULL */
 	acpi_status acpi_status;
 	int size;
 	struct esif_data_complex_osc *osc_ptr = NULL;
 	struct esif_data_complex_scp *scp_ptr = NULL;
 
-	if (NULL == acpi_handle)
-		return ESIF_E_NO_ACPI_SUPPORT;
+	UNREFERENCED_PARAMETER(primitive_ptr);
 
-	if (NULL == req_data_ptr)
-		return ESIF_E_NEED_LARGER_BUFFER;
+	if ((NULL == lp_ptr) || (NULL == lp_ptr->pi_ptr) ||
+	    (NULL == action_ptr) || (NULL == req_data_ptr)) {
+		rc = ESIF_E_PARAMETER_IS_NULL;
+		goto exit;
+	}
 
+	acpi_handle = lp_ptr->pi_ptr->acpi_handle;
+	if (NULL == acpi_handle) {
+		rc = ESIF_E_NO_ACPI_SUPPORT;
+		goto exit;
+	}
+
+	acpi_method = action_ptr->get_p1_u32(action_ptr);
 	esif_ccb_memcpy(&acpi_method_str, &acpi_method, 4);
 	acpi_method_str[4] = 0;
 
 	ESIF_TRACE_DYN_SET(
-		"%s: handle %p ACPI method %s (%x) [request type %s len %d]\n",
-		ESIF_FUNC,
+		"Handle %p ACPI method %s (%x) [request type %s len %d]\n",
 		acpi_handle,
 		acpi_method_str,
 		acpi_method,
@@ -461,7 +466,6 @@ enum esif_rc esif_set_action_acpi(
 		break;
 
 	case ESIF_DATA_UINT32:
-	case ESIF_DATA_TEMPERATURE:
 		arg_list.count = req_data_ptr->buf_len / sizeof(u32);
 		break;
 
@@ -517,15 +521,14 @@ enum esif_rc esif_set_action_acpi(
 						    &arg_list,
 						    &output);
 
-	ESIF_TRACE_DYN_SET("%s: acpi_method %s ACPI error status 0x%x\n",
-			   ESIF_FUNC,
+	ESIF_TRACE_DYN_SET("acpi_method %s ACPI error status 0x%x\n",
 			   acpi_method_str,
 			   acpi_status);
 
 	if (esif_ccb_has_acpi_failure(acpi_status, NULL)) {
 		/* Translate AE error into ESIF error code in SET */
 		rc = ESIF_E_ACPI_EVAL_FAILURE;
-		goto free_exit;
+		goto exit;
 	}
 
 	/* Special case for _OSC where we update the request data as return */
@@ -549,17 +552,14 @@ enum esif_rc esif_set_action_acpi(
 			rc = ESIF_E_ACPI_EVAL_FAILURE;
 	}
 
-free_exit:
+exit:
 	if (NULL != arg_list.pointer)
 		esif_ccb_free(arg_list.pointer);
 
 	if (NULL != output.pointer)
 		esif_ccb_free(output.pointer);
-exit:
-	ESIF_TRACE_DYN_SET("%s: ACPI method %s rc %x\n",
-			   ESIF_FUNC,
-			   acpi_method_str,
-			   rc);
+
+	ESIF_TRACE_DYN_SET("RC: %s(%d)\n", esif_rc_str(rc), rc);
 	return rc;
 }
 
@@ -567,7 +567,7 @@ exit:
 /* Init */
 enum esif_rc esif_action_acpi_init(void)
 {
-	ESIF_TRACE_DYN_INIT("%s: Initialize ACPI Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Initialize ACPI Action\n");
 	esif_ccb_lock_init(&esif_action_acpi_lock);
 	return ESIF_OK;
 }
@@ -577,7 +577,7 @@ enum esif_rc esif_action_acpi_init(void)
 void esif_action_acpi_exit(void)
 {
 	esif_ccb_lock_uninit(&esif_action_acpi_lock);
-	ESIF_TRACE_DYN_INIT("%s: Exit ACPI Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Exit ACPI Action\n");
 }
 
 
@@ -599,9 +599,7 @@ static void esif_unpack_acpi_object(
 	bin.buf_ptr = (u8 *)data_ptr->rsp_data_ptr->buf_ptr;
 
 	ESIF_TRACE_DYN_UNPACK(
-		"Entering %s: acpi_object %p, output buf %p, offset %d, "
-		"type %d\n",
-		ESIF_FUNC,
+		"acpi_object %p, output buf %p, offset %d, type %d\n",
 		obj_ptr,
 		bin.buf_ptr,
 		offset,
@@ -634,9 +632,8 @@ static void esif_unpack_acpi_object(
 		u32 count = esif_ccb_acpi_pkg_count(obj_ptr);
 
 		ESIF_TRACE_DYN_UNPACK(
-			"%s: Have ACPI Package Count = %d Element = %p "
+			"Have ACPI Package Count = %d Element = %p "
 			"Package = %p\n",
-			ESIF_FUNC,
 			count,
 			element_ptr,
 			obj_ptr);
@@ -658,9 +655,8 @@ static void esif_unpack_acpi_object(
 
 	case ACPI_TYPE_INTEGER:
 	{
-		ESIF_TRACE_DYN_UNPACK("%s: Have ACPI Integer = %p = %llu\n",
-				      ESIF_FUNC, obj_ptr,
-				      (u64)obj_ptr->integer.value);
+		ESIF_TRACE_DYN_UNPACK("Have ACPI Integer = %p = %llu\n",
+				      obj_ptr, (u64)obj_ptr->integer.value);
 
 		switch (data_ptr->rsp_data_ptr->type) {
 		case ESIF_DATA_UINT8:
@@ -733,8 +729,9 @@ static void esif_unpack_acpi_object(
 				data_ptr->rc = ESIF_E_NEED_LARGER_BUFFER;
 			}
 			ESIF_TRACE_DYN_UNPACK(
-				"%s: ACPI_INTEGER type %d val %u, ESIF_BINARY output type %u value %llu, needed_len %u rc %u\n",
-				ESIF_FUNC,
+				"ACPI_INTEGER type %d val %u, "
+				"ESIF_BINARY output type %u value %llu, "
+				"needed_len %u rc %u\n",
 				obj_ptr->integer.type,
 				(int)obj_ptr->integer.value,
 				bin.variant_ptr->integer.type,
@@ -758,9 +755,7 @@ static void esif_unpack_acpi_object(
 	*/
 	case ACPI_TYPE_BUFFER:
 	{
-		ESIF_TRACE_DYN_UNPACK("%s: Have ACPI Buffer = %p\n",
-				      ESIF_FUNC,
-				      obj_ptr);
+		ESIF_TRACE_DYN_UNPACK("Have ACPI Buffer = %p\n", obj_ptr);
 
 		is_unicode = esif_ccb_is_unicode(acpi_method);
 
@@ -802,8 +797,9 @@ static void esif_unpack_acpi_object(
 				data_ptr->rc = ESIF_E_NEED_LARGER_BUFFER;
 			}
 			ESIF_TRACE_DYN_UNPACK(
-				"%s: ACPI_BUFFER addr %p len %d %s, ESIF_STRING from addr %p buf len %u %s, needed_len %d rc %u\n",
-				ESIF_FUNC,
+				"ACPI_BUFFER addr %p len %d %s, "
+				"ESIF_STRING from addr %p buf len %u %s, "
+				"needed_len %d rc %u\n",
 				obj_ptr,
 				obj_ptr->string.length,
 				obj_ptr->string.pointer,
@@ -847,9 +843,8 @@ static void esif_unpack_acpi_object(
 				data_ptr->rc = ESIF_E_NEED_LARGER_BUFFER;
 			}
 			ESIF_TRACE_DYN_UNPACK(
-				"%s: ACPI_BUFFER %p len %u, ESIF_BINARY "
-				"addr %p %s len (%u + %u), needed_len %u rc %d\n",
-				ESIF_FUNC,
+				"ACPI_BUFFER %p len %u, ESIF_BINARY addr %p %s "
+				"len (%u + %u), needed_len %u rc %d\n",
 				obj_ptr->string.pointer,
 				(u32)sizeof(union esif_data_variant),
 				bin.variant_ptr,
@@ -885,10 +880,9 @@ static void esif_unpack_acpi_object(
 				data_ptr->rc = ESIF_E_NEED_LARGER_BUFFER;
 			}
 			ESIF_TRACE_DYN_UNPACK(
-				"%s: ACPI_BUFFER addr %p len %d %s, "
+				"ACPI_BUFFER addr %p len %d %s, "
 				"ESIF_UNICODE from addr %p buf len %u %s, "
 				"needed_len %d rc %u\n",
-				ESIF_FUNC,
 				obj_ptr,
 				obj_ptr->string.length,
 				obj_ptr->string.pointer,
@@ -915,9 +909,7 @@ static void esif_unpack_acpi_object(
 	*/
 	case ACPI_TYPE_STRING:
 	{
-		ESIF_TRACE_DYN_UNPACK("%s: Have ACPI String = %p\n",
-				      ESIF_FUNC,
-				      obj_ptr);
+		ESIF_TRACE_DYN_UNPACK("Have ACPI String = %p\n", obj_ptr);
 
 		switch (data_ptr->rsp_data_ptr->type) {
 		/* Responding integer for ACPI string type (_UID only) */
@@ -965,8 +957,9 @@ static void esif_unpack_acpi_object(
 				data_ptr->rc = ESIF_E_NEED_LARGER_BUFFER;
 			}
 			ESIF_TRACE_DYN_UNPACK(
-				"%s: ACPI_STRING addr %p len %d %s, ESIF_STRING from addr %p buf len %u %s, needed_len %d rc %u\n",
-				ESIF_FUNC,
+				"ACPI_STRING addr %p len %d %s, ESIF_STRING "
+				"from addr %p buf len %u %s, needed_len %d "
+				"rc %u\n",
 				obj_ptr,
 				obj_ptr->string.length,
 				obj_ptr->string.pointer,
@@ -1007,10 +1000,9 @@ static void esif_unpack_acpi_object(
 				data_ptr->rc = ESIF_E_NEED_LARGER_BUFFER;
 			}
 			ESIF_TRACE_DYN_UNPACK(
-				"%s: ACPI_STRING %p len %u, ESIF_BINARY "
+				"ACPI_STRING %p len %u, ESIF_BINARY "
 				"addr %p %s len (%u + %u), needed_len %u "
 				"rc %d\n",
-				ESIF_FUNC,
 				obj_ptr->string.pointer,
 				(u32)sizeof(union esif_data_variant),
 				bin.variant_ptr,
@@ -1072,14 +1064,18 @@ static void esif_unpack_acpi_object(
 						ESIF_E_NEED_LARGER_BUFFER;
 				}
 
-				ESIF_TRACE_DYN_GET("%s: ACPI_TYPE_LOCAL_REFERENCE [ACPI actual_type %s handle %p] memcpy from %d to %d (size = %d + %d)\n",
-						   ESIF_FUNC,
-						   esif_acpi_type_str(obj_ptr->reference.actual_type),
-						   obj_ptr->reference.handle,
-						   offset,
-						   data_ptr->needed_len,
-						   (int)sizeof(obj_ptr->reference),
-						   str_len);
+				ESIF_TRACE_DYN_GET(
+					"ACPI_TYPE_LOCAL_REFERENCE "
+					"[ACPI actual_type %s handle %p] "
+					"memcpy from %d to %d (size = %d "
+					"+ %d)\n",
+					esif_acpi_type_str(
+						obj_ptr->reference.actual_type),
+					obj_ptr->reference.handle,
+					offset,
+					data_ptr->needed_len,
+					(int)sizeof(obj_ptr->reference),
+					str_len);
 
 				memstat_inc(&g_memstat.allocs);
 				esif_ccb_free(acpi_ref.pointer);
@@ -1095,9 +1091,8 @@ static void esif_unpack_acpi_object(
 
 	case ACPI_TYPE_PROCESSOR:
 	{
-		ESIF_TRACE_DYN_UNPACK("%s: Have ACPI Processor = %p\n",
-				      ESIF_FUNC,
-				      obj_ptr);
+		ESIF_TRACE_DYN_UNPACK("Have ACPI Processor = %p\n", obj_ptr);
+
 		switch (data_ptr->rsp_data_ptr->type) {
 		case ESIF_DATA_BINARY:
 		{
@@ -1118,11 +1113,10 @@ static void esif_unpack_acpi_object(
 						 sizeof(*obj_ptr));
 
 				ESIF_TRACE_DYN_UNPACK(
-					"%s: ACPI PROCESSOR:\nObject "
+					"ACPI PROCESSOR:\nObject "
 					"Type: 0x%08x proc_id: 0x%08x "
 					"pblk_address: 0x%xlu pblk_length: "
 					"0x%08x\n",
-					ESIF_FUNC,
 					obj_ptr->type,
 					obj_ptr->processor.proc_id,
 					(int)obj_ptr->processor.pblk_address,
@@ -1132,9 +1126,8 @@ static void esif_unpack_acpi_object(
 			}
 
 			ESIF_TRACE_DYN_UNPACK(
-				"%s: ACPI_PROCESSOR, ESIF_BINARY/STRUCTURE "
+				"ACPI_PROCESSOR, ESIF_BINARY/STRUCTURE "
 				"rsp type %d, needed_len %d, rc %u\n",
-				ESIF_FUNC,
 				data_ptr->rsp_data_ptr->type,
 				data_ptr->needed_len,
 				data_ptr->rc);
@@ -1148,9 +1141,9 @@ static void esif_unpack_acpi_object(
 
 	case ACPI_TYPE_POWER:
 	{
-		ESIF_TRACE_DYN_UNPACK("%s: Have ACPI Power Resource = %p\n",
-				      ESIF_FUNC,
+		ESIF_TRACE_DYN_UNPACK("Have ACPI Power Resource = %p\n",
 				      obj_ptr);
+
 		switch (data_ptr->rsp_data_ptr->type) {
 		case ESIF_DATA_BINARY:
 		{
@@ -1170,10 +1163,9 @@ static void esif_unpack_acpi_object(
 				esif_acpi_memcpy(temp_str, obj_ptr,
 						 sizeof(*obj_ptr));
 				ESIF_TRACE_DYN_UNPACK(
-					"%s: ACPI POWER RESOURCE: Object Type: "
+					"ACPI POWER RESOURCE: Object Type: "
 					"0x%08x system_level: 0x%08x "
 					"resource_order: 0x%08x\n",
-					ESIF_FUNC,
 					obj_ptr->type,
 					obj_ptr->power_resource.system_level,
 					obj_ptr->power_resource.resource_order);
@@ -1182,9 +1174,8 @@ static void esif_unpack_acpi_object(
 			}
 
 			ESIF_TRACE_DYN_UNPACK(
-				"%s: ACPI_POWER, ESIF_BINARY rsp type %d, "
+				"ACPI_POWER, ESIF_BINARY rsp type %d, "
 				"needed_len %d, rc %u\n",
-				ESIF_FUNC,
 				data_ptr->rsp_data_ptr->type,
 				data_ptr->needed_len,
 				data_ptr->rc);
@@ -1197,8 +1188,7 @@ static void esif_unpack_acpi_object(
 	}	/* ACPI_TYPE_POWER */
 
 	default:
-		ESIF_TRACE_DYN_UNPACK("%s: Unknown ACPI Object Type %d\n",
-				      ESIF_FUNC,
+		ESIF_TRACE_DYN_UNPACK("Unknown ACPI Object Type %d\n",
 				      obj_ptr->type);
 		data_ptr->rc = ESIF_E_ACPI_REQUEST_TYPE;
 		break;

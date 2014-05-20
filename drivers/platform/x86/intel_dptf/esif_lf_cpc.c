@@ -52,7 +52,7 @@
 *******************************************************************************/
 #include "esif.h"
 #include "esif_cpc.h"
-#include "esif_domain.h"
+#include "esif_lf_domain.h"
 
 #ifdef ESIF_ATTR_OS_WINDOWS
 
@@ -168,8 +168,7 @@ static enum esif_rc esif_cpc_to_dsp(struct esif_lp_dsp *dsp_ptr)
 			goto exit;
 
 		/* Next Algorithm. Algorithms Are Fix-Sized */
-		algorithm_ptr = (struct esif_cpc_algorithm *)
-		       ((u8 *)algorithm_ptr + sizeof(struct esif_cpc_algorithm));
+		algorithm_ptr++;
 	}
 
 	/* Truncate any unsupported domain conunts */
@@ -216,8 +215,7 @@ static enum esif_rc esif_cpc_to_dsp(struct esif_lp_dsp *dsp_ptr)
 				goto exit;
 		}
 		/* Next Event. Events Are Fix-Sized */
-		event_ptr = (struct esif_cpc_event *)
-			((u8 *)event_ptr + sizeof(struct esif_cpc_event));
+		event_ptr++;
 	}
 
 exit:

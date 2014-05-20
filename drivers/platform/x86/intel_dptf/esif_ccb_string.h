@@ -280,7 +280,17 @@ static ESIF_INLINE int esif_ccb_sprintf_concat(
 }
 
 #ifdef ESIF_ATTR_MEMTRACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern char *esif_memtrace_strdup(char *str, const char *func, const char *file, int line);
+
+#ifdef __cplusplus
+}
+#endif
+
 # define esif_ccb_strdup(str)   esif_memtrace_strdup(str, __FUNCTION__, __FILE__, __LINE__)
 #else
 # define esif_ccb_strdup(str)   esif_ccb_strdup_notrace(str)

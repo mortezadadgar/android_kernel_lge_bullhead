@@ -74,6 +74,10 @@ extern "C" {
 extern struct esif_ccb_memtype *g_memtype[ESIF_MEMTYPE_TYPE_MAX];
 extern esif_ccb_lock_t g_memtype_lock;
 
+#ifdef __cplusplus
+}
+#endif
+
 static ESIF_INLINE char *esif_memtype_str(u32 type)
 {
 	#define ESIF_CREATE_MEMTYPE(mp, mpd, str) case mp: str = (esif_string)mpd; break;
@@ -90,6 +94,7 @@ static ESIF_INLINE struct esif_ccb_memtype *esif_ccb_memtype_create(
 static ESIF_INLINE void esif_ccb_memtype_destroy(
 	enum esif_memtype_type type_tag);
 
+#pragma pack(push,1)
 /* Memory Type Not Fixed Size Use Mempool For That */
 struct esif_ccb_memtype {
 	esif_string  name_ptr;		/* Name             */
@@ -97,6 +102,7 @@ struct esif_ccb_memtype {
 	u32          alloc_count;	/* Allocation Count */
 	u32          free_count;	/* Free Count       */
 };
+#pragma pack(pop)
 
 
 static ESIF_INLINE void esif_ccb_memtype_init_tracking(void)
@@ -313,10 +319,6 @@ exit:
 	;
 }
 
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _ESIF_MEMTYPE_H_ */
 

@@ -54,7 +54,15 @@
 #ifndef _ESIF_CCB_MEMPOOL_H_
 #define _ESIF_CCB_MEMPOOL_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern esif_ccb_lock_t g_mempool_lock;
+
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef ESIF_ATTR_KERNEL
 
@@ -262,6 +270,8 @@ exit:
 
 #include "esif.h"
 
+#pragma pack(push,1)
+
 struct esif_ccb_mempool {
 	esif_string  name_ptr;		/* Name                         */
 	UInt32       pool_tag;		/* Pool Tag                     */
@@ -269,6 +279,8 @@ struct esif_ccb_mempool {
 	UInt32       alloc_count;	/* Object Allocation Count      */
 	UInt32       free_count;	/* Object Free Count            */
 };
+
+#pragma pack(pop)
 
 /* Memory Pool Create */
 static ESIF_INLINE struct esif_ccb_mempool *esif_ccb_mempool_create(

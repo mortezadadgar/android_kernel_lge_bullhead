@@ -51,149 +51,101 @@
 **
 *******************************************************************************/
 
-#ifndef _ESIF_CCB_MSR_H_
-#define _ESIF_CCB_MSR_H_
+#ifndef _ESIF_DOMAIN_H_
+#define _ESIF_DOMAIN_H_
+
+#include "esif.h"
 
 
-#ifdef ESIF_ATTR_OS_WINDOWS
-/* Windows Safe Function HELPERS */
+/*
+** Domain
+*/
+#define ESIF_DOMAIN_VERSION 0x1
+#define ESIF_DOMAIN_MAX 10
+#define ESIF_DOMAIN_TEMP_INVALID 0xffffffff
 
-/* Read MSR Helper  returns 0 on success */
-static ESIF_INLINE int esif_ccb_read_cpu_msr_safe(
-	const u8 cpu,
-	IN u32 p_msrAddress,
-	u32 *l,
-	u32 *h
+/* Translate Qualifier To Index */
+static ESIF_INLINE enum esif_rc esif_lp_domain_index (
+	u16 domain,
+	u8 *index
 	)
 {
-	__int64 int64Result = 0;
-	int status = 0;
-	KAFFINITY kaUserThreadAffinity = 0xff;
+	enum esif_rc rc = ESIF_E_PARAMETER_IS_OUT_OF_BOUNDS;
+	u8 indexVal;
 
-	/* Save active processors and set affinity */
-	kaUserThreadAffinity = KeSetSystemAffinityThreadEx(((ULONG_PTR)1 << cpu));
-
-	/*
-	 * EXCEPTION HANDLER
-	 * If we read from an invalid MSR this will create an exception we catch
-	 * it here to avoid the dreaded BSOD and use the exception to return an
-	 * error code to our caller.
-	 */
-	try {
-		int64Result = __readmsr((int)p_msrAddress);
-	}
-	except(EXCEPTION_EXECUTE_HANDLER) {
-		status = 1;
+	if ((domain & 0xFF) != 'D')
 		goto exit;
-	}
-	*l = (ULONG)(int64Result & 0xFFFFFFFF);
-	*h = (LONG)((int64Result >> 32) & 0xFFFFFFFF);
 
+	indexVal = (u8)(domain >> 8);
+	if ((indexVal < '0') || ('9' < indexVal))
+		goto exit;
+
+	indexVal &= 0x0F;
+
+	*index = indexVal;
+	rc = ESIF_OK;
 exit:
-	KeRevertToUserAffinityThreadEx(kaUserThreadAffinity);
-	return status;
-}
-
-
-/* Write MSR Helper  returns 0 on success */
-static ESIF_INLINE int esif_ccb_write_cpu_msr_safe(
-	const u8 cpu,
-	IN ULONG p_msrAddress,
-	u32 l,
-	u32 h
-	)
-{
-	__int64 int64Content = 0;
-	int status = 0;
-	KAFFINITY kaUserThreadAffinity = 0xff;
-
-	int64Content  = h;
-	int64Content  = int64Content << 32;
-	int64Content |= l;
-
-	/* Save active processors and set affinity */
-	kaUserThreadAffinity = KeSetSystemAffinityThreadEx(((ULONG_PTR)1 << cpu));
-
-	/*
-	 * EXCEPTION HANDLER
-	 * If we read from an invalid MSR this will create an exception we catch
-	 * it here to avoid the dreaded BSOD and use the exception to return an
-	 * error code to our caller.
-	 */
-	try {
-		__writemsr(p_msrAddress, int64Content);
-	}
-	except(EXCEPTION_EXECUTE_HANDLER) {
-		status = 1;
-	}
-	KeRevertToUserAffinityThreadEx(kaUserThreadAffinity);
-	return status;
-}
-
-
-static ESIF_INLINE u64 esif_ccb_get_online_cpu(void)
-{
-	return (u64)KeQueryActiveProcessors();
-}
-
-
-#endif
-
-#ifdef ESIF_ATTR_OS_LINUX
-static ESIF_INLINE u64 esif_ccb_get_online_cpu(void)
-{
-	u64 online_cpus = 0;
-	int i;
-	for_each_online_cpu(i)
-	online_cpus = online_cpus | (1UL << i);
-
-	return online_cpus;
-}
-
-
-#endif
-
-/* Read MSR */
-static ESIF_INLINE int esif_ccb_read_msr(
-	const u8 cpu,
-	const u32 msr,
-	u64 *val_ptr
-	)
-{
-	int rc = 0;
-	u32 l  = 0;
-	u32 h  = 0;
-#ifdef ESIF_ATTR_OS_LINUX
-	rc = rdmsr_safe_on_cpu(cpu, msr, &l, &h);
-#endif
-#ifdef ESIF_ATTR_OS_WINDOWS
-	rc       = esif_ccb_read_cpu_msr_safe(cpu, msr, &l, &h);
-#endif
-	*val_ptr = (((u64)h << 32) | l);
 	return rc;
 }
 
 
-/* Write MSR */
-static ESIF_INLINE int esif_ccb_write_msr(
-	const u8 cpu,
-	const u32 msr,
-	const u64 val
-	)
-{
-	u32 l = (u32)val, h = (u32)(val >> 32);
+struct esif_lp_domain {
+	u8  instance;		/* Instance */
+	esif_flags_t           capabilities;	/* Capabilities */
+	enum esif_domain_type  domainType;	/* Domain Type */
+	u16                    id;		/* Domain ID  */
+	char                   *name_ptr;	/* Name               */
+	char                   *desc_ptr;	/* Describe Qualifier */
+	struct esif_lp         *lp_ptr;		/* Lower Participant Back Ref
+						 * */
+
+	/* ESIF will only poll when it has to otherwise it will utilize hardware
+	** provided programmable thresholds and notifications but if it has no
+	** other method it will poll.
+	*/
+	u8  poll;		/* Is Polling?   */
+	esif_flags_t  poll_mask;		/* Want To Poll? */
+
+	/* Timer For Polling */
+	esif_ccb_timer_t  timer;		/* Periodic Work Timer  */
+	u32  timer_period_msec;	/* Periodic Interval    */
+
+	/* RAPL / Power */
+	u32  rapl_energy_units_current;	/* Last energy accumulator read */
+	u32  rapl_energy_units_last;	/* Read before for calc delta */
+	u32  rapl_energy_units_per_sec;	/* Actual Energy Units Used Per Sec */
+	u32  rapl_power;		/* Calculated Power */
+
+	/* Temperature Thresholds */
+	esif_temp_t  temp_cache0;	/* Cache Lower */
+	esif_temp_t  temp_cache1;	/* Cache Upper */
+	esif_temp_t  temp_aux0;		/* Lower */
+	/* enum esif_lp_domain_th_state temp_aux0_state;  / * state machine
+	 * state * / */
+	esif_temp_t  temp_aux1;		/* Upper */
+	/* enum esif_lp_domain_th_state temp_aux1_state;  / * State machine
+	 * state * / */
+	esif_temp_t  temp_hysteresis;	/* Lower Hysteresis */
+
+	/* Power Thresholds */
+	esif_power_t  power_aux0;	/* Lower */
+	esif_power_t  power_aux1;	/* Upper */
+	esif_power_t  power_hysteresis;	/* Lower Hysteresis */
+
+	/* Unit Data */
+	esif_temp_t   temp_tjmax;        /* Tjmax */
+	esif_power_t  unit_power;        /* Power Unit */
+	esif_power_t  unit_energy;       /* Energt Unit */
+	u32           unit_time;         /* Time Unit */
+
 #ifdef ESIF_ATTR_OS_LINUX
-	return wrmsr_safe_on_cpu(cpu, msr, l, h);
-
+	struct device  device; /* Lower Participant Qualifier Class Device */
+	struct thermal_zone_device     *tzd_ptr; /* Thermal Zone Device If Any */
+	struct thermal_cooling_device  *cdev_ptr;	/* Cooling Device If Any */
 #endif
-#ifdef ESIF_ATTR_OS_WINDOWS
-	return esif_ccb_write_cpu_msr_safe(cpu, msr, l, h);
+};
 
-#endif
-}
-
-
-#endif /* _ESIF_CCB_MSR_H_ */
+#endif /* _ESIF_DOMAIN_H_ */
 
 /******************************************************************************/
 /******************************************************************************/

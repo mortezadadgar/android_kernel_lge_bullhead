@@ -54,39 +54,44 @@
 #ifndef _ESIF_LF_CCB_GEN_ACTION_
 #define _ESIF_LF_CCB_GEN_ACTION_
 
-#ifdef ESIF_ATTR_KERNEL
 
 #include "esif_lf.h"
 
 #ifdef ESIF_ATTR_OS_WINDOWS
 #include "win\esif_lf_win_disp_intfc.h"
 #include "win\esif_lf_win_gfx_intfc.h"
+#include "win\esif_lf_os_win.h"
 
 /* For ACTION ESIF_ACTION_DDIGFXDISP */
-#define esif_get_action_ddigfxdisp(pPrim, pAct, pLp, pReq, pRsp)  \
-	DispIntfcExecuteGetAction(pPrim, pAct, pLp, pReq, pRsp)
+#define esif_get_action_ddigfxdisp(pLp, pPrim, pAct, pReq, pRsp)  \
+	DispIntfcExecuteGetAction(pLp, pPrim, pAct, pReq, pRsp)
 
-#define esif_set_action_ddigfxdisp(pPrim, pAct, pLp, pReq) \
-	DispIntfcExecuteSetAction(pPrim, pAct, pLp, pReq)
+#define esif_set_action_ddigfxdisp(pLp, pPrim, pAct, pReq) \
+	DispIntfcExecuteSetAction(pLp, pPrim, pAct, pReq)
 
 /* For ACTION ESIF_ACTION_DDIGFXPERF */
-#define esif_get_action_ddigfxperf(pPrim, pAct, pLp, pReq, pRsp) \
-	GfxIntfcExecuteGetAction(pPrim, pAct, pLp, pReq, pRsp)
+#define esif_get_action_ddigfxperf(pLp, pPrim, pAct, pReq, pRsp) \
+	GfxIntfcExecuteGetAction(pLp, pPrim, pAct, pReq, pRsp)
 
-#define esif_set_action_ddigfxperf(pPrim, pAct, pLp, pReq) \
-	GfxIntfcExecuteSetAction(pPrim, pAct, pLp, pReq)
+#define esif_set_action_ddigfxperf(pLp, pPrim, pAct, pReq) \
+	GfxIntfcExecuteSetAction(pLp, pPrim, pAct, pReq)
+
+#define esif_get_action_code_putl(pUtil) \
+	esif_get_action_code_putl_win(pUtil)
 
 #endif	/* ESIF_ATTR_OS_WINDOWS */
 #ifdef ESIF_ATTR_OS_LINUX
-#define esif_get_action_ddigfxdisp(pPrim, pAct, pLp, pReq, pRsp) \
+#define esif_get_action_ddigfxdisp(pLp, pPrim, pAct, pReq, pRsp) \
 	ESIF_E_ACTION_NOT_IMPLEMENTED	
-#define esif_set_action_ddigfxdisp(pPrim, pAct, pLp, pReq) \
+#define esif_set_action_ddigfxdisp(pLp, pPrim, pAct, pReq) \
 	ESIF_E_ACTION_NOT_IMPLEMENTED
-#define esif_get_action_ddigfxperf(pPrim, pAct, pLp, pReq, pRsp) \
+#define esif_get_action_ddigfxperf(pLp, pPrim, pAct, pReq, pRsp) \
 	ESIF_E_ACTION_NOT_IMPLEMENTED
-#define esif_set_action_ddigfxperf(pPrim, pAct, pLp, pReq) \
+#define esif_set_action_ddigfxperf(pLp, pPrim, pAct, pReq) \
 	ESIF_E_ACTION_NOT_IMPLEMENTED	
+#define esif_get_action_code_putl(pUtil) \
+	ESIF_E_ACTION_NOT_IMPLEMENTED	
+
 #endif	/* ESIF_ATTR_OS_LINUX */
 
-#endif /* ESIF_ATTR_KERNEL */
 #endif /* _ESIF_LF_CCB_GEN_ACTION_ */

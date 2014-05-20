@@ -57,10 +57,21 @@
 #include "esif_ccb_lock.h"
 #include "esif_ccb_sem.h"
 
+#ifdef ESIF_ATTR_OS_WINDOWS
+#ifdef ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS
+/*
+ * Coalescable timer options
+ */
+#define TOLERABLE_DELAY_DIVISOR 10 /* timeout divisor */
+#define TOLERABLE_DELAY_INCREMENT 50 /* ms */
+#define DUE_TIME_MS_CONV_FACTOR 10000
+
+#endif
+#endif
+
 /******************************************************************************
 *   KERNEL TIMER
 ******************************************************************************/
-
 #ifdef ESIF_ATTR_KERNEL
 
 /* Timer Callback Function */
@@ -95,7 +106,7 @@ typedef struct {
 } esif_ccb_timer_context_t;
 
 
-#ifdef ESIF_FEAT_OP_USE_COALESCABLE_TIMERS
+#ifdef ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS
 
 typedef struct esif_ccb_timer {
 	KTIMER  timer;
@@ -167,7 +178,7 @@ exit:
 #ifdef ESIF_ATTR_OS_WINDOWS
 /* Timer Callback Wrapper Find And Fire Function */
 
-#ifdef ESIF_FEAT_OP_USE_COALESCABLE_TIMERS
+#ifdef ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS
 
 static KDEFERRED_ROUTINE esif_ccb_timer_dpc;
 static EVT_WDF_WORKITEM esif_ccb_timer_cb_wrapper;
@@ -252,7 +263,7 @@ static void esif_ccb_timer_dpc (
 
 
 
-#else /* NOT ESIF_FEAT_OP_USE_COALESCABLE_TIMERS */
+#else /* NOT ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS */
 
 EVT_WDF_TIMER esif_ccb_timer_cb_wrapper;
 
@@ -285,7 +296,7 @@ ESIF_INLINE void esif_ccb_timer_cb_wrapper(WDFTIMER timer)
 exit:
 	(0);
 }
-#endif /* NOT ESIF_FEAT_OP_USE_COALESCABLE_TIMERS */
+#endif /* NOT ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS */
 #endif /* ESIF_ATTR_OS_WINDOWS */
 
 
@@ -303,7 +314,7 @@ enum esif_rc esif_ccb_timer_init(esif_ccb_timer_t *timer_ptr)
 #endif
 
 #ifdef ESIF_ATTR_OS_WINDOWS
-#ifdef ESIF_FEAT_OP_USE_COALESCABLE_TIMERS
+#ifdef ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS
 
 	esif_ccb_memset(timer_ptr, 0, sizeof(*timer_ptr));
 
@@ -318,7 +329,7 @@ enum esif_rc esif_ccb_timer_init(esif_ccb_timer_t *timer_ptr)
 	TIMER_DEBUG("%s: timer %p\n", ESIF_FUNC, timer_ptr);
 	rc = ESIF_OK;
 
-#else /* NOT ESIF_FEAT_OP_USE_COALESCABLE_TIMERS */
+#else /* NOT ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS */
 	NTSTATUS status;
 
 	WDF_TIMER_CONFIG timer_config = {0};
@@ -349,7 +360,7 @@ enum esif_rc esif_ccb_timer_init(esif_ccb_timer_t *timer_ptr)
 	timer_context_ptr->exit_flag = FALSE;
 	rc = ESIF_OK;
 exit:
-#endif /* NOT ESIF_FEAT_OP_USE_COALESCABLE_TIMERS */
+#endif /* NOT ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS */
 #endif /* ESIF_ATTR_OS_WINDOWS */
 	return rc;
 }
@@ -394,9 +405,10 @@ static ESIF_INLINE enum esif_rc esif_ccb_timer_set_msec(
 #endif
 
 #ifdef ESIF_ATTR_OS_WINDOWS
-#ifdef ESIF_FEAT_OP_USE_COALESCABLE_TIMERS
+#ifdef ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS
 	esif_ccb_timer_context_t *timer_context_ptr = NULL;
 	LARGE_INTEGER due_time = {0LL};
+	u32 tolerable_delay = 0;
 
 	TIMER_DEBUG("%s: timer %p timeout %u\n", ESIF_FUNC, timer_ptr, timeout);
 
@@ -412,17 +424,25 @@ static ESIF_INLINE enum esif_rc esif_ccb_timer_set_msec(
 	timer_context_ptr->timer_period_msec = timeout;
 	timer_context_ptr->exit_flag    = FALSE;
 
+	/*
+	 * Calculate the delay that can be tolerated, with a minimum of at
+	 * least 1 TOLERABLE_DELAY_INCREMENT. 
+	 */
+	tolerable_delay = (u32) timeout / TOLERABLE_DELAY_DIVISOR;
+	tolerable_delay = (tolerable_delay / TOLERABLE_DELAY_INCREMENT) + 1;
+	tolerable_delay *= TOLERABLE_DELAY_INCREMENT;
+
 	due_time.QuadPart = (LONGLONG)timeout * -10000;
 	KeSetCoalescableTimer(&timer_ptr->timer,
 			      due_time,
 			      0,
-			      (ULONG)timeout / 2,
+			      tolerable_delay,
 			      &timer_ptr->dpc);
 
 	rc = ESIF_OK;
 exit:
 
-#else /* NOT ESIF_FEAT_OP_USE_COALESCABLE_TIMERS */
+#else /* NOT ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS */
 
 	esif_ccb_timer_context_t *timer_context_ptr = NULL;
 	BOOLEAN status;
@@ -451,7 +471,7 @@ exit:
 		rc = ESIF_OK;
 exit:
 
-#endif /* NOT ESIF_FEAT_OP_USE_COALESCABLE_TIMERS */
+#endif /* NOT ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS */
 #endif /* ESIF_ATTR_OS_WINDOWS */
 	return rc;
 }
@@ -474,7 +494,7 @@ enum esif_rc esif_ccb_timer_kill(esif_ccb_timer_t *timer)
 #endif
 
 #ifdef ESIF_ATTR_OS_WINDOWS
-#ifdef ESIF_FEAT_OP_USE_COALESCABLE_TIMERS
+#ifdef ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS
 	esif_ccb_timer_context_t *timer_context_ptr = NULL;
 
 	TIMER_DEBUG("%s: timer %p\n", ESIF_FUNC, timer);
@@ -497,7 +517,7 @@ enum esif_rc esif_ccb_timer_kill(esif_ccb_timer_t *timer)
 exit:
 	rc = ESIF_OK;
 
-#else /* NOT ESIF_FEAT_OP_USE_COALESCABLE_TIMERS */
+#else /* NOT ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS */
 	esif_ccb_timer_context_t *timer_context_ptr = NULL;
 
 	TIMER_DEBUG("%s: timer %p\n", ESIF_FUNC, timer);
@@ -515,7 +535,7 @@ exit:
 	WdfTimerStop(*timer, FALSE);
 	rc = ESIF_OK;
 
-#endif /* NOT ESIF_FEAT_OP_USE_COALESCABLE_TIMERS */
+#endif /* NOT ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS */
 #endif /* ESIF_ATTR_OS_WINDOWS */
 	return rc;
 }
@@ -532,17 +552,23 @@ exit:
 #include "esif.h"
 
 /* OS Agnostic Callback Function */
-typedef void (*esif_ccb_timer_cb)(const void *context_ptr);
+typedef void (ESIF_CALLCONV *esif_ccb_timer_cb)(const void *context_ptr);
+
+#pragma pack(push, 1)
 
 /* OS Agnostic Timer Context */
 typedef struct esif_ccb_timer_ctx {
-	esif_ccb_timer_cb cb_func;	/* Call Back Function */
+	esif_ccb_timer_cb  cb_func;	/* Call Back Function */
 	void *cb_context_ptr;		/* Call Back Function Context */
 } esif_ccb_timer_ctx_t;
+
+#pragma pack(pop)
 
 #ifdef ESIF_ATTR_OS_LINUX
 
 #include <signal.h>
+
+#pragma pack(push,1)
 
 /* Linux Timer */
 typedef struct esif_ccb_timer {
@@ -550,6 +576,8 @@ typedef struct esif_ccb_timer {
 	esif_ccb_timer_ctx_t *timer_ctx_ptr;	/* OS Agnostic timer context */
 	esif_ccb_mutex_t context_lock;    /* Call back function lock */
 } esif_ccb_timer_t;
+
+#pragma pack(pop)
 
 /*
  *  Each OS Expects its own CALLBACK primitive we use this
@@ -559,6 +587,17 @@ typedef struct esif_ccb_timer {
  *  here that contains our timer context poiner which in turn
  *  contains our function and context for the function.
  */
+
+ /* Linux Timer Behavior Note
+ *  Reference : http://man7.org/linux/man-pages/man2/timer_create.2.html
+ *
+ *  Because of the way POSIX timer callbacks are handled, it is possible
+ *  that the OS may have a pending timer notification for a timer that
+ *  was cancelled, reinitialized, and reset from a user space app.  In
+ *  that instance, if you are using the same timer repeatedly you may see
+ *  2 callbacks for a single timer due to this pending signal issue.
+ */
+
 static ESIF_INLINE void esif_ccb_timer_cb_wrapper(
 	const union sigval sv
 	)
@@ -590,12 +629,16 @@ static ESIF_INLINE void esif_ccb_timer_cb_wrapper(
 
 #include <WinBase.h>
 
+#pragma pack(push,1)
+
 /* Windows Timer */
 typedef struct esif_ccb_timer {
 	HANDLE timer;				/* Windows specific timer */
 	HANDLE timer_wait_handle;
 	esif_ccb_timer_ctx_t *timer_ctx_ptr;	/* OS Agnostic timer context */
 } esif_ccb_timer_t;
+
+#pragma pack(pop)
 
 /*
  *  Each OS Expects its own CALLBACK primitive we use this
@@ -605,7 +648,7 @@ typedef struct esif_ccb_timer {
  *  parameters of which we only use one.  The other one is
  *  always true.
  */
-static ESIF_INLINE void esif_ccb_timer_cb_wrapper(
+static ESIF_INLINE void NTAPI esif_ccb_timer_cb_wrapper(
 	void *context_ptr,
 	BOOLEAN notUsed
 	)
@@ -651,6 +694,8 @@ static ESIF_INLINE eEsifError esif_ccb_timer_init(
 		goto exit;
 	}
 
+	esif_ccb_memset(timer_ptr, 0, sizeof(*timer_ptr));
+
 #ifdef ESIF_ATTR_OS_WINDOWS
 	timer_ptr->timer = CreateWaitableTimer(NULL, TRUE, NULL);
 	if (NULL == timer_ptr->timer)
@@ -675,7 +720,7 @@ static ESIF_INLINE eEsifError esif_ccb_timer_init(
 #ifdef ESIF_ATTR_OS_LINUX
 	/* Initialize the callback lock and exit flag */
 	esif_ccb_mutex_init(&(timer_ptr->context_lock));
-	
+
 	se.sigev_notify = SIGEV_THREAD;
 	se.sigev_notify_function   = esif_ccb_timer_cb_wrapper;
 	se.sigev_value.sival_ptr   = timer_ptr;
@@ -700,12 +745,20 @@ static ESIF_INLINE eEsifError esif_ccb_timer_set_msec(
 	)	
 {
 	eEsifError rc = ESIF_E_UNSPECIFIED;
-	u32 ret_val;
 
 #ifdef ESIF_ATTR_OS_LINUX
 	struct itimerspec its;
 	u64 freq_nanosecs = timeout * 1000 * 1000; /* convert msec to nsec */
 #endif
+#ifdef ESIF_ATTR_OS_WINDOWS
+	u32 ret_val = 0;
+	u32 wait_timeout = (u32) timeout;
+#ifdef ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS
+	u32 tolerable_delay = 0;
+	LARGE_INTEGER due_time = {0};
+#endif
+#endif /* ESIF_ATTR_OS_WINDOWS */
+
 	ESIF_ASSERT(timer_ptr != NULL);
 
 	if (NULL == timer_ptr) {
@@ -714,6 +767,7 @@ static ESIF_INLINE eEsifError esif_ccb_timer_set_msec(
 	}
 
 #ifdef ESIF_ATTR_OS_WINDOWS
+
 	if (NULL == timer_ptr->timer)
 		goto exit;
 
@@ -723,17 +777,50 @@ static ESIF_INLINE eEsifError esif_ccb_timer_set_msec(
 		timer_ptr->timer_wait_handle = NULL;
 	}
 
+#ifdef ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS
+	/*
+	 * Calculate the delay that can be tolerated, with a minimum of at
+	 * least 1 TOLERABLE_DELAY_INCREMENT. 
+	 */
+	tolerable_delay = (u32) timeout / TOLERABLE_DELAY_DIVISOR;
+	tolerable_delay = (tolerable_delay / TOLERABLE_DELAY_INCREMENT) + 1;
+	tolerable_delay *= TOLERABLE_DELAY_INCREMENT;
+
+	/*
+	 * For the coalescable timer, we use the timeout of the timer; not
+	 * the timeout of the waiting thread.
+	 */
+	wait_timeout = INFINITE;
+
+	due_time.QuadPart = -1LL * timeout * DUE_TIME_MS_CONV_FACTOR;
+
+	ret_val = SetWaitableTimerEx(timer_ptr->timer,
+					&due_time,
+					0,
+					NULL,
+					NULL,
+					NULL,
+					tolerable_delay);
+	if (!ret_val)
+		goto exit;
+
+#endif /* ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS */
+
 	ret_val = RegisterWaitForSingleObject(&timer_ptr->timer_wait_handle,
 			timer_ptr->timer,
 			esif_ccb_timer_cb_wrapper,
 			timer_ptr->timer_ctx_ptr,
-			(u32)timeout,
+			(u32)wait_timeout,
 			WT_EXECUTEONLYONCE);
-	if (!ret_val)
+	if (!ret_val) {
+#ifdef ESIF_FEAT_OPT_USE_COALESCABLE_TIMERS
+		CancelWaitableTimer(timer_ptr->timer);
+#endif
 		goto exit;
+	}
 
 	rc = ESIF_OK;
-#endif
+#endif /* ESIF_ATTR_OS_WINDOWS */
 
 #ifdef ESIF_ATTR_OS_LINUX
 	its.it_value.tv_sec     = freq_nanosecs / 1000000000;
@@ -744,7 +831,7 @@ static ESIF_INLINE eEsifError esif_ccb_timer_set_msec(
 	if (0 == timer_settime(timer_ptr->timer, 0, &its, NULL))
 		rc = ESIF_OK;
 
-#endif
+#endif /* ESIF_ATTR_OS_LINUX */
 exit:
 	return rc;
 }
@@ -755,7 +842,6 @@ static ESIF_INLINE eEsifError esif_ccb_timer_kill(
 	)
 {
 	eEsifError rc = ESIF_E_UNSPECIFIED;
-	ESIF_ASSERT(timer_ptr != NULL);
 
 	if (NULL == timer_ptr)
 		goto exit;
@@ -782,8 +868,8 @@ static ESIF_INLINE eEsifError esif_ccb_timer_kill(
 
 	if (0 == timer_delete(timer_ptr->timer))
 		rc = ESIF_OK;
-#endif
 
+#endif
 	if (timer_ptr->timer_ctx_ptr != NULL) {
 		esif_ccb_free(timer_ptr->timer_ctx_ptr);
 		timer_ptr->timer_ctx_ptr = NULL;

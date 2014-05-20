@@ -167,8 +167,17 @@ static ESIF_INLINE void esif_ccb_low_priority_thread_read_unlock (
 #ifdef ESIF_ATTR_USER
 
 #include "esif.h"
+#include "esif_ccb_atomic.h"
+
+/* Spinlock */
+typedef atomic_t esif_ccb_spinlock_t;
+#define esif_ccb_spinlock_init(lockPtr)  *(lockPtr) = ATOMIC_INIT(0)
+#define esif_ccb_spinlock_uninit(lockPtr) (lockPtr)
+#define	esif_ccb_spinlock_lock(lockPtr)   while (atomic_set(lockPtr, 1) == 1) {;}
+#define	esif_ccb_spinlock_unlock(lockPtr) atomic_set(lockPtr, 0)
 
 #ifdef ESIF_ATTR_OS_LINUX
+#include <pthread.h>
 
 #define PTHREAD_MUTEX_INIT_TYPE(mutex, type)	do { static pthread_mutexattr_t attr; pthread_mutexattr_settype(&attr, type); pthread_mutex_init(mutex, &attr); } while (0)
 
@@ -213,13 +222,93 @@ typedef HANDLE esif_ccb_mutex_t;
 #define esif_ccb_mutex_unlock(mutexPtr) ReleaseMutex(*mutexPtr) /* reentrant */
 
 /* RW Lock */
-typedef SRWLOCK esif_ccb_lock_t;
-#define esif_ccb_lock_init(lockPtr)     InitializeSRWLock(lockPtr)
-#define esif_ccb_lock_uninit(lockPtr)	/* not used */
-#define esif_ccb_write_lock(lockPtr)    AcquireSRWLockExclusive(lockPtr) /* NOT reentrant */
-#define esif_ccb_write_unlock(lockPtr)  ReleaseSRWLockExclusive(lockPtr) /* NOT reentrant */
-#define esif_ccb_read_lock(lockPtr)     AcquireSRWLockShared(lockPtr) /* reentrant */
-#define esif_ccb_read_unlock(lockPtr)   ReleaseSRWLockShared(lockPtr) /* reentrant */
+
+/* Wrapper for SRWLOCKs to allow nested READ locks in Windows
+ * This is necessary to avoid WHQL errors and potential deadlocks in Windows
+ * This is unecessary for Linux since pthread_rwlock_t is read reentrant
+ */
+typedef struct esif_ccb_lock_s {
+	SRWLOCK				lock;		/* Slim Read/Write Lock */
+	esif_ccb_spinlock_t	spinlock;	/* Spinlock for managing lock and ref_count */
+	UInt32				ref_count;	/* Count of Acquired References to shared READ lock */
+} esif_ccb_lock_t;
+
+/* Initialize */
+static ESIF_INLINE void esif_ccb_lock_init(esif_ccb_lock_t *lockPtr)
+{
+	InitializeSRWLock(&lockPtr->lock);
+	esif_ccb_spinlock_init(&lockPtr->spinlock);
+	lockPtr->ref_count = 0;
+}
+
+/* Uninitialize */
+static ESIF_INLINE void esif_ccb_lock_uninit(esif_ccb_lock_t *lockPtr)
+{
+	esif_ccb_spinlock_uninit(&lockPtr->spinlock);
+}
+
+/* NOT Reentrant Write Lock */
+static ESIF_INLINE void esif_ccb_write_lock(esif_ccb_lock_t *lockPtr)
+{
+	AcquireSRWLockExclusive(&lockPtr->lock);
+}
+
+/* NOT Reentrant Write Unlock */
+static ESIF_INLINE void esif_ccb_write_unlock(esif_ccb_lock_t *lockPtr)
+{
+	ReleaseSRWLockExclusive(&lockPtr->lock);
+}
+
+/* Reentrant Read Lock */
+static ESIF_INLINE void esif_ccb_read_lock(esif_ccb_lock_t *lockPtr)
+{
+	BOOL release = FALSE;
+	
+	/* Acquire spinlock to see if any readers have acquired the lock
+	 * If so just increment ref_count, otherwise Acquire lock outside spinlock
+	 */
+	esif_ccb_spinlock_lock(&lockPtr->spinlock);
+	if (lockPtr->ref_count > 0) {
+		++lockPtr->ref_count;
+	}
+	else {
+		esif_ccb_spinlock_unlock(&lockPtr->spinlock);
+		
+		AcquireSRWLockShared(&lockPtr->lock);
+		
+		/* After acquiring lock, update ref_count after re-acquiring spinlock */
+		esif_ccb_spinlock_lock(&lockPtr->spinlock);
+		if (++lockPtr->ref_count > 1) {
+			release = TRUE;
+		}
+	}
+	esif_ccb_spinlock_unlock(&lockPtr->spinlock);
+
+	/* If multiple threads Acquired locks, all but one will release it here */
+	if (release) {
+		ReleaseSRWLockShared(&lockPtr->lock);
+	}
+}
+
+/* Reentrant Read Unlock */
+static ESIF_INLINE void esif_ccb_read_unlock(esif_ccb_lock_t *lockPtr)
+{
+	BOOL release = FALSE;
+
+	/* Aquire spinlock to see if this is the last reader referencing this lock
+	 * If this is the last reader, Release the lock outside of the spinlock
+	 */
+	esif_ccb_spinlock_lock(&lockPtr->spinlock);
+	if (--lockPtr->ref_count == 0) {
+		release = TRUE;
+	}
+	esif_ccb_spinlock_unlock(&lockPtr->spinlock);
+
+	if (release) {
+		ReleaseSRWLockShared(&lockPtr->lock);
+	}
+}
+
 
 #endif /* ESIF_ATTR_OS_WINDOWS */
 #endif /* ESIF_ATTR_USER */

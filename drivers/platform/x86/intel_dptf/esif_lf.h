@@ -59,9 +59,12 @@
 
 /* Registration */
 enum esif_rc esif_lf_register_participant(struct esif_participant_iface *pi_ptr);
-enum esif_rc esif_lf_unregister_participant(
-			struct esif_participant_iface *pi_ptr);
+
 void esif_lf_unregister_all_participants(void);
+
+enum esif_rc esif_lf_unregister_participant(
+	struct esif_participant_iface *pi_ptr);
+
 
 /* Instrumentation */
 enum esif_rc esif_lf_instrument_participant(struct esif_lp *lp_ptr);
@@ -71,14 +74,18 @@ void esif_lf_uninstrument_participant(struct esif_lp *lp_ptr);
 void esif_lf_uninstrument_capability(struct esif_lp_domain *lpd_ptr);
 
 /* Events */
-enum esif_rc esif_lf_send_event(const struct esif_participant_iface *pi_ptr,
-				const struct esif_event *event_ptr);
-enum esif_rc esif_lf_send_all_events_in_queue_to_uf_by_ipc(void);
+enum esif_rc esif_lf_event(
+	struct esif_participant_iface *pi_ptr,
+	enum esif_event_type type,
+	u16 domain,
+	struct esif_data *data_ptr
+);
 
-enum esif_rc esif_lf_event(struct esif_participant_iface *pi_ptr,
-			   enum esif_event_type type,
-			   u16 domain,
-			   struct esif_data *data_ptr);
+enum esif_rc esif_lf_send_event(
+	const struct esif_participant_iface *pi_ptr,
+	const struct esif_event *event_ptr
+);
+enum esif_rc esif_lf_send_all_events_in_queue_to_uf_by_ipc(void);
 
 /* Init / Exit */
 enum esif_rc esif_lf_init(esif_flags_t debug_mask);
@@ -87,6 +94,14 @@ void esif_lf_exit(void);
 /* Optional OS Init/Exit. Call before esif_ccb_malloc & after esif_ccb_free */
 void esif_lf_os_init(void);
 void esif_lf_os_exit(void);
+
+enum esif_rc esif_execute_xform_func(
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const enum esif_action_type action,
+	const enum esif_data_type data_type,
+	u64 *temp_ptr
+);
 
 #endif /* _ESIF_LF_H_ */
 

@@ -194,11 +194,6 @@ void esif_ipc_exit(
 ** User Implementation
 */
 
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* IPC Connect */
 esif_handle_t esif_ipc_connect(
 	esif_string session_id
@@ -322,13 +317,6 @@ void esif_ipc_free(struct esif_ipc *ipc_ptr)
 	ESIF_TRACE_DEBUG("%s: ipc = %p\n", ESIF_FUNC, ipc_ptr);
 	esif_ccb_free(ipc_ptr);
 }
-
-
-#ifdef ESIF_ATTR_USER
-#ifdef __cplusplus
-}
-#endif
-#endif
 
 /*****************************************************************************/
 /*****************************************************************************/

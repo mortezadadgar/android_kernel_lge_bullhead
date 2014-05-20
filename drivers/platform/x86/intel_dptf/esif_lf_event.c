@@ -51,6 +51,7 @@
 **
 *******************************************************************************/
 
+#include "esif_lf.h"
 #include "esif_event.h"
 #include "esif_queue.h"
 
@@ -86,7 +87,308 @@ static u64 g_event_transaction_id; /* No need to set 0 */
 struct esif_queue_instance *g_event_queue; /* No need to set NULL */;
 static char *g_event_queue_name = "EVENT";
 
-/* Check Queue */
+static enum esif_rc esif_lf_allocate_and_queue_event(
+	struct esif_lp *lp_ptr,
+	enum esif_event_type type,
+	struct esif_event **event_locPtr
+);
+
+enum esif_rc esif_lf_event(
+	struct esif_participant_iface *pi_ptr,
+	enum esif_event_type type,
+	u16 domain,
+	struct esif_data *data_ptr
+	)
+{
+	enum esif_rc rc        = ESIF_OK;
+	struct esif_lp *lp_ptr = NULL;
+	struct esif_event *event_ptr         = NULL;
+	struct esif_ipc *ipc_ptr             = NULL;
+	struct esif_cpc_event *cpc_event_ptr = NULL;
+
+	u16 ipc_data_len                     = 0;
+	struct esif_ipc_event_header evt_hdr = {0};
+	struct esif_ipc_event_data_create_participant evt_data = {0};
+
+	lp_ptr = esif_lf_pm_lp_get_by_pi(pi_ptr);
+	if (NULL == lp_ptr) {
+		rc = ESIF_E_PARTICIPANT_NOT_FOUND;
+		goto exit;
+	}
+
+	/* Create An Event */
+	switch (type) {
+	/* Special Event Create Send Entire PI Information */
+	case ESIF_EVENT_PARTICIPANT_CREATE:
+	{
+		event_ptr = esif_event_allocate(ESIF_EVENT_PARTICIPANT_CREATE,
+					sizeof(evt_data),
+					ESIF_EVENT_PRIORITY_NORMAL,
+					lp_ptr->instance,
+					ESIF_INSTANCE_UF,
+					domain,
+					pi_ptr);
+
+		if (NULL == event_ptr) {
+			rc = ESIF_E_NO_MEMORY;
+			goto exit;
+		}
+
+		ipc_data_len = sizeof(struct esif_ipc_event_header) +
+			sizeof(struct esif_ipc_event_data_create_participant);
+		ipc_ptr = esif_ipc_alloc(ESIF_IPC_TYPE_EVENT, ipc_data_len);
+
+		if (NULL == ipc_ptr) {
+			rc = ESIF_E_NO_MEMORY;
+			esif_event_free(event_ptr);
+			goto exit;
+		}
+
+		/* Setup Event Header And Copy To IPC Buffer */
+		evt_hdr.version       = event_ptr->version;
+		evt_hdr.type          = event_ptr->type;
+		evt_hdr.id            = event_ptr->id;
+		evt_hdr.timestamp     = event_ptr->timestamp;
+		evt_hdr.priority      = event_ptr->priority;
+		evt_hdr.src_id        = event_ptr->src;
+		evt_hdr.dst_id        = event_ptr->dst;
+		evt_hdr.dst_domain_id = 'NA';	/* event_ptr->dst_domain_id; */
+		evt_hdr.data_len =
+			sizeof(struct esif_ipc_event_data_create_participant);
+
+		esif_ccb_memcpy(ipc_ptr + 1,
+				&evt_hdr,
+				sizeof(struct esif_ipc_event_header));
+
+		/* Setup Event Data Structure */
+		evt_data.id = lp_ptr->instance;
+		evt_data.version        = lp_ptr->pi_ptr->version;
+		evt_data.enumerator     = lp_ptr->pi_ptr->enumerator;
+		evt_data.flags          = lp_ptr->pi_ptr->flags;
+		evt_data.pci_vendor     = lp_ptr->pi_ptr->pci_vendor;
+		evt_data.pci_device     = lp_ptr->pi_ptr->pci_device;
+		evt_data.pci_bus        = lp_ptr->pi_ptr->pci_bus;
+		evt_data.pci_bus_device = lp_ptr->pi_ptr->pci_bus_device;
+		evt_data.pci_function   = lp_ptr->pi_ptr->pci_function;
+		evt_data.pci_revision   = lp_ptr->pi_ptr->pci_revision;
+		evt_data.pci_class      = lp_ptr->pi_ptr->pci_class;
+		evt_data.pci_sub_class  = lp_ptr->pi_ptr->pci_sub_class;
+		evt_data.pci_prog_if    = lp_ptr->pi_ptr->pci_prog_if;
+
+		/*
+		** Handle these slow but safe.
+		*/
+		esif_ccb_memcpy(&evt_data.class_guid,
+				lp_ptr->pi_ptr->class_guid,
+				ESIF_GUID_LEN);
+		esif_ccb_memcpy(&evt_data.name,
+				lp_ptr->pi_ptr->name,
+				ESIF_NAME_LEN);
+		esif_ccb_memcpy(&evt_data.desc,
+				lp_ptr->pi_ptr->desc,
+				ESIF_DESC_LEN);
+		esif_ccb_memcpy(&evt_data.driver_name,
+				lp_ptr->pi_ptr->driver_name,
+				ESIF_NAME_LEN);
+		esif_ccb_memcpy(&evt_data.device_name,
+				lp_ptr->pi_ptr->device_name,
+				ESIF_NAME_LEN);
+		esif_ccb_memcpy(&evt_data.device_path,
+				lp_ptr->pi_ptr->device_path,
+				ESIF_PATH_LEN);
+		esif_ccb_memcpy(&evt_data.acpi_device,
+				lp_ptr->pi_ptr->acpi_device,
+				ESIF_SCOPE_LEN);
+		esif_ccb_memcpy(&evt_data.acpi_scope,
+				lp_ptr->pi_ptr->acpi_scope,
+				ESIF_SCOPE_LEN);
+		esif_ccb_memcpy(&evt_data.acpi_uid,
+				lp_ptr->pi_ptr->acpi_uid,
+				sizeof(evt_data.acpi_uid));
+		evt_data.acpi_type = lp_ptr->pi_ptr->acpi_type;
+
+		esif_ccb_memcpy(((u8 *)(ipc_ptr + 1) +
+				   sizeof(struct esif_ipc_event_header)),
+			&evt_data,
+			sizeof(evt_data));
+
+		/* IPC will be freed on othre side of queue operation */
+		esif_event_queue_push(ipc_ptr);
+		break;
+	}
+
+	/* ACPI Events are special the incoming data will contain the OS notify
+	 * type.
+	 * We will map
+	 * that to an ESIF DSP event with the aide of the DSP.
+	 */
+	case ESIF_EVENT_ACPI:
+	{
+		u32 acpi_notify = 0;
+
+		/* Map ACPI into ESIF event number (if DSP is loaded) in
+		 *interrupt context */
+		if ((NULL != lp_ptr) &&
+		    (NULL != lp_ptr->dsp_ptr) &&
+		    (NULL != data_ptr)) {
+			/* Be paranoid make sue this is truly our EVENT data */
+			if (data_ptr->buf_len == sizeof(u32) &&
+			    data_ptr->data_len == sizeof(u32) &&
+			    ESIF_DATA_UINT32 == data_ptr->type) {
+				acpi_notify = *(u32 *)data_ptr->buf_ptr;
+			}
+
+			cpc_event_ptr = lp_ptr->dsp_ptr->get_event(
+					lp_ptr->dsp_ptr,
+					acpi_notify);
+			if (NULL != cpc_event_ptr) {
+				/* Translate ESIF_EVENT_ACPI->real ESIF event */
+				type = cpc_event_ptr->esif_event;
+				ESIF_TRACE_DYN_EVENT(
+					"%s: Mapped ACPI event 0x%08x to "
+					"ESIF Event %s(%d)\n",
+					ESIF_FUNC,
+					acpi_notify,
+					esif_event_type_str(type),
+					type);
+			} else {
+				ESIF_TRACE_DYN_EVENT(
+					"%s: Undefined ACPI event 0x%08x in "
+					"DSP! Cannot map to ESIF event!\n",
+					ESIF_FUNC,
+					acpi_notify);
+				rc = ESIF_E_UNSPECIFIED;
+				goto exit;
+			}
+		} else {
+			ESIF_TRACE_DYN_EVENT(
+				"%s: lp_ptr %p dsp_ptr %p data_ptr %p, none "
+				"cannot be null\n",
+				ESIF_FUNC,
+				lp_ptr,
+				lp_ptr->dsp_ptr,
+				data_ptr);
+			rc = ESIF_E_UNSPECIFIED;
+			goto exit;
+		}
+		rc = esif_lf_allocate_and_queue_event(lp_ptr, type, &event_ptr);
+		if (rc != ESIF_OK)
+			goto exit;
+		break;
+	}
+
+	case ESIF_EVENT_PARTICIPANT_SUSPEND:
+	{
+		if (ESIF_PM_PARTICIPANT_STATE_REGISTERED ==
+		    esif_lf_pm_lp_get_state(lp_ptr))
+			esif_lf_pm_lp_set_state(lp_ptr,
+			ESIF_PM_PARTICIPANT_STATE_SUSPENDED);
+
+		rc = esif_lf_allocate_and_queue_event(lp_ptr, type, &event_ptr);
+		if(rc != ESIF_OK)
+			goto exit;
+		break;
+	}
+
+	case ESIF_EVENT_PARTICIPANT_RESUME:
+	{
+		if (ESIF_PM_PARTICIPANT_STATE_SUSPENDED ==
+		    esif_lf_pm_lp_get_state(lp_ptr))
+			esif_lf_pm_lp_set_state(lp_ptr,
+			ESIF_PM_PARTICIPANT_STATE_RESUMED);
+
+		rc = esif_lf_allocate_and_queue_event(lp_ptr, type, &event_ptr);
+		if(rc != ESIF_OK)
+			goto exit;
+		break;
+	}
+
+	/* Everything Else Just Send The Handle */
+	default:
+	{
+		rc = esif_lf_allocate_and_queue_event(lp_ptr, type, &event_ptr);
+		if(rc != ESIF_OK)
+			goto exit;
+		break;
+	}
+	}	/* End of case */
+
+	/* Send Our Event */
+	ESIF_TRACE_DYN_EVENT("type %s(%d)\n", esif_event_type_str(type), type);
+
+	esif_lf_send_all_events_in_queue_to_uf_by_ipc();
+	esif_lf_send_event(lp_ptr->pi_ptr, event_ptr);
+	esif_event_free(event_ptr);
+
+exit:
+	return rc;
+}
+
+
+static enum esif_rc esif_lf_allocate_and_queue_event(
+	struct esif_lp *lp_ptr,
+	enum esif_event_type type,
+	struct esif_event **event_locPtr
+	)
+{
+	enum esif_rc rc = ESIF_OK;
+	struct esif_event *event_ptr         = NULL;
+	struct esif_ipc *ipc_ptr             = NULL;
+	u16 ipc_data_len                     = 0;
+	struct esif_ipc_event_header evt_hdr = {0};
+
+	if ((NULL == lp_ptr) || (NULL == event_locPtr)) {
+		rc = ESIF_E_UNSPECIFIED;
+		goto exit;
+	}
+
+	event_ptr  = esif_event_allocate(type,
+					sizeof(lp_ptr->instance),
+					ESIF_EVENT_PRIORITY_NORMAL,
+					lp_ptr->instance,
+					ESIF_INSTANCE_UF,
+					'NA',
+					&lp_ptr->instance);
+	if (NULL == event_ptr) {
+		rc = ESIF_E_NO_MEMORY;
+		goto exit;
+	}
+
+	ipc_data_len = sizeof(struct esif_ipc_event_header);
+	ipc_ptr = esif_ipc_alloc(ESIF_IPC_TYPE_EVENT, ipc_data_len);
+
+	if (NULL == ipc_ptr) {
+		esif_event_free(event_ptr);
+		event_ptr = NULL;
+		rc = ESIF_E_NO_MEMORY;
+		goto exit;
+	}
+
+	/* Setup Event Header And Copy To IPC Buffer */
+	evt_hdr.version       = event_ptr->version;
+	evt_hdr.type          = event_ptr->type;
+	evt_hdr.id            = event_ptr->id;
+	evt_hdr.timestamp     = event_ptr->timestamp;
+	evt_hdr.priority      = event_ptr->priority;
+	evt_hdr.src_id        = event_ptr->src;
+	evt_hdr.dst_id        = event_ptr->dst;
+	evt_hdr.dst_domain_id = 'NA';	/* event_ptr->dst_domain_id; */
+	evt_hdr.data_len      = 0;
+
+	esif_ccb_memcpy(ipc_ptr + 1,
+			&evt_hdr,
+			sizeof(struct esif_ipc_event_header));
+
+	/* IPC will be freed on other side of queue operation */
+	esif_event_queue_push(ipc_ptr);
+
+	*event_locPtr = event_ptr;
+
+exit:
+	return rc;
+}
+
+	/* Check Queue */
 u32 esif_event_queue_size(void)
 {
 	if (NULL != g_event_queue)

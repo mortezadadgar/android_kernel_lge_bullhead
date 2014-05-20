@@ -51,7 +51,7 @@
 **
 *******************************************************************************/
 
-#include "esif_action.h"
+#include "esif_lf_action.h"
 
 #ifdef ESIF_ATTR_OS_WINDOWS
 
@@ -80,16 +80,29 @@
 		       ##__VA_ARGS__)
 
 enum esif_rc esif_get_action_const(
-	const u32 val,
-	const struct esif_data *req_data_ptr,
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
+	struct esif_data *req_data_ptr,
 	struct esif_data *rsp_data_ptr
 	)
 {
 	enum esif_rc rc = ESIF_OK;
+	u32 val;
 
+	UNREFERENCED_PARAMETER(lp_ptr);
+	UNREFERENCED_PARAMETER(primitive_ptr);
 	UNREFERENCED_PARAMETER(req_data_ptr);
-	ESIF_TRACE_DYN_GET("%s: type = %d, value = %d\n", ESIF_FUNC,
-			   rsp_data_ptr->type, val);
+
+	if ((NULL == action_ptr) || (NULL == rsp_data_ptr)) {
+		rc = ESIF_E_PARAMETER_IS_NULL;
+		goto exit;
+	}
+
+	val = action_ptr->get_p1_u32(action_ptr);
+
+	ESIF_TRACE_DYN_GET("type = %s, value = %d\n",
+			   esif_data_type_str(rsp_data_ptr->type), val);
 	/*
 	 * Const items are kept as 32-bit values; however, the call may be for
 	 * a different size depending on type.  Return data as the largest
@@ -117,7 +130,8 @@ enum esif_rc esif_get_action_const(
 				   rsp_data_ptr->buf_len);
 		rc = ESIF_E_OVERFLOWED_RESULT_TYPE;
 	}
-
+exit:
+	ESIF_TRACE_DYN_GET("RC: %s(%d)\n", esif_rc_str(rc), rc);
 	return rc;
 }
 
@@ -125,7 +139,7 @@ enum esif_rc esif_get_action_const(
 /* Init */
 enum esif_rc esif_action_const_init(void)
 {
-	ESIF_TRACE_DYN_INIT("%s: Initialize CONST Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Initialize CONST Action\n");
 	return ESIF_OK;
 }
 
@@ -133,7 +147,7 @@ enum esif_rc esif_action_const_init(void)
 /* Exit */
 void esif_action_const_exit(void)
 {
-	ESIF_TRACE_DYN_INIT("%s: Exit CONST Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Exit CONST Action\n");
 }
 
 

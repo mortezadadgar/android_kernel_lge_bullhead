@@ -58,6 +58,7 @@
 #define ESIF_DEBUG_MODULE ESIF_DEBUG_MOD_LINUX
 #define DRIVER_NAME "esif_lf"
 
+
 /* Event Receive */
 static enum esif_rc dptf_recv_event(
 	enum esif_event_type type,
@@ -130,6 +131,7 @@ static struct class dptf_class = {
 	.dev_release = dptf_release,
 };
 
+#ifdef ESIF_FEAT_OPT_SYSFS
 /*
 ** LINUX Instrument VIA SYSFS
 */
@@ -1472,6 +1474,7 @@ static ssize_t dptf_debug_module_level_store(
 }
 
 
+
 /*
 ** Setup Attributes For Linux SYSFS
 */
@@ -1547,10 +1550,12 @@ static DEVICE_ATTR(_debug_module_level,
 		   RW,
 		   dptf_debug_module_level_show,
 		   dptf_debug_module_level_store);
+#endif
 
 /* Instrument Class Thermal */
 enum esif_rc esif_lf_instrument_capability(struct esif_lp_domain *lpd_ptr)
 {
+#ifdef ESIF_FEAT_OPT_SYSFS
 	int rc = 0;
 	/* Only Instrument Once */
 	if (NULL != lpd_ptr->tzd_ptr || NULL != lpd_ptr->cdev_ptr)
@@ -1668,7 +1673,9 @@ enum esif_rc esif_lf_instrument_capability(struct esif_lp_domain *lpd_ptr)
 		device_create_file(&lpd_ptr->device, &dev_attr_rapl_energy);
 		device_create_file(&lpd_ptr->device, &dev_attr_rapl_power_unit);
 	}
+#endif
 	return ESIF_OK;
+
 }
 
 
@@ -1679,7 +1686,7 @@ enum esif_rc esif_lf_send_all_events_in_queue_to_uf_by_ipc(void)
 	return ESIF_E_NOT_IMPLEMENTED;
 }
 
-
+#ifdef ESIF_FEAT_OPT_SYSFS
 /* u16 To String */
 static char *esif_domain_str(
 	u16 domain,
@@ -1696,6 +1703,7 @@ static char *esif_domain_str(
 /* Instrument Domain */
 static enum esif_rc esif_instrument_domain(struct esif_lp_domain *lpd_ptr)
 {
+
 	int rc      = 0;
 	char str[8] = "";
 	struct device *dev_ptr = NULL;
@@ -1768,17 +1776,21 @@ static enum esif_rc esif_instrument_domain(struct esif_lp_domain *lpd_ptr)
 	if (rc)
 		return ESIF_E_UNSPECIFIED;
 
+
 	return ESIF_OK;
 }
+#endif
 
 
 /* Instrument Participant */
 enum esif_rc esif_lf_instrument_participant(struct esif_lp *lp_ptr)
 {
+#ifdef ESIF_FEAT_OPT_SYSFS
 	u8 i;
 
 	for (i = 0; i < lp_ptr->domain_count; i++)
 		esif_instrument_domain(&lp_ptr->domains[i]);
+#endif
 
 	return ESIF_OK;
 }
@@ -1787,6 +1799,7 @@ enum esif_rc esif_lf_instrument_participant(struct esif_lp *lp_ptr)
 /* UNInstrument Thermal */
 void esif_lf_uninstrument_capability(struct esif_lp_domain *lpd_ptr)
 {
+#ifdef ESIF_FEAT_OPT_SYSFS
 	ESIF_TRACE_DEBUG("linux_%s: buf %p\n", ESIF_FUNC, lpd_ptr);
 
 	/* Unregister Thermal Zone If present */
@@ -1848,12 +1861,14 @@ void esif_lf_uninstrument_capability(struct esif_lp_domain *lpd_ptr)
 		device_remove_file(&lpd_ptr->device, &dev_attr_rapl_energy);
 		device_remove_file(&lpd_ptr->device, &dev_attr_rapl_power_unit);
 	}
+#endif
 }
 
-
+#ifdef ESIF_FEAT_OPT_SYSFS
 /* UnInstrument domain */
 static void esif_uninstrument_domain(struct esif_lp_domain *lpd_ptr)
 {
+
 	ESIF_TRACE_DEBUG("linux_%s: buf %p\n", ESIF_FUNC, lpd_ptr);
 
 	device_remove_file(&lpd_ptr->device, &dev_attr_capability);
@@ -1870,15 +1885,19 @@ static void esif_uninstrument_domain(struct esif_lp_domain *lpd_ptr)
 
 	/* Alow Reuse of Device */
 	esif_ccb_memset(&lpd_ptr->device, 0, sizeof(struct device));
+
 }
+#endif
 
 
 /* UnInstrument Qaulifier */
 void esif_lf_uninstrument_participant(struct esif_lp *lp_ptr)
 {
+#ifdef ESIF_FEAT_OPT_SYSFS
 	u8 i;
 	for (i = 0; i < lp_ptr->domain_count; i++)
 		esif_uninstrument_domain(&lp_ptr->domains[i]);
+#endif
 }
 
 
@@ -2015,8 +2034,10 @@ static int acpi_add(struct acpi_device *dev_ptr)
 	strncpy(pi.name, acpi_device_bid(dev_ptr), ESIF_NAME_LEN);
 	ESIF_TRACE_DEBUG("%s: temp name = %s\n", ESIF_FUNC, pi.name);
 
+#ifdef ESIF_FEAT_OPT_SYSFS
 	device_create_file(&dev_ptr->dev, &dev_attr__debug_modules);
 	device_create_file(&dev_ptr->dev, &dev_attr__debug_module_level);
+#endif
 
 	rc = esif_lf_register_participant(&pi);
 	rc = esif_ipc_init(pi.device);
@@ -2038,8 +2059,10 @@ static int acpi_remove(struct acpi_device *dev_ptr)
 	enum esif_rc rc = ESIF_OK;
 	ESIF_TRACE_DEBUG("%s: acpi_dev %p\n", ESIF_FUNC, dev_ptr);
 
+#ifdef ESIF_FEAT_OPT_SYSFS
 	device_remove_file(&dev_ptr->dev, &dev_attr__debug_modules);
 	device_remove_file(&dev_ptr->dev, &dev_attr__debug_module_level);
+#endif
 
 	esif_ipc_exit(pi.device);
 	rc = esif_lf_unregister_participant(&pi);
@@ -2119,7 +2142,9 @@ static int acpi_resume(struct device *dev_ptr)
 }
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
 static SIMPLE_DEV_PM_OPS(esif_acpi_thermal_pm, acpi_suspend, acpi_resume);
+#endif
 
 /* ACPI Driver */
 static struct acpi_driver dptf_acpi_driver = {
@@ -2142,6 +2167,13 @@ static struct acpi_driver dptf_acpi_driver = {
 
 
 #else /* ESIF_ATTR_PLATFORM */
+/*
+ * The platform driver (dptf_plat) can be used to generate participants for
+ * devices that can’t be enumerated and for testing and debugging purposes,
+ * such as simulating kernel participants for debugging in a VM. 
+ * This feature is disabled by default.
+ */
+
 
 /* Probe */
 static int dptf_platform_probe(struct platform_device *dev_ptr)
@@ -2163,8 +2195,11 @@ static int dptf_platform_probe(struct platform_device *dev_ptr)
 		kfree(kobj_path_ptr);
 	}
 
+
+#ifdef ESIF_FEAT_OPT_SYSFS
 	device_create_file(&dev_ptr->dev, &dev_attr__debug_modules);
 	device_create_file(&dev_ptr->dev, &dev_attr__debug_module_level);
+#endif
 
 	rc = esif_lf_register_participant(&pi);
 	rc = esif_ipc_init(pi.device);

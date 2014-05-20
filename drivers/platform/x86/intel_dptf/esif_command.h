@@ -164,8 +164,8 @@ struct esif_command_get_participant_detail {
 
 	/* ACPI */
 	char  acpi_device[ESIF_SCOPE_LEN];	/* Device e.g. INT3400 */
-	char  acpi_scope[ESIF_SCOPE_LEN]; /* Scope/REGEX e.g. \_SB.PCI0.TPCH */
-	u32   acpi_uid; /* Unique ID If Any */
+	char  acpi_scope[ESIF_SCOPE_LEN];/* Scope/REGEX e.g. \_SB.PCI0.TPCH */
+	char  acpi_uid[ESIF_ACPI_UID_LEN];	/* Unique ID If Any */
 	u32   acpi_type; /* Participant Type If Any */
 
 	/* PCI */
@@ -220,10 +220,18 @@ struct esif_command_get_memory_stats {
 
 #pragma pack(pop)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct esif_ipc *esif_execute_ipc_command (struct esif_ipc *ipc_ptr);
 
 enum esif_rc esif_command_init (void);
 void esif_command_exit (void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* _ESIF_COMMAND_H_ */
 

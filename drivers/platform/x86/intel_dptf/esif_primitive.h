@@ -100,6 +100,10 @@ struct esif_lp_primitive {
 
 #pragma pack(pop)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct esif_ipc *esif_execute_ipc_primitive(struct esif_ipc *ipc_ptr);
 
 struct esif_lp;
@@ -121,6 +125,10 @@ enum esif_rc esif_get_simple_primitive(struct esif_lp *lp_ptr,
 				       enum esif_data_type esif_type,
 				       void *buffer_ptr,
 				       u32 buffer_size);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _ESIF_LF_PRIMITIVE_H_ */
 

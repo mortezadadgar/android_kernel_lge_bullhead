@@ -166,6 +166,11 @@ struct domain {
 
 /* Unpack CPC Data Into DSP */
 struct esif_lp_dsp;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum esif_rc esif_cpc_unpack(struct esif_lp_dsp *dsp_ptr,
 			     const struct esif_data *cpc_ptr);
 
@@ -175,6 +180,10 @@ void esif_cpc_free(struct esif_lp_dsp *dsp_ptr);
 /* Init / Exit */
 enum esif_rc esif_cpc_init(void);
 void esif_cpc_exit(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #include "esif_dsp.h"
 

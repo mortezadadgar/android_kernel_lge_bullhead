@@ -113,7 +113,7 @@
 # endif
 #endif
 
-#ifdef ESIF_ATTR_OS_WINDOWS
+#ifdef ESIF_ATTR_OS_LINUX
 /* Linux */
 # include <asm/atomic.h> /* native atomic_t typedef here */
   typedef long _atomic_int;

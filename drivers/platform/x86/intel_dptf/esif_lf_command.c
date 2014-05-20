@@ -412,7 +412,9 @@ static void esif_execute_ipc_command_get_participant_detail(
 				esif_ccb_strcpy(data_ptr->acpi_scope,
 						lp_ptr->pi_ptr->acpi_scope,
 						ESIF_SCOPE_LEN);
-				data_ptr->acpi_uid  = lp_ptr->pi_ptr->acpi_uid;
+				esif_ccb_strcpy(data_ptr->acpi_uid,
+						lp_ptr->pi_ptr->acpi_uid,
+						sizeof(data_ptr->acpi_uid));
 				data_ptr->acpi_type = lp_ptr->pi_ptr->acpi_type;
 
 				/* PCI */

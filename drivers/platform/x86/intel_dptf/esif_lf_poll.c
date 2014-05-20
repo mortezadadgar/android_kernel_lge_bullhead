@@ -106,8 +106,7 @@ static enum esif_rc esif_poll_power(
 		goto exit;
 
 	ESIF_TRACE_DYN_ENERGY(
-		"%s: GET_RAPL_ENERGY for %s energy_unit 0x%x rc %s(%d)\n",
-		ESIF_FUNC,
+		"GET_RAPL_ENERGY for %s energy_unit 0x%x rc %s(%d)\n",
 		lpd_ptr->name_ptr,
 		energy_units,
 		esif_rc_str(rc),
@@ -119,9 +118,8 @@ static enum esif_rc esif_poll_power(
 
 	/* Check For Wrap? */
 	if (lpd_ptr->rapl_energy_units_last > energy_units) {
-		energy_units_used =
-			(0xFFFFFFFF -
-			 lpd_ptr->rapl_energy_units_last) + energy_units;
+		/* force I_AGAIN */
+		lpd_ptr->rapl_energy_units_last = 0;
 	} else {
 		energy_units_used = energy_units -
 			lpd_ptr->rapl_energy_units_last;
@@ -133,8 +131,7 @@ static enum esif_rc esif_poll_power(
 		(lpd_ptr->timer_period_msec / 1000);
 
 	ESIF_TRACE_DYN_ENERGY(
-		"%s: id %s ENERGY units current %08X, last %08X, used %u, used/sec %d\n",
-		ESIF_FUNC,
+		"id %s ENERGY units current %08X, last %08X, used %u, used/sec %d\n",
 		lpd_ptr->name_ptr,
 		lpd_ptr->rapl_energy_units_last,
 		lpd_ptr->rapl_energy_units_current,
@@ -193,8 +190,7 @@ static enum esif_rc esif_poll_power(
 		esif_convert_power(ESIF_POWER_MILLIW,
 				   NORMALIZE_POWER_UNIT_TYPE,
 				   &power);
-		ESIF_TRACE_DYN_RAPL("%s: POWER %d %s(%d)\n",
-				    ESIF_FUNC,
+		ESIF_TRACE_DYN_RAPL("POWER %d %s(%d)\n",
 				    power,
 				    esif_power_unit_desc(
 					    NORMALIZE_POWER_UNIT_TYPE),
@@ -206,9 +202,8 @@ static enum esif_rc esif_poll_power(
 		 * Now Check For Threshold
 		 */
 		ESIF_TRACE_DYN_RAPL(
-			"%s: THRESHOLD_CHECK hyst = %d aux0 = %d "
+			"THRESHOLD_CHECK hyst = %d aux0 = %d "
 			"power = %d aux1 = %d units %s(%d)\n",
-			ESIF_FUNC,
 			lpd_ptr->power_hysteresis,
 			lpd_ptr->power_aux0,
 			power,
@@ -264,15 +259,13 @@ static enum esif_rc esif_poll_temperature(
 	if (ESIF_OK != rc)
 		goto exit;
 
-	ESIF_TRACE_DYN_TEMP("%s: TEMPERATURE %d %s(%d)\n",
-			    ESIF_FUNC,
+	ESIF_TRACE_DYN_TEMP("TEMPERATURE %d %s(%d)\n",
 			    temp,
 			    esif_temperature_type_desc(NORMALIZE_TEMP_TYPE),
 			    NORMALIZE_TEMP_TYPE);
 
 	ESIF_TRACE_DYN_TEMP(
-		"%s: THRESHOLD_CHECK hyst = %d aux0 = %d temp = %d aux1 = %d units %s(%d)\n",
-		ESIF_FUNC,
+		"THRESHOLD_CHECK hyst = %d aux0 = %d temp = %d aux1 = %d units %s(%d)\n",
 		lpd_ptr->temp_hysteresis,
 		lpd_ptr->temp_aux0,
 		temp,
@@ -280,26 +273,16 @@ static enum esif_rc esif_poll_temperature(
 		esif_temperature_type_desc(NORMALIZE_TEMP_TYPE),
 		NORMALIZE_TEMP_TYPE);
 
-	if (ESIF_TRUE == lpd_ptr->temp_notify_sent) {
-		ESIF_TRACE_DYN_TEMP(
-			"%s: SKIPPING ESIF_EVENT_TEMP_THRESHOLD_CROSSED already sent\n",
-			ESIF_FUNC);
-		goto exit;
-	}
-
 	if (((lpd_ptr->temp_aux0 != ESIF_DOMAIN_TEMP_INVALID) &&
 	     (temp < lpd_ptr->temp_aux0 - lpd_ptr->temp_hysteresis)) ||
 	    ((lpd_ptr->temp_aux1 != ESIF_DOMAIN_TEMP_INVALID) &&
 	     (temp >= lpd_ptr->temp_aux1))) {
 		lpd_ptr->lp_ptr->pi_ptr->send_event(lpd_ptr->lp_ptr->pi_ptr,
-						    ESIF_EVENT_DOMAIN_TEMP_THRESHOLD_CROSSED,
-						    lpd_ptr->id,
-						    NULL);
+			ESIF_EVENT_DOMAIN_TEMP_THRESHOLD_CROSSED,
+			lpd_ptr->id,
+			NULL);
 
-		lpd_ptr->temp_notify_sent = ESIF_TRUE;
-		ESIF_TRACE_DYN_TEMP(
-			"%s: ESIF_EVENT_TEMP_THRESHOLD_CROSSED sent\n",
-			ESIF_FUNC);
+		ESIF_TRACE_DYN_TEMP("ESIF_EVENT_TEMP_THRESHOLD_CROSSED sent\n");
 	}
 exit:
 	return rc;
@@ -315,8 +298,7 @@ void esif_poll(
 	if (NULL == lpd_ptr)
 		return;
 
-	ESIF_TRACE_DYN_POLL("%s: Timer %s:%s\n",
-			    ESIF_FUNC,
+	ESIF_TRACE_DYN_POLL("Timer %s:%s\n",
 			    lpd_ptr->lp_ptr->pi_name,
 			    lpd_ptr->name_ptr);
 
@@ -329,7 +311,7 @@ void esif_poll(
 		if (lpd_ptr->poll_mask & ESIF_POLL_TEMPERATURE)
 			esif_poll_temperature(lpd_ptr);
 	} else {
-		ESIF_TRACE_DYN_POLL("%s: no DSP can't do work\n", ESIF_FUNC);
+		ESIF_TRACE_DYN_POLL("no DSP can't do work\n");
 	}
 }
 
@@ -339,20 +321,30 @@ void esif_poll_start(
 	struct esif_lp_domain *lpd_ptr
 	)
 {
+	enum esif_rc rc = ESIF_OK;
+
 	if (ESIF_TRUE == lpd_ptr->poll || 0 == g_background)
 		return;
 
 	lpd_ptr->timer_period_msec = g_background;
-	esif_ccb_timer_init(&lpd_ptr->timer);
-	esif_ccb_timer_set_msec(&lpd_ptr->timer,
-				lpd_ptr->timer_period_msec,
-				ESIF_TRUE,
-				esif_poll,
-				lpd_ptr);
+	rc = esif_ccb_timer_init(&lpd_ptr->timer);
+	if (ESIF_OK != rc)
+		goto exit;
 
-	ESIF_TRACE_DYN_POLL("%s: Timer started for %s period %d\n",
-			    ESIF_FUNC, lpd_ptr->name_ptr, g_background);
+	rc = esif_ccb_timer_set_msec(&lpd_ptr->timer,
+				     lpd_ptr->timer_period_msec,
+				     ESIF_TRUE,
+				     esif_poll,
+				     lpd_ptr);
+	if (ESIF_OK != rc)
+		goto exit;
+
+
+	ESIF_TRACE_DYN_POLL("Timer started for %s period %d\n",
+			    lpd_ptr->name_ptr, g_background);
 	lpd_ptr->poll = ESIF_TRUE;
+exit:
+	return;
 }
 
 
@@ -379,8 +371,8 @@ void esif_poll_stop(
 
 	esif_ccb_timer_kill(&lpd_ptr->timer);
 
-	ESIF_TRACE_DYN_POLL("%s: Timer stopped for %s period %d\n",
-			    ESIF_FUNC, lpd_ptr->name_ptr, g_background);
+	ESIF_TRACE_DYN_POLL("Timer stopped for %s period %d\n",
+			    lpd_ptr->name_ptr, g_background);
 
 	/* Reset Power History */
 	lpd_ptr->rapl_energy_units_last    = 0;
@@ -400,7 +392,7 @@ enum esif_rc esif_poll_init(void)
 /* Exit Poll Manager */
 void esif_poll_exit(void)
 {
-	ESIF_TRACE_DYN_INIT("%s: Exit Polling\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Exit Polling\n");
 }
 
 

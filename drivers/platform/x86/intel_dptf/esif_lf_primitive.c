@@ -52,7 +52,7 @@
 *******************************************************************************/
 
 #include "esif_primitive.h"
-#include "esif_action.h"
+#include "esif_lf_action.h"
 #include "esif_ipc.h"
 
 #ifdef ESIF_ATTR_OS_WINDOWS
@@ -177,9 +177,9 @@ static enum esif_rc esif_lf_primitive_get_and_execute_action(
 	esif_action_dump(action_ptr);
 
 	/* Have Action Now Execute */
-	rc = esif_execute_action(primitive_ptr,
+	rc = esif_execute_action(lp_ptr,
+				 primitive_ptr,
 				 action_ptr,
-				 lp_ptr,
 				 (struct esif_data *)req_data_ptr,
 				 rsp_data_ptr);
 
@@ -349,7 +349,8 @@ enum esif_rc esif_execute_primitive(
 						ESIF_FUNC,
 						lp_ptr->dsp_ptr);
 			esif_dsp_unload(lp_ptr);
-			return ESIF_OK;
+			rc = ESIF_OK;
+			goto exit;
 		}
 
 		/* Reload? */
@@ -362,18 +363,27 @@ enum esif_rc esif_execute_primitive(
 			esif_dsp_unload(lp_ptr);
 		}
 		rc = esif_dsp_load(lp_ptr, req_data_ptr);
-		return rc;
+		goto exit;
 	}
 
 	/* Can't continue without DSP! */
-	if (NULL == lp_ptr->dsp_ptr)
-		return ESIF_E_NEED_DSP;
+	if (NULL == lp_ptr->dsp_ptr) {
+		rc = ESIF_E_NEED_DSP;
+		goto exit;
+	}
 
 	/* Free Me! */
 	primitive_ptr = lp_ptr->dsp_ptr->get_primitive(lp_ptr->dsp_ptr,
 						       tuple_ptr);
-	if (NULL == primitive_ptr)
-		return ESIF_E_PRIMITIVE_NOT_FOUND_IN_DSP;
+	if (NULL == primitive_ptr) {
+		rc = ESIF_E_PRIMITIVE_NOT_FOUND_IN_DSP;
+		goto exit;
+	}
+
+	if (ESIF_PM_PARTICIPANT_STATE_REGISTERED != esif_lf_pm_lp_get_state(lp_ptr)) {
+		rc = ESIF_E_PRIMITIVE_DST_UNAVAIL;
+		goto exit;
+	}
 
 	ESIF_TRACE_DYN_PRIM("%s: PRIMITIVE Lookup Found in DSP (%s)\n",
 		ESIF_FUNC, lp_ptr->dsp_ptr->get_code(lp_ptr->dsp_ptr));

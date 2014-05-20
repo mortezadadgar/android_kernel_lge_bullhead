@@ -299,7 +299,6 @@ enum esif_rc esif_lf_pm_lp_set_state(
 					lpd_ptr->temp_hysteresis,
 					lpd_ptr->temp_tjmax);
 
-				lpd_ptr->temp_notify_sent = ESIF_FALSE;
 				lpd_ptr->temp_aux0 = ESIF_DOMAIN_TEMP_INVALID;
 				lpd_ptr->temp_aux1 = ESIF_DOMAIN_TEMP_INVALID;
 			}

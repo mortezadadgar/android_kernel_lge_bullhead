@@ -68,6 +68,10 @@ struct esif_queue_instance {
 	char *name_ptr;		/* Queue Name */
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct esif_queue_instance *esif_queue_create (u32 depth, char *name_ptr);
 void esif_queue_destroy (struct esif_queue_instance *queue_ptr);
 
@@ -84,6 +88,10 @@ u32 esif_queue_size (struct esif_queue_instance *queue_ptr);
 /* Init / Exit */
 enum esif_rc esif_queue_init (void);
 void esif_queue_exit (void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _ESIF_QUEUE_H_ */
 

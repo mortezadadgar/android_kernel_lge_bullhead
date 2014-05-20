@@ -154,6 +154,25 @@ enum esif_event_type {
 typedef enum esif_event_type eEsifEventType;
 #endif
 
+/* Event */
+struct esif_event {
+	u16  size;		/* Event Size Including Data */
+	u8   version;		/* Event Version             */
+	u64  id;		/* Event Transaction ID      */
+	esif_ccb_time_t  timestamp;	/* Event Timestamp           */
+	enum esif_event_type      type;		/* Event Type                */
+	enum esif_event_priority  priority;	/* Event Priority            */
+	u8   src;		/* Event Source              */
+	u8   dst;		/* Event Destination         */
+	u16  dst_domain_id;	/* Event Destination Domain ID */
+	u16  data_size;		/* Event Data Size           */
+};
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Event Type String */
 static ESIF_INLINE char *esif_event_type_str(enum esif_event_type type)
 {
@@ -205,21 +224,6 @@ static ESIF_INLINE char *esif_event_type_str(enum esif_event_type type)
 	return str;
 }
 
-
-/* Event */
-struct esif_event {
-	u16  size;		/* Event Size Including Data */
-	u8   version;		/* Event Version             */
-	u64  id;		/* Event Transaction ID      */
-	esif_ccb_time_t  timestamp;	/* Event Timestamp           */
-	enum esif_event_type      type;		/* Event Type                */
-	enum esif_event_priority  priority;	/* Event Priority            */
-	u8   src;		/* Event Source              */
-	u8   dst;		/* Event Destination         */
-	u16  dst_domain_id;	/* Event Destination Domain ID */
-	u16  data_size;		/* Event Data Size           */
-};
-
 /*
  * Allocate Event
  * parameters:
@@ -256,6 +260,10 @@ void esif_event_exit(void);
 
 struct esif_ipc_event_header;
 void EsifEventProcess(struct esif_ipc_event_header *eventPtr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _ESIF_EVENT_H_ */
 

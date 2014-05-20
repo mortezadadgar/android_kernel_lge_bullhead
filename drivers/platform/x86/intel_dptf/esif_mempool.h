@@ -123,7 +123,15 @@ static ESIF_INLINE char *esif_mempool_str(u32 pool_tag)
 }
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern struct esif_ccb_mempool *g_mempool[ESIF_MEMPOOL_TYPE_MAX];
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _ESIF_MEMPOOL_H_ */
 

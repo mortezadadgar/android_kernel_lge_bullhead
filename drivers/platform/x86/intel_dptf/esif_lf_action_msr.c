@@ -51,7 +51,7 @@
 **
 *******************************************************************************/
 
-#include "esif_action.h"
+#include "esif_lf_action.h"
 
 #ifdef ESIF_ATTR_OS_WINDOWS
 
@@ -104,7 +104,7 @@ enum esif_rc read_mod_write_msr_bit_range(
 
 
 /* Compare */
-static ESIF_INLINE u8 msr_has_same_val(
+static u8 msr_has_same_val(
 	const u32 msr,
 	const u64 bit_mask
 	)
@@ -139,7 +139,10 @@ static ESIF_INLINE u8 msr_has_same_val(
 }
 
 
-static ESIF_INLINE enum esif_rc read_msr_by_hint(
+static enum esif_rc read_msr_by_hint(
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const enum esif_data_type data_type,
 	const u32 msr,
 	const u8 bit_from,
 	const u8 bit_to,
@@ -147,11 +150,18 @@ static ESIF_INLINE enum esif_rc read_msr_by_hint(
 	u64 *val
 	)
 {
-	u64 curr_val = 0, min_val = ~(0UL), max_val = 0; 
-	u64 cpu_mask, bit_mask; 
-	u32 cpu, i;
 	enum esif_rc rc = ESIF_OK;
-	
+	u64 curr_val = 0;
+	u64 curr_msr = 0; 
+	u64 min_val  = ~(0UL);
+	u64 min_msr  = ~(0UL); 
+	u64 max_val  = 0; 
+	u64 max_msr  = 0; 
+	u64 cpu_mask; 
+	u64 bit_mask; 
+	u32 cpu; 
+	u32 i;
+
 	if (ESIF_ACTION_MSR_HINT_MAX != hint && ESIF_ACTION_MSR_HINT_MIN != hint)
 		return ESIF_E_NOT_IMPLEMENTED;
 
@@ -163,42 +173,81 @@ static ESIF_INLINE enum esif_rc read_msr_by_hint(
 	for (cpu = 0; cpu < sizeof(cpu) * 8; cpu++) {
 		/* Active CPUs */ 
 		if ((cpu_mask & (((u64) 0x1UL) << cpu))) {
-			rc = esif_ccb_read_msr((u8)cpu, msr, &curr_val);
+			rc = esif_ccb_read_msr((u8)cpu, msr, &curr_msr);
 			if (ESIF_OK != rc)
 				return ESIF_E_MSR_IO_FAILURE; 
 
 			/* Mask-n-Shift MSR value */
-			curr_val = curr_val & bit_mask;
-			curr_val = curr_val >> bit_from;
+			curr_msr = curr_msr & bit_mask;
+			curr_msr = curr_msr >> bit_from;
 
-			max_val = (curr_val > max_val) ? curr_val : max_val;
-			min_val = (curr_val < min_val) ? curr_val : min_val;
-			ESIF_TRACE_DYN_GET("%s: msr 0x%x curr %llu max %llu min %llu\n", 
-				ESIF_FUNC, msr, curr_val, max_val, min_val);
+			/* Max MSR Doesn't Necessary Mean Max Temp/Power */
+			switch (data_type) {
+			case ESIF_DATA_TEMPERATURE:
+			case ESIF_DATA_POWER:
+				curr_val = curr_msr;
+				rc = esif_execute_xform_func(lp_ptr,
+							     primitive_ptr, 
+							     ESIF_ACTION_MSR,
+							     data_type,
+							     &curr_val);
+				if (rc != ESIF_OK)
+					goto exit;
+
+				/* Keep Max Value Of Temp/Power and Its MSR */
+				if (curr_val >= max_val) {
+					max_val = curr_val;
+					max_msr = curr_msr;
+				}
+				if (curr_val <= min_val) {
+					min_val = curr_val;
+					min_msr = curr_msr;
+				}
+				break;
+
+			default:
+				max_msr = (curr_msr > max_msr) ? curr_msr : 
+						max_msr;
+				min_msr = (curr_msr < min_msr) ? curr_msr : 
+						min_msr;
+			}
+
+			ESIF_TRACE_DYN_GET(
+				"CPU-%d type %s msr 0x%x = {curr 0x%llx "
+				"max 0x%llx min 0x%llx} " 
+				"val = {curr %llu max %llu min %llu}\n", 
+				cpu, esif_data_type_str(data_type), msr, 
+				curr_msr, max_msr, min_msr,
+				curr_val, max_val, min_val);
 		}
 	}
 
 	if (ESIF_ACTION_MSR_HINT_MAX == hint)
-		*val = max_val; 
+		*val = max_msr;
 	else
-		*val = min_val; 
+		*val = min_msr;
+exit:
 	return rc;
 }  
 
 
 /* Get */
 enum esif_rc esif_get_action_msr(
-	const u32 msr,
-	const u8 bit_from,
-	const u8 bit_to,
-	const u32 cpus,
-	const u32 hint,
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
 	const struct esif_data *req_data_ptr,
-	struct esif_data *rsp_data_ptr
+	const enum esif_data_type xform_type,
+	struct esif_data *rsp_data_ptr 
 	)
 {
-	union esif_binary_object bin;
 	enum esif_rc rc = ESIF_OK;
+	union esif_binary_object bin;
+	u32 msr;
+	u8 bit_from;
+	u8 bit_to;
+	u32 hint;
+	u32 cpus = 0;	/* Default CPU */
 	u64 val = 0;
 	u64 bit_mask = 0;
 	u64 cpu_mask = 0;
@@ -209,14 +258,48 @@ enum esif_rc esif_get_action_msr(
 	u32 needed_len = 0;
 	u8 cpu_str[8];
 
-	UNREFERENCED_PARAMETER(req_data_ptr);
+	if ((NULL == lp_ptr) || (NULL == primitive_ptr) ||
+	    (NULL == action_ptr) || (NULL == req_data_ptr) ||
+	    (NULL == rsp_data_ptr)) {
+		    rc = ESIF_E_PARAMETER_IS_NULL;
+		    goto exit;
+	}
+
+	msr = action_ptr->get_p1_u32(action_ptr);
+	bit_from = (u8)action_ptr->get_p3_u32(action_ptr);
+	bit_to = (u8)action_ptr->get_p2_u32(action_ptr);
+
+	/*
+	 * getp_pX_u32() = -1 means the parameter isn't set, 0 is a valid value.
+	 * When p4 (hint) is set, CPU affinity mask is required, either provided by UF
+	 * or use all active  CPUs.
+	 */
+	hint = action_ptr->get_p4_u32(action_ptr);
+	if ((int)hint > 0) {
+		/* Use cpu_affinity_mask from by UF, or  all */
+		if (req_data_ptr->buf_len ==
+			sizeof(u32) &&
+			req_data_ptr->type == ESIF_DATA_UINT32) {
+			cpus = (*(u32 *)req_data_ptr->buf_ptr);
+		} else {
+			/* For hint without binary type */
+			if (rsp_data_ptr->type == ESIF_DATA_UINT8 ||
+				rsp_data_ptr->type == ESIF_DATA_UINT16 ||
+				rsp_data_ptr->type == ESIF_DATA_UINT32 ||
+				rsp_data_ptr->type == ESIF_DATA_UINT64) {
+				cpus = (u32)(0UL); /* Use 0 */
+			} else {
+				cpus = (u32) ~(0UL); /* All */
+			}
+		}
+	}
+
 	ESIF_TRACE_DYN_GET(
-		"%s: read msr %d bit_from %d to %d cpus 0x%x hint %x "
+		"Read msr %d[%d:%d] - cpus 0x%x hint %x "
 		"req_type %s len %d rsp_type %s len %d\n",
-		ESIF_FUNC,
 		msr,
-		bit_from,
 		bit_to,
+		bit_from,
 		cpus,
 		hint,
 		esif_data_type_str(req_data_ptr->type),
@@ -239,7 +322,14 @@ enum esif_rc esif_get_action_msr(
 		switch (hint) {
 		case ESIF_ACTION_MSR_HINT_MAX: 
 		case ESIF_ACTION_MSR_HINT_MIN: 
-			rc = read_msr_by_hint(msr, bit_from, bit_to, hint, &val);
+			rc = read_msr_by_hint(lp_ptr,
+					primitive_ptr,
+					xform_type,
+					msr, 
+					bit_from, 
+					bit_to, 
+					hint, 
+					&val);
 			if (ESIF_OK != rc)
 				return rc; 
 			break;
@@ -284,8 +374,6 @@ enum esif_rc esif_get_action_msr(
 			break;
 
 		case ESIF_DATA_UINT32:
-		case ESIF_DATA_POWER:
-		case ESIF_DATA_TEMPERATURE:
 		case ESIF_DATA_TIME:
 			rsp_data_ptr->data_len = sizeof(u32);
 			if (rsp_data_ptr->buf_len >= sizeof(u32))
@@ -324,12 +412,11 @@ enum esif_rc esif_get_action_msr(
 			break;
 		}
 		ESIF_TRACE_DYN_GET(
-			"%s: Single read msr 0x%x bit_from %d bit_to %d "
+			"Single read msr 0x%x[%d:%d] "
 			"len %d rc %d val 0x%llx\n",
-			ESIF_FUNC,
 			msr,
-			bit_from,
 			bit_to,
+			bit_from,
 			needed_len,
 			rc,
 			val);
@@ -398,32 +485,36 @@ enum esif_rc esif_get_action_msr(
 			rc = ESIF_E_NEED_LARGER_BUFFER;
 
 		ESIF_TRACE_DYN_GET(
-			"%s: Multi read msr 0x%x bit_from %d bit_to %d "
-			" len %d rc %d passed %d failed %d\n",
-			ESIF_FUNC,
+			"Multi read msr 0x%x[%d:%d] "
+			"len %d rc %d passed %d failed %d\n",
 			msr,
-			bit_from,
 			bit_to,
+			bit_from,
 			needed_len,
 			rc,
 			has_ok,
 			has_failed);
 	}
+exit:
+	ESIF_TRACE_DYN_GET("RC: %s(%d)\n", esif_rc_str(rc), rc);
 	return rc;
 }
 
 
 /* Set */
 enum esif_rc esif_set_action_msr(
-	const u32 msr,
-	const u8 bit_from,
-	const u8 bit_to,
-	const u32 cpus,
-	const u32 hint,
-	const struct esif_data *req_data_ptr
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
+	struct esif_data *req_data_ptr
 	)
 {
 	enum esif_rc rc = ESIF_OK;
+	u32 msr;
+	u8 bit_from;
+	u8 bit_to;
+	u32 hint;
+	u32 cpus = 0;	/* Default CPU */
 	u64 saved_val = 0;
 	u64 val = 0;
 	u64 orig_val = 0;
@@ -433,19 +524,47 @@ enum esif_rc esif_set_action_msr(
 	u32 has_ok = 0;
 	u32 has_failed = 0;
 
-	UNREFERENCED_PARAMETER(hint);
+	UNREFERENCED_PARAMETER(lp_ptr);
+	UNREFERENCED_PARAMETER(primitive_ptr);
+
+	if ((NULL == action_ptr) || (NULL == req_data_ptr)) {
+		rc = ESIF_E_PARAMETER_IS_NULL;
+		goto exit;
+	}
+
+	msr      = action_ptr->get_p1_u32(action_ptr);
+	bit_from = (u8)action_ptr->get_p3_u32(action_ptr);
+	bit_to   = (u8)action_ptr->get_p2_u32(action_ptr);
+
+	/*
+	 * getp_pX_u32() = -1 means the parameter isn't set, 0 is a valid value.
+	 * When p4 (hint) is set, CPU affinity mask is required, either provided by UF
+	 * or use all active  CPUs.
+	 */
+	hint    = action_ptr->get_p4_u32(action_ptr);
+	if ((hint > 0)) {
+		/*
+		* Expected Request Data {msr_value} or
+		* {msr_value, cpu_affinity_mask}
+		*/
+		if ((req_data_ptr->buf_len == (sizeof(u32) * 2)) &&
+		    (req_data_ptr->type == ESIF_DATA_UINT32)) {
+			cpus = (*(u32 *)((u8 *)req_data_ptr->buf_ptr + 4));
+		} else {
+			cpus = (u32) ~(0UL);
+		}
+	}
+
 	ESIF_TRACE_DYN_SET(
-		"%s: write msr %x bit_from %d to %d cpu_mask 0x%x "
-		" hint %x req_type %s len %d\n",
-		ESIF_FUNC,
+		"Write msr %x[%d:%d] cpu_mask 0x%x "
+		"hint %x req_type %s len %d\n",
 		msr,
-		bit_from,
 		bit_to,
+		bit_from,
 		cpus,
 		hint,
 		esif_data_type_str(req_data_ptr->type),
 		req_data_ptr->buf_len);
-
 
 	switch (req_data_ptr->type) {
 	case ESIF_DATA_UINT8:
@@ -463,8 +582,6 @@ enum esif_rc esif_set_action_msr(
 		break;
 
 	case ESIF_DATA_UINT32:
-	case ESIF_DATA_POWER:
-	case ESIF_DATA_TEMPERATURE:
 	case ESIF_DATA_TIME:
 		if (req_data_ptr->buf_len >= sizeof(u32))
 			val = *((u32 *)req_data_ptr->buf_ptr);
@@ -527,12 +644,11 @@ enum esif_rc esif_set_action_msr(
 		}
 		esif_ccb_write_unlock(&g_esif_action_msr_lock);
 		ESIF_TRACE_DYN_GET(
-			"%s: Single write msr 0x%x bit_from %d to %d "
+			"Single write msr 0x%x[%d:%d] "
 			"val 0x%llu rc %d\n",
-			ESIF_FUNC,
 			msr,
-			bit_from,
 			bit_to,
+			bit_from,
 			val,
 			rc);
 	} else {
@@ -552,7 +668,7 @@ enum esif_rc esif_set_action_msr(
 					/* Re-store Original Value */
 					val = saved_val;
 					orig_val &= ~(bit_mask);
-					val = (val << bit_from) | orig_val;
+					val = ((val << bit_from) & bit_mask) | orig_val;
 
 					/* Write MSR 64-Bit Always */
 					rc = esif_ccb_write_msr((u8)i,
@@ -577,17 +693,18 @@ enum esif_rc esif_set_action_msr(
 			      : ESIF_E_MSR_IO_FAILURE;
 
 		ESIF_TRACE_DYN_SET(
-			"%s: Multi write msr 0x%x bit_from %d to %d "
+			"Multi write msr 0x%x[%d:%d] "
 			"val 0x%llu rc %d pass %d fail %d\n",
-			ESIF_FUNC,
 			msr,
-			bit_from,
 			bit_to,
+			bit_from,
 			val,
 			rc,
 			has_ok,
 			has_failed);
 	}
+exit:
+	ESIF_TRACE_DYN_SET("RC: %s(%d)\n", esif_rc_str(rc), rc);
 	return rc;
 }
 
@@ -595,7 +712,7 @@ enum esif_rc esif_set_action_msr(
 /* Init */
 enum esif_rc esif_action_msr_init(void)
 {
-	ESIF_TRACE_DYN_INIT("%s: Initialize MSR Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Initialize MSR Action\n");
 	esif_ccb_lock_init(&g_esif_action_msr_lock);
 	return ESIF_OK;
 }
@@ -605,7 +722,7 @@ enum esif_rc esif_action_msr_init(void)
 void esif_action_msr_exit(void)
 {
 	esif_ccb_lock_uninit(&g_esif_action_msr_lock);
-	ESIF_TRACE_DYN_INIT("%s: Exit MSR Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Exit MSR Action\n");
 }
 
 
@@ -648,10 +765,9 @@ exit:
 	esif_ccb_write_unlock(&g_esif_action_msr_lock);
 
 	ESIF_TRACE_DYN_GET(
-		"%s: Single write msr 0x%x bit_from %d to %d "
-		"val 0x%llu rc %d\n",
-		ESIF_FUNC, msr, bit_from, bit_to,
-		val, rc);
+		"Single write msr 0x%x[%d:%d] "
+		"val 0x%llu rc %s\n",
+		msr, bit_to, bit_from, val, esif_rc_str(rc));
 	return rc;
 }
 

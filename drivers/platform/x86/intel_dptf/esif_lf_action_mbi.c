@@ -51,7 +51,7 @@
 **
 *******************************************************************************/
 
-#include "esif_action.h"
+#include "esif_lf_action.h"
 
 #ifdef ESIF_ATTR_OS_WINDOWS
 
@@ -90,11 +90,10 @@ static esif_ccb_lock_t g_esif_action_mbi_lock;
 
 /* Get */
 enum esif_rc esif_get_action_mbi(
-	const u8 port,
-	const u8 punit,
-	const u8 bit_from,
-	const u8 bit_to,
-	const struct esif_data *req_data_ptr,
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
+	struct esif_data *req_data_ptr,
 	struct esif_data *rsp_data_ptr
 	)
 {
@@ -103,11 +102,27 @@ enum esif_rc esif_get_action_mbi(
 	int i        = 0;	/* Loop Counter                            */
 	u32 val      = 0;	/* Temporary MMIO Value MMIO Always 32 Bit */
 	u32 bit_mask = 0;	/* Bit Mask For MMIO Value                 */
+	u8 port;
+	u8 punit;
+	u8 bit_from;
+	u8 bit_to;
 
+	UNREFERENCED_PARAMETER(lp_ptr);
+	UNREFERENCED_PARAMETER(primitive_ptr);
 	UNREFERENCED_PARAMETER(req_data_ptr);
+
+	if ((NULL == action_ptr) || (NULL == rsp_data_ptr)) {
+		rc = ESIF_E_PARAMETER_IS_NULL;
+		goto exit;
+	}
+
+	port      = (u8)action_ptr->get_p1_u32(action_ptr);
+	punit     = (u8)action_ptr->get_p2_u32(action_ptr);
+	bit_from = (u8)action_ptr->get_p4_u32(action_ptr);
+	bit_to  = (u8)action_ptr->get_p3_u32(action_ptr);
+
 	ESIF_TRACE_DYN_GET(
-		"%s: port 0x%02x punit 0x%02x bit_from %d bit_to %d\n",
-		ESIF_FUNC,
+		"port 0x%02x punit 0x%02x bit_from %d bit_to %d\n",
 		port,
 		punit,
 		bit_from,
@@ -155,50 +170,57 @@ enum esif_rc esif_get_action_mbi(
 		break;
 	}
 exit:
+	ESIF_TRACE_DYN_GET("RC: %s(%d)\n", esif_rc_str(rc), rc);
 	return rc;
 }
 
 
 /* Set */
 enum esif_rc esif_set_action_mbi(
-	const u8 port,
-	const u8 punit,
-	const u8 bit_from,
-	const u8 bit_to,
-	const struct esif_data *req_data_ptr
+	const struct esif_lp *lp_ptr,
+	const struct esif_lp_primitive *primitive_ptr,
+	const struct esif_lp_action *action_ptr,
+	struct esif_data *req_data_ptr
 	)
 {
-#if 0
-	enum esif_rc rc = ESIF_OK;
-	int i = 0;	        /* Loop Counter                            */
-	u32 req_val     = 0;	/* Request MMIO Value                      */
-	u32 orig_val    = 0;	/* Original Value Of MMIO                  */
-	u32 bit_mask    = 0;	/* Bit Mask                                */
-#endif
+	enum esif_rc rc = ESIF_E_NOT_IMPLEMENTED;
+	u8 port;
+	u8 punit;
+	u8 bit_from;
+	u8 bit_to;
 
-	UNREFERENCED_PARAMETER(port);
-	UNREFERENCED_PARAMETER(punit);
-	UNREFERENCED_PARAMETER(bit_from);
-	UNREFERENCED_PARAMETER(bit_to);
+	UNREFERENCED_PARAMETER(lp_ptr);
+	UNREFERENCED_PARAMETER(primitive_ptr);
 	UNREFERENCED_PARAMETER(req_data_ptr);
 
+	if ((NULL == action_ptr) || (NULL == req_data_ptr)) {
+		rc = ESIF_E_PARAMETER_IS_NULL;
+		goto exit;
+	}
+
+	port      = (u8)action_ptr->get_p1_u32(action_ptr);
+	punit     = (u8)action_ptr->get_p2_u32(action_ptr);
+	bit_from = (u8)action_ptr->get_p4_u32(action_ptr);
+	bit_to  = (u8)action_ptr->get_p3_u32(action_ptr);
+
 	ESIF_TRACE_DYN_SET(
-		"%s: req type %s, mbi port %02x punit 0x02%x bit_from %d bit_to %d\n",
-		ESIF_FUNC,
+		"req type %s, mbi port %02x punit 0x02%x bit_from %d bit_to %d\n",
 		esif_data_type_str(req_data_ptr->type),
 		port,
 		punit,
 		bit_from,
 		bit_to);
 
-	return ESIF_E_NOT_IMPLEMENTED;
+exit:
+	ESIF_TRACE_DYN_SET("RC: %s(%d)\n", esif_rc_str(rc), rc);
+	return rc;
 }
 
 
 /* Init */
 enum esif_rc esif_action_mbi_init(void)
 {
-	ESIF_TRACE_DYN_INIT("%s: Initialize MBI Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Initialize MBI Action\n");
 	esif_ccb_lock_init(&g_esif_action_mbi_lock);
 	return ESIF_OK;
 }
@@ -208,7 +230,7 @@ enum esif_rc esif_action_mbi_init(void)
 void esif_action_mbi_exit(void)
 {
 	esif_ccb_lock_uninit(&g_esif_action_mbi_lock);
-	ESIF_TRACE_DYN_INIT("%s: Exit MBI Action\n", ESIF_FUNC);
+	ESIF_TRACE_DYN_INIT("Exit MBI Action\n");
 }
 
 

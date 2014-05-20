@@ -142,10 +142,25 @@ void esif_debug_get_module_category (
 #ifdef ESIF_ATTR_OS_WINDOWS
 #endif
 #ifdef ESIF_ATTR_OS_LINUX
-# include <syslog.h>
-# define IDENT		"DPTF"
-# define OPTION		LOG_PID
-# define FACILITY	LOG_DAEMON
+# ifdef ESIF_ATTR_OS_ANDROID
+#  include <android/log.h>
+#  define IDENT    "DPTF"
+#  define ESIF_PRIORITY_FATAL   ANDROID_LOG_FATAL
+#  define ESIF_PRIORITY_ERROR   ANDROID_LOG_ERROR
+#  define ESIF_PRIORITY_WARNING ANDROID_LOG_WARN
+#  define ESIF_PRIORITY_INFO    ANDROID_LOG_INFO
+#  define ESIF_PRIORITY_DEBUG   ANDROID_LOG_DEBUG
+# else
+#  include <syslog.h>
+#  define IDENT    "DPTF"
+#  define OPTION   LOG_PID
+#  define FACILITY LOG_DAEMON
+#  define ESIF_PRIORITY_FATAL   LOG_EMERG
+#  define ESIF_PRIORITY_ERROR   LOG_ERR
+#  define ESIF_PRIORITY_WARNING LOG_WARNING
+#  define ESIF_PRIORITY_INFO    LOG_INFO
+#  define ESIF_PRIORITY_DEBUG   LOG_DEBUG
+# endif
 #endif
 
 #define TRACEON(module)		((esif_tracemask_t)1 << (module))
@@ -190,7 +205,7 @@ struct esif_tracelevel_s g_traceinfo[] = {
 #define ESIF_TRACELEVEL_MAX ((sizeof(g_traceinfo) / sizeof(struct esif_tracelevel_s)) - 1)
 int g_traceLevel_max = ESIF_TRACELEVEL_MAX;
 
-#define DETAILED_TRACELEVEL	ESIF_TRACELEVEL_DEBUG
+#define DETAILED_TRACELEVEL	ESIF_TRACELEVEL_FATAL /* All Trace Levels */
 
 const struct EsifTraceModuleList_s {
 	enum esif_tracemodule	id;
@@ -242,6 +257,7 @@ int EsifTraceMessage(
 	char *fmtInfo  = "%s%s: ";
 	const char *sep=NULL;
 	size_t fmtlen=esif_ccb_strlen(msg, 0x7FFFFFFF);
+	int  detailed_message = (level >= DETAILED_TRACELEVEL ? ESIF_TRUE : ESIF_FALSE);
 	va_list args;
 		
 	UNREFERENCED_PARAMETER(module);
@@ -249,8 +265,13 @@ int EsifTraceMessage(
 	if ((sep = strrchr(file, *ESIF_PATH_SEP)) != NULL)
 		file = sep+1;
 
+	// Do not function/file/line number information for app interface messages logged from EsifSvcWriteLog
+	if (esif_ccb_strcmp(func, "EsifSvcWriteLog") == 0) {
+		detailed_message = ESIF_FALSE;
+	}
+
 	if (g_traceinfo[level].routes & ESIF_TRACEROUTE_CONSOLE) {
-		if (level >= DETAILED_TRACELEVEL)
+		if (detailed_message)
 			rc =  CMD_CONSOLE(fmtDetail, appname, g_traceinfo[level].label, func, file, line);
 		else
 			rc =  CMD_CONSOLE(fmtInfo, appname, g_traceinfo[level].label);
@@ -270,7 +291,7 @@ int EsifTraceMessage(
 		esif_ccb_ctime(timestamp, sizeof(timestamp), &now);
 		timestamp[20] = 0; // truncate year
 
-		if (level >= DETAILED_TRACELEVEL)
+		if (detailed_message)
 			rc =  EsifLogFile_Write(ESIF_LOG_TRACE, fmtDetail, timestamp+4, g_traceinfo[level].label, func, file, line);
 		else
 			rc =  EsifLogFile_Write(ESIF_LOG_TRACE, fmtInfo, timestamp+4, g_traceinfo[level].label);
@@ -291,11 +312,11 @@ int EsifTraceMessage(
 		va_start(args, msg);
 		msglen = esif_ccb_vscprintf(msg, args) + esif_ccb_strlen(g_traceinfo[level].label, MAX_PATH) + esif_ccb_strlen(appname, MAX_PATH) + esif_ccb_strlen(func, MAX_PATH) + esif_ccb_strlen(file, MAX_PATH) + 10;
 		va_end(args);
-		msglen += (level >= DETAILED_TRACELEVEL ? esif_ccb_strlen(fmtDetail, MAX_PATH) : esif_ccb_strlen(fmtInfo, MAX_PATH));
+		msglen += (detailed_message ? esif_ccb_strlen(fmtDetail, MAX_PATH) : esif_ccb_strlen(fmtInfo, MAX_PATH));
 		buffer = (char *)esif_ccb_malloc(msglen);
 
 		if (NULL != buffer) {
-			if (level >= DETAILED_TRACELEVEL)
+			if (detailed_message)
 				rc =  esif_ccb_sprintf(msglen, buffer, fmtDetail, appname, g_traceinfo[level].label, func, file, line);
 			else
 				rc =  esif_ccb_sprintf(msglen, buffer, fmtInfo, appname, g_traceinfo[level].label);
@@ -319,17 +340,21 @@ int EsifTraceMessage(
 		WORD eventType;
 
 		appname  = "";
-		fmtInfo= "%sESIF(%s) TYPE: %s\n\n";
+		fmtInfo  = "%sESIF(%s) TYPE: %s\n\n";
+		fmtDetail= "%sESIF(%s) TYPE: %s FUNC: %s FILE: %s LINE: %d\n\n";
 		backset  = 0;
 
 		va_start(args, msg);
 		msglen = esif_ccb_vscprintf(msg,args) + esif_ccb_strlen(g_traceinfo[level].label, MAX_PATH) + esif_ccb_strlen(appname, MAX_PATH) + esif_ccb_strlen(func, MAX_PATH) + esif_ccb_strlen(file, MAX_PATH) + 20;
 		va_end(args);
-		msglen += esif_ccb_strlen(fmtInfo, MAX_PATH);
+		msglen += (detailed_message ? esif_ccb_strlen(fmtDetail, MAX_PATH) : esif_ccb_strlen(fmtInfo, MAX_PATH));
 		buffer = (char *)esif_ccb_malloc(msglen);
-		if (NULL != buffer) {
 
-			rc =  esif_ccb_sprintf(msglen, buffer, fmtInfo, appname, ESIF_UF_VERSION, g_traceinfo[level].label);
+		if (NULL != buffer) {
+			if (detailed_message)
+				rc = esif_ccb_sprintf(msglen, buffer, fmtDetail, appname, ESIF_UF_VERSION, g_traceinfo[level].label, func, file, line);
+			else
+				rc = esif_ccb_sprintf(msglen, buffer, fmtInfo, appname, ESIF_UF_VERSION, g_traceinfo[level].label);
 
 			if (backset && backset < rc)
 				buffer[rc-backset-1] = 0;
@@ -372,11 +397,11 @@ int EsifTraceMessage(
 		va_start(args, msg);
 		msglen = esif_ccb_vscprintf(msg,args) + esif_ccb_strlen(g_traceinfo[level].label, MAX_PATH) + esif_ccb_strlen(func, MAX_PATH) + esif_ccb_strlen(file, MAX_PATH) + 10;
 		va_end(args);
-		msglen += (level >= DETAILED_TRACELEVEL ? esif_ccb_strlen(fmtDetail, MAX_PATH) : esif_ccb_strlen(fmtInfo, MAX_PATH));
+		msglen += (detailed_message ? esif_ccb_strlen(fmtDetail, MAX_PATH) : esif_ccb_strlen(fmtInfo, MAX_PATH));
 		buffer = (char *)esif_ccb_malloc(msglen);
 
 		if (NULL != buffer) {
-			if (level >= DETAILED_TRACELEVEL)
+			if (detailed_message)
 				rc =  esif_ccb_sprintf(msglen, buffer, fmtDetail, g_traceinfo[level].label, func, file, line);
 			else
 				rc =  esif_ccb_sprintf(msglen, buffer, fmtInfo, g_traceinfo[level].label);
@@ -390,25 +415,29 @@ int EsifTraceMessage(
 
 			switch (g_traceinfo[level].level) {
 			case ESIF_TRACELEVEL_FATAL:
-				priority = LOG_EMERG;
+				priority = ESIF_PRIORITY_FATAL;
 				break;
 			case ESIF_TRACELEVEL_ERROR:
-				priority = LOG_ERR;
+				priority = ESIF_PRIORITY_ERROR;
 				break;
 			case ESIF_TRACELEVEL_WARN:
-				priority = LOG_WARNING;
+				priority = ESIF_PRIORITY_WARNING;
 				break;
 			case ESIF_TRACELEVEL_INFO:
-				priority = LOG_INFO;
+				priority = ESIF_PRIORITY_INFO;
 				break;
 			case ESIF_TRACELEVEL_DEBUG:
 			default:
-				priority = LOG_DEBUG;
+				priority = ESIF_PRIORITY_DEBUG;
 				break;
 			}
+		#ifdef ESIF_ATTR_OS_ANDROID
+			__android_log_write(priority, IDENT, buffer);
+		#else
 			openlog(IDENT, OPTION, FACILITY);
 			syslog(priority, "%s", buffer);
 			closelog();
+		#endif
 			esif_ccb_free(buffer);
 		}
 	}
