@@ -1151,20 +1151,18 @@ static void tegra_dc_hdmi_write_infopack(struct tegra_dc *dc, int header_reg,
 	}
 }
 
-static int tegra_dc_find_cea_vic(const struct tegra_dc_mode *mode)
+int tegra_dc_find_cea_vic(struct fb_videomode mode)
 {
-	struct fb_videomode m;
 	unsigned i;
 	unsigned best = 0;
 
-	tegra_dc_to_fb_videomode(&m, mode);
-
-	m.vmode &= ~FB_VMODE_STEREO_MASK; /* stereo modes have the same VICs */
+	/* stereo modes have the same VICs */
+	mode.vmode &= ~FB_VMODE_STEREO_MASK;
 
 	for (i = 1; i < CEA_MODEDB_SIZE; i++) {
 		const struct fb_videomode *curr = &cea_modes[i];
 
-		if (!fb_mode_is_equal_tolerance(&m, curr,
+		if (!fb_mode_is_equal_tolerance(&mode, curr,
 						HDMI_PIXEL_CLOCK_TOLERANCE))
 			continue;
 
@@ -1172,9 +1170,9 @@ static int tegra_dc_find_cea_vic(const struct tegra_dc_mode *mode)
 			best = i; /* use first item if nothing is already set */
 		/* if either flag is set, then match is required */
 		if (curr->flag & (FB_FLAG_RATIO_4_3 | FB_FLAG_RATIO_16_9)) {
-			if (m.flag & curr->flag & FB_FLAG_RATIO_4_3)
+			if (mode.flag & curr->flag & FB_FLAG_RATIO_4_3)
 				best = i;
-			else if (m.flag & curr->flag & FB_FLAG_RATIO_16_9)
+			else if (mode.flag & curr->flag & FB_FLAG_RATIO_16_9)
 				best = i;
 		} else {
 			best = i;
@@ -1246,6 +1244,7 @@ static void tegra_dc_hdmi_setup_avi_infoframe(struct tegra_dc *dc, bool dvi)
 {
 	struct tegra_dc_hdmi_data *hdmi = tegra_dc_get_outdata(dc);
 	struct hdmi_avi_infoframe avi;
+	struct fb_videomode m;
 	unsigned int blender_reg;
 
 	if (dvi) {
@@ -1272,7 +1271,8 @@ static void tegra_dc_hdmi_setup_avi_infoframe(struct tegra_dc *dc, bool dvi)
 	else
 		tegra_dc_writel(dc, 0x00000000, blender_reg);
 
-	avi.vic = tegra_dc_find_cea_vic(&dc->mode);
+	tegra_dc_to_fb_videomode(&m, &dc->mode);
+	avi.vic = tegra_dc_find_cea_vic(m);
 	avi.m = dc->mode.avi_m;
 	if (tegra_edid_underscan_supported(hdmi->edid))
 		avi.s = HDMI_AVI_S_UNDERSCAN;

@@ -414,6 +414,7 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 		const struct fb_videomode *fbmode, bool stereo_mode)
 {
 	struct tegra_dc_mode mode;
+	u32 flag = 0;
 
 	if (!fbmode->pixclock)
 		return -EINVAL;
@@ -430,9 +431,22 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 	mode.v_front_porch = fbmode->lower_margin;
 	mode.stereo_mode = stereo_mode;
 	mode.vmode = fbmode->vmode;
-	if (fbmode->flag & FB_FLAG_RATIO_16_9)
+
+	flag = fbmode->flag;
+
+	/* If no aspect ratio for hdmi, try to match cea */
+	if (dc->out->type == TEGRA_DC_OUT_HDMI &&
+	    !(fbmode->flag & (FB_FLAG_RATIO_16_9 | FB_FLAG_RATIO_4_3))) {
+		int cea = 0;
+		cea = tegra_dc_find_cea_vic(*fbmode);
+		if (cea)
+			flag |= cea_modes[cea].flag &
+				(FB_FLAG_RATIO_16_9 | FB_FLAG_RATIO_4_3);
+	}
+
+	if (flag & FB_FLAG_RATIO_16_9)
 		mode.avi_m = TEGRA_DC_MODE_AVI_M_16_9;
-	else if (fbmode->flag & FB_FLAG_RATIO_4_3)
+	else if (flag & FB_FLAG_RATIO_4_3)
 		mode.avi_m = TEGRA_DC_MODE_AVI_M_4_3;
 	else if (dc->out) { /* if ratio is unspecified, detect a default */
 		unsigned h_size = dc->out->h_size;
