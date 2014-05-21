@@ -302,7 +302,7 @@ static void assert_pwm(struct drm_i915_private *dev_priv,
 	bool state;
 
 	if (IS_VALLEYVIEW(dev_priv->dev) &&
-	    !(I915_READ(VLV_BLC_PWM_CTL2(pipe) & BLM_PWM_ENABLE)))
+	    !(I915_READ(VLV_BLC_PWM_CTL2(pipe)) & BLM_PWM_ENABLE))
 		state = false;
 	else
 		state = (intel_panel_get_backlight(connector) != 0);
