@@ -428,6 +428,8 @@ struct mxt_data {
 	u8 T19_ctrl;
 	bool T19_ctrl_valid;
 
+	u8 T19_status;
+
 	/* Protect access to the object register buffer */
 	struct mutex object_str_mutex;
 	char *object_str;
@@ -1234,6 +1236,7 @@ static int mxt_proc_messages(struct mxt_data *data, u8 count, bool report)
 		} else if (reportid == data->T19_reportid) {
 			mxt_input_button(data, msg);
 			update_input = true;
+			data->T19_status = msg[1];
 		} else if (mxt_is_T100_message(data, reportid)) {
 			/* check SCRSTATUS */
 			if (reportid == data->T100_reportid_min) {
@@ -2650,6 +2653,30 @@ static ssize_t mxt_suspend_acq_interval_ms_store(struct device *dev,
 	return count;
 }
 
+static ssize_t mxt_force_T19_report(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	struct i2c_client *client = data->client;
+	int ret;
+	u8 T19_ctrl = 0;
+	ret = __mxt_read_reg(client, MXT_SPT_GPIOPWM_T19, 1, &T19_ctrl);
+	if (ret)
+		return ret;
+	/* Force T19 to report status */
+	T19_ctrl = T19_ctrl | 0x04;
+	ret = mxt_write_object(data, MXT_SPT_GPIOPWM_T19, 0, T19_ctrl);
+	return ret ?: count;
+}
+
+static ssize_t mxt_T19_status_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	return scnprintf(buf, PAGE_SIZE, "%02x\n", data->T19_status);
+}
+
 static DEVICE_ATTR(backupnv, S_IWUSR, NULL, mxt_backupnv_store);
 static DEVICE_ATTR(calibrate, S_IWUSR, NULL, mxt_calibrate_store);
 static DEVICE_ATTR(config_csum, S_IRUGO, mxt_config_csum_show, NULL);
@@ -2667,6 +2694,8 @@ static DEVICE_ATTR(update_fw, S_IWUSR, NULL, mxt_update_fw_store);
 static DEVICE_ATTR(suspend_acq_interval_ms, S_IRUGO | S_IWUSR,
 		   mxt_suspend_acq_interval_ms_show,
 		   mxt_suspend_acq_interval_ms_store);
+static DEVICE_ATTR(T19_status, S_IRUGO | S_IWUSR, mxt_T19_status_show,
+		   mxt_force_T19_report);
 
 static struct attribute *mxt_attrs[] = {
 	&dev_attr_backupnv.attr,
@@ -2681,6 +2710,7 @@ static struct attribute *mxt_attrs[] = {
 	&dev_attr_object.attr,
 	&dev_attr_update_config.attr,
 	&dev_attr_update_fw.attr,
+	&dev_attr_T19_status.attr,
 	NULL
 };
 
