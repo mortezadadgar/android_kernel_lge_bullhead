@@ -977,8 +977,8 @@ static int nvhost_pod_init(struct devfreq *df)
 		podgov->p_smooth_long = 10;
 		podgov->p_damp = 7;
 	} else {
-		podgov->p_load_max = 400;
-		podgov->p_load_target = 250;
+		podgov->p_load_max = 900;
+		podgov->p_load_target = 500;
 		podgov->p_bias = 80;
 		podgov->p_hint_lo_limit = 500;
 		podgov->p_hint_hi_limit = 997;
