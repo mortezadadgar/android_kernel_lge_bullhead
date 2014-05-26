@@ -352,6 +352,14 @@ static int venice_hdmi_hotplug_init(struct device *dev)
 	return ret;
 }
 
+static int venice_hdmi_postsuspend(void)
+{
+	if (vdd_hdmi_5v0)
+		regulator_disable(vdd_hdmi_5v0);
+
+	return 0;
+}
+
 struct tmds_config nyan_tmds_config[] = {
 	{ /* 480p/576p / 25.2MHz/27MHz modes */
 	.pclk = 27000000,
@@ -408,6 +416,7 @@ static struct tegra_dc_out venice_disp2_out = {
 	.disable	 = venice_hdmi_disable,
 	.hotplug_init	 = venice_hdmi_hotplug_init,
 	.regulator_probe = venice_hdmi_regulator_probe,
+	.postsuspend	 = venice_hdmi_postsuspend,
 	.hdmi_out	 = &nyan_hdmi_out,
 };
 
