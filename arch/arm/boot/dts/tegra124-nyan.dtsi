@@ -456,7 +456,7 @@
 			ts_reset_l {
 				nvidia,pins = "pk4";
 				nvidia,function = "gmi";
-				nvidia,pull = <1>;
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
