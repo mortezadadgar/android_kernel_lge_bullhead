@@ -18,7 +18,7 @@
 			width = <256>;
 			height = <144>;
 			power-off-time = <500>;
-			pwm-to-bl-on = <10>;
+			pwm-to-bl-on = <80>;
 			bl-off-to-pwm = <10>;
 			drive-current = <0x19191919>;
 			preemphasis = <0x09090909>;
