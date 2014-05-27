@@ -46,8 +46,8 @@ struct sst_byt_pcm_data {
 	struct snd_pcm_substream *substream;
 	struct mutex mutex;
 
-	/* DSP suspend context */
-	u32 suspend_offset;
+	/* latest DSP DMA hw pointer */
+	u32 hw_ptr;
 
 	struct work_struct work;
 
@@ -156,7 +156,7 @@ static int sst_byt_pcm_restore_stream_context(struct snd_pcm_substream *substrea
 
 	/* set stream position to last offset */
 	ret =  sst_byt_stream_set_offset(byt, pcm_data->stream,
-		pcm_data->suspend_offset);
+		pcm_data->hw_ptr);
 	if (ret < 0) {
 		dev_err(rtd->dev, "PCM: failed stream offset %d\n", ret);
 		return ret;
@@ -165,7 +165,7 @@ static int sst_byt_pcm_restore_stream_context(struct snd_pcm_substream *substrea
 	sst_byt_stream_start(byt, pcm_data->stream);
 	pcm_data->resume = false;
 	dev_dbg(rtd->dev, "stream context restored at offset %d\n",
-		pcm_data->suspend_offset);
+		pcm_data->hw_ptr);
 
 	return 0;
 }
@@ -232,13 +232,19 @@ static u32 byt_notify_pointer(struct sst_byt_stream *stream, void *data)
 	struct snd_pcm_substream *substream = pcm_data->substream;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	u32 pos;
+	struct sst_byt_priv_data *pdata =
+		snd_soc_platform_get_drvdata(rtd->platform);
+	struct sst_byt *byt = pdata->byt;
+	u32 pos, hw_pos;
 
+	hw_pos = sst_byt_get_dsp_position(byt, pcm_data->stream,
+					  snd_pcm_lib_buffer_bytes(substream));
+	pcm_data->hw_ptr = hw_pos;
 	pos = frames_to_bytes(runtime,
 			      (runtime->control->appl_ptr %
 			       runtime->buffer_size));
 
-	dev_dbg(rtd->dev, "PCM: App pointer %d bytes\n", pos);
+	dev_dbg(rtd->dev, "PCM: App/DMA pointer %u/%u bytes\n", pos, hw_pos);
 
 	snd_pcm_period_elapsed(substream);
 	return pos;
@@ -251,22 +257,10 @@ static snd_pcm_uframes_t sst_byt_pcm_pointer(struct snd_pcm_substream *substream
 	struct sst_byt_priv_data *pdata =
 		snd_soc_platform_get_drvdata(rtd->platform);
 	struct sst_byt_pcm_data *pcm_data = &pdata->pcm[substream->stream];
-	struct sst_byt *byt = pdata->byt;
-	snd_pcm_uframes_t offset;
-	int pos;
 
-	/* IPC delays can cause this to be called after close */
-	if (pcm_data->stream == NULL)
-		return 0;
+	dev_dbg(rtd->dev, "PCM: DMA pointer %u bytes\n", pcm_data->hw_ptr);
 
-	pos = sst_byt_get_dsp_position(byt, pcm_data->stream,
-				       snd_pcm_lib_buffer_bytes(substream));
-	offset = bytes_to_frames(runtime, pos);
-	pcm_data->suspend_offset = pos;
-
-	dev_dbg(rtd->dev, "PCM: DMA pointer %zu bytes\n",
-		frames_to_bytes(runtime, (u32)offset));
-	return offset;
+	return bytes_to_frames(runtime, pcm_data->hw_ptr);
 }
 
 static int sst_byt_pcm_open(struct snd_pcm_substream *substream)
