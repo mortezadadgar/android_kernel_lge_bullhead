@@ -198,8 +198,10 @@ static int sst_byt_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		if (!pcm_data->resume) {
 			if (pcm_data->resume_stop)
 				pcm_data->resume_stop = false;
-			else
+			else {
+				pcm_data->hw_ptr = 0;
 				sst_byt_stream_start(byt, pcm_data->stream);
+			}
 		}
 		break;
 	case SNDRV_PCM_TRIGGER_RESUME:
