@@ -99,6 +99,8 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_BROKEN_UHS				(1<<2)
 /* Has additional Broadcom-specific registers */
 #define SDHCI_QUIRK2_BROADCOM_REGISTERS			(1<<3)
+/* Baytrail eMMC slot needs to restrict Cx states during DMA transfer */
+#define SDHCI_QUIRK2_BAYTRAIL_EMMC			(1<<4)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
