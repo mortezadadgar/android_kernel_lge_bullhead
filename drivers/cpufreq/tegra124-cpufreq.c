@@ -412,12 +412,12 @@ int tegra124_cpufreq_init(struct tegra_cpufreq_data *data,
 	int ret;
 
 	fcpu_clk = devm_clk_get(data->dev, "cclk_g");
-	if (IS_ERR(cpu_clk))
-		return PTR_ERR(cpu_clk);
+	if (IS_ERR(fcpu_clk))
+		return PTR_ERR(fcpu_clk);
 
 	lpcpu_clk = devm_clk_get(data->dev, "cclk_lp");
-	if (IS_ERR(cpu_clk))
-		return PTR_ERR(cpu_clk);
+	if (IS_ERR(lpcpu_clk))
+		return PTR_ERR(lpcpu_clk);
 
 	pll_main_clk = devm_clk_get(data->dev, "pll_x");
 	if (IS_ERR(pll_main_clk))
