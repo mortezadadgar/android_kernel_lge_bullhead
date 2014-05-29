@@ -29,6 +29,7 @@
 #include <linux/pagemap.h>
 #include <linux/device.h>
 #include <linux/sched.h>
+#include <linux/interrupt.h>
 #include <linux/iommu.h>
 #include <linux/io.h>
 #include <linux/of.h>
@@ -47,6 +48,25 @@
 
 /* bitmap of the page sizes currently supported */
 #define SMMU_IOMMU_PGSIZES	(SZ_4K)
+
+#define MC_INTSTATUS			0x0
+#define MC_INTMASK			0x4
+
+#define MC_INT_ERR_SHIFT		6
+#define MC_INT_ERR_MASK			(0x1f << MC_INT_ERR_SHIFT)
+#define MC_INT_INVALID_SMMU_PAGE	BIT(MC_INT_ERR_SHIFT + 4)
+
+#define MC_ERR_STATUS			0x8
+#define MC_ERR_ADR			0xc
+
+#define MC_ERR_TYPE_SHIFT		28
+#define MC_ERR_TYPE_MASK		(0x7 << MC_ERR_TYPE_SHIFT)
+#define MC_ERR_TYPE_INVALID_SMMU_PAGE	6
+
+#define MC_ERR_RW_SHIFT			16
+#define MC_ERR_RW			BIT(MC_ERR_RW_SHIFT)
+
+#define MC_CLIENT_ID_MASK		0x7f
 
 #define SMMU_CONFIG				0x10
 #define SMMU_CONFIG_DISABLE			0
@@ -1120,6 +1140,157 @@ static struct iommu_ops smmu_iommu_ops = {
 	.pgsize_bitmap	= SMMU_IOMMU_PGSIZES,
 };
 
+static const char * const tegra_mc_clients[] = {
+	"csr_ptcr",
+	"csr_display0a",
+	"csr_display0ab",
+	"csr_display0b",
+	"csr_display0bb",
+	"csr_display0c",
+	"csr_display0cb",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"csr_afir",
+	"csr_avpcarm7r",
+	"csr_displayhc",
+	"csr_displayhcb",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"csr_hdar",
+	"csr_host1xdmar",
+	"csr_host1xr",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"csr_msencsrd",
+	"csr_ppcsahbdmar",
+	"csr_ppcsahbslvr",
+	"csr_satar",
+	"dummy_client",
+	"dummy_client",
+	"csr_vdebsevr",
+	"csr_vdember",
+	"csr_vdemcer",
+	"csr_vdetper",
+	"csr_mpcorelpr",
+	"csr_mpcorer",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"csw_msencswr",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"csw_afiw",
+	"csw_avpcarm7w",
+	"dummy_client",
+	"dummy_client",
+	"csw_hdaw",
+	"csw_host1xw",
+	"dummy_client",
+	"csw_mpcorelpw",
+	"csw_mpcorew",
+	"dummy_client",
+	"csw_ppcsahbdmaw",
+	"csw_ppcsahbslvw",
+	"csw_sataw",
+	"csw_vdebsevw",
+	"csw_vdedbgw",
+	"csw_vdembew",
+	"csw_vdetpmw",
+	"dummy_client",
+	"dummy_client",
+	"csr_ispra",
+	"dummy_client",
+	"csw_ispwa",
+	"csw_ispwb",
+	"dummy_client",
+	"dummy_client",
+	"csr_xusb_hostr",
+	"csw_xusb_hostw",
+	"csr_xusb_devr",
+	"csw_xusb_devw",
+	"csr_isprab",
+	"dummy_client",
+	"csw_ispwab",
+	"csw_ispwbb",
+	"dummy_client",
+	"dummy_client",
+	"csr_tsecsrd",
+	"csw_tsecswr",
+	"csr_a9avpscr",
+	"csw_a9avpscw",
+	"csr_gpusrd",
+	"csw_gpuswr",
+	"csr_displayt",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"csr_sdmmcra",
+	"csr_sdmmcraa",
+	"csr_sdmmcr",
+	"csr_sdmmcrab",
+	"csw_sdmmcwa",
+	"csw_sdmmcwaa",
+	"csw_sdmmcw",
+	"csw_sdmmcwab",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"csr_vicsrd",
+	"csw_vicswr",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"dummy_client",
+	"csw_viw",
+	"csr_displayd",
+	"dummy_client",
+};
+
+static irqreturn_t tegra_smmu_irq(int irq, void *data)
+{
+	struct device *dev = data;
+	struct smmu_device *smmu = dev_get_drvdata(dev);
+	u32 stat, mask, err, type;
+
+	stat = smmu_read(smmu, MC_INTSTATUS);
+	mask = smmu_read(smmu, MC_INTMASK);
+	mask &= stat;
+	if (!mask)
+		return IRQ_NONE;
+
+	err = smmu_read(smmu, MC_ERR_STATUS);
+	type = (err & MC_ERR_TYPE_MASK) >> MC_ERR_TYPE_SHIFT;
+	if (type == MC_ERR_TYPE_INVALID_SMMU_PAGE) {
+		u32 cid, addr;
+
+		cid = err & MC_CLIENT_ID_MASK;
+		cid = min(cid, ARRAY_SIZE(tegra_mc_clients) - 1);
+		addr = smmu_read(smmu, MC_ERR_ADR);
+
+		dev_err_ratelimited(dev,
+				    "SMMU %s fault at 0x%08x (client: %s, error: 0x%08x)\n",
+				    (err & MC_ERR_RW) ? "write" : "read", addr,
+				    tegra_mc_clients[cid], err);
+	}
+
+	smmu_write(smmu, stat, MC_INTSTATUS);
+	return IRQ_HANDLED;
+}
+
 /* Should be in the order of enum */
 static const char * const smmu_debugfs_mc[] = { "mc", };
 static const char * const smmu_debugfs_cache[] = {  "tlb", "ptc", };
@@ -1349,7 +1520,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 {
 	struct smmu_device *smmu;
 	struct device *dev = &pdev->dev;
-	int i, asids, err = 0;
+	int i, asids, irq, err = 0;
 	dma_addr_t uninitialized_var(base);
 	size_t bytes, uninitialized_var(size);
 	const struct of_device_id *match;
@@ -1386,7 +1557,7 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	smmu->map = (struct dma_iommu_mapping **)(smmu->as + asids);
 	smmu->xlat = (u32 *)(smmu->map + smmu->num_as);
 	smmu->asid_sec = smmu->xlat + smmu->nr_xlats;
-	smmu->nregs = pdev->num_resources;
+	smmu->nregs = pdev->num_resources - 1;
 	smmu->tlb_reset = (pdata && pdata->tlb_reset) ? pdata->tlb_reset :
 		(SMMU_TLB_CONFIG_RESET_VAL | 0x10);
 	smmu->ptc_reset = (pdata && pdata->ptc_reset) ? pdata->ptc_reset :
@@ -1410,6 +1581,15 @@ static int tegra_smmu_probe(struct platform_device *pdev)
 	}
 	/* Same as "mc" 1st regiter block start address */
 	smmu->regbase = (void __iomem *)((u32)smmu->regs[0] & PAGE_MASK);
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0)
+		return -ENODEV;
+	err = devm_request_irq(&pdev->dev, irq, tegra_smmu_irq, 0,
+			       "tegra-smmu", &pdev->dev);
+	if (err)
+		return err;
+	smmu_write(smmu, MC_INT_INVALID_SMMU_PAGE, MC_INTMASK);
 
 	err = of_get_dma_window(dev->of_node, NULL, 0, NULL, &base, &size);
 	if (err)
