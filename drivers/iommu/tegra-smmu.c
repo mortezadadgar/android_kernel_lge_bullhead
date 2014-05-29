@@ -193,10 +193,10 @@ enum {
 
 #define _PDE_ATTR	(_READABLE | _WRITABLE | _NONSECURE)
 #define _PDE_ATTR_N	(_PDE_ATTR | _PDE_NEXT)
-#define _PDE_VACANT(pdn)	(((pdn) << 10) | _PDE_ATTR)
+#define _PDE_VACANT(pdn)	(0)
 
 #define _PTE_ATTR	(_READABLE | _WRITABLE | _NONSECURE)
-#define _PTE_VACANT(addr)	(((addr) >> SMMU_PAGE_SHIFT) | _PTE_ATTR)
+#define _PTE_VACANT(addr)	(0)
 
 #define SMMU_MK_PDIR(page, attr)	\
 		((page_to_phys(page) >> SMMU_PDIR_SHIFT) | (attr))
