@@ -481,6 +481,7 @@
 	smmu: iommu {
 		compatible = "nvidia,tegra124-smmu", "nvidia,tegra114-smmu", "nvidia,tegra30-smmu";
 		reg = <0x0 0x70019000 0x1000>;
+		interrupts = <GIC_SPI 77 IRQ_TYPE_LEVEL_HIGH>;
 		nvidia,#asids = <128>;
 		dma-window = <0x80000000 0x7ff00000>;
 		#iommu-cells = <2>;
