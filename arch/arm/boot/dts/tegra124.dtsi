@@ -34,8 +34,7 @@
 		clock-names = "host1x", "actmon";
 		iommus = <&smmu
 			TEGRA_SWGROUP_MULT_CELLS(TEGRA_SWGROUP_BIT(EPP) |
-				TEGRA_SWGROUP_BIT(HC) |
-				TEGRA_SWGROUP_BIT(HDA))>;
+				TEGRA_SWGROUP_BIT(HC))>;
 
 		#address-cells = <1>;
 		#size-cells = <1>;
