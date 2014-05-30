@@ -1419,9 +1419,6 @@
 			 <&tegra_car TEGRA124_CLK_PLL_A_OUT0>,
 			 <&tegra_car TEGRA124_CLK_EXTERN1>;
 		clock-names = "pll_a", "pll_a_out0", "mclk";
-
-		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
-				TEGRA_SWGROUP_CELLS(PPCS1)>;
 	};
 
 	cpu_edp {

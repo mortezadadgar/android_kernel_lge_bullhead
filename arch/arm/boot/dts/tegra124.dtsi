@@ -227,6 +227,8 @@
 			     <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&tegra_car TEGRA124_CLK_APBDMA>;
+		iommus = <&smmu TEGRA_SWGROUP_CELLS(PPCS)
+				TEGRA_SWGROUP_CELLS(PPCS1)>;
 	};
 
 	ahb: ahb {
