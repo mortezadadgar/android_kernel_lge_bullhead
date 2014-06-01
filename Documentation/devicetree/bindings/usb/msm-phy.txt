@@ -124,6 +124,8 @@ Optional properties:
  - qcom,core-voltage-level: This property must be a list of three integer
    values (no, min, max) where each value represents either a voltage in
    microvolts or a value corresponding to voltage corner.
+ - qcom,no-pipe-clk-switch: If present, indicates that the pipe_clk does not need
+   to switch sources between the XO and the PHY PIPE clock output.
 
 Example:
 	ssphy0: ssphy@f9b38000 {
