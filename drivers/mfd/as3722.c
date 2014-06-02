@@ -470,6 +470,18 @@ static int as3722_suspend(struct device *dev)
 	struct as3722 *as3722 = i2c_get_clientdata(i2c);
 	int ret;
 
+
+	/* Ensure DeepSleep doesn't trigger a reset */
+	ret = as3722_write(as3722, AS3722_RESET_TIMER_REG,
+				AS3722_AUTO_OFF |
+				AS3722_OFF_DELAY_8 |
+				AS3722_RES_TIMER_100);
+	if (ret < 0) {
+		dev_err(as3722->dev, "Reg 0x%02x write failed: %d\n",
+			AS3722_RESET_TIMER_REG, ret);
+		return ret;
+	}
+
 	/* Enable standby mode entry when the ENABLE1 pin is de-asserted. */
 	ret = as3722_update_bits(as3722, AS3722_CTRL_SEQU1_REG,
 					AS3722_ENABLE1_DEEPSLEEP,
