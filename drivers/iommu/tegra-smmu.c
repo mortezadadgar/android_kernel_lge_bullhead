@@ -830,8 +830,6 @@ static void __smmu_iommu_map_pfn(struct smmu_as *as, dma_addr_t iova,
 	if (*pte == _PTE_VACANT(iova))
 		(*count)++;
 	*pte = SMMU_PFN_TO_PTE(pfn, as->pte_attr);
-	if (unlikely((*pte == _PTE_VACANT(iova))))
-		(*count)--;
 	FLUSH_CPU_DCACHE(pte, page, sizeof(*pte));
 	flush_ptc_and_tlb(smmu, as, iova, pte, page, 0);
 	put_signature(as, iova, pfn);
