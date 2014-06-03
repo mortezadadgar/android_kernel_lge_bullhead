@@ -579,6 +579,8 @@ int nvhost_gk20a_prepare_poweroff(struct platform_device *dev)
 	if (!g->power_on)
 		return 0;
 
+        ret |= gk20a_channel_suspend(g);
+
 	/*
 	 * After this point, gk20a interrupts should not get
 	 * serviced.
@@ -587,8 +589,6 @@ int nvhost_gk20a_prepare_poweroff(struct platform_device *dev)
 		free_irq(gk20a_intr.start, g);
 		g->irq_requested = false;
 	}
-
-        ret |= gk20a_channel_suspend(g);
 
         /* disable elpg before gr or fifo suspend */
         ret |= gk20a_pmu_destroy(g);
