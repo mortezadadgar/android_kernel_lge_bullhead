@@ -489,6 +489,9 @@ bool tegra_dc_hdmi_mode_filter(const struct tegra_dc *dc,
 	    !(mode->xres == 1920 && mode->yres == 1080))
 		return false;
 
+	if (mode->flag & FB_FLAG_PIXEL_REPEAT)
+		return false;
+
 	/* Ignore modes with a 0 pixel clock */
 	if (!mode->pixclock)
 		return false;
