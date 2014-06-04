@@ -439,14 +439,12 @@ static struct tegra_dc_cmu default_limited_cmu = {
 
 void tegra_dc_clk_enable(struct tegra_dc *dc)
 {
-	if (!__clk_get_enable_count(dc->clk))
-		clk_prepare_enable(dc->clk);
+	clk_prepare_enable(dc->clk);
 }
 
 void tegra_dc_clk_disable(struct tegra_dc *dc)
 {
-	if (__clk_get_enable_count(dc->clk))
-		clk_disable_unprepare(dc->clk);
+	clk_disable_unprepare(dc->clk);
 }
 
 void tegra_dc_get(struct tegra_dc *dc)
