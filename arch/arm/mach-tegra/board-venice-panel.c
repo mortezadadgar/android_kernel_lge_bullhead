@@ -23,6 +23,7 @@
 #include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
+#include <linux/ktime.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pwm_backlight.h>
 #include <linux/of.h>
@@ -44,6 +45,7 @@ static int power_off_time;
 static int pwm_to_bl_on;
 static int bl_off_to_pwm;
 static bool bl_enabled;
+static ktime_t last_power_off;
 
 struct platform_device * __init venice_host1x_init(void)
 {
@@ -99,9 +101,13 @@ static int venice_edp_regulator_probe(struct device *dev)
 static int venice_edp_enable(struct device *dev)
 {
 	int err = 0;
+	int diff = ktime_to_ms(ktime_sub(ktime_get(), last_power_off));
 
 	if (edp_enabled)
 		return 0;
+
+	if (ktime_to_ms(last_power_off) > 0 && diff < power_off_time)
+		msleep(power_off_time - diff);
 
 	err = regulator_enable(avdd_lcd_3v3);
 	if (err) {
@@ -132,7 +138,7 @@ static int venice_edp_disable(void)
 	if (avdd_lcd_3v3)
 		regulator_disable(avdd_lcd_3v3);
 
-	msleep(power_off_time);
+	last_power_off = ktime_get();
 
 	edp_enabled = 0;
 	return 0;
