@@ -160,7 +160,10 @@ struct compact_control {
 	int order;			/* order a direct compactor needs */
 	const gfp_t gfp_mask;		/* gfp mask of a direct compactor */
 	struct zone *zone;
-	bool contended;			/* True if a lock was contended */
+	bool contended;			/* True if a lock was contended, or
+					 * need_resched() true during async
+					 * compaction
+					 */
 };
 
 unsigned long
