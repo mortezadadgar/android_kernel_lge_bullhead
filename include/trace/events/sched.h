@@ -1,3 +1,6 @@
+#ifdef CONFIG_SCHED_QHMP
+#include "qhmp_sched.h"
+#else
 #undef TRACE_SYSTEM
 #define TRACE_SYSTEM sched
 
@@ -9,6 +12,8 @@
 #include <linux/binfmts.h>
 
 struct rq;
+struct group_cpu_time;
+struct migration_sum_data;
 extern const char *task_event_names[];
 
 /*
@@ -58,7 +63,7 @@ TRACE_EVENT(sched_kthread_stop_ret,
  */
 TRACE_EVENT(sched_enq_deq_task,
 
-	TP_PROTO(struct task_struct *p, int enqueue, unsigned int cpus_allowed),
+	TP_PROTO(struct task_struct *p, bool enqueue, unsigned int cpus_allowed),
 
 	TP_ARGS(p, enqueue, cpus_allowed),
 
@@ -67,15 +72,16 @@ TRACE_EVENT(sched_enq_deq_task,
 		__field(	pid_t,	pid			)
 		__field(	int,	prio			)
 		__field(	int,	cpu			)
-		__field(	int,	enqueue			)
+		__field(	bool,	enqueue			)
 		__field(unsigned int,	nr_running		)
 		__field(unsigned long,	cpu_load		)
 		__field(unsigned int,	rt_nr_running		)
 		__field(unsigned int,	cpus_allowed		)
 #ifdef CONFIG_SCHED_HMP
-		__field(unsigned int,	sum_scaled		)
-		__field(unsigned int,	period			)
 		__field(unsigned int,	demand			)
+#ifdef CONFIG_SCHED_FREQ_INPUT
+		__field(unsigned int,	pred_demand		)
+#endif
 #endif
 	),
 
@@ -90,24 +96,30 @@ TRACE_EVENT(sched_enq_deq_task,
 		__entry->rt_nr_running	= task_rq(p)->rt.rt_nr_running;
 		__entry->cpus_allowed	= cpus_allowed;
 #ifdef CONFIG_SCHED_HMP
-		__entry->sum_scaled	= p->se.avg.runnable_avg_sum_scaled;
-		__entry->period		= p->se.avg.runnable_avg_period;
 		__entry->demand		= p->ravg.demand;
+#ifdef CONFIG_SCHED_FREQ_INPUT
+		__entry->pred_demand	= p->ravg.pred_demand;
+#endif
 #endif
 	),
 
 	TP_printk("cpu=%d %s comm=%s pid=%d prio=%d nr_running=%u cpu_load=%lu rt_nr_running=%u affine=%x"
 #ifdef CONFIG_SCHED_HMP
-		 " sum_scaled=%u period=%u demand=%u"
+		 " demand=%u"
+#ifdef CONFIG_SCHED_FREQ_INPUT
+		 " pred_demand=%u"
+#endif
 #endif
 			, __entry->cpu,
 			__entry->enqueue ? "enqueue" : "dequeue",
 			__entry->comm, __entry->pid,
 			__entry->prio, __entry->nr_running,
-			__entry->cpu_load, __entry->rt_nr_running,
-			__entry->cpus_allowed
+			__entry->cpu_load, __entry->rt_nr_running, __entry->cpus_allowed
 #ifdef CONFIG_SCHED_HMP
-			, __entry->sum_scaled, __entry->period, __entry->demand
+			, __entry->demand
+#ifdef CONFIG_SCHED_FREQ_INPUT
+			, __entry->pred_demand
+#endif
 #endif
 			)
 );
@@ -116,96 +128,130 @@ TRACE_EVENT(sched_enq_deq_task,
 
 TRACE_EVENT(sched_task_load,
 
-	TP_PROTO(struct task_struct *p, int small_task, int boost, int reason,
-		 int sync, int prefer_idle),
+	TP_PROTO(struct task_struct *p, bool boost, int reason,
+		 bool sync, bool need_idle, bool fast_path, int best_cpu),
 
-	TP_ARGS(p, small_task, boost, reason, sync, prefer_idle),
+	TP_ARGS(p, boost, reason, sync, need_idle, fast_path, best_cpu),
 
 	TP_STRUCT__entry(
 		__array(	char,	comm,	TASK_COMM_LEN	)
 		__field(	pid_t,	pid			)
-		__field(unsigned int,	sum			)
-		__field(unsigned int,	sum_scaled		)
-		__field(unsigned int,	period			)
 		__field(unsigned int,	demand			)
-		__field(	int,	small_task		)
-		__field(	int,	boost			)
+		__field(	bool,	boost			)
 		__field(	int,	reason			)
-		__field(	int,	sync			)
-		__field(	int,	prefer_idle		)
+		__field(	bool,	sync			)
+		__field(	bool,	need_idle		)
+		__field(	bool,	fast_path		)
+		__field(	int,	best_cpu		)
+		__field(	u64,	latency			)
 	),
 
 	TP_fast_assign(
 		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
 		__entry->pid		= p->pid;
-		__entry->sum		= p->se.avg.runnable_avg_sum;
-		__entry->sum_scaled	= p->se.avg.runnable_avg_sum_scaled;
-		__entry->period		= p->se.avg.runnable_avg_period;
 		__entry->demand		= p->ravg.demand;
-		__entry->small_task	= small_task;
 		__entry->boost		= boost;
 		__entry->reason		= reason;
 		__entry->sync		= sync;
-		__entry->prefer_idle	= prefer_idle;
+		__entry->need_idle	= need_idle;
+		__entry->fast_path	= fast_path;
+		__entry->best_cpu	= best_cpu;
+		__entry->latency	= p->state == TASK_WAKING ?
+						      sched_ktime_clock() -
+						      p->ravg.mark_start : 0;
 	),
 
-	TP_printk("%d (%s): sum=%u, sum_scaled=%u, period=%u demand=%u small=%d boost=%d reason=%d sync=%d prefer_idle=%d",
-		__entry->pid, __entry->comm, __entry->sum,
-		__entry->sum_scaled, __entry->period, __entry->demand,
-		__entry->small_task, __entry->boost, __entry->reason,
-		__entry->sync, __entry->prefer_idle)
+	TP_printk("%d (%s): demand=%u boost=%d reason=%d sync=%d need_idle=%d fast_path=%d best_cpu=%d latency=%llu",
+		__entry->pid, __entry->comm, __entry->demand,
+		__entry->boost, __entry->reason, __entry->sync,
+		__entry->need_idle, __entry->fast_path,
+		__entry->best_cpu, __entry->latency)
 );
 
-TRACE_EVENT(sched_cpu_load,
+TRACE_EVENT(sched_set_preferred_cluster,
 
-	TP_PROTO(struct rq *rq, int idle, int mostly_idle, u64 irqload,
-		 unsigned int power_cost, int temp),
+	TP_PROTO(struct related_thread_group *grp, u64 total_demand),
 
-	TP_ARGS(rq, idle, mostly_idle, irqload, power_cost, temp),
+	TP_ARGS(grp, total_demand),
+
+	TP_STRUCT__entry(
+		__field(		int,	id			)
+		__field(		u64,	demand			)
+		__field(		int,	cluster_first_cpu	)
+	),
+
+	TP_fast_assign(
+		__entry->id			= grp->id;
+		__entry->demand			= total_demand;
+		__entry->cluster_first_cpu	= grp->preferred_cluster ?
+							cluster_first_cpu(grp->preferred_cluster)
+							: -1;
+	),
+
+	TP_printk("group_id %d total_demand %llu preferred_cluster_first_cpu %d",
+			__entry->id, __entry->demand,
+			__entry->cluster_first_cpu)
+);
+
+DECLARE_EVENT_CLASS(sched_cpu_load,
+
+	TP_PROTO(struct rq *rq, int idle, u64 irqload, unsigned int power_cost, int temp),
+
+	TP_ARGS(rq, idle, irqload, power_cost, temp),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, cpu			)
 		__field(unsigned int, idle			)
-		__field(unsigned int, mostly_idle		)
 		__field(unsigned int, nr_running		)
 		__field(unsigned int, nr_big_tasks		)
-		__field(unsigned int, nr_small_tasks		)
 		__field(unsigned int, load_scale_factor		)
 		__field(unsigned int, capacity			)
 		__field(	 u64, cumulative_runnable_avg	)
 		__field(	 u64, irqload			)
-		__field(unsigned int, cur_freq			)
 		__field(unsigned int, max_freq			)
 		__field(unsigned int, power_cost		)
 		__field(	 int, cstate			)
+		__field(	 int, dstate			)
 		__field(	 int, temp			)
 	),
 
 	TP_fast_assign(
 		__entry->cpu			= rq->cpu;
 		__entry->idle			= idle;
-		__entry->mostly_idle		= mostly_idle;
 		__entry->nr_running		= rq->nr_running;
 		__entry->nr_big_tasks		= rq->hmp_stats.nr_big_tasks;
-		__entry->nr_small_tasks		= rq->hmp_stats.nr_small_tasks;
-		__entry->load_scale_factor	= rq->load_scale_factor;
-		__entry->capacity		= rq->capacity;
+		__entry->load_scale_factor	= cpu_load_scale_factor(rq->cpu);
+		__entry->capacity		= cpu_capacity(rq->cpu);
 		__entry->cumulative_runnable_avg = rq->hmp_stats.cumulative_runnable_avg;
 		__entry->irqload		= irqload;
-		__entry->cur_freq		= rq->cur_freq;
-		__entry->max_freq		= rq->max_freq;
+		__entry->max_freq		= cpu_max_freq(rq->cpu);
 		__entry->power_cost		= power_cost;
 		__entry->cstate			= rq->cstate;
+		__entry->dstate			= rq->cluster->dstate;
 		__entry->temp			= temp;
 	),
 
-	TP_printk("cpu %u idle %d mostly_idle %d nr_run %u nr_big %u nr_small %u lsf %u capacity %u cr_avg %llu irqload %llu fcur %u fmax %u power_cost %u cstate %d temp %d",
-	__entry->cpu, __entry->idle, __entry->mostly_idle, __entry->nr_running,
-	__entry->nr_big_tasks, __entry->nr_small_tasks,
+	TP_printk("cpu %u idle %d nr_run %u nr_big %u lsf %u capacity %u cr_avg %llu irqload %llu fmax %u power_cost %u cstate %d dstate %d temp %d",
+	__entry->cpu, __entry->idle, __entry->nr_running, __entry->nr_big_tasks,
 	__entry->load_scale_factor, __entry->capacity,
 	__entry->cumulative_runnable_avg, __entry->irqload,
-	__entry->cur_freq, __entry->max_freq,
-	__entry->power_cost, __entry->cstate, __entry->temp)
+	__entry->max_freq, __entry->power_cost, __entry->cstate,
+	__entry->dstate, __entry->temp)
+);
+
+DEFINE_EVENT(sched_cpu_load, sched_cpu_load_wakeup,
+	TP_PROTO(struct rq *rq, int idle, u64 irqload, unsigned int power_cost, int temp),
+	TP_ARGS(rq, idle, irqload, power_cost, temp)
+);
+
+DEFINE_EVENT(sched_cpu_load, sched_cpu_load_lb,
+	TP_PROTO(struct rq *rq, int idle, u64 irqload, unsigned int power_cost, int temp),
+	TP_ARGS(rq, idle, irqload, power_cost, temp)
+);
+
+DEFINE_EVENT(sched_cpu_load, sched_cpu_load_cgroup,
+	TP_PROTO(struct rq *rq, int idle, u64 irqload, unsigned int power_cost, int temp),
+	TP_ARGS(rq, idle, irqload, power_cost, temp)
 );
 
 TRACE_EVENT(sched_set_boost,
@@ -228,9 +274,10 @@ TRACE_EVENT(sched_set_boost,
 TRACE_EVENT(sched_update_task_ravg,
 
 	TP_PROTO(struct task_struct *p, struct rq *rq, enum task_event evt,
-						u64 wallclock, u64 irqtime),
+		 u64 wallclock, u64 irqtime, u64 cycles, u64 exec_time,
+		 struct group_cpu_time *cpu_time),
 
-	TP_ARGS(p, rq, evt, wallclock, irqtime),
+	TP_ARGS(p, rq, evt, wallclock, irqtime, cycles, exec_time, cpu_time),
 
 	TP_STRUCT__entry(
 		__array(	char,	comm,   TASK_COMM_LEN	)
@@ -248,10 +295,18 @@ TRACE_EVENT(sched_update_task_ravg,
 		__field(unsigned int,	sum			)
 		__field(	 int,	cpu			)
 #ifdef CONFIG_SCHED_FREQ_INPUT
-		__field(	u64,	cs			)
-		__field(	u64,	ps			)
+		__field(unsigned int,	pred_demand		)
+		__field(	u64,	rq_cs			)
+		__field(	u64,	rq_ps			)
+		__field(	u64,	grp_cs			)
+		__field(	u64,	grp_ps			)
+		__field(	u64,	grp_nt_cs			)
+		__field(	u64,	grp_nt_ps			)
 		__field(	u32,	curr_window		)
 		__field(	u32,	prev_window		)
+		__field(	u64,	nt_cs			)
+		__field(	u64,	nt_ps			)
+		__field(	u32,	active_windows		)
 #endif
 	),
 
@@ -262,7 +317,7 @@ TRACE_EVENT(sched_update_task_ravg,
 		__entry->evt            = evt;
 		__entry->cpu            = rq->cpu;
 		__entry->cur_pid        = rq->curr->pid;
-		__entry->cur_freq       = rq->cur_freq;
+		__entry->cur_freq       = cpu_cycles_to_freq(cycles, exec_time);
 		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
 		__entry->pid            = p->pid;
 		__entry->mark_start     = p->ravg.mark_start;
@@ -271,16 +326,24 @@ TRACE_EVENT(sched_update_task_ravg,
 		__entry->sum            = p->ravg.sum;
 		__entry->irqtime        = irqtime;
 #ifdef CONFIG_SCHED_FREQ_INPUT
-		__entry->cs             = rq->curr_runnable_sum;
-		__entry->ps             = rq->prev_runnable_sum;
+		__entry->pred_demand     = p->ravg.pred_demand;
+		__entry->rq_cs          = rq->curr_runnable_sum;
+		__entry->rq_ps          = rq->prev_runnable_sum;
+		__entry->grp_cs = cpu_time ? cpu_time->curr_runnable_sum : 0;
+		__entry->grp_ps = cpu_time ? cpu_time->prev_runnable_sum : 0;
+		__entry->grp_nt_cs = cpu_time ? cpu_time->nt_curr_runnable_sum : 0;
+		__entry->grp_nt_ps = cpu_time ? cpu_time->nt_prev_runnable_sum : 0;
 		__entry->curr_window	= p->ravg.curr_window;
 		__entry->prev_window	= p->ravg.prev_window;
+		__entry->nt_cs		= rq->nt_curr_runnable_sum;
+		__entry->nt_ps		= rq->nt_prev_runnable_sum;
+		__entry->active_windows	= p->ravg.active_windows;
 #endif
 	),
 
 	TP_printk("wc %llu ws %llu delta %llu event %s cpu %d cur_freq %u cur_pid %d task %d (%s) ms %llu delta %llu demand %u sum %u irqtime %llu"
 #ifdef CONFIG_SCHED_FREQ_INPUT
-		" cs %llu ps %llu cur_window %u prev_window %u"
+		" pred_demand %u rq_cs %llu rq_ps %llu cur_window %u prev_window %u nt_cs %llu nt_ps %llu active_wins %u grp_cs %lld grp_ps %lld, grp_nt_cs %llu, grp_nt_ps: %llu"
 #endif
 		, __entry->wallclock, __entry->win_start, __entry->delta,
 		task_event_names[__entry->evt], __entry->cpu,
@@ -289,10 +352,43 @@ TRACE_EVENT(sched_update_task_ravg,
 		__entry->delta_m, __entry->demand,
 		__entry->sum, __entry->irqtime
 #ifdef CONFIG_SCHED_FREQ_INPUT
-		, __entry->cs, __entry->ps, __entry->curr_window,
-		  __entry->prev_window
+		, __entry->pred_demand, __entry->rq_cs, __entry->rq_ps,
+		__entry->curr_window, __entry->prev_window,
+		  __entry->nt_cs, __entry->nt_ps,
+		  __entry->active_windows,
+		__entry->grp_cs, __entry->grp_ps,
+		__entry->grp_nt_cs, __entry->grp_nt_ps
 #endif
 		)
+);
+
+TRACE_EVENT(sched_get_task_cpu_cycles,
+
+	TP_PROTO(int cpu, int event, u64 cycles, u64 exec_time),
+
+	TP_ARGS(cpu, event, cycles, exec_time),
+
+	TP_STRUCT__entry(
+		__field(int,		cpu		)
+		__field(int,		event		)
+		__field(u64,		cycles		)
+		__field(u64,		exec_time	)
+		__field(u32,		freq		)
+		__field(u32,		legacy_freq	)
+	),
+
+	TP_fast_assign(
+		__entry->cpu 		= cpu;
+		__entry->event 		= event;
+		__entry->cycles 	= cycles;
+		__entry->exec_time 	= exec_time;
+		__entry->freq		= cpu_cycles_to_freq(cycles, exec_time);
+		__entry->legacy_freq 	= cpu_cur_freq(cpu);
+	),
+
+	TP_printk("cpu=%d event=%d cycles=%llu exec_time=%llu freq=%u legacy_freq=%u",
+		  __entry->cpu, __entry->event, __entry->cycles,
+		  __entry->exec_time, __entry->freq, __entry->legacy_freq)
 );
 
 TRACE_EVENT(sched_update_history,
@@ -309,9 +405,11 @@ TRACE_EVENT(sched_update_history,
 		__field(	 int,	samples			)
 		__field(enum task_event,	evt		)
 		__field(unsigned int,	demand			)
+#ifdef CONFIG_SCHED_FREQ_INPUT
+		__field(unsigned int,	pred_demand		)
+#endif
 		__array(	 u32,	hist, RAVG_HIST_SIZE_MAX)
 		__field(unsigned int,	nr_big_tasks		)
-		__field(unsigned int,	nr_small_tasks		)
 		__field(	 int,	cpu			)
 	),
 
@@ -322,21 +420,30 @@ TRACE_EVENT(sched_update_history,
 		__entry->samples        = samples;
 		__entry->evt            = evt;
 		__entry->demand         = p->ravg.demand;
+#ifdef CONFIG_SCHED_FREQ_INPUT
+		__entry->pred_demand     = p->ravg.pred_demand;
+#endif
 		memcpy(__entry->hist, p->ravg.sum_history,
 					RAVG_HIST_SIZE_MAX * sizeof(u32));
 		__entry->nr_big_tasks   = rq->hmp_stats.nr_big_tasks;
-		__entry->nr_small_tasks = rq->hmp_stats.nr_small_tasks;
 		__entry->cpu            = rq->cpu;
 	),
 
-	TP_printk("%d (%s): runtime %u samples %d event %s demand %u (hist: %u %u %u %u %u) cpu %d nr_big %u nr_small %u",
+	TP_printk("%d (%s): runtime %u samples %d event %s demand %u"
+#ifdef CONFIG_SCHED_FREQ_INPUT
+		" pred_demand %u"
+#endif
+		" (hist: %u %u %u %u %u) cpu %d nr_big %u",
 		__entry->pid, __entry->comm,
 		__entry->runtime, __entry->samples,
 		task_event_names[__entry->evt],
-		__entry->demand, __entry->hist[0],
-		__entry->hist[1], __entry->hist[2], __entry->hist[3],
-		__entry->hist[4], __entry->cpu, __entry->nr_big_tasks,
-		__entry->nr_small_tasks)
+		__entry->demand,
+#ifdef CONFIG_SCHED_FREQ_INPUT
+		__entry->pred_demand,
+#endif
+		__entry->hist[0], __entry->hist[1],
+		__entry->hist[2], __entry->hist[3],
+		__entry->hist[4], __entry->cpu, __entry->nr_big_tasks)
 );
 
 TRACE_EVENT(sched_reset_all_window_stats,
@@ -374,70 +481,163 @@ TRACE_EVENT(sched_reset_all_window_stats,
 
 #ifdef CONFIG_SCHED_FREQ_INPUT
 
-TRACE_EVENT(sched_migration_update_sum,
+TRACE_EVENT(sched_update_pred_demand,
 
-	TP_PROTO(struct rq *rq, struct task_struct *p),
+	TP_PROTO(struct rq *rq, struct task_struct *p, u32 runtime, int pct,
+		 unsigned int pred_demand),
 
-	TP_ARGS(rq, p),
+	TP_ARGS(rq, p, runtime, pct, pred_demand),
 
 	TP_STRUCT__entry(
-		__field(int,		cpu			)
-		__field(int,		pid			)
-		__field(	u64,	cs			)
-		__field(	u64,	ps			)
+		__array(	char,	comm,   TASK_COMM_LEN	)
+		__field(       pid_t,	pid			)
+		__field(unsigned int,	runtime			)
+		__field(	 int,	pct			)
+		__field(unsigned int,	pred_demand		)
+		__array(	  u8,	bucket, NUM_BUSY_BUCKETS)
+		__field(	 int,	cpu			)
 	),
 
 	TP_fast_assign(
-		__entry->cpu		= cpu_of(rq);
-		__entry->cs		= rq->curr_runnable_sum;
-		__entry->ps		= rq->prev_runnable_sum;
-		__entry->pid		= p->pid;
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->pid            = p->pid;
+		__entry->runtime        = runtime;
+		__entry->pct            = pct;
+		__entry->pred_demand     = pred_demand;
+		memcpy(__entry->bucket, p->ravg.busy_buckets,
+					NUM_BUSY_BUCKETS * sizeof(u8));
+		__entry->cpu            = rq->cpu;
 	),
 
-	TP_printk("cpu %d: cs %llu ps %llu pid %d", __entry->cpu,
-		      __entry->cs, __entry->ps, __entry->pid)
+	TP_printk("%d (%s): runtime %u pct %d cpu %d pred_demand %u (buckets: %u %u %u %u %u %u %u %u %u %u)",
+		__entry->pid, __entry->comm,
+		__entry->runtime, __entry->pct, __entry->cpu,
+		__entry->pred_demand, __entry->bucket[0], __entry->bucket[1],
+		__entry->bucket[2], __entry->bucket[3],__entry->bucket[4],
+		__entry->bucket[5], __entry->bucket[6], __entry->bucket[7],
+		__entry->bucket[8], __entry->bucket[9])
+);
+
+TRACE_EVENT(sched_migration_update_sum,
+
+	TP_PROTO(struct task_struct *p, enum migrate_types migrate_type, struct migration_sum_data *d),
+
+	TP_ARGS(p, migrate_type, d),
+
+	TP_STRUCT__entry(
+		__field(int,		tcpu			)
+		__field(int,		pid			)
+		__field(	u64,	cs			)
+		__field(	u64,	ps			)
+		__field(	s64,	nt_cs			)
+		__field(	s64,	nt_ps			)
+		__field(enum migrate_types,	migrate_type	)
+		__field(	s64,	src_cs			)
+		__field(	s64,	src_ps			)
+		__field(	s64,	dst_cs			)
+		__field(	s64,	dst_ps			)
+		__field(	s64,	src_nt_cs		)
+		__field(	s64,	src_nt_ps		)
+		__field(	s64,	dst_nt_cs		)
+		__field(	s64,	dst_nt_ps		)
+	),
+
+	TP_fast_assign(
+		__entry->tcpu		= task_cpu(p);
+		__entry->pid		= p->pid;
+		__entry->migrate_type	= migrate_type;
+		__entry->src_cs		= d->src_rq ?
+						d->src_rq->curr_runnable_sum :
+						d->src_cpu_time->curr_runnable_sum;
+		__entry->src_ps		= d->src_rq ?
+						d->src_rq->prev_runnable_sum :
+						d->src_cpu_time->prev_runnable_sum;
+		__entry->dst_cs		= d->dst_rq ?
+						d->dst_rq->curr_runnable_sum :
+						d->dst_cpu_time->curr_runnable_sum;
+		__entry->dst_ps		= d->dst_rq ?
+						d->dst_rq->prev_runnable_sum :
+						d->dst_cpu_time->prev_runnable_sum;
+		__entry->src_nt_cs		= d->src_rq ?
+						d->src_rq->nt_curr_runnable_sum :
+						d->src_cpu_time->nt_curr_runnable_sum;
+		__entry->src_nt_ps		= d->src_rq ?
+						d->src_rq->nt_prev_runnable_sum :
+						d->src_cpu_time->nt_prev_runnable_sum;
+		__entry->dst_nt_cs		= d->dst_rq ?
+						d->dst_rq->nt_curr_runnable_sum :
+						d->dst_cpu_time->nt_curr_runnable_sum;
+		__entry->dst_nt_ps		= d->dst_rq ?
+						d->dst_rq->nt_prev_runnable_sum :
+						d->dst_cpu_time->nt_prev_runnable_sum;
+	),
+
+	TP_printk("pid %d task_cpu %d migrate_type %s src_cs %llu src_ps %llu dst_cs %lld dst_ps %lld src_nt_cs %llu src_nt_ps %llu dst_nt_cs %lld dst_nt_ps %lld",
+		__entry->pid, __entry->tcpu, migrate_type_names[__entry->migrate_type],
+		__entry->src_cs, __entry->src_ps, __entry->dst_cs, __entry->dst_ps,
+		__entry->src_nt_cs, __entry->src_nt_ps, __entry->dst_nt_cs, __entry->dst_nt_ps)
 );
 
 TRACE_EVENT(sched_get_busy,
 
-	TP_PROTO(int cpu, u64 load),
+	TP_PROTO(int cpu, u64 load, u64 nload, u64 pload, int early),
 
-	TP_ARGS(cpu, load),
+	TP_ARGS(cpu, load, nload, pload, early),
 
 	TP_STRUCT__entry(
 		__field(	int,	cpu			)
 		__field(	u64,	load			)
+		__field(	u64,	nload			)
+		__field(	u64,	pload			)
+		__field(	int,	early			)
 	),
 
 	TP_fast_assign(
 		__entry->cpu		= cpu;
 		__entry->load		= load;
+		__entry->nload		= nload;
+		__entry->pload		= pload;
+		__entry->early		= early;
 	),
 
-	TP_printk("cpu %d load %lld",
-		__entry->cpu, __entry->load)
+	TP_printk("cpu %d load %lld new_task_load %lld predicted_load %lld early %d",
+		__entry->cpu, __entry->load, __entry->nload,
+		__entry->pload, __entry->early)
 );
 
 TRACE_EVENT(sched_freq_alert,
 
-	TP_PROTO(int cpu, u64 old_load, u64 new_load),
+	TP_PROTO(int cpu, int pd_notif, int check_groups, struct rq *rq,
+		u64 new_load),
 
-	TP_ARGS(cpu, old_load, new_load),
+	TP_ARGS(cpu, pd_notif, check_groups, rq, new_load),
 
 	TP_STRUCT__entry(
 		__field(	int,	cpu			)
-		__field(	u64,	old_load		)
+		__field(	int,	pd_notif		)
+		__field(	int,	check_groups		)
+		__field(	u64,	old_busy_time		)
+		__field(	u64,	ps			)
 		__field(	u64,	new_load		)
+		__field(	u64,	old_pred		)
+		__field(	u64,	new_pred		)
 	),
 
 	TP_fast_assign(
 		__entry->cpu		= cpu;
-		__entry->old_load	= old_load;
+		__entry->pd_notif	= pd_notif;
+		__entry->check_groups	= check_groups;
+		__entry->old_busy_time	= rq->old_busy_time;
+		__entry->ps		= rq->prev_runnable_sum;
 		__entry->new_load	= new_load;
+		__entry->old_pred	= rq->old_estimated_time;
+		__entry->new_pred	= rq->hmp_stats.pred_demands_sum;
 	),
 
-	TP_printk("cpu %d old_load=%llu new_load=%llu",
-		__entry->cpu, __entry->old_load, __entry->new_load)
+	TP_printk("cpu %d pd_notif=%d check_groups %d old_busy_time=%llu prev_sum=%lld new_load=%llu old_pred=%llu new_pred=%llu",
+		__entry->cpu, __entry->pd_notif, __entry->check_groups,
+		__entry->old_busy_time, __entry->ps, __entry->new_load,
+		__entry->old_pred, __entry->new_pred)
 );
 
 #endif	/* CONFIG_SCHED_FREQ_INPUT */
@@ -451,7 +651,7 @@ DECLARE_EVENT_CLASS(sched_wakeup_template,
 
 	TP_PROTO(struct task_struct *p, int success),
 
-	TP_ARGS(p, success),
+	TP_ARGS(__perf_task(p), success),
 
 	TP_STRUCT__entry(
 		__array(	char,	comm,	TASK_COMM_LEN	)
@@ -467,9 +667,6 @@ DECLARE_EVENT_CLASS(sched_wakeup_template,
 		__entry->prio		= p->prio;
 		__entry->success	= success;
 		__entry->target_cpu	= task_cpu(p);
-	)
-	TP_perf_assign(
-		__perf_task(p);
 	),
 
 	TP_printk("comm=%s pid=%d prio=%d success=%d target_cpu=%03d",
@@ -497,7 +694,7 @@ static inline long __trace_sched_switch_state(struct task_struct *p)
 	/*
 	 * For all intents and purposes a preempted task is a running task.
 	 */
-	if (task_preempt_count(p) & PREEMPT_ACTIVE)
+	if (preempt_count() & PREEMPT_ACTIVE)
 		state = TASK_RUNNING | TASK_STATE_MAX;
 #endif
 
@@ -580,31 +777,6 @@ TRACE_EVENT(sched_migrate_task,
 );
 
 /*
- * Tracepoint for a CPU going offline/online:
- */
-TRACE_EVENT(sched_cpu_hotplug,
-
-	TP_PROTO(int affected_cpu, int error, int status),
-
-	TP_ARGS(affected_cpu, error, status),
-
-	TP_STRUCT__entry(
-		__field(	int,	affected_cpu		)
-		__field(	int,	error			)
-		__field(	int,	status			)
-	),
-
-	TP_fast_assign(
-		__entry->affected_cpu	= affected_cpu;
-		__entry->error		= error;
-		__entry->status		= status;
-	),
-
-	TP_printk("cpu %d %s error=%d", __entry->affected_cpu,
-		__entry->status ? "online" : "offline", __entry->error)
-);
-
-/*
  * Tracepoint for load balancing:
  */
 #if NR_CPUS > 32
@@ -652,6 +824,31 @@ TRACE_EVENT(sched_load_balance,
 		  __entry->group_mask, __entry->busiest_nr_running,
 		  __entry->imbalance, __entry->env_flags, __entry->ld_moved,
 		  __entry->balance_interval)
+);
+
+/*
+ * Tracepoint for a CPU going offline/online:
+ */
+TRACE_EVENT(sched_cpu_hotplug,
+
+	TP_PROTO(int affected_cpu, int error, int status),
+
+	TP_ARGS(affected_cpu, error, status),
+
+	TP_STRUCT__entry(
+		__field(	int,	affected_cpu		)
+		__field(	int,	error			)
+		__field(	int,	status			)
+	),
+
+	TP_fast_assign(
+		__entry->affected_cpu	= affected_cpu;
+		__entry->error		= error;
+		__entry->status		= status;
+	),
+
+	TP_printk("cpu %d %s error=%d", __entry->affected_cpu,
+		__entry->status ? "online" : "offline", __entry->error)
 );
 
 DECLARE_EVENT_CLASS(sched_process_template,
@@ -785,7 +982,7 @@ DECLARE_EVENT_CLASS(sched_stat_template,
 
 	TP_PROTO(struct task_struct *tsk, u64 delay),
 
-	TP_ARGS(tsk, delay),
+	TP_ARGS(__perf_task(tsk), __perf_count(delay)),
 
 	TP_STRUCT__entry(
 		__array( char,	comm,	TASK_COMM_LEN	)
@@ -797,10 +994,6 @@ DECLARE_EVENT_CLASS(sched_stat_template,
 		memcpy(__entry->comm, tsk->comm, TASK_COMM_LEN);
 		__entry->pid	= tsk->pid;
 		__entry->delay	= delay;
-	)
-	TP_perf_assign(
-		__perf_count(delay);
-		__perf_task(tsk);
 	),
 
 	TP_printk("comm=%s pid=%d delay=%Lu [ns]",
@@ -868,11 +1061,11 @@ TRACE_EVENT(sched_blocked_reason,
  * Tracepoint for accounting runtime (time the task is executing
  * on a CPU).
  */
-TRACE_EVENT(sched_stat_runtime,
+DECLARE_EVENT_CLASS(sched_stat_runtime,
 
 	TP_PROTO(struct task_struct *tsk, u64 runtime, u64 vruntime),
 
-	TP_ARGS(tsk, runtime, vruntime),
+	TP_ARGS(tsk, __perf_count(runtime), vruntime),
 
 	TP_STRUCT__entry(
 		__array( char,	comm,	TASK_COMM_LEN	)
@@ -886,9 +1079,6 @@ TRACE_EVENT(sched_stat_runtime,
 		__entry->pid		= tsk->pid;
 		__entry->runtime	= runtime;
 		__entry->vruntime	= vruntime;
-	)
-	TP_perf_assign(
-		__perf_count(runtime);
 	),
 
 	TP_printk("comm=%s pid=%d runtime=%Lu [ns] vruntime=%Lu [ns]",
@@ -896,6 +1086,10 @@ TRACE_EVENT(sched_stat_runtime,
 			(unsigned long long)__entry->runtime,
 			(unsigned long long)__entry->vruntime)
 );
+
+DEFINE_EVENT(sched_stat_runtime, sched_stat_runtime,
+	     TP_PROTO(struct task_struct *tsk, u64 runtime, u64 vruntime),
+	     TP_ARGS(tsk, runtime, vruntime));
 
 /*
  * Tracepoint for showing priority inheritance modifying a tasks
@@ -926,6 +1120,133 @@ TRACE_EVENT(sched_pi_setprio,
 			__entry->oldprio, __entry->newprio)
 );
 
+#ifdef CONFIG_DETECT_HUNG_TASK
+TRACE_EVENT(sched_process_hang,
+	TP_PROTO(struct task_struct *tsk),
+	TP_ARGS(tsk),
+
+	TP_STRUCT__entry(
+		__array( char,	comm,	TASK_COMM_LEN	)
+		__field( pid_t,	pid			)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->comm, tsk->comm, TASK_COMM_LEN);
+		__entry->pid = tsk->pid;
+	),
+
+	TP_printk("comm=%s pid=%d", __entry->comm, __entry->pid)
+);
+#endif /* CONFIG_DETECT_HUNG_TASK */
+
+DECLARE_EVENT_CLASS(sched_move_task_template,
+
+	TP_PROTO(struct task_struct *tsk, int src_cpu, int dst_cpu),
+
+	TP_ARGS(tsk, src_cpu, dst_cpu),
+
+	TP_STRUCT__entry(
+		__field( pid_t,	pid			)
+		__field( pid_t,	tgid			)
+		__field( pid_t,	ngid			)
+		__field( int,	src_cpu			)
+		__field( int,	src_nid			)
+		__field( int,	dst_cpu			)
+		__field( int,	dst_nid			)
+	),
+
+	TP_fast_assign(
+		__entry->pid		= task_pid_nr(tsk);
+		__entry->tgid		= task_tgid_nr(tsk);
+		__entry->ngid		= task_numa_group_id(tsk);
+		__entry->src_cpu	= src_cpu;
+		__entry->src_nid	= cpu_to_node(src_cpu);
+		__entry->dst_cpu	= dst_cpu;
+		__entry->dst_nid	= cpu_to_node(dst_cpu);
+	),
+
+	TP_printk("pid=%d tgid=%d ngid=%d src_cpu=%d src_nid=%d dst_cpu=%d dst_nid=%d",
+			__entry->pid, __entry->tgid, __entry->ngid,
+			__entry->src_cpu, __entry->src_nid,
+			__entry->dst_cpu, __entry->dst_nid)
+);
+
+/*
+ * Tracks migration of tasks from one runqueue to another. Can be used to
+ * detect if automatic NUMA balancing is bouncing between nodes
+ */
+DEFINE_EVENT(sched_move_task_template, sched_move_numa,
+	TP_PROTO(struct task_struct *tsk, int src_cpu, int dst_cpu),
+
+	TP_ARGS(tsk, src_cpu, dst_cpu)
+);
+
+DEFINE_EVENT(sched_move_task_template, sched_stick_numa,
+	TP_PROTO(struct task_struct *tsk, int src_cpu, int dst_cpu),
+
+	TP_ARGS(tsk, src_cpu, dst_cpu)
+);
+
+TRACE_EVENT(sched_swap_numa,
+
+	TP_PROTO(struct task_struct *src_tsk, int src_cpu,
+		 struct task_struct *dst_tsk, int dst_cpu),
+
+	TP_ARGS(src_tsk, src_cpu, dst_tsk, dst_cpu),
+
+	TP_STRUCT__entry(
+		__field( pid_t,	src_pid			)
+		__field( pid_t,	src_tgid		)
+		__field( pid_t,	src_ngid		)
+		__field( int,	src_cpu			)
+		__field( int,	src_nid			)
+		__field( pid_t,	dst_pid			)
+		__field( pid_t,	dst_tgid		)
+		__field( pid_t,	dst_ngid		)
+		__field( int,	dst_cpu			)
+		__field( int,	dst_nid			)
+	),
+
+	TP_fast_assign(
+		__entry->src_pid	= task_pid_nr(src_tsk);
+		__entry->src_tgid	= task_tgid_nr(src_tsk);
+		__entry->src_ngid	= task_numa_group_id(src_tsk);
+		__entry->src_cpu	= src_cpu;
+		__entry->src_nid	= cpu_to_node(src_cpu);
+		__entry->dst_pid	= task_pid_nr(dst_tsk);
+		__entry->dst_tgid	= task_tgid_nr(dst_tsk);
+		__entry->dst_ngid	= task_numa_group_id(dst_tsk);
+		__entry->dst_cpu	= dst_cpu;
+		__entry->dst_nid	= cpu_to_node(dst_cpu);
+	),
+
+	TP_printk("src_pid=%d src_tgid=%d src_ngid=%d src_cpu=%d src_nid=%d dst_pid=%d dst_tgid=%d dst_ngid=%d dst_cpu=%d dst_nid=%d",
+			__entry->src_pid, __entry->src_tgid, __entry->src_ngid,
+			__entry->src_cpu, __entry->src_nid,
+			__entry->dst_pid, __entry->dst_tgid, __entry->dst_ngid,
+			__entry->dst_cpu, __entry->dst_nid)
+);
+
+/*
+ * Tracepoint for waking a polling cpu without an IPI.
+ */
+TRACE_EVENT(sched_wake_idle_without_ipi,
+
+	TP_PROTO(int cpu),
+
+	TP_ARGS(cpu),
+
+	TP_STRUCT__entry(
+		__field(	int,	cpu	)
+	),
+
+	TP_fast_assign(
+		__entry->cpu	= cpu;
+	),
+
+	TP_printk("cpu=%d", __entry->cpu)
+);
+
 TRACE_EVENT(sched_get_nr_running_avg,
 
 	TP_PROTO(int avg, int big_avg, int iowait_avg),
@@ -952,3 +1273,4 @@ TRACE_EVENT(sched_get_nr_running_avg,
 
 /* This part must be outside protection */
 #include <trace/define_trace.h>
+#endif /* CONFIG_SCHED_QHMP */
