@@ -31,6 +31,7 @@
 #include <linux/of_device.h>
 #include <linux/time.h>
 #include <linux/completion.h>
+#include <linux/tegra-powergate.h>
 
 #include <sound/core.h>
 #include <sound/initval.h>
@@ -269,6 +270,8 @@ static int tegra_hda_suspend(struct device *dev)
 	azx_stop_chip(chip);
 	azx_enter_link_reset(chip);
 
+	tegra_powergate_partition(TEGRA_POWERGATE_SOR);
+
 	pm_runtime_put(&tdata->pdev->dev);
 	return 0;
 }
@@ -281,6 +284,8 @@ static int tegra_hda_resume(struct device *dev)
 		container_of(chip, struct hda_tegra_data, chip);
 
 	pm_runtime_get_sync(&tdata->pdev->dev);
+
+	tegra_unpowergate_partition(TEGRA_POWERGATE_SOR);
 
 	hda_tegra_init(tdata);
 
@@ -451,6 +456,7 @@ static int hda_tegra_init_chip(struct azx *chip)
 	chip->addr += NVIDIA_TEGRA_HDA_BAR0_OFFSET;
 
 	hda_tegra_enable_clocks(tdata);
+	tegra_unpowergate_partition(TEGRA_POWERGATE_SOR);
 	pm_runtime_set_active(dev);
 
 	hda_tegra_init(tdata);
