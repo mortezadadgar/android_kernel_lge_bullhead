@@ -145,16 +145,10 @@ static int mmc_bus_suspend(struct device *dev)
 {
 	struct mmc_driver *drv = to_mmc_driver(dev->driver);
 	struct mmc_card *card = mmc_dev_to_card(dev);
-	struct mmc_host *host = card->host;
-	int ret;
+	int ret = 0;
 
-	if (dev->driver && drv->suspend) {
+	if (dev->driver && drv->suspend)
 		ret = drv->suspend(card);
-		if (ret)
-			return ret;
-	}
-
-	ret = host->bus_ops->suspend(host);
 	return ret;
 }
 
@@ -162,17 +156,10 @@ static int mmc_bus_resume(struct device *dev)
 {
 	struct mmc_driver *drv = to_mmc_driver(dev->driver);
 	struct mmc_card *card = mmc_dev_to_card(dev);
-	struct mmc_host *host = card->host;
-	int ret;
-
-	ret = host->bus_ops->resume(host);
-	if (ret)
-		pr_warn("%s: error %d during resume (card was removed?)\n",
-			mmc_hostname(host), ret);
+	int ret = 0;
 
 	if (dev->driver && drv->resume)
 		ret = drv->resume(card);
-
 	return ret;
 }
 #endif
