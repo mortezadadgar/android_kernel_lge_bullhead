@@ -101,7 +101,7 @@ static int venice_edp_regulator_probe(struct device *dev)
 static int venice_edp_enable(struct device *dev)
 {
 	int err = 0;
-	int diff = ktime_to_ms(ktime_sub(ktime_get(), last_power_off));
+	int diff = ktime_to_ms(ktime_sub(ktime_get_real(), last_power_off));
 
 	if (edp_enabled)
 		return 0;
@@ -138,7 +138,7 @@ static int venice_edp_disable(void)
 	if (avdd_lcd_3v3)
 		regulator_disable(avdd_lcd_3v3);
 
-	last_power_off = ktime_get();
+	last_power_off = ktime_get_real();
 
 	edp_enabled = 0;
 	return 0;
