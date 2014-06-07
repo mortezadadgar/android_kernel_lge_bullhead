@@ -98,7 +98,7 @@
 		trim-delay = <0x2>;
 		calib-3v3-offsets = <0x7676>;
 		calib-1v8-offsets = <0x7676>;
-		calib-1v8-offsets-uhs-modes = <0x2f>;
+		calib-1v8-offsets-uhs-modes = <0x3f>;
 		max-frequency = <204000000>;
 	};
 
@@ -107,7 +107,7 @@
 		trim-delay = <0x3>;
 		calib-3v3-offsets = <0x7676>;
 		calib-1v8-offsets = <0x7676>;
-		calib-1v8-offsets-uhs-modes = <0x2f>;
+		calib-1v8-offsets-uhs-modes = <0x3f>;
 		max-frequency = <204000000>;
 	};
 
@@ -116,7 +116,7 @@
 		ddr-trim-delay = <0x4>;
 		calib-3v3-offsets = <0x0202>;
 		calib-1v8-offsets = <0x0202>;
-		calib-1v8-offsets-uhs-modes = <0x2f>;
+		calib-1v8-offsets-uhs-modes = <0x3f>;
 		max-frequency = <200000000>;
 	};
 
