@@ -1156,6 +1156,12 @@ err_exit:
 static int nvavp_init(struct nvavp_info *nvavp, int channel_id)
 {
 	int ret = 0;
+	int video_initialized, audio_initialized = 0;
+
+	video_initialized = nvavp->video_initialized;
+
+	if (nvavp->nvavp_audio_on)
+		audio_initialized = nvavp->audio_initialized;
 
 	ret = nvavp_os_init(nvavp);
 	if (ret) {
@@ -1184,7 +1190,7 @@ static int nvavp_init(struct nvavp_info *nvavp, int channel_id)
 	}
 
 	/*Reset avp only once */
-	if (!(nvavp->video_initialized && nvavp->audio_initialized))
+	if (!(video_initialized || audio_initialized))
 		nvavp_reset_avp(nvavp, nvavp->os_info.reset_addr);
 
 err_exit:
