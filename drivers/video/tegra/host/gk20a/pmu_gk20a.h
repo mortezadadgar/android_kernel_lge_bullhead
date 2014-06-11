@@ -788,10 +788,6 @@ struct pmu_gk20a {
 	wait_queue_head_t pg_wq;
 
 #define PMU_ELPG_ENABLE_ALLOW_DELAY_MSEC	1 /* msec */
-	/* deferred elpg enable */
-	struct delayed_work elpg_enable; /* deferred elpg enable */
-	/* true after init, false after disable, true after delay */
-	bool elpg_enable_allow;
 	/* protect elpg enable/disable */
 	struct mutex elpg_mutex;
 	/* protect pmu pg_initialization routine */
