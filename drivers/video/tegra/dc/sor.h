@@ -88,6 +88,7 @@ struct tegra_dc_sor_data {
 
 #define TEGRA_SOR_TIMEOUT_MS		1000
 #define TEGRA_SOR_ATTACH_TIMEOUT_MS	1000
+#define TEGRA_DC_POLL_TIMEOUT_MS	50
 
 #define CHECK_RET(x)			\
 	do {				\
@@ -132,4 +133,5 @@ void tegra_dc_sor_power_down_unused_lanes(struct tegra_dc_sor_data *sor);
 void tegra_dc_sor_set_voltage_swing(struct tegra_dc_sor_data *sor,
 	u32 cust_drive_current, u32 cust_preemphasis);
 
+void tegra_dc_detach(struct tegra_dc_sor_data *sor);
 #endif

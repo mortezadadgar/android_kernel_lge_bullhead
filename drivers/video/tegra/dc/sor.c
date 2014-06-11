@@ -1058,6 +1058,65 @@ void tegra_dc_sor_attach(struct tegra_dc_sor_data *sor)
 	}
 }
 
+static void tegra_dc_sor_general_act(struct tegra_dc *dc)
+{
+	tegra_dc_writel(dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
+
+	if (tegra_dc_poll_register(dc, DC_CMD_STATE_CONTROL,
+		GENERAL_ACT_REQ, 0, 100,
+		TEGRA_DC_POLL_TIMEOUT_MS))
+		dev_err(&dc->ndev->dev,
+			"dc timeout waiting for DC to stop\n");
+}
+
+static void tegra_dc_sor_enable_sor(struct tegra_dc_sor_data *sor, bool enable)
+{
+	struct tegra_dc *dc = sor->dc;
+	u32 reg_val = tegra_dc_readl(sor->dc, DC_DISP_DISP_WIN_OPTIONS);
+	reg_val = enable ? reg_val | SOR_ENABLE : reg_val & ~SOR_ENABLE;
+	tegra_dc_writel(dc, reg_val, DC_DISP_DISP_WIN_OPTIONS);
+}
+
+void tegra_dc_detach(struct tegra_dc_sor_data *sor)
+{
+	struct tegra_dc *dc = sor->dc;
+	unsigned long dc_int_mask;
+
+	/* Sleep mode */
+	tegra_sor_writel(sor, NV_SOR_SUPER_STATE1,
+		NV_SOR_SUPER_STATE1_ASY_HEAD_OP_SLEEP |
+		NV_SOR_SUPER_STATE1_ASY_ORMODE_SAFE |
+		NV_SOR_SUPER_STATE1_ATTACHED_YES);
+	tegra_dc_sor_super_update(sor);
+
+	if (tegra_dc_sor_poll_register(sor, NV_SOR_TEST,
+		NV_SOR_TEST_ACT_HEAD_OPMODE_DEFAULT_MASK,
+		NV_SOR_TEST_ACT_HEAD_OPMODE_SLEEP,
+		100, TEGRA_SOR_ATTACH_TIMEOUT_MS)) {
+		dev_err(&dc->ndev->dev,
+			"dc timeout waiting for OPMOD = SLEEP\n");
+	}
+
+	tegra_sor_writel(sor, NV_SOR_SUPER_STATE1,
+		NV_SOR_SUPER_STATE1_ASY_HEAD_OP_SLEEP |
+		NV_SOR_SUPER_STATE1_ASY_ORMODE_SAFE |
+		NV_SOR_SUPER_STATE1_ATTACHED_NO);
+
+	/* Mask DC interrupts during the 2 dummy frames required for detach */
+	dc_int_mask = tegra_dc_readl(dc, DC_CMD_INT_MASK);
+	tegra_dc_writel(dc, 0, DC_CMD_INT_MASK);
+
+	/* Stop DC->SOR path */
+	tegra_dc_sor_enable_sor(sor, false);
+	tegra_dc_sor_general_act(dc);
+
+	/* Stop DC */
+	tegra_dc_writel(dc, DISP_CTRL_MODE_STOP, DC_CMD_DISPLAY_COMMAND);
+	tegra_dc_sor_general_act(dc);
+
+	tegra_dc_writel(dc, dc_int_mask, DC_CMD_INT_MASK);
+}
+
 void tegra_dc_sor_enable_lvds(struct tegra_dc_sor_data *sor,
 	bool balanced, bool conforming)
 {

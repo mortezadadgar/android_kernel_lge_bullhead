@@ -410,4 +410,6 @@ void tegra_dc_cmu_enable(struct tegra_dc *dc, bool cmu_enable);
 int tegra_dc_update_cmu(struct tegra_dc *dc, struct tegra_dc_cmu *cmu);
 #endif
 
+unsigned long tegra_dc_poll_register(struct tegra_dc *dc, u32 reg, u32 mask,
+		u32 exp_val, u32 poll_interval_us, u32 timeout_ms);
 #endif
