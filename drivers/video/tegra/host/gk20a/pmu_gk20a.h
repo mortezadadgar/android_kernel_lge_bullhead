@@ -748,6 +748,16 @@ struct pmu_pg_stats {
 #define PMU_FALCON_REG_RSVD2		(31)
 #define PMU_FALCON_REG_SIZE		(32)
 
+/* Choices for pmu_state */
+enum {
+	PMU_STATE_OFF,			/* PMU is off */
+	PMU_STATE_STARTING,		/* PMU is booting */
+	PMU_STATE_ELPG_BOOTED,		/* ELPG is initialized */
+	PMU_STATE_LOADING_PG_BUF,	/* Loading PG buf */
+	PMU_STATE_LOADING_ZBC,		/* Loading ZBC buf */
+	PMU_STATE_STARTED,		/* Fully initialized */
+};
+
 struct pmu_gk20a {
 
 	struct gk20a *g;
@@ -783,11 +793,12 @@ struct pmu_gk20a {
 
 	u32 stat_dmem_offset;
 
-	bool elpg_ready;
 	u32 elpg_stat;
-	wait_queue_head_t pg_wq;
+
+	int pmu_state;
 
 #define PMU_ELPG_ENABLE_ALLOW_DELAY_MSEC	1 /* msec */
+	struct work_struct pg_init;
 	/* protect elpg enable/disable */
 	struct mutex elpg_mutex;
 	/* protect pmu pg_initialization routine */
@@ -814,8 +825,6 @@ struct pmu_gk20a {
 };
 
 int gk20a_init_pmu_support(struct gk20a *g);
-int gk20a_init_pmu_setup_hw2(struct gk20a *g);
-
 void gk20a_pmu_isr(struct gk20a *g);
 
 /* send a cmd to pmu */

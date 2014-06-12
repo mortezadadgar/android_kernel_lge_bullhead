@@ -725,12 +725,6 @@ int nvhost_gk20a_finalize_poweron(struct platform_device *dev)
 		goto done;
 	}
 
-	err = gk20a_init_pmu_setup_hw2(g);
-	if (err) {
-		nvhost_err(&dev->dev, "failed to init gk20a pmu_hw2");
-		goto done;
-	}
-
 	err = gk20a_init_therm_support(g);
 	if (err) {
 		nvhost_err(&dev->dev, "failed to init gk20a therm");
@@ -909,6 +903,8 @@ static int gk20a_probe(struct platform_device *dev)
 #endif
 
 	spin_lock_init(&gk20a->mc_enable_lock);
+
+	init_waitqueue_head(&gk20a->gr.init_wq);
 
 	return 0;
 }

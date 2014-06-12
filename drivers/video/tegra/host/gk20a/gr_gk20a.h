@@ -199,7 +199,9 @@ struct gr_gk20a {
 #define GR_NETLIST_STATIC_A	'A'
 	int netlist;
 
+	wait_queue_head_t init_wq;
 	int initialized;
+
 	u32 num_fbps;
 
 	u32 max_gpc_count;
@@ -303,6 +305,7 @@ struct gk20a_ctxsw_bootloader_desc {
 
 int gk20a_init_gr_support(struct gk20a *g);
 int gk20a_gr_reset(struct gk20a *g);
+void gk20a_gr_wait_initialized(struct gk20a *g);
 
 int gk20a_init_gr_channel(struct channel_gk20a *ch_gk20a);
 
@@ -341,17 +344,21 @@ int gr_gk20a_fecs_set_reglist_virtual_addr(struct gk20a *g, u64 pmu_va);
 void gr_gk20a_init_elcg_mode(struct gk20a *g, u32 mode, u32 engine);
 void gr_gk20a_init_blcg_mode(struct gk20a *g, u32 mode, u32 engine);
 
+void gr_gk20a_pmu_save_zbc(struct gk20a *g, u32 entries);
+
 /* sm */
 bool gk20a_gr_sm_debugger_attached(struct gk20a *g);
 
 #define gr_gk20a_elpg_protected_call(g, func) \
 	({ \
-		int err; \
+		int err = 0; \
 		if (support_gk20a_pmu()) \
-			gk20a_pmu_disable_elpg(g); \
-		err = func; \
-		if (support_gk20a_pmu()) \
-			gk20a_pmu_enable_elpg(g); \
+			err = gk20a_pmu_disable_elpg(g); \
+		if (!err) { \
+			err = func; \
+			if (support_gk20a_pmu()) \
+				gk20a_pmu_enable_elpg(g); \
+		} \
 		err; \
 	})
 

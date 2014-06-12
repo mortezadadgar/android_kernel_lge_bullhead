@@ -3253,6 +3253,42 @@ clean_up:
 	return ret;
 }
 
+void gr_gk20a_pmu_save_zbc(struct gk20a *g, u32 entries)
+{
+	struct fifo_gk20a *f = &g->fifo;
+	struct fifo_engine_info_gk20a *gr_info =
+		f->engine_info + ENGINE_GR_GK20A;
+	unsigned long end_jiffies = jiffies +
+		msecs_to_jiffies(gk20a_get_gr_idle_timeout(g));
+	u32 ret;
+
+	ret = gk20a_fifo_disable_engine_activity(g, gr_info, true);
+	if (ret) {
+		nvhost_err(dev_from_gk20a(g),
+			"failed to disable gr engine activity\n");
+		return;
+	}
+
+	ret = gr_gk20a_wait_idle(g, end_jiffies, GR_IDLE_CHECK_DEFAULT);
+	if (ret) {
+		nvhost_err(dev_from_gk20a(g),
+			"failed to idle graphics\n");
+		goto clean_up;
+	}
+
+	/* update zbc */
+	gk20a_pmu_save_zbc(g, entries);
+
+clean_up:
+	ret = gk20a_fifo_enable_engine_activity(g, gr_info);
+	if (ret) {
+		nvhost_err(dev_from_gk20a(g),
+			"failed to enable gr engine activity\n");
+	}
+
+	return;
+}
+
 int gr_gk20a_add_zbc(struct gk20a *g, struct gr_gk20a *gr,
 		     struct zbc_entry *zbc_val)
 {
@@ -3261,10 +3297,6 @@ int gr_gk20a_add_zbc(struct gk20a *g, struct gr_gk20a *gr,
 	u32 i, ret = -ENOMEM;
 	bool added = false;
 	u32 entries;
-	struct fifo_gk20a *f = &g->fifo;
-	struct fifo_engine_info_gk20a *gr_info =
-		f->engine_info + ENGINE_GR_GK20A;
-	unsigned long end_jiffies;
 
 	/* no endian swap ? */
 
@@ -3347,32 +3379,7 @@ int gr_gk20a_add_zbc(struct gk20a *g, struct gr_gk20a *gr,
 		/* update zbc for elpg only when new entry is added */
 		entries = max(gr->max_used_color_index,
 					gr->max_used_depth_index);
-		if (g->pmu.zbc_ready) {
-			ret = gk20a_fifo_disable_engine_activity(g,
-				gr_info, true);
-			if (ret) {
-				nvhost_err(dev_from_gk20a(g),
-					"failed to disable gr engine activity");
-				return ret;
-			}
-
-			end_jiffies = jiffies +
-				msecs_to_jiffies(gk20a_get_gr_idle_timeout(g));
-			ret = gr_gk20a_wait_idle(g,
-				end_jiffies, GR_IDLE_CHECK_DEFAULT);
-			if (ret) {
-				nvhost_err(dev_from_gk20a(g),
-					"failed to idle graphics");
-			}
-
-			gk20a_pmu_save_zbc(g, entries);
-
-			ret = gk20a_fifo_enable_engine_activity(g, gr_info);
-			if (ret) {
-				nvhost_err(dev_from_gk20a(g),
-					"failed to enable gr engine activity");
-			}
-		}
+		gr_gk20a_pmu_save_zbc(g, entries);
 
 	}
 
@@ -4371,7 +4378,17 @@ int gk20a_init_gr_support(struct gk20a *g)
 	if (err)
 		return err;
 
+	/* GR is inialized, signal possible waiters */
+	g->gr.initialized = true;
+	wake_up(&g->gr.init_wq);
+
 	return 0;
+}
+
+/* Wait until GR is initialized */
+void gk20a_gr_wait_initialized(struct gk20a *g)
+{
+	wait_event(g->gr.init_wq, g->gr.initialized);
 }
 
 #define NVA297_SET_ALPHA_CIRCULAR_BUFFER_SIZE	0x02dc
@@ -5262,6 +5279,8 @@ int gk20a_gr_suspend(struct gk20a *g)
 	gk20a_writel(g, gr_exception2_en_r(), 0);
 
 	gk20a_gr_flush_channel_tlb(&g->gr);
+
+	g->gr.initialized = false;
 
 	nvhost_dbg_fn("done");
 	return ret;
