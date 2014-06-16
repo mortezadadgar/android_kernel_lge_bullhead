@@ -40,23 +40,6 @@
 
 #include "dc/dc_priv.h"
 
-struct tegra_fb_info {
-	struct tegra_dc_win	*win;
-	struct platform_device	*ndev;
-	struct fb_info		*info;
-	bool			valid;
-
-	struct resource		*fb_mem;
-
-	int			xres;
-	int			yres;
-	int			curr_xoffset;
-	int			curr_yoffset;
-
-	struct fb_videomode	mode;
-	phys_addr_t		phys_start;
-};
-
 /* palette array used by the fbcon */
 static u32 pseudo_palette[16];
 

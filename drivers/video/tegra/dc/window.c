@@ -479,6 +479,14 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 		unsigned bpp_bw = bpp * ((yuvp || yuvsp) ? 2 : 1);
 		const bool filter_h = win_use_h_filter(dc, win);
 		const bool filter_v = win_use_v_filter(dc, win);
+
+		if (dc->out->type == TEGRA_DC_OUT_HDMI &&
+		    win->phys_addr == dc->fb->phys_start) {
+			dev_info(&dc->ndev->dev,
+				"Ignore update windows for HDMI FB.\n");
+			continue;
+		}
+
 #if defined(CONFIG_TEGRA_DC_SCAN_COLUMN)
 		scan_column = (win->flags & TEGRA_WIN_FLAG_SCAN_COLUMN);
 #endif

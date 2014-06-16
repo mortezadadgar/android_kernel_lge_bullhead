@@ -2523,6 +2523,8 @@ static int tegra_dc_create_fb(struct notifier_block *nb,
 		 */
 		stride = round_up(640 * bpp, TEGRA_LINEAR_PITCH_ALIGNMENT);
 		fb_size = round_up(stride * 480, PAGE_SIZE);
+		dc->pdata->fb->xres = 640;
+		dc->pdata->fb->yres = 480;
 	}
 
 	fb_cpuva = dma_alloc_writecombine(dev, fb_size, &fb_iova, GFP_KERNEL);
