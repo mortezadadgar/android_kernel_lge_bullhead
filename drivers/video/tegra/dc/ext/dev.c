@@ -93,7 +93,8 @@ static int tegra_dc_ext_get_window(struct tegra_dc_ext_user *user,
 	struct tegra_dc_ext_win *win;
 	int ret = 0;
 
-	if ((n >= get_dc_n_windows()) || !(ext->dc->valid_windows & BIT(n)))
+	if ((n >= ext->dc->n_windows) ||
+	    !(ext->dc->valid_windows & BIT(n)))
 		return -EINVAL;
 
 	win = &ext->win[n];
@@ -117,7 +118,7 @@ static int tegra_dc_ext_put_window(struct tegra_dc_ext_user *user,
 	struct tegra_dc_ext_win *win;
 	int ret = 0;
 
-	if (n >= get_dc_n_windows())
+	if (n >= ext->dc->n_windows)
 		return -EINVAL;
 
 	win = &ext->win[n];
@@ -395,12 +396,13 @@ static void tegra_dc_ext_flip_worker(struct work_struct *work)
 	int i, nr_unpin = 0, nr_win = 0;
 	bool skip_flip = false;
 
-	wins = kzalloc(sizeof(struct tegra_dc_win *) * get_dc_n_windows(),
-				GFP_KERNEL);
+	wins = kzalloc(sizeof(struct tegra_dc_win *) *
+			ext->dc->n_windows, GFP_KERNEL);
 	unpin_handles = kzalloc(sizeof(struct tegra_dc_dmabuf *) *
-			get_dc_n_windows() * TEGRA_DC_NUM_PLANES, GFP_KERNEL);
+			ext->dc->n_windows * TEGRA_DC_NUM_PLANES,
+			GFP_KERNEL);
 
-	BUG_ON(win_num > get_dc_n_windows());
+	BUG_ON(win_num > ext->dc->n_windows);
 	for (i = 0; i < win_num; i++) {
 		struct tegra_dc_ext_flip_win *flip_win = &data->win[i];
 		int index = flip_win->attr.index;
@@ -522,7 +524,7 @@ static int lock_windows_for_flip(struct tegra_dc_ext_user *user,
 	u8 idx_mask = 0;
 	int i;
 
-	BUG_ON(win_num > get_dc_n_windows());
+	BUG_ON(win_num > ext->dc->n_windows);
 	for (i = 0; i < win_num; i++) {
 		int index = win[i].index;
 
@@ -567,7 +569,7 @@ static void unlock_windows_for_flip(struct tegra_dc_ext_user *user,
 	u8 idx_mask = 0;
 	int i;
 
-	BUG_ON(win_num > get_dc_n_windows());
+	BUG_ON(win_num > ext->dc->n_windows);
 	for (i = 0; i < win_num; i++) {
 		int index = win[i].index;
 
@@ -590,8 +592,9 @@ static int sanitize_flip_args(struct tegra_dc_ext_user *user,
 				int win_num)
 {
 	int i, used_windows = 0;
+	struct tegra_dc *dc = user->ext->dc;
 
-	if (win_num > get_dc_n_windows())
+	if (win_num > dc->n_windows)
 		return -EINVAL;
 
 	for (i = 0; i < win_num; i++) {
@@ -600,7 +603,7 @@ static int sanitize_flip_args(struct tegra_dc_ext_user *user,
 		if (index < 0)
 			continue;
 
-		if (index >= get_dc_n_windows())
+		if (index >= dc->n_windows)
 			return -EINVAL;
 
 		if (used_windows & BIT(index))
@@ -642,7 +645,7 @@ static int tegra_dc_ext_flip(struct tegra_dc_ext_user *user,
 	data->ext = ext;
 	data->act_window_num = win_num;
 
-	BUG_ON(win_num > get_dc_n_windows());
+	BUG_ON(win_num > ext->dc->n_windows);
 	for (i = 0; i < win_num; i++) {
 		struct tegra_dc_ext_flip_win *flip_win = &data->win[i];
 		int index = win[i].index;
@@ -766,7 +769,7 @@ static int tegra_dc_ext_set_csc(struct tegra_dc_ext_user *user,
 	struct tegra_dc_ext_win *ext_win;
 	struct tegra_dc_csc *csc;
 
-	if (index >= get_dc_n_windows())
+	if (index >= dc->n_windows)
 		return -EINVAL;
 
 	ext_win = &user->ext->win[index];
@@ -829,7 +832,7 @@ static int tegra_dc_ext_set_lut(struct tegra_dc_ext_user *user,
 	struct tegra_dc_ext_win *ext_win;
 	struct tegra_dc_lut *lut;
 
-	if (index >= get_dc_n_windows())
+	if (index >= dc->n_windows)
 		return -EINVAL;
 
 	if ((start >= 256) || (len > 256) || ((start + len) > 256))
@@ -1246,7 +1249,7 @@ static int tegra_dc_release(struct inode *inode, struct file *filp)
 	struct tegra_dc_ext *ext = user->ext;
 	unsigned int i;
 
-	for (i = 0; i < get_dc_n_windows(); i++) {
+	for (i = 0; i < ext->dc->n_windows; i++) {
 		if (ext->win[i].user == user)
 			tegra_dc_ext_put_window(user, i);
 	}
@@ -1313,7 +1316,7 @@ struct tegra_dc_ext *tegra_dc_ext_register(struct platform_device *ndev,
 	ext = kzalloc(sizeof(*ext), GFP_KERNEL);
 	if (!ext)
 		return ERR_PTR(-ENOMEM);
-	ext->win = kzalloc(sizeof(struct tegra_dc_win) * get_dc_n_windows(),
+	ext->win = kzalloc(sizeof(struct tegra_dc_win) * dc->n_windows,
 				GFP_KERNEL);
 	if (!ext->win) {
 		ret = -ENOMEM;

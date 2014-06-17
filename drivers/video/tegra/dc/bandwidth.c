@@ -123,7 +123,7 @@ static unsigned long tegra_dc_get_bandwidth(
 {
 	int i;
 
-	BUG_ON(n > get_dc_n_windows());
+	BUG_ON(n > windows[0]->dc->n_windows);
 
 	/* emc rate and latency allowance both need to know per window
 	 * bandwidths */
@@ -231,7 +231,7 @@ void tegra_dc_program_bandwidth(struct tegra_dc *dc, bool use_new)
 		dc->bw_kbps = dc->new_bw_kbps;
 	}
 
-	for (i = 0; i < get_dc_n_windows(); i++) {
+	for (i = 0; i < dc->n_windows; i++) {
 		struct tegra_dc_win *w = &dc->windows[i];
 
 		/* TODO: Notify MC our new latency allowance. */

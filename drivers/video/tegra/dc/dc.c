@@ -950,7 +950,7 @@ int tegra_dc_get_stride(struct tegra_dc *dc, unsigned win)
 
 	if (!dc->enabled)
 		return 0;
-	BUG_ON(win > get_dc_n_windows());
+	BUG_ON(win > dc->n_windows);
 	mutex_lock(&dc->lock);
 	tegra_dc_get(dc);
 	tegra_dc_writel(dc, WINDOW_A_SELECT << win,
@@ -1654,7 +1654,7 @@ static void tegra_dc_underflow_handler(struct tegra_dc *dc)
 #endif
 
 	/* Check for any underflow reset conditions */
-	for (i = 0; i < get_dc_n_windows(); i++) {
+	for (i = 0; i < dc->n_windows; i++) {
 		u32 masks[] = {
 			WIN_A_UF_INT,
 			WIN_B_UF_INT,
@@ -1939,7 +1939,7 @@ void tegra_dc_set_color_control(struct tegra_dc *dc)
 
 static u32 get_syncpt(struct tegra_dc *dc, int idx)
 {
-	if (idx >= 0 && idx < get_dc_n_windows())
+	if (idx >= 0 && idx < dc->n_windows)
 		return dc->win_syncpt[idx];
 	BUG();
 }
@@ -2016,7 +2016,7 @@ static int tegra_dc_init(struct tegra_dc *dc)
 	}
 #endif
 	tegra_dc_set_color_control(dc);
-	for (i = 0; i < get_dc_n_windows(); i++) {
+	for (i = 0; i < dc->n_windows; i++) {
 		struct tegra_dc_win *win = &dc->windows[i];
 		tegra_dc_writel(dc, WINDOW_A_SELECT << i,
 				DC_CMD_DISPLAY_WINDOW_HEADER);
@@ -2116,7 +2116,7 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 		dc->out_ops->enable(dc);
 
 	/* force a full blending update */
-	for (i = 0; i < get_dc_n_windows(); i++)
+	for (i = 0; i < dc->n_windows; i++)
 		dc->blend.z[i] = -1;
 
 	tegra_dc_ext_enable(dc->ext);
@@ -2300,15 +2300,15 @@ void tegra_dc_blank(struct tegra_dc *dc)
 	struct tegra_dc_win **dcwins;
 	unsigned i;
 
-	dcwins = kzalloc(sizeof(struct tegra_dc_win *) * get_dc_n_windows(),
+	dcwins = kzalloc(sizeof(struct tegra_dc_win *) * dc->n_windows,
 				GFP_KERNEL);
-	for (i = 0; i < get_dc_n_windows(); i++) {
+	for (i = 0; i < dc->n_windows; i++) {
 		dcwins[i] = tegra_dc_get_window(dc, i);
 		dcwins[i]->flags &= ~TEGRA_WIN_FLAG_ENABLED;
 	}
 
-	tegra_dc_update_windows(dcwins, get_dc_n_windows());
-	tegra_dc_sync_windows(dcwins, get_dc_n_windows());
+	tegra_dc_update_windows(dcwins, dc->n_windows);
+	tegra_dc_sync_windows(dcwins, dc->n_windows);
 
 	kfree(dcwins);
 }
@@ -2391,32 +2391,31 @@ static void tegra_dc_add_modes(struct tegra_dc *dc)
 static int tegra_dc_alloc_members(struct tegra_dc *dc)
 {
 	dc->blend.alpha = kzalloc(sizeof(*(dc->blend.alpha)) *
-				get_dc_n_windows(), GFP_KERNEL);
+				dc->n_windows, GFP_KERNEL);
 	if (!dc->blend.alpha)
 		return -ENOMEM;
 
 	dc->blend.flags = kzalloc(sizeof(*(dc->blend.flags)) *
-				get_dc_n_windows(), GFP_KERNEL);
+				dc->n_windows, GFP_KERNEL);
 	if (!dc->blend.flags)
 		return -ENOMEM;
 
 	dc->blend.z = kzalloc(sizeof(*(dc->blend.z)) *
-				get_dc_n_windows(), GFP_KERNEL);
+				dc->n_windows, GFP_KERNEL);
 	if (!dc->blend.z)
 		return -ENOMEM;
 
-	dc->windows = kzalloc(sizeof(struct tegra_dc_win) * get_dc_n_windows(),
-				GFP_KERNEL);
+	dc->windows = kzalloc(sizeof(struct tegra_dc_win) *
+				dc->n_windows, GFP_KERNEL);
 	if (!dc->windows)
 		return -ENOMEM;
 
-	dc->syncpt = kzalloc(sizeof(*(dc->syncpt)) * get_dc_n_windows(),
-				GFP_KERNEL);
+	dc->syncpt = kzalloc(sizeof(*(dc->syncpt)) * dc->n_windows, GFP_KERNEL);
 	if (!dc->syncpt)
 		return -ENOMEM;
 
-	dc->win_syncpt = kzalloc(sizeof(*(dc->win_syncpt)) * get_dc_n_windows(),
-				GFP_KERNEL);
+	dc->win_syncpt = kzalloc(sizeof(*(dc->win_syncpt)) *
+				dc->n_windows, GFP_KERNEL);
 	if (!dc->win_syncpt)
 		return -ENOMEM;
 
@@ -2580,6 +2579,8 @@ static int tegra_dc_probe(struct platform_device *ndev)
 		return -ENOMEM;
 	}
 
+	dc->ndev = ndev;
+	dc->n_windows = get_dc_n_windows(dc);
 	ret = tegra_dc_alloc_members(dc);
 	if (ret) {
 		dev_err(&ndev->dev, "can't alloc memory for dc members.\n");
@@ -2627,12 +2628,6 @@ static int tegra_dc_probe(struct platform_device *ndev)
 		dc->win_syncpt[1] = NVSYNCPT_DISP1_B;
 		dc->win_syncpt[2] = NVSYNCPT_DISP1_C;
 		dc->valid_windows = 0x07;
-#if defined(CONFIG_ARCH_TEGRA_124_SOC)
-		if (is_tegra124()) {
-			dc->win_syncpt[3] = NVSYNCPT_DISP0_D;
-			dc->valid_windows |= 0x08;
-		}
-#endif
 		dc->powergate_id = TEGRA_POWERGATE_DISB;
 		ndev->id = 1;
 	} else {
@@ -2656,9 +2651,7 @@ static int tegra_dc_probe(struct platform_device *ndev)
 
 	dc->base = base;
 	dc->irq = irq;
-	dc->ndev = ndev;
 	dc->pdata = ndev->dev.platform_data;
-
 	dc->bw_kbps = 0;
 
 	mutex_init(&dc->lock);
@@ -2677,7 +2670,6 @@ static int tegra_dc_probe(struct platform_device *ndev)
 
 	tegra_dc_init_lut_defaults(&dc->fb_lut);
 
-	dc->n_windows = get_dc_n_windows();
 	for (i = 0; i < dc->n_windows; i++) {
 		struct tegra_dc_win *win = &dc->windows[i];
 		win->idx = i;

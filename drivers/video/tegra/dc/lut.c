@@ -121,7 +121,7 @@ int tegra_dc_update_lut(struct tegra_dc *dc, int win_idx, int fboveride)
 	if (win_idx > -1)
 		return tegra_dc_update_winlut(dc, win_idx, fboveride);
 
-	for (win_idx = 0; win_idx < get_dc_n_windows(); win_idx++) {
+	for (win_idx = 0; win_idx < dc->n_windows; win_idx++) {
 		int err = tegra_dc_update_winlut(dc, win_idx, fboveride);
 		if (err)
 			return err;

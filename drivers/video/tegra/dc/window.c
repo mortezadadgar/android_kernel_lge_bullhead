@@ -188,7 +188,7 @@ static void tegra_dc_blend_sequential(struct tegra_dc *dc,
 	unsigned long mask = dc->valid_windows;
 
 	tegra_dc_io_start(dc);
-	for_each_set_bit(idx, &mask, get_dc_n_windows()) {
+	for_each_set_bit(idx, &mask, dc->n_windows) {
 		if (!tegra_dc_feature_is_gen2_blender(dc, idx))
 			continue;
 
@@ -283,7 +283,7 @@ static void tegra_dc_blend_sequential(struct tegra_dc *dc,
 int tegra_dc_sync_windows(struct tegra_dc_win *windows[], int n)
 {
 	int ret;
-	if (n < 1 || n > get_dc_n_windows())
+	if (n < 1 || n > windows[0]->dc->n_windows)
 		return -EINVAL;
 
 	if (!windows[0]->dc->enabled)
@@ -770,7 +770,7 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 		if (update_blend_seq)
 			tegra_dc_blend_sequential(dc, &dc->blend);
 
-		for (i = 0; i < get_dc_n_windows(); i++) {
+		for (i = 0; i < dc->n_windows; i++) {
 			if (!no_vsync)
 				dc->windows[i].dirty = 1;
 			update_mask |= WIN_A_ACT_REQ << i;
@@ -835,7 +835,7 @@ void tegra_dc_trigger_windows(struct tegra_dc *dc)
 #endif
 
 	val = tegra_dc_readl(dc, DC_CMD_STATE_CONTROL);
-	for (i = 0; i < get_dc_n_windows(); i++) {
+	for (i = 0; i < dc->n_windows; i++) {
 		if (!(val & (WIN_A_ACT_REQ << i)) && interlace_done) {
 			dc->windows[i].dirty = 0;
 			completed = 1;

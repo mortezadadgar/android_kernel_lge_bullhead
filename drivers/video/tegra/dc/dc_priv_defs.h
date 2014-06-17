@@ -55,18 +55,6 @@ static inline int is_tegra124(void)
 	return of_machine_is_compatible("nvidia,tegra124");
 }
 
-static inline int get_dc_n_windows(void)
-{
-	if (is_tegra124())
-		return 4;
-	if (is_tegra114())
-		return 3;
-
-	pr_err("Get DC windows number: Unsupported Tegra SOC.\n");
-	BUG();
-	return 0;
-}
-
 static inline u32 ALL_UF_INT(void)
 {
 #if defined(CONFIG_ARCH_TEGRA_124_SOC)
@@ -77,13 +65,13 @@ static inline u32 ALL_UF_INT(void)
 	return WIN_A_UF_INT | WIN_B_UF_INT | WIN_C_UF_INT;
 }
 
-struct tegra_dc;
-
 struct tegra_dc_blend {
 	unsigned *z;
 	unsigned *flags;
 	u8 *alpha;
 };
+
+struct tegra_dc;
 
 struct tegra_dc_out_ops {
 	/* initialize output.  dc clocks are not on at this point */
@@ -221,5 +209,22 @@ struct tegra_dc {
 
 	struct tegra_edid		*edid;
 };
+
+static inline int get_dc_n_windows(struct tegra_dc *dc)
+{
+	if (is_tegra124()) {
+		if (strcmp(dev_name(&dc->ndev->dev), "tegradc.0") == 0)
+			return 4;
+		else
+			return 3;
+	}
+
+	if (is_tegra114())
+		return 3;
+
+	pr_err("Get DC windows number: Unsupported Tegra SOC.\n");
+	BUG();
+	return 0;
+}
 
 #endif
