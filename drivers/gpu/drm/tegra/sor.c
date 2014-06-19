@@ -289,173 +289,12 @@ static int tegra_sor_power_up(struct tegra_sor *sor, unsigned long timeout)
 	return -ETIMEDOUT;
 }
 
-struct tegra_sor_dp_link {
-	u32 bits_per_pixel;
-
-	u32 activepolarity;
-	u32 active_count;
-	u32 tu_size;
-	u32 active_frac;
-	u32 watermark;
-};
-
-static int tegra_sor_calc_config(struct tegra_sor *sor,
-				 struct drm_display_mode *mode,
-				 struct tegra_sor_dp_link *tegra_link,
-				 struct drm_dp_link *link)
-{
-	const u32 link_rate = link->rate * 1000;
-	const u64 f = 100000; /* precision factor */
-	const int pclk = mode->clock * 1000;
-
-	u32 num_linkclk_line; /* Number of link clocks per line */
-	u64 ratio_f; /* Ratio of incoming to outgoing data rate */
-	u64 frac_f;
-	u64 activesym_f; /* Activesym per TU */
-	u64 activecount_f;
-	u32 activecount;
-	u32 activepolarity;
-	u64 approx_value_f;
-	u32 activefrac = 0;
-	u64 accumulated_error_f = 0;
-	u32 lowest_neg_activecount = 0;
-	u32 lowest_neg_activepolarity = 0;
-	u32 lowest_neg_tusize = 64;
-	u32 num_symbols_per_line;
-	u64 lowest_neg_activefrac = 0;
-	u64 lowest_neg_error_f = 64 * f;
-	u64 watermark_f;
-
-	int i;
-	bool neg;
-
-	if (!link_rate || !link->num_lanes || !pclk ||
-		!tegra_link->bits_per_pixel)
-		return -EINVAL;
-
-	if ((u64)pclk * tegra_link->bits_per_pixel >=
-		(u64)link_rate * 8 * link->num_lanes)
-		return -EINVAL;
-
-	num_linkclk_line = div_u64((u64)link_rate * mode->hdisplay, pclk);
-
-	ratio_f = (u64)pclk * tegra_link->bits_per_pixel * f;
-	ratio_f /= 8;
-	ratio_f = div_u64(ratio_f, link_rate * link->num_lanes);
-
-	for (i = 64; i >= 32; --i) {
-		activesym_f = ratio_f * i;
-		activecount_f = div_u64(activesym_f, (u32)f) * f;
-		frac_f = activesym_f - activecount_f;
-		activecount = (u32)div_u64(activecount_f, (u32)f);
-
-		if (frac_f < (f / 2)) /* fraction < 0.5 */
-			activepolarity = 0;
-		else {
-			activepolarity = 1;
-			frac_f = f - frac_f;
-		}
-
-		if (frac_f != 0) {
-			frac_f = div_u64((f * f),  frac_f); /* 1/fraction */
-			if (frac_f > (15 * f))
-				activefrac = activepolarity ? 1 : 15;
-			else
-				activefrac = activepolarity ?
-					(u32)div_u64(frac_f, (u32)f) + 1 :
-					(u32)div_u64(frac_f, (u32)f);
-		}
-
-		if (activefrac == 1)
-			activepolarity = 0;
-
-		if (activepolarity == 1)
-			approx_value_f = activefrac ? div_u64(
-				activecount_f + (activefrac * f - f) * f,
-				(activefrac * f)) :
-				activecount_f + f;
-		else
-			approx_value_f = activefrac ?
-				activecount_f + div_u64(f, activefrac) :
-				activecount_f;
-
-		if (activesym_f < approx_value_f) {
-			accumulated_error_f = num_linkclk_line *
-				div_u64(approx_value_f - activesym_f, i);
-			neg = true;
-		} else {
-			accumulated_error_f = num_linkclk_line *
-				div_u64(activesym_f - approx_value_f, i);
-			neg = false;
-		}
-
-		if ((neg && (lowest_neg_error_f > accumulated_error_f)) ||
-			(accumulated_error_f == 0)) {
-			lowest_neg_error_f = accumulated_error_f;
-			lowest_neg_tusize = i;
-			lowest_neg_activecount = activecount;
-			lowest_neg_activepolarity = activepolarity;
-			lowest_neg_activefrac = activefrac;
-
-			if (accumulated_error_f == 0)
-				break;
-		}
-	}
-
-	if (lowest_neg_activefrac == 0) {
-		tegra_link->activepolarity = 0;
-		tegra_link->active_count = lowest_neg_activepolarity ?
-			lowest_neg_activecount : lowest_neg_activecount - 1;
-		tegra_link->tu_size = lowest_neg_tusize;
-		tegra_link->active_frac = 1;
-	} else {
-		tegra_link->activepolarity = lowest_neg_activepolarity;
-		tegra_link->active_count = (u32)lowest_neg_activecount;
-		tegra_link->tu_size = lowest_neg_tusize;
-		tegra_link->active_frac = (u32)lowest_neg_activefrac;
-	}
-
-	dev_dbg(sor->dev,
-		"dp: sor configuration: polarity: %d active count: %d "
-		"tu size: %d, active frac: %d\n",
-		tegra_link->activepolarity,
-		tegra_link->active_count,
-		tegra_link->tu_size,
-		tegra_link->active_frac);
-
-	watermark_f = div_u64(ratio_f * tegra_link->tu_size * (f - ratio_f), f);
-	tegra_link->watermark = (u32)div_u64(watermark_f + lowest_neg_error_f,
-		f) + tegra_link->bits_per_pixel / 4 - 1;
-	num_symbols_per_line = (mode->hdisplay * tegra_link->bits_per_pixel) /
-		(8 * link->num_lanes);
-	if (tegra_link->watermark > 30) {
-		dev_dbg(sor->dev,
-			"dp: sor setting: unable to get a good tusize, "
-			"force watermark to 30.\n");
-		tegra_link->watermark = 30;
-
-		return -1;
-	} else if (tegra_link->watermark > num_symbols_per_line) {
-		dev_dbg(sor->dev,
-			"dp: sor setting: force watermark to the number "
-			"of symbols in the line.\n");
-		tegra_link->watermark = num_symbols_per_line;
-		return -1;
-	}
-
-	return 0;
-}
-
 static int tegra_output_sor_enable(struct tegra_output *output)
 {
 	struct tegra_dc *dc = to_tegra_dc(output->encoder.crtc);
 	struct drm_display_mode *mode = &dc->base.mode;
 	unsigned int vbe, vse, hbe, hse, vbs, hbs, i;
 	struct tegra_sor *sor = to_sor(output);
-	struct tegra_sor_dp_link tegra_link;
-	/* FIXME: properly convert to struct drm_dp_aux */
-	struct drm_dp_aux *aux = (struct drm_dp_aux *)sor->dpaux;
-	struct drm_dp_link link;
 	unsigned long value;
 	int err;
 
@@ -472,22 +311,11 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 		err = tegra_dpaux_enable(sor->dpaux);
 		if (err < 0)
 			dev_err(sor->dev, "failed to enable DP: %d\n", err);
-
-		err = drm_dp_link_probe(aux, &link);
-		if (err < 0) {
-			dev_err(sor->dev, "failed to probe eDP link: %d\n",
-				err);
-			return err;
-		}
 	}
 
 	err = clk_set_parent(sor->clk, sor->clk_safe);
 	if (err < 0)
 		dev_err(sor->dev, "failed to set safe parent clock: %d\n", err);
-
-	tegra_link.bits_per_pixel = 18; /* XXX: don't hardcode? */
-
-	err = tegra_sor_calc_config(sor, mode, &tegra_link, &link);
 
 	value = tegra_sor_readl(sor, SOR_CLK_CNTRL);
 	value &= ~SOR_CLK_CNTRL_DP_CLK_SEL_MASK;
@@ -626,7 +454,7 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	value |= SOR_DP_LINKCTL_ENABLE;
 
 	value &= ~SOR_DP_LINKCTL_TU_SIZE_MASK;
-	value |= SOR_DP_LINKCTL_TU_SIZE(tegra_link.tu_size);
+	value |= SOR_DP_LINKCTL_TU_SIZE(59); /* XXX: don't hardcode? */
 
 	value |= SOR_DP_LINKCTL_ENHANCED_FRAME;
 	tegra_sor_writel(sor, value, SOR_DP_LINKCTL_0);
@@ -642,13 +470,13 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 
 	value = tegra_sor_readl(sor, SOR_DP_CONFIG_0);
 	value &= ~SOR_DP_CONFIG_WATERMARK_MASK;
-	value |= SOR_DP_CONFIG_WATERMARK(tegra_link.watermark);
+	value |= SOR_DP_CONFIG_WATERMARK(14); /* XXX: don't hardcode? */
 
 	value &= ~SOR_DP_CONFIG_ACTIVE_SYM_COUNT_MASK;
-	value |= SOR_DP_CONFIG_ACTIVE_SYM_COUNT(tegra_link.active_count);
+	value |= SOR_DP_CONFIG_ACTIVE_SYM_COUNT(47); /* XXX: don't hardcode? */
 
 	value &= ~SOR_DP_CONFIG_ACTIVE_SYM_FRAC_MASK;
-	value |= SOR_DP_CONFIG_ACTIVE_SYM_FRAC(tegra_link.active_frac);
+	value |= SOR_DP_CONFIG_ACTIVE_SYM_FRAC(9); /* XXX: don't hardcode? */
 
 	value &= ~SOR_DP_CONFIG_ACTIVE_SYM_POLARITY; /* XXX: don't hardcode? */
 
@@ -672,6 +500,9 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
 
 	if (sor->dpaux) {
+		/* FIXME: properly convert to struct drm_dp_aux */
+		struct drm_dp_aux *aux = (struct drm_dp_aux *)sor->dpaux;
+		struct drm_dp_link link;
 		u8 rate, lanes;
 
 		err = drm_dp_link_probe(aux, &link);
@@ -755,22 +586,12 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	 * configure panel (24bpp, vsync-, hsync-, DP-A protocol, complete
 	 * raster, associate with display controller)
 	 */
-	value = SOR_STATE_ASY_VSYNCPOL |
+	value = SOR_STATE_ASY_PIXELDEPTH_BPP_24_444 |
+		SOR_STATE_ASY_VSYNCPOL |
 		SOR_STATE_ASY_HSYNCPOL |
 		SOR_STATE_ASY_PROTOCOL_DP_A |
 		SOR_STATE_ASY_CRC_MODE_COMPLETE |
 		SOR_STATE_ASY_OWNER(dc->pipe + 1);
-	switch (tegra_link.bits_per_pixel) {
-		default:
-			dev_err(sor->dev, "dp: unknown BPP value\n");
-		case 24:
-			value |= SOR_STATE_ASY_PIXELDEPTH_BPP_24_444;
-			break;
-		case 18:
-			value |= SOR_STATE_ASY_PIXELDEPTH_BPP_18_444;
-			break;
-	}
-
 	tegra_sor_writel(sor, value, SOR_STATE_1);
 
 	/*
