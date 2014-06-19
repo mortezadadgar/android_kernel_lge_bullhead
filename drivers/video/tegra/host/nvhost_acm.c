@@ -162,7 +162,8 @@ void nvhost_module_busy(struct platform_device *dev)
 		nvhost_module_busy(nvhost_get_parent(dev));
 
 #ifdef CONFIG_PM_RUNTIME
-	pm_runtime_get_sync(&dev->dev);
+	if (pm_runtime_enabled(&dev->dev))
+		pm_runtime_get_sync(&dev->dev);
 #endif
 
 	if (pdata->busy)
