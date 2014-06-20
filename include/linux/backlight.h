@@ -55,6 +55,8 @@ struct backlight_ops {
 	/* Check if given framebuffer device is the one bound to this backlight;
 	   return 0 if not, !=0 if it is. If NULL, backlight always matches the fb. */
 	int (*check_fb)(struct backlight_device *, struct fb_info *);
+	/* Choose a particular backlight configuration */
+	int (*choose)(struct backlight_device *, char *identifier);
 };
 
 /* This structure defines all the properties of a backlight */
@@ -119,6 +121,7 @@ extern struct backlight_device *backlight_device_register(const char *name,
 extern void backlight_device_unregister(struct backlight_device *bd);
 extern void backlight_force_update(struct backlight_device *bd,
 				   enum backlight_update_reason reason);
+extern int backlight_choose(struct backlight_device *bd, char *identifier);
 
 #define to_backlight_device(obj) container_of(obj, struct backlight_device, dev)
 

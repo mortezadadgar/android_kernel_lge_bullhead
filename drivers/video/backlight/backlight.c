@@ -321,6 +321,31 @@ void backlight_force_update(struct backlight_device *bd,
 EXPORT_SYMBOL(backlight_force_update);
 
 /**
+ * backlight_choose - choose a particular configuration for the backlight
+ *   to use.
+ * @bd: the backlight device
+ * @identifier: generic identifier for a particular backlight configuration
+ *
+ * Chooses a particular backlight configuration based on the identifier.
+ * The interpretation of the identifier is up to particular backlight
+ * implementation.  For example, the identifier can represent different
+ * display panels that have different brightness level curves.
+ */
+int backlight_choose(struct backlight_device *bd, char *identifier)
+{
+	int retval;
+
+	mutex_lock(&bd->ops_lock);
+	if (!bd->ops || !bd->ops->choose)
+		return -EINVAL;
+	retval = bd->ops->choose(bd, identifier);
+	mutex_unlock(&bd->ops_lock);
+
+	return retval;
+}
+EXPORT_SYMBOL(backlight_choose);
+
+/**
  * backlight_device_register - create and register a new object of
  *   backlight_device class.
  * @name: the name of the new object(must be the same as the name of the
