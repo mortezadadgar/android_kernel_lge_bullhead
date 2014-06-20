@@ -23,12 +23,19 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 
+struct pwm_bl_alt_brightness_table {
+	const char		*identifier;
+	unsigned int		*levels;
+};
+
 struct pwm_bl_data {
 	struct pwm_device	*pwm;
 	struct device		*dev;
 	unsigned int		period;
 	unsigned int		lth_brightness;
 	unsigned int		*levels;
+	struct pwm_bl_alt_brightness_table *alt_brightness_tables;
+	unsigned int		num_alt_brightness_tables;
 	int			enable_gpio;
 	bool			gpio_invert;
 	int			(*notify)(struct device *,
@@ -106,10 +113,43 @@ static int pwm_backlight_check_fb(struct backlight_device *bl,
 	return !pb->check_fb || pb->check_fb(pb->dev, info);
 }
 
+static int pwm_backlight_choose(struct backlight_device *bl,
+				char *identifier)
+{
+	struct pwm_bl_data *pb = bl_get_data(bl);
+	struct pwm_bl_alt_brightness_table *table = NULL;
+	int table_index;
+
+	if (!pb->alt_brightness_tables)
+		return -EINVAL;
+
+	for (table_index = 0;
+	     table_index < pb->num_alt_brightness_tables;
+	     table_index++)
+		if (strcmp(pb->alt_brightness_tables[table_index].identifier,
+			   identifier) == 0) {
+			table = &pb->alt_brightness_tables[table_index];
+			break;
+		}
+
+	if (!table)
+		return -EINVAL;
+
+	memcpy(pb->levels, table->levels,
+	       sizeof(*table->levels) * (bl->props.max_brightness + 1));
+
+	pwm_backlight_update_status(bl);
+
+	dev_info(pb->dev, "Chose %s\n", identifier);
+
+	return 0;
+}
+
 static const struct backlight_ops pwm_backlight_ops = {
 	.update_status	= pwm_backlight_update_status,
 	.get_brightness	= pwm_backlight_get_brightness,
 	.check_fb	= pwm_backlight_check_fb,
+	.choose		= pwm_backlight_choose,
 };
 
 #ifdef CONFIG_OF
@@ -166,6 +206,112 @@ int pwm_backlight_parse_dt(struct device *dev,
 	return 0;
 }
 
+static void pwm_backlight_alt_brightness_table_parse_dt(struct device *dev,
+							struct pwm_bl_data *pb)
+{
+	struct device_node *node = dev->of_node;
+	struct property *prop;
+	struct device_node *iter;
+	int default_length;
+	int table_index;
+
+	prop = of_find_property(node, "brightness-levels", &default_length);
+	if (!prop)
+		return;
+
+	/* Determine the number of alternate brightness level tables */
+	for_each_child_of_node(node, iter)
+		if (of_device_is_compatible(iter,
+					"pwm-backlight-alt-brightness-levels"))
+			pb->num_alt_brightness_tables++;
+
+	if (pb->num_alt_brightness_tables == 0)
+		return;
+
+	pb->alt_brightness_tables = devm_kzalloc(dev,
+		sizeof(struct pwm_bl_alt_brightness_table) *
+		pb->num_alt_brightness_tables,
+		GFP_KERNEL);
+	if (!pb->alt_brightness_tables)
+		return;
+
+	/* Read in each alternate brightness level table */
+	table_index = 0;
+	for_each_child_of_node(node, iter) {
+		struct pwm_bl_alt_brightness_table *table =
+			&pb->alt_brightness_tables[table_index];
+		struct property *prop;
+		int length;
+		int max_brightness;
+		size_t size;
+		int ret;
+
+		/*
+		 * Read in the identifier that will be used to select the
+		 * table.
+		 */
+		ret = of_property_read_string(iter, "identifier",
+					      &table->identifier);
+		if (ret < 0)
+			goto fail;
+
+		/*
+		 * Determine the number of brightness levels.  All of the
+		 * alternate brightness tables must be of the same length
+		 * as the default one.
+		 */
+		prop = of_find_property(iter, "brightness-levels", &length);
+		max_brightness = length / sizeof(u32);
+		size = sizeof(*table->levels) * max_brightness;
+
+		if (size != default_length)
+			goto fail;
+
+		table->levels = devm_kzalloc(dev, size, GFP_KERNEL);
+		if (!table->levels)
+			goto fail;
+
+		/* Finally, read in the alternate table. */
+		ret = of_property_read_u32_array(iter, "brightness-levels",
+						 table->levels,
+						 max_brightness);
+		if (ret < 0)
+			goto fail;
+
+		table_index++;
+	}
+
+	dev_notice(dev, "Read in %d alternate brightness tables\n",
+		   pb->num_alt_brightness_tables);
+
+	return;
+
+fail:
+	dev_notice(dev, "Failed reading alternate brightness tables\n");
+
+	/*
+	 * If we fail for whatever reason, roll back the alternate brightness
+	 * level tables' allocations.
+	 */
+	for (table_index = 0;
+	     table_index < pb->num_alt_brightness_tables;
+	     table_index++) {
+		struct pwm_bl_alt_brightness_table *table =
+			&pb->alt_brightness_tables[table_index];
+
+		/*
+		 * table->identifier is not actually allocated by us, so don't
+		 * worry about it here.
+		 */
+
+		if (table->levels)
+			devm_kfree(dev, table->levels);
+	}
+
+	devm_kfree(dev, pb->alt_brightness_tables);
+	pb->alt_brightness_tables = NULL;
+}
+
 static struct of_device_id pwm_backlight_of_match[] = {
 	{ .compatible = "pwm-backlight" },
 	{ }
@@ -178,6 +324,12 @@ int pwm_backlight_parse_dt(struct device *dev,
 {
 	return -ENODEV;
 }
+
+static void pwm_backlight_alt_brightness_table_parse_dt(struct device *dev,
+							struct pwm_bl_data *pb)
+{
+}
+
 #endif
 
 static int pwm_backlight_probe(struct platform_device *pdev)
@@ -278,6 +430,8 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 			 data->dft_brightness, data->max_brightness);
 		data->dft_brightness = data->max_brightness;
 	}
+
+	pwm_backlight_alt_brightness_table_parse_dt(&pdev->dev, pb);
 
 	bl->props.brightness = data->dft_brightness;
 	backlight_update_status(bl);
