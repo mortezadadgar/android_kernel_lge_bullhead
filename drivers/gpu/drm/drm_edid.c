@@ -141,12 +141,20 @@ static struct edid_quirk {
 	/* Lenovo B116XW03 */
 	{ "AUO", 0x315c, EDID_QUIRK_ADD_DOWNCLOCK_MODE },
 
-	/* CMN N116BGE-EA2 */
-	{ "CMN", 0x1132, EDID_QUIRK_SHORT_BLANKING },
-	/* CMN N116BGE-EB2 */
-	{ "CMN", 0x1130, EDID_QUIRK_SHORT_BLANKING },
 	/* AUO B116XTN02.2 */
 	{ "AUO", 0x225c, EDID_QUIRK_SHORT_BLANKING },
+	/* BOE HB133WX1-402 */
+	{ "BOE", 0x05df, EDID_QUIRK_SHORT_BLANKING },
+	/* IVO M133NWN1 R3 */
+	{ "IVO", 0x0533, EDID_QUIRK_SHORT_BLANKING },
+	/* IVO M116NWR1 R7 */
+	{ "IVO", 0x0489, EDID_QUIRK_SHORT_BLANKING },
+	/* AUO B133XTN02.1 */
+	{ "AUO", 0x212c, EDID_QUIRK_SHORT_BLANKING },
+	/* AUO B133XTN01.3 */
+	{ "AUO", 0x132c, EDID_QUIRK_SHORT_BLANKING },
+	/* BOE NT116WHM-N11 */
+	{ "BOE", 0x1543, EDID_QUIRK_SHORT_BLANKING },
 };
 
 static struct downclock_rate {
@@ -169,12 +177,20 @@ static struct short_blanking {
 	int vtotal;
 	int clock;
 } short_blanking_list[] = {
-	/* CMN N116BGE-EA2 */
-	{ "CMN", 0x1132, 1512, 790, 71693 },
-	/* CMN N116BGE-EB2 */
-	{ "CMN", 0x1130, 1512, 790, 71693 },
 	/* AUO B116XTN02.2 */
 	{ "AUO", 0x225c, 1512, 790, 71693 },
+	/* BOE HB133WX1-402 */
+	{ "AUO", 0x05df, 1512, 790, 71693 },
+	/* IVO M133NWN1 R3 */
+	{ "IVO", 0x0533, 1520, 785, 71592 },
+	/* IVO M116NWR1 R7 */
+	{ "IVO", 0x0489, 1520, 785, 71592 },
+	/* AUO B133XTN02.1 */
+	{ "AUO", 0x212c, 1446, 824, 71490 },
+	/* AUO B133XTN01.3 */
+	{ "AUO", 0x132c, 1446, 824, 71490 },
+	/* BOE NT116WHM-N11 */
+	{ "BOE", 0x1543, 1512, 790, 71693 },
 };
 
 /*
