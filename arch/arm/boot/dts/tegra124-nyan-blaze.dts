@@ -132,7 +132,7 @@
 
 	skin_temp: therm-est {
 		compatible = "nvidia,tegra124-therm-est";
-		toffset = <2862>;
+		toffset = <3726>;
 		tc1 = <10>;
 		tc2 = <1>;
 		polling-period = <1100>;
@@ -142,12 +142,12 @@
 		sub-devs {
 			dev@0 {
 				dev = <&diode_thermal_sensor>;
-				coeffs = "-1 0 0 -1 0 0 -1 -1 -1 -1 -1 -1 -1 -2 -2 -3 -4 -5 -6 -9";
+				coeffs = "-16 -10 -7 -2 2 3 5 5 5 5 3 4 6 4 3 0 0 3 6 10";
 			};
 
 			dev@1 {
 				dev = <&board_thermal_sensor>;
-				coeffs = "16 9 5 3 4 4 4 7 5 5 4 4 6 7 4 5 4 6 8 16";
+				coeffs = "-44 -16 -8 -3 -2 -8 -5 0 5 -1 -5 -9 -4 0 5 5 10 13 31 81";
 			};
 		};
 	};
