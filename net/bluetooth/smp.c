@@ -333,7 +333,7 @@ static int tk_request(struct l2cap_conn *conn, u8 remote_oob, u8 auth,
 	 * Confirms and the slave Enters the passkey.
 	 */
 	if (method == OVERLAP) {
-		if (hcon->link_mode & HCI_LM_MASTER)
+		if (test_bit(HCI_CONN_MASTER, &hcon->flags))
 			method = CFM_PASSKEY;
 		else
 			method = REQ_PASSKEY;
@@ -576,7 +576,7 @@ static u8 smp_cmd_pairing_req(struct l2cap_conn *conn, struct sk_buff *skb)
 
 	BT_DBG("conn %p", conn);
 
-	if (conn->hcon->link_mode & HCI_LM_MASTER)
+	if (test_bit(HCI_CONN_MASTER, &conn->hcon->flags))
 		return SMP_CMD_NOTSUPP;
 
 	if (!test_and_set_bit(HCI_CONN_LE_SMP_PEND, &conn->hcon->flags))
@@ -630,7 +630,7 @@ static u8 smp_cmd_pairing_rsp(struct l2cap_conn *conn, struct sk_buff *skb)
 
 	BT_DBG("conn %p", conn);
 
-	if (!(conn->hcon->link_mode & HCI_LM_MASTER))
+	if (!test_bit(HCI_CONN_MASTER, &conn->hcon->flags))
 		return SMP_CMD_NOTSUPP;
 
 	skb_pull(skb, sizeof(*rsp));
@@ -781,7 +781,7 @@ int smp_conn_security(struct hci_conn *hcon, __u8 sec_level)
 	if (hcon->sec_level >= sec_level)
 		return 1;
 
-	if (hcon->link_mode & HCI_LM_MASTER)
+	if (test_bit(HCI_CONN_MASTER, &hcon->flags))
 		if (smp_ltk_encrypt(conn, sec_level))
 			goto done;
 
@@ -794,7 +794,7 @@ int smp_conn_security(struct hci_conn *hcon, __u8 sec_level)
 
 	authreq = seclevel_to_authreq(sec_level);
 
-	if (hcon->link_mode & HCI_LM_MASTER) {
+	if (test_bit(HCI_CONN_MASTER, &hcon->flags)) {
 		struct smp_cmd_pairing cp;
 
 		build_pairing_cmd(conn, &cp, NULL, authreq);
