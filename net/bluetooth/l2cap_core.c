@@ -5218,7 +5218,7 @@ static inline int l2cap_conn_param_update_req(struct l2cap_conn *conn,
 	u16 min, max, latency, to_multiplier, cmd_len;
 	int err;
 
-	if (!(hcon->link_mode & HCI_LM_MASTER))
+	if (!test_bit(HCI_CONN_MASTER, &hcon->flags))
 		return -EINVAL;
 
 	cmd_len = __le16_to_cpu(cmd->len);
