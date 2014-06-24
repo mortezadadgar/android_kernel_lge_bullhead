@@ -16,6 +16,9 @@ Optional properties:
                "pwms" property (see PWM binding[0])
   - enable-gpio: a GPIO used to enable the backlight.
 
+Child device nodes describe alternate brightness-levels tables for different
+display/backlight configurations.
+
 [0]: Documentation/devicetree/bindings/pwm/pwm.txt
 
 Example:
@@ -27,4 +30,26 @@ Example:
 		brightness-levels = <0 4 8 16 32 64 128 255>;
 		default-brightness-level = <6>;
 		enable-gpio = <&gpx3 0 0>;
+	};
+
+Alternate brightness-levels tables
+
+Child device nodes can specify multiple alternate brightness-levels tables,
+identified by a generic string, and is selected upon calling the backlight
+device's brightness_choose().
+
+Properties:
+- compatible: "pwm-backlight-alt-brightness-levels"
+- identifier: A string that is used during backlight_choose() to select the
+    particular alternate brightness-levels table.
+- brightness-levels: See the brightness-levels property of the parent node,
+    described earlier in this documentation.  Note that the length of these
+    alternate brightness-level tables must be the same as the original
+    brightness-levels table from the parent node.
+
+Example:
+	panel@0 {
+		compatible = "pwm-backlight-alt-brightness-levels";
+		identifier = "CMN-1132-1"
+		brightness-levels = <0 16 32 40 80 120 160 255>;
 	};
