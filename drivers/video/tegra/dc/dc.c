@@ -2147,6 +2147,34 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 	dc->out->flags &= ~TEGRA_DC_OUT_INITIALIZED_MODE;
 
 	tegra_dc_io_end(dc);
+
+	if (dc->bl_device) {
+		struct tegra_dc_edid *edid = tegra_dc_get_edid(dc);
+		unsigned char *block = edid->buf + 8;
+		char manuf_id[4];
+		unsigned short model;
+		unsigned int serial;
+		char panel_identifier[20];
+
+		if (!edid) {
+			dev_err(&dc->ndev->dev, "Failed getting edid\n");
+			return true;
+		}
+
+		manuf_id[0] = ((block[0] & 0x7c) >> 2) + '@';
+		manuf_id[1] = ((block[0] & 0x03) << 3) +
+			      ((block[1] & 0xe0) >> 5) + '@';
+		manuf_id[2] = (block[1] & 0x1f) + '@';
+		manuf_id[3] = 0;
+		model = block[2] + (block[3] << 8);
+		serial = block[4] + (block[5] << 8) +
+			 (block[6] << 16) + (block[7] << 24);
+		snprintf(panel_identifier, sizeof(panel_identifier), "%s-%x-%u",
+			 manuf_id, model, serial);
+
+		backlight_choose(dc->bl_device, panel_identifier);
+	}
+
 	return true;
 }
 
@@ -2560,6 +2588,7 @@ static int tegra_dc_probe(struct platform_device *ndev)
 	int irq;
 	int i;
 	struct tegra_dc_platform_data *pdata = NULL;
+	struct device_node *bl_node;
 
 	if (!ndev->dev.platform_data) {
 		dev_err(&ndev->dev, "no platform data\n");
@@ -2731,6 +2760,11 @@ static int tegra_dc_probe(struct platform_device *ndev)
 		goto err_disable_dc;
 	}
 	disable_dc_irq(dc);
+
+	/* Get the backlight device, if one is specified in dc's device tree. */
+	bl_node = of_parse_phandle(ndev->dev.of_node, "bl-device", 0);
+	if (bl_node)
+		dc->bl_device = of_find_backlight_by_node(bl_node);
 
 	pm_runtime_use_autosuspend(&ndev->dev);
 	pm_runtime_set_autosuspend_delay(&ndev->dev, 100);

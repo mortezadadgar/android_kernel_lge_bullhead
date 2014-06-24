@@ -209,6 +209,8 @@ struct tegra_dc {
 	bool				mode_dirty;
 
 	struct tegra_edid		*edid;
+
+	struct backlight_device		*bl_device;
 };
 
 static inline int get_dc_n_windows(struct tegra_dc *dc)
