@@ -386,6 +386,69 @@ static u32 i9xx_get_max_backlight(struct intel_connector *connector)
 	return val;
 }
 
+/**
+ * scale - scale values from one range to another
+ *
+ * @source_val: value in range [@source_min..@source_max]
+ *
+ * Return @source_val in range [@source_min..@source_max] scaled to range
+ * [@target_min..@target_max].
+ */
+static uint32_t scale(uint32_t source_val,
+		      uint32_t source_min, uint32_t source_max,
+		      uint32_t target_min, uint32_t target_max)
+{
+	uint64_t target_val;
+
+	WARN_ON(source_min > source_max);
+	WARN_ON(target_min > target_max);
+
+	/* defensive */
+	source_val = clamp(source_val, source_min, source_max);
+
+	/* avoid overflows */
+	target_val = (uint64_t)(source_val - source_min) *
+		(target_max - target_min);
+	do_div(target_val, source_max - source_min);
+	target_val += target_min;
+
+	return target_val;
+}
+
+/* Scale user_level in range [0..user_max] to [hw_min..hw_max]. */
+static inline u32 scale_user_to_hw(struct intel_connector *connector,
+				   u32 user_level, u32 user_max)
+{
+	struct intel_panel *panel = &connector->panel;
+
+	return scale(user_level, 0, user_max,
+		     panel->backlight.min, panel->backlight.max);
+}
+
+/* Scale user_level in range [0..user_max] to [0..hw_max], clamping the result
+ * to [hw_min..hw_max]. */
+static inline u32 clamp_user_to_hw(struct intel_connector *connector,
+				   u32 user_level, u32 user_max)
+{
+	struct intel_panel *panel = &connector->panel;
+	u32 hw_level;
+
+	hw_level = scale(user_level, 0, user_max, 0, panel->backlight.max);
+	hw_level = clamp(hw_level, panel->backlight.min, panel->backlight.max);
+
+	return hw_level;
+}
+
+/* Scale hw_level in range [hw_min..hw_max] to [0..user_max]. */
+static inline u32 scale_hw_to_user(struct intel_connector *connector,
+				   u32 hw_level, u32 user_max)
+{
+	struct intel_panel *panel = &connector->panel;
+
+	return scale(hw_level, panel->backlight.min, panel->backlight.max,
+		     0, user_max);
+}
+
 static u32 i965_get_max_backlight(struct intel_connector *connector)
 {
 	struct drm_device *dev = connector->base.dev;
@@ -615,15 +678,15 @@ intel_panel_actually_set_backlight(struct intel_connector *connector, u32 level)
 	dev_priv->display.set_backlight(connector, level);
 }
 
-/* set backlight brightness to level in range [0..max] */
-void intel_panel_set_backlight(struct intel_connector *connector, u32 level,
-			       u32 max)
+/* set backlight brightness to level in range [0..max], scaling wrt hw min */
+static void intel_panel_set_backlight(struct intel_connector *connector,
+				      u32 user_level, u32 user_max)
 {
 	struct drm_device *dev = connector->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_panel *panel = &connector->panel;
 	enum pipe pipe = intel_get_pipe_from_connector(connector);
-	u32 freq;
+	u32 hw_level;
 	unsigned long flags;
 
 	if (pipe == INVALID_PIPE)
@@ -631,25 +694,47 @@ void intel_panel_set_backlight(struct intel_connector *connector, u32 level,
 
 	spin_lock_irqsave(&dev_priv->backlight_lock, flags);
 
-	freq = intel_panel_get_max_backlight(connector);
-	if (!freq) {
-		/* we are screwed, bail out */
-		goto out;
-	}
-
-	/* scale to hardware, but be careful to not overflow */
-	if (freq < max)
-		level = level * freq / max;
-	else
-		level = freq / max * level;
-
-	panel->backlight.level = level;
-	if (panel->backlight.device)
-		panel->backlight.device->props.brightness = level;
+	hw_level = scale_user_to_hw(connector, user_level, user_max);
+	panel->backlight.level = hw_level;
 
 	if (panel->backlight.enabled)
-		intel_panel_actually_set_backlight(connector, level);
-out:
+		intel_panel_actually_set_backlight(connector, hw_level);
+
+	spin_unlock_irqrestore(&dev_priv->backlight_lock, flags);
+}
+
+/* set backlight brightness to level in range [0..max], assuming hw min is
+ * respected.
+ */
+void intel_panel_set_backlight_acpi(struct intel_connector *connector,
+				    u32 user_level, u32 user_max)
+{
+	struct drm_device *dev = connector->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_panel *panel = &connector->panel;
+	enum pipe pipe = intel_get_pipe_from_connector(connector);
+	u32 hw_level;
+	unsigned long flags;
+
+	if (!panel->backlight.present || pipe == INVALID_PIPE)
+		return;
+
+	spin_lock_irqsave(&dev_priv->backlight_lock, flags);
+
+	WARN_ON(panel->backlight.max == 0);
+
+	hw_level = clamp_user_to_hw(connector, user_level, user_max);
+	panel->backlight.level = hw_level;
+
+	if (panel->backlight.device)
+		panel->backlight.device->props.brightness =
+			scale_hw_to_user(connector,
+					 panel->backlight.level,
+					 panel->backlight.device->props.max_brightness);
+
+	if (panel->backlight.enabled)
+		intel_panel_actually_set_backlight(connector, hw_level);
+
 	spin_unlock_irqrestore(&dev_priv->backlight_lock, flags);
 }
 
@@ -825,7 +910,9 @@ void intel_panel_enable_backlight(struct intel_connector *connector)
 		panel->backlight.level = intel_panel_get_max_backlight(connector);
 		if (panel->backlight.device)
 			panel->backlight.device->props.brightness =
-				panel->backlight.level;
+				scale_hw_to_user(connector,
+						 panel->backlight.level,
+						 panel->backlight.device->props.max_brightness);
 	}
 
 	if (dev_priv->display.enable_backlight)
@@ -882,10 +969,14 @@ static int intel_backlight_device_get_brightness(struct backlight_device *bd)
 {
 	struct intel_connector *connector = bl_get_data(bd);
 	struct drm_device *dev = connector->base.dev;
+	u32 hw_level;
 	int ret;
 
 	mutex_lock(&dev->mode_config.mutex);
-	ret = intel_panel_get_backlight(connector);
+
+	hw_level = intel_panel_get_backlight(connector);
+	ret = scale_hw_to_user(connector, hw_level, bd->props.max_brightness);
+
 	mutex_unlock(&dev->mode_config.mutex);
 
 	return ret;
@@ -904,12 +995,19 @@ static int intel_backlight_device_register(struct intel_connector *connector)
 	if (WARN_ON(panel->backlight.device))
 		return -ENODEV;
 
-	BUG_ON(panel->backlight.max == 0);
+	WARN_ON(panel->backlight.max == 0);
 
 	memset(&props, 0, sizeof(props));
 	props.type = BACKLIGHT_RAW;
-	props.brightness = panel->backlight.level;
+
+	/*
+	 * Note: Everything should work even if the backlight device max
+	 * presented to the userspace is arbitrarily chosen.
+	 */
 	props.max_brightness = panel->backlight.max;
+	props.brightness = scale_hw_to_user(connector,
+					    panel->backlight.level,
+					    props.max_brightness);
 
 	/*
 	 * Note: using the same name independent of the connector prevents
@@ -950,6 +1048,19 @@ static void intel_backlight_device_unregister(struct intel_connector *connector)
 #endif /* CONFIG_BACKLIGHT_CLASS_DEVICE */
 
 /* Note: The setup hooks can't assume pipe is set! */
+static u32 get_backlight_min_vbt(struct intel_connector *connector)
+{
+	struct drm_device *dev = connector->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_panel *panel = &connector->panel;
+
+	WARN_ON(panel->backlight.max == 0);
+
+	/* vbt value is a coefficient in range [0..255] */
+	return scale(dev_priv->vbt.backlight.min_brightness, 0, 255,
+		     0, panel->backlight.max);
+}
+
 static int pch_setup_backlight(struct intel_connector *connector)
 {
 	struct intel_panel *panel = &connector->panel;
@@ -958,6 +1069,8 @@ static int pch_setup_backlight(struct intel_connector *connector)
 	panel->backlight.max = pch_get_max_backlight(connector);
 	if (!panel->backlight.max)
 		return -ENODEV;
+
+	panel->backlight.min = get_backlight_min_vbt(connector);
 
 	val = pch_get_backlight(connector);
 	panel->backlight.level = intel_panel_compute_brightness(connector, val);
@@ -974,6 +1087,8 @@ static int i9xx_setup_backlight(struct intel_connector *connector)
 	if (!panel->backlight.max)
 		return -ENODEV;
 
+	panel->backlight.min = get_backlight_min_vbt(connector);
+
 	val = i9xx_get_backlight(connector);
 	panel->backlight.level = intel_panel_compute_brightness(connector, val);
 
@@ -988,6 +1103,8 @@ static int i965_setup_backlight(struct intel_connector *connector)
 	panel->backlight.max = i965_get_max_backlight(connector);
 	if (!panel->backlight.max)
 		return -ENODEV;
+
+	panel->backlight.min = get_backlight_min_vbt(connector);
 
 	val = i9xx_get_backlight(connector);
 	panel->backlight.level = intel_panel_compute_brightness(connector, val);
@@ -1030,6 +1147,8 @@ static int vlv_setup_backlight(struct intel_connector *connector)
 	panel->backlight.max = _vlv_get_max_backlight(dev, PIPE_A);
 	if (!panel->backlight.max)
 		return -ENODEV;
+
+	panel->backlight.min = get_backlight_min_vbt(connector);
 
 	val = _vlv_get_backlight(dev, PIPE_A);
 	panel->backlight.level = intel_panel_compute_brightness(connector, val);

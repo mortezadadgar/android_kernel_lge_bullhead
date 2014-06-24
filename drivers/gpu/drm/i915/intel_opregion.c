@@ -421,7 +421,7 @@ static u32 asle_set_backlight(struct drm_device *dev, u32 bclp)
 		intel_connector = to_intel_connector(connector);
 		panel = &intel_connector->panel;
 		if (panel->backlight.present)
-			intel_panel_set_backlight(intel_connector, bclp, 255);
+			intel_panel_set_backlight_acpi(intel_connector, bclp, 255);
 	}
 	iowrite32(DIV_ROUND_UP(bclp * 100, 255) | ASLE_CBLV_VALID, &asle->cblv);
 
