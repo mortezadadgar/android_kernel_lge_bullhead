@@ -1896,6 +1896,7 @@ static struct tegra_clk_init_table init_table[] __initdata = {
 	{TEGRA124_CLK_I2C4, TEGRA124_CLK_PLL_P, 0, 0},
 	{TEGRA124_CLK_I2C5, TEGRA124_CLK_PLL_P, 0, 0},
 	{TEGRA124_CLK_I2C6, TEGRA124_CLK_PLL_P, 0, 0},
+	{TEGRA124_CLK_PLL_D, TEGRA124_CLK_CLK_MAX, 216000000, 0},
 	/* This MUST be the last entry. */
 	{TEGRA124_CLK_CLK_MAX, TEGRA124_CLK_CLK_MAX, 0, 0},
 };
