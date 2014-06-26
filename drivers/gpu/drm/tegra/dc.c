@@ -10,6 +10,7 @@
 #include <linux/clk.h>
 #include <linux/debugfs.h>
 #include <linux/reset.h>
+#include <linux/tegra-powergate.h>
 
 #include "dc.h"
 #include "drm.h"
@@ -23,6 +24,41 @@ struct tegra_plane {
 	struct drm_plane base;
 	unsigned int index;
 };
+
+static int tegra_dc_get_powergate_id(struct tegra_dc *dc)
+{
+	switch (dc->pipe)
+	{
+		default:
+			WARN_ONCE(1, "Unknown pipe number\n");
+		case 0:
+			return TEGRA_POWERGATE_DIS;
+		case 1:
+			return TEGRA_POWERGATE_DISB;
+	}
+}
+
+static inline void tegra_dc_powergate_locked(struct tegra_dc *dc)
+{
+	int ret;
+	int powergate_id = tegra_dc_get_powergate_id(dc);
+
+	if (tegra_powergate_is_powered(powergate_id)) {
+		ret = tegra_powergate_partition(powergate_id);
+		if (ret < 0)
+			dev_err(dc->dev, "could not powergate: %d\n", ret);
+	}
+}
+
+static inline void tegra_dc_unpowergate_locked(struct tegra_dc *dc)
+{
+	int ret;
+	int powergate_id = tegra_dc_get_powergate_id(dc);
+
+	ret = tegra_unpowergate_partition(powergate_id);
+	if (ret < 0)
+		dev_err(dc->dev, "could not unpowergate %d\n", ret);
+}
 
 static inline struct tegra_plane *to_tegra_plane(struct drm_plane *plane)
 {
@@ -1295,6 +1331,8 @@ static int tegra_dc_probe(struct platform_device *pdev)
 	if (err < 0)
 		return err;
 
+	tegra_dc_unpowergate_locked(dc);
+
 	dc->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(dc->clk)) {
 		dev_err(&pdev->dev, "failed to get clock\n");
@@ -1371,6 +1409,8 @@ static int tegra_dc_remove(struct platform_device *pdev)
 	clk_disable_unprepare(dc->clk);
 	if (dc->emc_clk)
 		clk_disable_unprepare(dc->emc_clk);
+
+	tegra_dc_powergate_locked(dc);
 
 	return 0;
 }
