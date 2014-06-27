@@ -1016,6 +1016,8 @@ static void pmu_seq_release(struct pmu_gk20a *pmu,
 			struct pmu_sequence *seq)
 {
 	struct gk20a *g = pmu->g;
+
+	mutex_lock(&pmu->pmu_seq_lock);
 	seq->state	= PMU_SEQ_STATE_FREE;
 	seq->desc	= PMU_INVALID_SEQ_DESC;
 	seq->callback	= NULL;
