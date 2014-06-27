@@ -39,7 +39,7 @@
  * this is mostly a preference to work around monitors users
  * reported that occasionally drop HPD.
  */
-#define HPD_DROP_TIMEOUT_MS 1500
+#define HPD_DROP_TIMEOUT_MS 3000
 #define CHECK_PLUG_STATE_DELAY_MS 10
 #define CHECK_EDID_DELAY_MS 60
 
