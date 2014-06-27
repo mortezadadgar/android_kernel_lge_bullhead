@@ -588,6 +588,9 @@ int nvhost_module_suspend(struct device *dev)
 {
 	struct nvhost_device_data *pdata = dev_get_drvdata(dev);
 
+	if (pdata->channel)
+		nvhost_channel_suspend(pdata->channel);
+
 	/*
 	 * device_prepare takes one ref, so expect usage count to
 	 * be 1 at this point.
