@@ -43,7 +43,7 @@ EXPORT_SYMBOL(drm_debug);
 unsigned int drm_rnodes = 0;	/* 1 to enable experimental render nodes API */
 EXPORT_SYMBOL(drm_rnodes);
 
-unsigned int drm_vblank_offdelay = 5000;    /* Default to 5000 msecs. */
+unsigned int drm_vblank_offdelay = 1000;    /* Default to 1000 msecs. */
 EXPORT_SYMBOL(drm_vblank_offdelay);
 
 unsigned int drm_timestamp_precision = 20;  /* Default to 20 usecs. */
