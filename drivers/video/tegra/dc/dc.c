@@ -2533,6 +2533,10 @@ static int tegra_dc_create_fb(struct notifier_block *nb,
 	if (dc->out && dc->out->n_modes)
 		tegra_dc_add_modes(dc);
 
+	/* Notify hdmi state machine */
+	if (dev == &pdc1->dev && !completion_done(&dc->fb_ready))
+		complete(&dc->fb_ready);
+
 	return NOTIFY_OK;
 
 freefb:
@@ -2659,6 +2663,7 @@ static int tegra_dc_probe(struct platform_device *ndev)
 	mutex_init(&dc->one_shot_lp_lock);
 	init_completion(&dc->frame_end_complete);
 	init_completion(&dc->crc_complete);
+	init_completion(&dc->fb_ready);
 	init_waitqueue_head(&dc->wq);
 	init_waitqueue_head(&dc->timestamp_wq);
 	INIT_WORK(&dc->vblank_work, tegra_dc_vblank);

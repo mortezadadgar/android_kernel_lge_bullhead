@@ -195,8 +195,19 @@ static void handle_check_plug_state_l(struct tegra_dc_hdmi_data *hdmi)
 static void handle_check_edid_l(struct tegra_dc_hdmi_data *hdmi)
 {
 	struct fb_monspecs specs;
+	int ret;
 
 	memset(&specs, 0, sizeof(specs));
+
+	if (!hdmi->dc->fb) {
+		ret = wait_for_completion_timeout(&hdmi->dc->fb_ready,
+					msecs_to_jiffies(3000));
+		if (!ret) {
+			pr_err("Waiting for framebuffer ready timeout\n");
+			goto end_disabled;
+		}
+	}
+
 #ifdef CONFIG_FRAMEBUFFER_CONSOLE
 	/* Set default videomode on dc before enabling it*/
 	tegra_dc_set_default_videomode(hdmi->dc);

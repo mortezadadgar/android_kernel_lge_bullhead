@@ -155,6 +155,7 @@ struct tegra_dc {
 
 	struct resource			*fb_mem;
 	struct tegra_fb_info		*fb;
+	struct completion		fb_ready;
 
 	struct {
 		u32			id;
