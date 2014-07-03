@@ -31,7 +31,6 @@
 #include "dc_priv.h"
 #include "edid.h"
 
-static void tegra_dc_dp_sink_status_worker(struct work_struct *work);
 static inline u32 tegra_dpaux_readl(struct tegra_dc_dp_data *dp, u32 reg)
 {
 	return readl(dp->aux_base + reg * 4);
@@ -1616,8 +1615,6 @@ static int tegra_dc_dp_init(struct tegra_dc *dc)
 	}
 	tegra_dc_set_edid(dc, dp->dp_edid);
 
-	INIT_DELAYED_WORK(&dp->sink_status_work,
-		tegra_dc_dp_sink_status_worker);
 	INIT_WORK(&dp->lt_work, tegra_dc_dp_lt_worker);
 	init_completion(&dp->hpd_plug);
 
@@ -1686,6 +1683,54 @@ fail:
 #undef TEGRA_DP_HPD_PLUG_TIMEOUT_MS
 }
 
+static bool tegra_dc_dp_sink_out_of_sync(struct tegra_dc_dp_data *dp,
+	int delay_ms)
+{
+	u8 dpcd_data;
+	bool out_of_sync;
+
+	msleep(delay_ms);
+
+	tegra_dc_dp_dpcd_read(dp, NV_DPCD_SINK_STATUS, &dpcd_data);
+
+	out_of_sync = ((dpcd_data & NV_DPCD_SINK_STATUS_PORT0_IN_SYNC) !=
+		NV_DPCD_SINK_STATUS_PORT0_IN_SYNC);
+
+	if (out_of_sync)
+		dev_err(&dp->dc->ndev->dev,
+			"SINK receive port 0 is out of synchronization\n");
+	else
+		dev_info(&dp->dc->ndev->dev,
+			"SINK is in synchronization\n");
+
+	return out_of_sync;
+}
+
+static void tegra_dc_dp_check_sink(struct tegra_dc_dp_data *dp)
+{
+#define FRAME_IN_MS 17 /* refresh rate = 60/s */
+
+	u8 max_retry = 3;
+	int delay_frame;
+
+	/* DP TCON may skip some main stream frames, thus we need to wait
+	   some delay before reading the DPCD SINK STATUS register, starting
+	   from 3 */
+	delay_frame = 3;
+
+	while (tegra_dc_dp_sink_out_of_sync(dp, FRAME_IN_MS * delay_frame) &&
+		max_retry--) {
+		tegra_dc_detach(dp->sor);
+		tegra_dc_dp_explore_link_cfg(dp, &dp->link_cfg, dp->mode);
+		tegra_dc_sor_set_power_state(dp->sor, 1);
+		tegra_dc_sor_attach(dp->sor);
+
+		/* Increase delay_frame for next try in case the sink is
+		   skipping more frames */
+		delay_frame += 2;
+	}
+}
+
 static void tegra_dc_dp_enable(struct tegra_dc *dc)
 {
 	struct tegra_dc_dp_data *dp = tegra_dc_get_outdata(dc);
@@ -1750,6 +1795,8 @@ static void tegra_dc_dp_enable(struct tegra_dc *dc)
 	tegra_dc_sor_set_power_state(dp->sor, 1);
 	tegra_dc_sor_attach(dp->sor);
 
+	tegra_dc_dp_check_sink(dp);
+
 	/*
 	 * Power down the unused lanes to save power
 	 * (about hundreds milli-watts, varies from boards).
@@ -1760,10 +1807,6 @@ static void tegra_dc_dp_enable(struct tegra_dc *dc)
 		dc->out->dp->preemphasis);
 
 	dp->enabled = true;
-
-	/* wait delay for the sink device ready to receive main stream*/
-	schedule_delayed_work(&dp->sink_status_work,
-		msecs_to_jiffies(50));
 
 error_enable:
 	tegra_dc_io_end(dc);
@@ -1794,8 +1837,6 @@ static void tegra_dc_dp_disable(struct tegra_dc *dc)
 
 	dp->enabled = false;
 
-	cancel_delayed_work_sync(&dp->sink_status_work);
-
 	tegra_dc_io_start(dc);
 
 	tegra_dp_disable_irq(dp->irq);
@@ -1809,35 +1850,6 @@ static void tegra_dc_dp_disable(struct tegra_dc *dc)
 	clk_disable(dp->clk);
 
 	tegra_dc_io_end(dc);
-}
-
-static void tegra_dc_dp_sink_status_worker(struct work_struct *work)
-{
-	u8 dpcd_data;
-
-	struct tegra_dc_dp_data *dp = container_of(to_delayed_work(work),
-		struct tegra_dc_dp_data, sink_status_work);
-
-	if (!dp->enabled)
-		return;
-
-	tegra_dc_dp_dpcd_read(dp, NV_DPCD_SINK_STATUS, &dpcd_data);
-
-	if ((dpcd_data & NV_DPCD_SINK_STATUS_PORT0_IN_SYNC) !=
-		NV_DPCD_SINK_STATUS_PORT0_IN_SYNC) {
-		dev_err(&dp->dc->ndev->dev,
-			"SINK receive port 0 is out of synchronization\n");
-
-		tegra_dc_detach(dp->sor);
-		tegra_dc_dp_explore_link_cfg(dp, &dp->link_cfg, dp->mode);
-		tegra_dc_sor_set_power_state(dp->sor, 1);
-		tegra_dc_sor_attach(dp->sor);
-
-		tegra_dc_sor_power_down_unused_lanes(dp->sor);
-		tegra_dc_sor_set_voltage_swing(dp->sor,
-			dp->dc->out->dp->drive_current,
-			dp->dc->out->dp->preemphasis);
-	}
 }
 
 static long tegra_dc_dp_setup_clk(struct tegra_dc *dc, struct clk *clk)
