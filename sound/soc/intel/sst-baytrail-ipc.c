@@ -175,6 +175,7 @@ struct sst_byt {
 	/* boot */
 	wait_queue_head_t boot_wait;
 	bool boot_complete;
+	bool is_suspend_late;
 	struct sst_fw *fw;
 
 	/* IPC messaging */
@@ -1014,3 +1015,15 @@ void sst_byt_register_notifier(struct device *dev, struct sst_pdata *pdata,
 	byt->notify_data = data;
 }
 EXPORT_SYMBOL_GPL(sst_byt_register_notifier);
+
+void sst_byt_set_suspend_late(struct sst_byt *byt, bool state)
+{
+	byt->is_suspend_late = state;
+}
+EXPORT_SYMBOL_GPL(sst_byt_set_suspend_late);
+
+bool sst_byt_get_suspend_late_state(struct sst_byt *byt)
+{
+	return byt->is_suspend_late;
+}
+EXPORT_SYMBOL_GPL(sst_byt_get_suspend_late_state);

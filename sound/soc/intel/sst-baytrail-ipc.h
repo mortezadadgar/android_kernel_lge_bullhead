@@ -74,5 +74,7 @@ int sst_byt_dsp_wait_for_ready(struct device *dev, struct sst_pdata *pdata);
 void sst_byt_register_notifier(struct device *dev, struct sst_pdata *pdata,
 	void (*start)(struct sst_dsp *, void *),
 	void (*stop)(struct sst_dsp *, void *), void *data);
+void sst_byt_set_suspend_late(struct sst_byt *byt, bool state);
+bool sst_byt_get_suspend_late_state(struct sst_byt *byt);
 
 #endif
