@@ -111,8 +111,11 @@ static unsigned long tegra_dc_calc_win_bandwidth(struct tegra_dc *dc,
 	 * is of the luma plane's size only. */
 	bpp = tegra_dc_is_yuv_planar(w->fmt) ?
 		2 * tegra_dc_fmt_bpp(w->fmt) : tegra_dc_fmt_bpp(w->fmt);
-	ret = dc->mode.pclk / 1000UL * bpp / 8 *
-		in_w / w->out_w * (WIN_IS_TILED(w) ?
+
+	/* brackets are used to avoid compiler rearranging expression such
+	   that the intermediate result may overflow 32bits */
+	ret = (dc->mode.pclk / 1000UL) * (bpp / 8) *
+		(in_w / w->out_w) * (WIN_IS_TILED(w) ?
 		tiled_windows_bw_multiplier : 1);
 
 	return ret;
