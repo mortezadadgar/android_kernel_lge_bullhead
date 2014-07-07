@@ -482,6 +482,8 @@ struct intel_dp {
 	struct delayed_work panel_vdd_work;
 	bool want_panel_vdd;
 	bool psr_setup_done;
+	struct notifier_block edp_notifier;
+
 	struct intel_connector *attached_connector;
 };
 
