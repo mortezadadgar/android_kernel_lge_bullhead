@@ -196,6 +196,7 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("xusb_hs_src", -1, -1, 1, KHZ, 1, 60000, 60000, 60000, 60000, 60000, 60000, 60000),
 	CORE_DVFS("hda", -1, -1, 1, KHZ, 1, 108000, 108000, 108000, 108000, 108000, 108000, 108000),
 	CORE_DVFS("hda2codec_2x", -1, -1, 1, KHZ, 1, 48000, 48000, 48000, 48000, 48000, 48000, 48000),
+	CORE_DVFS("sor0", -1, -1, 1, KHZ, 162000, 270000, 540000, 540000, 540000, 540000, 540000, 540000),
 	/*
 	 * The clock rate for the display controllers that determines the
 	 * necessary core voltage depends on a divider that is internal
