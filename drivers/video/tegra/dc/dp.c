@@ -1899,14 +1899,14 @@ static bool tegra_dc_dp_early_enable(struct tegra_dc *dc)
 	struct tegra_dc_dp_data *dp = tegra_dc_get_outdata(dc);
 	struct fb_monspecs specs;
 	u32    reg_val;
+	int ret = true;
 
 	/* Power on panel */
 	if (dc->out->enable)
 		dc->out->enable(&dc->ndev->dev);
 
 	tegra_dc_get(dp->dc);
-	if (!__clk_get_enable_count(dp->clk))
-		clk_prepare_enable(dp->clk);
+	clk_prepare_enable(dp->clk);
 	tegra_dc_dpaux_enable(dp);
 	tegra_dp_hpd_config(dp);
 
@@ -1915,27 +1915,39 @@ static bool tegra_dc_dp_early_enable(struct tegra_dc *dc)
 
 	if (tegra_dp_hpd_plug(dp) < 0) {
 		dev_err(&dc->ndev->dev, "dp: hpd plug failed\n");
-		return false;
+		ret = false;
+		goto out;
 	}
 
 	reg_val = tegra_dpaux_readl(dp, DPAUX_DP_AUXSTAT);
 	if (!(reg_val & DPAUX_DP_AUXSTAT_HPD_STATUS_PLUGGED)) {
 		dev_err(&dc->ndev->dev, "dp: Failed to detect HPD\n");
-		return false;
+		ret = false;
+		goto out;
 	}
 
 	if (tegra_edid_get_monspecs(dp->dp_edid, &specs)) {
 		dev_err(&dc->ndev->dev, "dp: Failed to get EDID data\n");
-		return false;
+		ret = false;
+		goto out;
 	}
 
 	tegra_dc_set_fb_mode(dc, specs.modedb, false);
 	fb_destroy_modedb(specs.modedb);
 
+out:
 	tegra_dc_powergate_locked(dc);
 	msleep(50);
+	clk_disable_unprepare(dp->clk);
 	tegra_dc_put(dp->dc);
-	return true;
+
+	if (dc->out && dc->out->prepoweroff)
+		dc->out->prepoweroff();
+
+	if (dc->out_ops && dc->out_ops->disable)
+		dc->out_ops->disable(dc);
+
+	return ret;
 }
 
 struct tegra_dc_out_ops tegra_dc_dp_ops = {
