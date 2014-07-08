@@ -109,7 +109,7 @@ int gk20a_power_on(struct platform_device *pdev, struct gk20a *g)
 {
 	int ret;
 
-	dev_info(&pdev->dev, "%s\n", __func__);
+	dev_dbg(&pdev->dev, "%s\n", __func__);
 
 	ret = tegra124_mc_check_vpr();
 	if (ret) {
@@ -159,7 +159,7 @@ int gk20a_power_off(struct platform_device *pdev, struct gk20a *g)
 {
 	int ret;
 
-	dev_info(&pdev->dev, "%s\n", __func__);
+	dev_dbg(&pdev->dev, "%s\n", __func__);
 
 	ret = get_clks(pdev);
 	if (ret)
