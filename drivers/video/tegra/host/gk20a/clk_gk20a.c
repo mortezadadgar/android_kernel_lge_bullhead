@@ -338,6 +338,9 @@ int tegra_gpu_set_speed_cap(unsigned long *speed_cap)
 
 	clk = &gk20a->clk;
 
+	if (!clk->sw_ready)
+		return -EINVAL;
+
 	if (*speed_cap)
 		*speed_cap = clk_round_rate(clk->tegra_clk,
 					    *speed_cap * KHZ) / KHZ;
