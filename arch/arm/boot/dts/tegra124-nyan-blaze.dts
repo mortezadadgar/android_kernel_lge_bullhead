@@ -162,7 +162,7 @@
 
 			trips {
 				balance_trip0: balance_trip {
-					temperature = <54000>; /* millicelsius */
+					temperature = <45000>; /* millicelsius */
 					hysteresis = <0>; /* millicelsius */
 					type = "passive";
 				};
