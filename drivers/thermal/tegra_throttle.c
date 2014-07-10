@@ -126,9 +126,9 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 {
 	struct balanced_throttle_instance *bthrot = cdev->devdata;
 	int direction;
-	int i;
+	int i, ret;
 	int max_cap_clock = CAP_CLK_START + tegra_cap_freqs_table_size;
-	unsigned long bthrot_speed;
+	unsigned long bthrot_speed, save_state;
 	struct throttle_table *throt_entry;
 	struct throttle_table cur_throt_freq = {
 		{ NO_CAP, NO_CAP, NO_CAP, NO_CAP, NO_CAP}
@@ -141,6 +141,7 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 		return 0;
 
 	direction = bthrot->cur_state >= cur_state;
+	save_state = bthrot->cur_state;
 	bthrot->cur_state = cur_state;
 
 	if (cur_state == 1 && direction == 0)
@@ -163,15 +164,25 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 
 	bthrot_speed = clip_to_table(cur_throt_freq.cap_freqs[CAP_CPU]);
 	tegra_b_throt->bthrot_speed = bthrot_speed;
-	cpufreq_update_policy(0);
+	ret = cpufreq_update_policy(0);
+	if (ret)
+		goto error;
 
 	bthrot_speed = cur_throt_freq.cap_freqs[CAP_GPU];
-	if (bthrot_speed != NO_CAP)
-		tegra_gpu_set_speed_cap(&bthrot_speed);
+	if (bthrot_speed != NO_CAP) {
+		ret = tegra_gpu_set_speed_cap(&bthrot_speed);
+		if (ret)
+			goto error;
+	}
 
 	mutex_unlock(&bthrot_list_lock);
-
 	return 0;
+error:
+	bthrot = cdev->devdata;
+	bthrot->cur_state = save_state;
+
+	mutex_unlock(&bthrot_list_lock);
+	return ret;
 }
 
 static struct thermal_cooling_device_ops tegra_throttle_cooling_ops = {
