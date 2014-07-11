@@ -1839,6 +1839,8 @@ static void tegra_dc_dp_disable(struct tegra_dc *dc)
 
 	tegra_dc_io_start(dc);
 
+	tegra_dc_detach(dp->sor);
+
 	tegra_dp_disable_irq(dp->irq);
 
 	tegra_dpaux_writel(dp, DPAUX_HYBRID_SPARE,

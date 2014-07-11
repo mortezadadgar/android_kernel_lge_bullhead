@@ -1208,8 +1208,6 @@ void tegra_dc_sor_disable(struct tegra_dc_sor_data *sor, bool is_lvds)
 {
 	struct tegra_dc *dc = sor->dc;
 
-	tegra_dc_sor_power_down(sor);
-
 	/* Power down the SOR sequencer */
 	if (tegra_dc_sor_set_power_state(sor, 0)) {
 		dev_err(&dc->ndev->dev,
@@ -1224,13 +1222,11 @@ void tegra_dc_sor_disable(struct tegra_dc_sor_data *sor, bool is_lvds)
 		return;
 	}
 
-	tegra_dc_writel(dc, 0, DC_DISP_DISP_WIN_OPTIONS);
-	tegra_dc_writel(dc, GENERAL_ACT_REQ << 8, DC_CMD_STATE_CONTROL);
-	tegra_dc_writel(dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
+	tegra_dc_sor_power_down(sor);
 
-	tegra_dc_sor_disable_clk(sor);
 	/* Reset SOR clk */
 	tegra_periph_reset_assert(sor->sor_clk);
+	tegra_dc_sor_disable_clk(sor);
 }
 
 int tegra_dc_sor_set_dp_packet(struct tegra_dc_sor_data *sor,
