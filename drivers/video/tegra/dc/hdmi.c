@@ -1615,9 +1615,13 @@ EXPORT_SYMBOL(tegra_dc_hdmi_unplugged);
 static void tegra_dc_hdmi_disable(struct tegra_dc *dc)
 {
 	struct tegra_dc_hdmi_data *hdmi = tegra_dc_get_outdata(dc);
+	struct mutex *hdcp_lock;
 
 	tegra_nvhdcp_set_plug(hdmi->nvhdcp, 0);
 
+	hdcp_lock = tegra_nvhdcp_get_lock(hdmi);
+	if (hdcp_lock)
+		mutex_lock(hdcp_lock);
 	tegra_hdmi_writel(hdmi, 0, HDMI_NV_PDISP_SOR_AUDIO_HDA_PRESENSE_0);
 	/* sleep 1ms before disabling clocks to ensure HDA gets the interrupt */
 	msleep(1);
@@ -1627,6 +1631,8 @@ static void tegra_dc_hdmi_disable(struct tegra_dc *dc)
 	tegra_periph_reset_assert(hdmi->clk);
 	hdmi->clk_enabled = false;
 	clk_disable_unprepare(hdmi->clk);
+	if (hdcp_lock)
+		mutex_unlock(hdcp_lock);
 }
 
 static long tegra_dc_hdmi_setup_clk(struct tegra_dc *dc, struct clk *clk)

@@ -861,6 +861,9 @@ static void nvhdcp_downstream_worker(struct work_struct *work)
 	tegra_dc_io_start(dc);
 
 	mutex_lock(&nvhdcp->lock);
+	if (!dc->enabled)
+		goto err;
+
 	if (nvhdcp->state == STATE_OFF) {
 		nvhdcp_err("nvhdcp failure - giving up\n");
 		goto err;
@@ -1077,6 +1080,14 @@ static int tegra_nvhdcp_off(struct tegra_nvhdcp *nvhdcp)
 	wake_up_interruptible(&wq_worker);
 	cancel_delayed_work_sync(&nvhdcp->work);
 	return 0;
+}
+
+struct mutex *tegra_nvhdcp_get_lock(struct tegra_dc_hdmi_data *hdmi)
+{
+	if (!IS_ERR_OR_NULL(hdmi) && !IS_ERR_OR_NULL(hdmi->nvhdcp))
+		return &hdmi->nvhdcp->lock;
+	else
+		return NULL;
 }
 
 void tegra_nvhdcp_set_plug(struct tegra_nvhdcp *nvhdcp, bool hpd)
