@@ -680,20 +680,21 @@ static bool tegra_dc_dp_calc_config(struct tegra_dc_dp_data *dp,
 
 	int	i;
 	bool	neg;
-
+	int	pclk;
 
 	if (!link_rate || !cfg->lane_count || !mode->pclk ||
 		!cfg->bits_per_pixel)
 		return false;
 
-	if ((u64)mode->pclk * cfg->bits_per_pixel >=
+	pclk = clk_get_rate(dp->dc->clk);
+	if ((u64)pclk * cfg->bits_per_pixel >=
 		(u64)link_rate * 8 * cfg->lane_count)
 		return false;
 
 	num_linkclk_line = (u32)tegra_div64(
-		(u64)link_rate * mode->h_active, mode->pclk);
+		(u64)link_rate * mode->h_active, pclk);
 
-	ratio_f = (u64)mode->pclk * cfg->bits_per_pixel * f;
+	ratio_f = (u64)pclk * cfg->bits_per_pixel * f;
 	ratio_f /= 8;
 	ratio_f = tegra_div64(ratio_f, link_rate * cfg->lane_count);
 
@@ -801,7 +802,7 @@ static bool tegra_dc_dp_calc_config(struct tegra_dc_dp_data *dp,
 	/* where Y = (# lanes == 4) 3 : (# lanes == 2) ? 6 : 12 */
 	cfg->hblank_sym = (int)tegra_div64((u64)(mode->h_back_porch +
 			mode->h_front_porch + mode->h_sync_width - 7)
-		* link_rate, mode->pclk)
+		* link_rate, pclk)
 		- 3 * cfg->enhanced_framing - (12 / cfg->lane_count);
 
 	if (cfg->hblank_sym < 0)
@@ -814,7 +815,7 @@ static bool tegra_dc_dp_calc_config(struct tegra_dc_dp_data *dp,
 	/*                      - Y - 1; */
 	/* where Y = (# lanes == 4) 12 : (# lanes == 2) ? 21 : 39 */
 	cfg->vblank_sym = (int)tegra_div64((u64)(mode->h_active - 25)
-		* link_rate, mode->pclk) - (36 / cfg->lane_count) - 4;
+		* link_rate, pclk) - (36 / cfg->lane_count) - 4;
 
 	if (cfg->vblank_sym < 0)
 		cfg->vblank_sym = 0;
