@@ -1947,8 +1947,8 @@ out:
 	if (dc->out && dc->out->prepoweroff)
 		dc->out->prepoweroff();
 
-	if (dc->out_ops && dc->out_ops->disable)
-		dc->out_ops->disable(dc);
+	if (dc->out && dc->out->disable)
+		dc->out->disable();
 
 	return ret;
 }
