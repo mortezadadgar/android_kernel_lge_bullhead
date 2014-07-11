@@ -484,13 +484,13 @@ static int pid_thermal_gov_throttle(struct thermal_zone_device *tz, int trip)
 		    (target == instance->lower))
 			target = THERMAL_NO_TARGET;
 
+		instance->cdev->updated = false;
 		if (instance->target == target)
 			continue;
 
 		pid_thermal_gov_update_passive(tz, trip_type, instance->target,
 					       target);
 		instance->target = target;
-		instance->cdev->updated = false;
 	}
 
 	list_for_each_entry(instance, &tz->thermal_instances, tz_node)
