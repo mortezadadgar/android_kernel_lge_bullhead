@@ -128,6 +128,7 @@ static const struct sdhci_acpi_slot sdhci_acpi_slot_int_sdio = {
 };
 
 static const struct sdhci_acpi_slot sdhci_acpi_slot_int_sd = {
+	.quirks  = SDHCI_QUIRK_SINGLE_POWER_WRITE,
 };
 
 struct sdhci_acpi_uid_slot {
