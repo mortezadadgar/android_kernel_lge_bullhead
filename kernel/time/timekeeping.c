@@ -113,7 +113,9 @@ static void tk_setup_internals(struct timekeeper *tk, struct clocksource *clock)
 
 	old_clock = tk->clock;
 	tk->clock = clock;
-	tk->cycle_last = clock->read(clock);
+	tk->read = clock->read;
+	tk->mask = clock->mask;
+	tk->cycle_last = tk->read(clock);
 
 	/* Do the ns -> cycle conversion first, using original mult */
 	tmp = NTP_INTERVAL_LENGTH;
@@ -172,15 +174,13 @@ static inline u32 get_arch_timeoffset(void) { return 0; }
 static inline s64 timekeeping_get_ns(struct timekeeper *tk)
 {
 	cycle_t cycle_now, delta;
-	struct clocksource *clock;
 	s64 nsec;
 
 	/* read clocksource: */
-	clock = tk->clock;
-	cycle_now = clock->read(clock);
+	cycle_now = tk->read(tk->clock);
 
 	/* calculate the delta since the last update_wall_time: */
-	delta = clocksource_delta(cycle_now, tk->cycle_last, clock->mask);
+	delta = clocksource_delta(cycle_now, tk->cycle_last, tk->mask);
 
 	nsec = delta * tk->mult + tk->xtime_nsec;
 	nsec >>= tk->shift;
@@ -191,16 +191,15 @@ static inline s64 timekeeping_get_ns(struct timekeeper *tk)
 
 static inline s64 timekeeping_get_ns_raw(struct timekeeper *tk)
 {
+	struct clocksource *clock = tk->clock;
 	cycle_t cycle_now, delta;
-	struct clocksource *clock;
 	s64 nsec;
 
 	/* read clocksource: */
-	clock = tk->clock;
-	cycle_now = clock->read(clock);
+	cycle_now = tk->read(clock);
 
 	/* calculate the delta since the last update_wall_time: */
-	delta = clocksource_delta(cycle_now, tk->cycle_last, clock->mask);
+	delta = clocksource_delta(cycle_now, tk->cycle_last, tk->mask);
 
 	/* convert delta to nanoseconds. */
 	nsec = clocksource_cyc2ns(delta, clock->mult, clock->shift);
@@ -297,13 +296,12 @@ static void timekeeping_update(struct timekeeper *tk, unsigned int action)
  */
 static void timekeeping_forward_now(struct timekeeper *tk)
 {
+	struct clocksource *clock = tk->clock;
 	cycle_t cycle_now, delta;
-	struct clocksource *clock;
 	s64 nsec;
 
-	clock = tk->clock;
-	cycle_now = clock->read(clock);
-	delta = clocksource_delta(cycle_now, tk->cycle_last, clock->mask);
+	cycle_now = tk->read(clock);
+	delta = clocksource_delta(cycle_now, tk->cycle_last, tk->mask);
 	tk->cycle_last = cycle_now;
 
 	tk->xtime_nsec += delta * tk->mult;
@@ -915,7 +913,7 @@ static void timekeeping_resume(void)
 	 * The less preferred source will only be tried if there is no better
 	 * usable source. The rtc part is handled separately in rtc core code.
 	 */
-	cycle_now = clock->read(clock);
+	cycle_now = tk->read(clock);
 	if ((clock->flags & CLOCK_SOURCE_SUSPEND_NONSTOP) &&
 		cycle_now > tk->cycle_last) {
 		u64 num, max = ULLONG_MAX;
@@ -924,7 +922,7 @@ static void timekeeping_resume(void)
 		s64 nsec = 0;
 
 		cycle_delta = clocksource_delta(cycle_now, tk->cycle_last,
-						clock->mask);
+						tk->mask);
 
 		/*
 		 * "cycle_delta * mutl" may cause 64 bits overflow, if the
@@ -1347,7 +1345,6 @@ static inline void old_vsyscall_fixup(struct timekeeper *tk)
  */
 static void update_wall_time(void)
 {
-	struct clocksource *clock;
 	struct timekeeper *real_tk = &tk_core.timekeeper;
 	struct timekeeper *tk = &shadow_timekeeper;
 	cycle_t offset;
@@ -1361,13 +1358,11 @@ static void update_wall_time(void)
 	if (unlikely(timekeeping_suspended))
 		goto out;
 
-	clock = real_tk->clock;
-
 #ifdef CONFIG_ARCH_USES_GETTIMEOFFSET
 	offset = real_tk->cycle_interval;
 #else
-	offset = clocksource_delta(clock->read(clock), tk->cycle_last,
-				   clock->mask);
+	offset = clocksource_delta(tk->read(tk->clock), tk->cycle_last,
+				   tk->mask);
 #endif
 
 	/* Check if there's really nothing to do */
