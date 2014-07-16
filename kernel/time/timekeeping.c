@@ -171,19 +171,19 @@ u32 get_arch_timeoffset(void)
 static inline u32 get_arch_timeoffset(void) { return 0; }
 #endif
 
-static inline s64 timekeeping_get_ns(struct timekeeper *tk)
+static inline s64 timekeeping_get_ns(struct tk_read_base *tkr)
 {
 	cycle_t cycle_now, delta;
 	s64 nsec;
 
 	/* read clocksource: */
-	cycle_now = tk->tkr.read(tk->tkr.clock);
+	cycle_now = tkr->read(tkr->clock);
 
 	/* calculate the delta since the last update_wall_time: */
-	delta = clocksource_delta(cycle_now, tk->tkr.cycle_last, tk->tkr.mask);
+	delta = clocksource_delta(cycle_now, tkr->cycle_last, tkr->mask);
 
-	nsec = delta * tk->tkr.mult + tk->tkr.xtime_nsec;
-	nsec >>= tk->tkr.shift;
+	nsec = delta * tkr->mult + tkr->xtime_nsec;
+	nsec >>= tkr->shift;
 
 	/* If arch requires, add in get_arch_timeoffset() */
 	return nsec + get_arch_timeoffset();
@@ -332,7 +332,7 @@ int __getnstimeofday(struct timespec *ts)
 		seq = read_seqcount_begin(&tk_core.seq);
 
 		ts->tv_sec = tk->xtime_sec;
-		nsecs = timekeeping_get_ns(tk);
+		nsecs = timekeeping_get_ns(&tk->tkr);
 
 	} while (read_seqcount_retry(&tk_core.seq, seq));
 
@@ -373,7 +373,7 @@ ktime_t ktime_get(void)
 	do {
 		seq = read_seqcount_begin(&tk_core.seq);
 		base = tk->tkr.base_mono;
-		nsecs = timekeeping_get_ns(tk);
+		nsecs = timekeeping_get_ns(&tk->tkr);
 
 	} while (read_seqcount_retry(&tk_core.seq, seq));
 
@@ -401,7 +401,7 @@ void ktime_get_ts(struct timespec *ts)
 	do {
 		seq = read_seqcount_begin(&tk_core.seq);
 		ts->tv_sec = tk->xtime_sec;
-		nsec = timekeeping_get_ns(tk);
+		nsec = timekeeping_get_ns(&tk->tkr);
 		tomono = tk->wall_to_monotonic;
 
 	} while (read_seqcount_retry(&tk_core.seq, seq));
@@ -439,7 +439,7 @@ void getnstime_raw_and_real(struct timespec *ts_raw, struct timespec *ts_real)
 		ts_real->tv_nsec = 0;
 
 		nsecs_raw = timekeeping_get_ns_raw(tk);
-		nsecs_real = timekeeping_get_ns(tk);
+		nsecs_real = timekeeping_get_ns(&tk->tkr);
 
 	} while (read_seqcount_retry(&tk_core.seq, seq));
 
@@ -1470,7 +1470,7 @@ void get_monotonic_boottime(struct timespec *ts)
 	do {
 		seq = read_seqcount_begin(&tk_core.seq);
 		ts->tv_sec = tk->xtime_sec;
-		nsec = timekeeping_get_ns(tk);
+		nsec = timekeeping_get_ns(&tk->tkr);
 		tomono = tk->wall_to_monotonic;
 		sleep = tk->total_sleep_time;
 
@@ -1611,7 +1611,7 @@ ktime_t ktime_get_update_offsets(ktime_t *offs_real, ktime_t *offs_boot)
 		seq = read_seqcount_begin(&tk_core.seq);
 
 		secs = tk->xtime_sec;
-		nsecs = timekeeping_get_ns(tk);
+		nsecs = timekeeping_get_ns(&tk->tkr);
 
 		*offs_real = tk->offs_real;
 		*offs_boot = tk->offs_boot;
