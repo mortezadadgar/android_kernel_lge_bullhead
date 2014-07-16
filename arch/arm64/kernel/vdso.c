@@ -237,7 +237,7 @@ void update_vsyscall(struct timekeeper *tk)
 	vdso_data->xtime_coarse_nsec		= xtime_coarse.tv_nsec;
 
 	if (!use_syscall) {
-		vdso_data->cs_cycle_last	= tk->clock->cycle_last;
+		vdso_data->cs_cycle_last	= tk->cycle_last;
 		vdso_data->xtime_clock_sec	= tk->xtime_sec;
 		vdso_data->xtime_clock_nsec	= tk->xtime_nsec;
 		vdso_data->cs_mult		= tk->mult;
