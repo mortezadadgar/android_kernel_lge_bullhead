@@ -130,7 +130,7 @@ static void evdev_events(struct input_handle *handle,
 	ktime_t time_mono, time_real;
 
 	time_mono = ktime_get();
-	time_real = ktime_sub(time_mono, ktime_get_monotonic_offset());
+	time_real = ktime_mono_to_real(time_mono);
 
 	rcu_read_lock();
 
