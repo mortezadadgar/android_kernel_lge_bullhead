@@ -27,6 +27,9 @@
 #include "flowctrl.h"
 #include "iomap.h"
 
+#define FLOW_CTRL_RAM_REPAIR	0x40
+#define FLOW_CTRL_RAM_REPAIR_BYPASS_EN	BIT(2)
+
 static u8 flowctrl_offset_halt_cpu[] = {
 	FLOW_CTRL_HALT_CPU0_EVENTS,
 	FLOW_CTRL_HALT_CPU1_EVENTS,
@@ -57,6 +60,14 @@ static u32 flowctrl_read(u8 offset)
 	void __iomem *addr = IO_ADDRESS(TEGRA_FLOW_CTRL_BASE) + offset;
 
 	return readl(addr);
+}
+
+void flowctrl_ram_repair_enable(void)
+{
+	u32 reg;
+	reg = flowctrl_read(FLOW_CTRL_RAM_REPAIR);
+	reg &= ~FLOW_CTRL_RAM_REPAIR_BYPASS_EN;
+	flowctrl_update(FLOW_CTRL_RAM_REPAIR, reg);
 }
 
 u32 flowctrl_read_cpu_csr(unsigned int cpuid)
@@ -135,6 +146,8 @@ void flowctrl_cpu_suspend_exit(unsigned int cpuid)
 		reg &= ~TEGRA30_FLOW_CTRL_CSR_WFE_BITMAP;
 		/* clear wfi bitmap */
 		reg &= ~TEGRA30_FLOW_CTRL_CSR_WFI_BITMAP;
+		if (tegra_chip_id != TEGRA30)
+			flowctrl_ram_repair_enable();
 		break;
 	}
 	reg &= ~FLOW_CTRL_CSR_ENABLE;			/* clear enable */
@@ -150,4 +163,9 @@ void flowctrl_cpu_rail_enable(void)
 	reg = flowctrl_read(FLOW_CTLR_CPU_PWR_CSR);
 	reg |= FLOW_CTRL_CPU_PWR_CSR_RAIL_ENABLE;
 	flowctrl_update(FLOW_CTLR_CPU_PWR_CSR, reg);
+}
+
+void __init tegra_flowctrl_ram_repair_init(void)
+{
+	flowctrl_ram_repair_enable();
 }

@@ -54,6 +54,7 @@
 #include "board-panel.h"
 #include "common.h"
 #include "cpuidle.h"
+#include "flowctrl.h"
 #include "iomap.h"
 #include "irq.h"
 #include "pmc.h"
@@ -101,6 +102,7 @@ static void __init tegra_init_early(void)
 	tegra_cpu_reset_handler_init();
 	tegra_apb_io_init();
 	tegra_init_fuse();
+	tegra_flowctrl_ram_repair_init();
 	tegra_init_cache();
 	tegra_powergate_init();
 	tegra_hotplug_init();
