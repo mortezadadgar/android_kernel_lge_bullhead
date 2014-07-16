@@ -359,6 +359,8 @@ static inline bool ktime_to_timespec_cond(const ktime_t kt, struct timespec *ts)
 
 /* Get the monotonic time in timespec format: */
 extern void ktime_get_ts(struct timespec *ts);
+/* Get the monotonic time in nsec */
+extern u64 ktime_get_mono_fast_ns(void);
 
 /* Get the real (wall-) time in timespec format: */
 #define ktime_get_real_ts(ts)	getnstimeofday(ts)
