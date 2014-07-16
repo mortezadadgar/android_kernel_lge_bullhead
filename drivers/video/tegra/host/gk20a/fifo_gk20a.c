@@ -1131,7 +1131,7 @@ void gk20a_fifo_recover(struct gk20a *g, u32 __engine_ids,
 	 * every 100ms. Disable the sched error to allow recovery.
 	 */
 	gk20a_writel(g, fifo_intr_en_0_r(),
-			0x7FFFFFFF & ~fifo_intr_en_0_sched_error_m());
+			0xFFFFFFFF & ~fifo_intr_en_0_sched_error_m());
 	gk20a_writel(g, fifo_intr_0_r(),
 			fifo_intr_0_sched_error_reset_f());
 
@@ -1169,7 +1169,7 @@ void gk20a_fifo_recover(struct gk20a *g, u32 __engine_ids,
 		gk20a_writel(g, fifo_trigger_mmu_fault_r(engine_id), 0);
 
 	/* Re-enable sched error */
-	gk20a_writel(g, fifo_intr_en_0_r(), 0x7FFFFFFF);
+	gk20a_writel(g, fifo_intr_en_0_r(), 0xFFFFFFFF);
 }
 
 static bool gk20a_fifo_handle_sched_error(struct gk20a *g)
