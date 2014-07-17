@@ -629,13 +629,9 @@ static void tegra_dc_sor_io_set_dpd(struct tegra_dc_sor_data *sor, bool up)
 		writel(10, pmc_base + APBDEV_PMC_SEL_DPD_TIM);
 	}
 
-	reg_val = readl(pmc_base + APBDEV_PMC_IO_DPD2_REQ);
-	reg_val &= ~(APBDEV_PMC_IO_DPD2_REQ_LVDS_ON ||
-		APBDEV_PMC_IO_DPD2_REQ_CODE_DEFAULT_MASK);
-
 	reg_val = up ? APBDEV_PMC_IO_DPD2_REQ_LVDS_ON |
 		APBDEV_PMC_IO_DPD2_REQ_CODE_DPD_OFF :
-		APBDEV_PMC_IO_DPD2_REQ_LVDS_OFF |
+		APBDEV_PMC_IO_DPD2_REQ_LVDS_ON |
 		APBDEV_PMC_IO_DPD2_REQ_CODE_DPD_ON;
 
 	writel(reg_val, pmc_base + APBDEV_PMC_IO_DPD2_REQ);
@@ -645,12 +641,18 @@ static void tegra_dc_sor_io_set_dpd(struct tegra_dc_sor_data *sor, bool up)
 	do {
 		usleep_range(20, 40);
 		reg_val = readl(pmc_base + APBDEV_PMC_IO_DPD2_STATUS);
-	} while (((reg_val & APBDEV_PMC_IO_DPD2_STATUS_LVDS_ON) != 0) &&
+	} while (((reg_val & APBDEV_PMC_IO_DPD2_STATUS_LVDS_ON) !=
+				(up ? APBDEV_PMC_IO_DPD2_STATUS_LVDS_OFF :
+					APBDEV_PMC_IO_DPD2_STATUS_LVDS_ON)) &&
 		time_after(timeout_jf, jiffies));
 
-	if ((reg_val & APBDEV_PMC_IO_DPD2_STATUS_LVDS_ON) != 0)
+	if ((reg_val & APBDEV_PMC_IO_DPD2_STATUS_LVDS_ON) !=
+			(up ? APBDEV_PMC_IO_DPD2_STATUS_LVDS_OFF :
+				APBDEV_PMC_IO_DPD2_STATUS_LVDS_ON))
 		dev_err(&sor->dc->ndev->dev,
-			"PMC_IO_DPD2 polling failed (0x%x)\n", reg_val);
+			"PMC_IO_DPD2 polling failed (0x%x) for %s\n",
+			reg_val,
+			up ? "on" : "off");
 
 	if (up)
 		writel(APBDEV_PMC_DPD_SAMPLE_ON_DISABLE,
