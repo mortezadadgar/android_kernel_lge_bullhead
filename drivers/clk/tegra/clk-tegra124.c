@@ -33,6 +33,9 @@
 #include "clk.h"
 #include "clk-id.h"
 
+#define CLK_OUT_ENB_H	0x14
+#define FUSE_CLK_ENB	BIT(7)
+
 #define CLK_SOURCE_CSITE 0x1d4
 #define CLK_SOURCE_EMC 0x19c
 #define CLK_SOURCE_XUSB_SS_SRC 0x610
@@ -127,6 +130,7 @@
 #ifdef CONFIG_PM_SLEEP
 static struct cpu_clk_suspend_context {
 	u32 clk_csite_src;
+	u32 clk_out_enb_h;
 } tegra124_cpu_clk_sctx;
 #endif
 
@@ -1533,12 +1537,20 @@ static void tegra124_cpu_clock_suspend(void)
 	tegra124_cpu_clk_sctx.clk_csite_src =
 				readl(clk_base + CLK_SOURCE_CSITE);
 	writel(3 << 30, clk_base + CLK_SOURCE_CSITE);
+
+	/* enable fuse clk for ram repairing */
+	tegra124_cpu_clk_sctx.clk_out_enb_h =
+				readl(clk_base + CLK_OUT_ENB_H);
+	writel(tegra124_cpu_clk_sctx.clk_out_enb_h | FUSE_CLK_ENB,
+				clk_base + CLK_OUT_ENB_H);
 }
 
 static void tegra124_cpu_clock_resume(void)
 {
 	writel(tegra124_cpu_clk_sctx.clk_csite_src,
 				clk_base + CLK_SOURCE_CSITE);
+	writel(tegra124_cpu_clk_sctx.clk_out_enb_h,
+				clk_base + CLK_OUT_ENB_H);
 }
 #endif
 
