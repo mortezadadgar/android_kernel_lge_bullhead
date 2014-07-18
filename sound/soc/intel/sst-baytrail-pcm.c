@@ -266,6 +266,10 @@ static snd_pcm_uframes_t sst_byt_pcm_pointer(struct snd_pcm_substream *substream
 	struct sst_byt_priv_data *pdata =
 		snd_soc_platform_get_drvdata(rtd->platform);
 	struct sst_byt_pcm_data *pcm_data = &pdata->pcm[substream->stream];
+	struct sst_byt *byt = pdata->byt;
+
+	pcm_data->hw_ptr = sst_byt_get_dsp_position(byt, pcm_data->stream,
+					snd_pcm_lib_buffer_bytes(substream));
 
 	dev_dbg(rtd->dev, "PCM: DMA pointer %u bytes\n", pcm_data->hw_ptr);
 
