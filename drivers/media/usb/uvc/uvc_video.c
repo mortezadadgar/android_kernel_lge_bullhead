@@ -1837,12 +1837,20 @@ int uvc_video_init(struct uvc_streaming *stream)
 	return 0;
 }
 
+#if defined(CONFIG_CPU_FREQ_GOV_INTERACTIVE) && defined(CONFIG_ARCH_TEGRA)
+extern void cpufreq_interactive_set_boost(bool on);
+#endif
+
 /*
  * Enable or disable the video stream.
  */
 int uvc_video_enable(struct uvc_streaming *stream, int enable)
 {
 	int ret;
+
+#if defined(CONFIG_CPU_FREQ_GOV_INTERACTIVE) && defined(CONFIG_ARCH_TEGRA)
+	cpufreq_interactive_set_boost(enable);
+#endif
 
 	if (!enable) {
 		uvc_uninit_video(stream, 1);

@@ -547,6 +547,19 @@ static void cpufreq_interactive_boost(void)
 		wake_up_process(updown_task);
 }
 
+void cpufreq_interactive_set_boost(bool on)
+{
+	boost_val = on;
+
+	if (boost_val) {
+		trace_cpufreq_interactive_boost("set");
+		cpufreq_interactive_boost();
+	} else {
+		trace_cpufreq_interactive_boost("unset");
+	}
+}
+EXPORT_SYMBOL(cpufreq_interactive_set_boost);
+
 /*
  * Pulsed boost on input event raises CPUs to hispeed_freq and lets
  * usual algorithm of min_sample_time  decide when to allow speed
