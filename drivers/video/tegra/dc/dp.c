@@ -1850,7 +1850,7 @@ static void tegra_dc_dp_disable(struct tegra_dc *dc)
 	/* Power down SOR */
 	tegra_dc_sor_disable(dp->sor, false);
 
-	clk_disable(dp->clk);
+	clk_disable_unprepare(dp->clk);
 
 	tegra_dc_io_end(dc);
 }
