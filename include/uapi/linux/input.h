@@ -204,6 +204,8 @@ struct input_mask {
  * Synchronization events.
  */
 
+#define SYN_TIME_SEC		4
+#define SYN_TIME_NSEC		5
 
 /**
  * EVIOCGMASK - Retrieve current event mask
