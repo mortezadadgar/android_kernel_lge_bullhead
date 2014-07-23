@@ -24,6 +24,8 @@
 #include <linux/platform_device.h>
 #include <linux/platform_data/tegra_thermal.h>
 
+#include "thermal_core.h"
+
 #define HIST_LEN (20)
 
 struct therm_est_subdevice {
@@ -61,18 +63,30 @@ static int therm_est_update_tripped_state(struct therm_estimator *est,
 {
 	struct thermal_trip_info *trip_state = &est->trips[trip];
 	unsigned long trip_temp, zone_temp, hyst;
+	struct thermal_instance *instance;
 
 	est->thz->ops->get_trip_temp(est->thz, trip, &trip_temp);
 	zone_temp = est->thz->temperature;
 	est->thz->ops->get_trip_hyst(est->thz, trip, &hyst);
 
-	if (zone_temp >= trip_temp) {
-		trip_temp -= hyst;
-		trip_state->tripped = true;
-	} else if (trip_state->tripped) {
-		trip_temp -= hyst;
-		if (zone_temp < trip_temp)
-			trip_state->tripped = false;
+	/*
+	 * Check the instance has been created, if so update the
+	 * trip_temp and trip_state, and break to avoid going through
+	 * the rest of the list.
+	 */
+	list_for_each_entry(instance, &est->thz->thermal_instances, tz_node) {
+		if (instance->trip != trip)
+			continue;
+		if (zone_temp >= trip_temp) {
+			trip_temp -= hyst;
+			trip_state->tripped = true;
+		} else if (trip_state->tripped) {
+			trip_temp -= hyst;
+			if (zone_temp < trip_temp)
+				trip_state->tripped = false;
+		}
+
+		break;
 	}
 
 	*temp = trip_temp;
