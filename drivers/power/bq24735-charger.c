@@ -90,6 +90,9 @@ static int bq24735_update_word(struct i2c_client *client, u8 reg,
 
 static inline int bq24735_enable_charging(struct bq24735 *charger)
 {
+	if (charger->pdata->ext_control)
+		return 0;
+
 	return bq24735_update_word(charger->client, BQ24735_CHG_OPT,
 				   BQ24735_CHG_OPT_CHARGE_DISABLE,
 				   ~BQ24735_CHG_OPT_CHARGE_DISABLE);
@@ -97,6 +100,9 @@ static inline int bq24735_enable_charging(struct bq24735 *charger)
 
 static inline int bq24735_disable_charging(struct bq24735 *charger)
 {
+	if (charger->pdata->ext_control)
+		return 0;
+
 	return bq24735_update_word(charger->client, BQ24735_CHG_OPT,
 				   BQ24735_CHG_OPT_CHARGE_DISABLE,
 				   BQ24735_CHG_OPT_CHARGE_DISABLE);
@@ -107,6 +113,9 @@ static int bq24735_config_charger(struct bq24735 *charger)
 	struct bq24735_platform *pdata = charger->pdata;
 	int ret;
 	u16 value;
+
+	if (pdata->ext_control)
+		return 0;
 
 	if (pdata->charge_current) {
 		value = pdata->charge_current & BQ24735_CHARGE_CURRENT_MASK;
@@ -245,6 +254,8 @@ static struct bq24735_platform *bq24735_parse_dt_data(struct i2c_client *client)
 	ret = of_property_read_u32(np, "ti,input-current", &val);
 	if (!ret)
 		pdata->input_current = val;
+
+	pdata->ext_control = of_property_read_bool(np, "ti,external-control");
 
 	return pdata;
 }
