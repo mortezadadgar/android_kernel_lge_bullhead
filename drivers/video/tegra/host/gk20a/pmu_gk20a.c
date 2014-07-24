@@ -1738,7 +1738,10 @@ int gk20a_init_pmu_setup_hw1(struct gk20a *g)
 
 	nvhost_dbg_fn("");
 
+	mutex_lock(&pmu->isr_mutex);
 	pmu_reset(pmu);
+	pmu->isr_enabled = true;
+	mutex_unlock(&pmu->isr_mutex);
 
 	/* setup apertures - virtual */
 	gk20a_writel(g, pwr_fbif_transcfg_r(GK20A_PMU_DMAIDX_UCODE),
@@ -2824,6 +2827,10 @@ void gk20a_pmu_isr(struct gk20a *g)
 	nvhost_dbg_fn("");
 
 	mutex_lock(&pmu->isr_mutex);
+	if (!pmu->isr_enabled) {
+		mutex_unlock(&pmu->isr_mutex);
+		return;
+	}
 
 	mask = gk20a_readl(g, pwr_falcon_irqmask_r()) &
 		gk20a_readl(g, pwr_falcon_irqdest_r());
@@ -3285,7 +3292,11 @@ int gk20a_pmu_destroy(struct gk20a *g)
 	g->pg_ungating_time_us += (u64)elpg_ungating_time;
 	g->pg_gating_cnt += gating_cnt;
 
+	mutex_lock(&pmu->isr_mutex);
 	pmu_enable(pmu, false);
+	pmu->isr_enabled = false;
+	mutex_unlock(&pmu->isr_mutex);
+
 	pmu->pmu_state = PMU_STATE_OFF;
 	pmu->pmu_ready = false;
 	pmu->perfmon_ready = false;
