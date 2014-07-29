@@ -529,6 +529,7 @@
 			reg = <0x4c>;
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(I, 6) IRQ_TYPE_LEVEL_LOW>;
+			vcc-supply = <&_3v3_run>;
 
 			#thermal-sensor-cells = <1>;
 		};
@@ -1353,6 +1354,16 @@
 			enable-active-high;
 			regulator-boot-on;
 			gpio = <&gpio TEGRA_GPIO(R, 0) GPIO_ACTIVE_HIGH>;
+		};
+		_3v3_run: regulator@13 {
+			compatible = "regulator-fixed";
+			reg = <13>;
+			regulator-name = "3v3-run";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-boot-on;
+			regulator-always-on;
+			gpio = <&ams3722 1 GPIO_ACTIVE_HIGH>; /* AS3722 GPIO 1 */
 		};
 	};
 
