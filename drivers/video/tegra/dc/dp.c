@@ -1908,12 +1908,11 @@ static bool tegra_dc_dp_early_enable(struct tegra_dc *dc)
 	if (dc->out->enable)
 		dc->out->enable(&dc->ndev->dev);
 
-	tegra_dc_get(dp->dc);
 	clk_prepare_enable(dp->clk);
 	tegra_dc_dpaux_enable(dp);
 	tegra_dp_hpd_config(dp);
 
-	tegra_dc_unpowergate_locked(dc);
+	tegra_unpowergate_partition(TEGRA_POWERGATE_SOR);
 	msleep(80);
 
 	if (tegra_dp_hpd_plug(dp) < 0) {
@@ -1939,10 +1938,9 @@ static bool tegra_dc_dp_early_enable(struct tegra_dc *dc)
 	fb_destroy_modedb(specs.modedb);
 
 out:
-	tegra_dc_powergate_locked(dc);
+	tegra_powergate_partition(TEGRA_POWERGATE_SOR);
 	msleep(50);
 	clk_disable_unprepare(dp->clk);
-	tegra_dc_put(dp->dc);
 
 	if (dc->out && dc->out->prepoweroff)
 		dc->out->prepoweroff();
