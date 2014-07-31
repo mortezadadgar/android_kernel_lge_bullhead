@@ -260,15 +260,21 @@ static bool match_gpu_cvb_one(struct gk20a_cvb_info *info,
 }
 
 static int gk20a_dvfs_rail_apply_limits(struct gk20a_dvfs_rail *rail,
-					int cur_millivolts)
+					unsigned long rate,
+					int millivolts)
 {
-	int mv, min_mv, max_mv;
+	int target_mv, min_mv, max_mv;
 	int idx;
 	int *dvfs_mv;
+	unsigned long target_rate;
 
 	min_mv = rail->min_uv / 1000;
 	max_mv = rail->max_uv / 1000;
-	mv = cur_millivolts;
+	target_mv = millivolts;
+	if (rate)
+		target_rate = rate;
+	else
+		target_rate = gpu_dvfs.cur_rate;
 
 	if (rail->therm_mv_floors) {
 		idx = rail->therm_floor_idx;
@@ -283,10 +289,10 @@ static int gk20a_dvfs_rail_apply_limits(struct gk20a_dvfs_rail *rail,
 		dvfs_mv = gpu_dvfs.millivolts + idx * MAX_DVFS_FREQS;
 
 		for (i = 0; i < gpu_dvfs.num_freqs; i++) {
-			if (!gpu_dvfs.cur_rate)
-				goto no_cur_rate;
+			if (!target_rate)
+				goto no_rate;
 
-			if (gpu_dvfs.cur_rate <= gpu_dvfs.freqs[i])
+			if (target_rate <= gpu_dvfs.freqs[i])
 				break;
 	       }
 
@@ -296,21 +302,21 @@ static int gk20a_dvfs_rail_apply_limits(struct gk20a_dvfs_rail *rail,
 		max_mv = dvfs_mv[i];
 	}
 
-no_cur_rate:
+no_rate:
 
-	if (mv < min_mv)
-		mv = min_mv;
-	else if (mv > max_mv)
-		mv = max_mv;
+	if (target_mv < min_mv)
+		target_mv = min_mv;
+	else if (target_mv > max_mv)
+		target_mv = max_mv;
 
-	return mv;
+	return target_mv;
 }
 
 static void gk20a_dvfs_rail_update_voltage(struct gk20a_dvfs_rail *rail)
 {
 	int mv;
 
-	mv = gk20a_dvfs_rail_apply_limits(gpu_dvfs.rail,
+	mv = gk20a_dvfs_rail_apply_limits(gpu_dvfs.rail, 0,
 					  gpu_dvfs.cur_millivolts);
 
 	if (mv != gpu_dvfs.cur_millivolts) {
@@ -665,7 +671,7 @@ int gk20a_dvfs_adjust_voltage(struct gk20a *g, unsigned long rate)
 	else
 		uv = gpu_dvfs.millivolts[index] * 1000;
 
-	mv  = gk20a_dvfs_rail_apply_limits(gpu_dvfs.rail, (uv / 1000));
+	mv  = gk20a_dvfs_rail_apply_limits(gpu_dvfs.rail, rate, (uv / 1000));
 	uv = mv * 1000;
 
 	dev_dbg(dev_from_gk20a(g),
