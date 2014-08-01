@@ -641,6 +641,7 @@ static void _dump_regs(struct tegra_dc *dc, void *data,
 		}
 #endif
 
+		DUMP_REG(DC_WIN_BUFFER_SURFACE_KIND);
 		DUMP_REG(DC_WINBUF_UFLOW_STATUS);
 		DUMP_REG(DC_WIN_CSC_YOF);
 		DUMP_REG(DC_WIN_CSC_KYRGB);
