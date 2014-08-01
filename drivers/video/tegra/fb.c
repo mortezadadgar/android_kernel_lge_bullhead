@@ -278,6 +278,56 @@ static int tegra_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 	return 0;
 }
 
+extern void find_dc_dev(struct platform_device **dcs);
+
+static void tegra_fb_mirror_hdmi(struct tegra_fb_info *fb0,
+					struct tegra_fb_info *fb1)
+{
+	if (fb1->win->phys_addr != fb0->win->phys_addr) {
+		dev_info(&fb1->win->dc->ndev->dev, "Mirror FB to HDMI.\n");
+		fb1->win->h.full = fb0->win->h.full;
+		fb1->win->w.full = fb0->win->w.full;
+		fb1->win->stride = fb0->win->stride;
+		fb1->win->stride_uv = fb0->win->stride_uv;
+		fb1->win->phys_addr = fb0->win->phys_addr;
+		fb1->win->phys_addr2 = fb0->win->phys_addr2;
+		fb1->win->phys_addr_u = fb0->win->phys_addr_u;
+		fb1->win->phys_addr_u2 = fb0->win->phys_addr_u2;
+		fb1->win->phys_addr_v = fb0->win->phys_addr_v;
+		fb1->win->phys_addr_v2 = fb0->win->phys_addr_v2;
+		fb1->win->virt_addr = fb0->win->virt_addr;
+		fb1->win->y = fb0->win->y;
+		fb1->win->x = fb0->win->x;
+		fb1->win->flags = TEGRA_WIN_FLAG_ENABLED | TEGRA_WIN_FLAG_FB;
+	}
+}
+
+int tegra_fb_console_blank(int action)
+{
+	struct platform_device *dc_devs[2];
+	struct tegra_dc *dc0 = NULL;
+	struct tegra_dc *dc1 = NULL;
+
+	if (action == 1) {
+		pr_info("Framebuffer console deactivated.\n");
+		return 0;
+	}
+
+	pr_info("Framebuffer console activated.\n");
+	find_dc_dev(dc_devs);
+	dc0 = platform_get_drvdata(dc_devs[0]);
+	dc1 = platform_get_drvdata(dc_devs[1]);
+
+	if (!dc1->enabled)
+		return 0;
+
+	tegra_fb_mirror_hdmi(dc0->fb, dc1->fb);
+	tegra_dc_update_windows(&dc1->fb->win, 1);
+	tegra_dc_sync_windows(&dc1->fb->win, 1);
+
+	return 0;
+}
+
 static int tegra_fb_blank(int blank, struct fb_info *info)
 {
 	struct tegra_fb_info *tegra_fb = info->par;
@@ -595,6 +645,7 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 	int mode_idx;
 	unsigned stride;
 	struct fb_videomode m;
+	extern int(*console_blank_hook)(int);
 
 	win = tegra_dc_get_window(dc, fb_data->win);
 	if (!win) {
@@ -703,6 +754,7 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 		}
 	}
 
+	console_blank_hook = tegra_fb_console_blank;
 	return tegra_fb;
 
 err_free:
@@ -714,6 +766,9 @@ err:
 void tegra_fb_unregister(struct tegra_fb_info *fb_info)
 {
 	struct fb_info *info = fb_info->info;
+	extern int(*console_blank_hook)(int);
+
+	console_blank_hook = NULL;
 
 	unregister_framebuffer(info);
 

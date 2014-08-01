@@ -650,7 +650,7 @@ static int venice_panel_mode_init(struct platform_device *dcs)
 	return 0;
 }
 
-void __init find_dc_dev(struct platform_device **dcs)
+void find_dc_dev(struct platform_device **dcs)
 {
 	struct platform_device *pdev = NULL;
 
@@ -662,6 +662,7 @@ void __init find_dc_dev(struct platform_device **dcs)
 			&platform_bus_type, NULL, "tegradc.1"));
 	dcs[1] = pdev;
 }
+EXPORT_SYMBOL(find_dc_dev);
 
 int __init venice_panel_init(void)
 {
