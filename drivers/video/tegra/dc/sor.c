@@ -51,6 +51,8 @@
 #define APBDEV_PMC_IO_DPD2_STATUS_LVDS_OFF		(0 << 25)
 #define APBDEV_PMC_IO_DPD2_STATUS_LVDS_ON		(1 << 25)
 
+#define DC_N_WINDOWS 5
+
 static inline u32 tegra_sor_readl(struct tegra_dc_sor_data *sor, u32 reg)
 {
 	u32 reg_val = readl(sor->base + reg * 4);
@@ -1071,6 +1073,90 @@ static void tegra_dc_sor_general_act(struct tegra_dc *dc)
 			"dc timeout waiting for DC to stop\n");
 }
 
+static struct tegra_dc_mode min_mode = {
+	.h_ref_to_sync = 0,
+	.v_ref_to_sync = 1,
+	.h_sync_width = 1,
+	.v_sync_width = 1,
+	.h_back_porch = 20,
+	.v_back_porch = 0,
+	.h_active = 16,
+	.v_active = 16,
+	.h_front_porch = 1,
+	.v_front_porch = 2,
+};
+
+/* Disable windows and set minimum raster timings */
+static void
+tegra_dc_sor_disable_win_short_raster(struct tegra_dc *dc, int *dc_reg_ctx)
+{
+	int selected_windows, i;
+
+	selected_windows = tegra_dc_readl(dc, DC_CMD_DISPLAY_WINDOW_HEADER);
+
+	/* Store and clear window options */
+	for_each_set_bit(i, &dc->valid_windows, DC_N_WINDOWS) {
+		tegra_dc_writel(dc, WINDOW_A_SELECT << i,
+			DC_CMD_DISPLAY_WINDOW_HEADER);
+		dc_reg_ctx[i] = tegra_dc_readl(dc, DC_WIN_WIN_OPTIONS);
+		tegra_dc_writel(dc, 0, DC_WIN_WIN_OPTIONS);
+		tegra_dc_writel(dc, WIN_A_ACT_REQ << i, DC_CMD_STATE_CONTROL);
+	}
+
+	tegra_dc_writel(dc, selected_windows, DC_CMD_DISPLAY_WINDOW_HEADER);
+
+	/* Store current raster timings and set minimum timings */
+	dc_reg_ctx[i++] = tegra_dc_readl(dc, DC_DISP_REF_TO_SYNC);
+	tegra_dc_writel(dc, min_mode.h_ref_to_sync |
+		(min_mode.v_ref_to_sync << 16), DC_DISP_REF_TO_SYNC);
+
+	dc_reg_ctx[i++] = tegra_dc_readl(dc, DC_DISP_SYNC_WIDTH);
+	tegra_dc_writel(dc, min_mode.h_sync_width |
+		(min_mode.v_sync_width << 16), DC_DISP_SYNC_WIDTH);
+
+	dc_reg_ctx[i++] = tegra_dc_readl(dc, DC_DISP_BACK_PORCH);
+	tegra_dc_writel(dc, min_mode.h_back_porch |
+		((min_mode.v_back_porch - min_mode.v_ref_to_sync) << 16),
+		DC_DISP_BACK_PORCH);
+
+	dc_reg_ctx[i++] = tegra_dc_readl(dc, DC_DISP_FRONT_PORCH);
+	tegra_dc_writel(dc, min_mode.h_front_porch |
+		((min_mode.v_front_porch + min_mode.v_ref_to_sync) << 16),
+		DC_DISP_FRONT_PORCH);
+
+	dc_reg_ctx[i++] = tegra_dc_readl(dc, DC_DISP_DISP_ACTIVE);
+	tegra_dc_writel(dc, min_mode.h_active | (min_mode.v_active << 16),
+			DC_DISP_DISP_ACTIVE);
+
+	tegra_dc_writel(dc, GENERAL_ACT_REQ, DC_CMD_STATE_CONTROL);
+}
+
+/* Restore previous windows status and raster timings */
+static void
+tegra_dc_sor_restore_win_and_raster(struct tegra_dc *dc, int *dc_reg_ctx)
+{
+	int selected_windows, i;
+
+	selected_windows = tegra_dc_readl(dc, DC_CMD_DISPLAY_WINDOW_HEADER);
+
+	for_each_set_bit(i, &dc->valid_windows, DC_N_WINDOWS) {
+		tegra_dc_writel(dc, WINDOW_A_SELECT << i,
+			DC_CMD_DISPLAY_WINDOW_HEADER);
+		tegra_dc_writel(dc, dc_reg_ctx[i], DC_WIN_WIN_OPTIONS);
+		tegra_dc_writel(dc, WIN_A_ACT_REQ << i, DC_CMD_STATE_CONTROL);
+	}
+
+	tegra_dc_writel(dc, selected_windows, DC_CMD_DISPLAY_WINDOW_HEADER);
+
+	tegra_dc_writel(dc, dc_reg_ctx[i++], DC_DISP_REF_TO_SYNC);
+	tegra_dc_writel(dc, dc_reg_ctx[i++], DC_DISP_SYNC_WIDTH);
+	tegra_dc_writel(dc, dc_reg_ctx[i++], DC_DISP_BACK_PORCH);
+	tegra_dc_writel(dc, dc_reg_ctx[i++], DC_DISP_FRONT_PORCH);
+	tegra_dc_writel(dc, dc_reg_ctx[i++], DC_DISP_DISP_ACTIVE);
+
+	tegra_dc_writel(dc, GENERAL_UPDATE, DC_CMD_STATE_CONTROL);
+}
+
 static void tegra_dc_sor_enable_sor(struct tegra_dc_sor_data *sor, bool enable)
 {
 	struct tegra_dc *dc = sor->dc;
@@ -1082,6 +1168,7 @@ static void tegra_dc_sor_enable_sor(struct tegra_dc_sor_data *sor, bool enable)
 void tegra_dc_detach(struct tegra_dc_sor_data *sor)
 {
 	struct tegra_dc *dc = sor->dc;
+	int dc_reg_ctx[DC_N_WINDOWS + 5];
 	unsigned long dc_int_mask;
 
 	/* Sleep mode */
@@ -1090,6 +1177,8 @@ void tegra_dc_detach(struct tegra_dc_sor_data *sor)
 		NV_SOR_SUPER_STATE1_ASY_ORMODE_SAFE |
 		NV_SOR_SUPER_STATE1_ATTACHED_YES);
 	tegra_dc_sor_super_update(sor);
+
+	tegra_dc_sor_disable_win_short_raster(dc, dc_reg_ctx);
 
 	if (tegra_dc_sor_poll_register(sor, NV_SOR_TEST,
 		NV_SOR_TEST_ACT_HEAD_OPMODE_DEFAULT_MASK,
@@ -1115,6 +1204,8 @@ void tegra_dc_detach(struct tegra_dc_sor_data *sor)
 	/* Stop DC */
 	tegra_dc_writel(dc, DISP_CTRL_MODE_STOP, DC_CMD_DISPLAY_COMMAND);
 	tegra_dc_sor_general_act(dc);
+
+	tegra_dc_sor_restore_win_and_raster(dc, dc_reg_ctx);
 
 	tegra_dc_writel(dc, dc_int_mask, DC_CMD_INT_MASK);
 }
