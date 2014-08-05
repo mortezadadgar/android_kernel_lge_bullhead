@@ -1830,6 +1830,11 @@ static int tegra_xhci_elpg_exit(struct tegra_xhci_hcd *tegra)
 		dev_err(dev, "failed to load firmware %d\n", ret);
 		return ret;
 	}
+	/*
+	 * Enable firmware messaging again because it will be
+	 * disabled internally when in elpg state.
+	 */
+	tegra_xhci_mbox_send(tegra, MBOX_CMD_MSG_ENABLED, 0);
 
 	tegra_xusb_phy_postresume(tegra->phy);
 
