@@ -554,6 +554,13 @@ config KSWAPD_CPU_AFFINITY_MASK
 	  For example to limit kswapd to the first 4 cores use the following:
 	  CONFIG_KSWAPD_CPU_AFFINITY_MASK="f"
 
+config ZPOOL
+	tristate "Common API for compressed memory storage"
+	default n
+	help
+	  Compressed memory storage API.  This allows using either zbud or
+	  zsmalloc.
+
 config ZSMALLOC
 	bool "Memory allocator for compressed pages"
 	depends on MMU
