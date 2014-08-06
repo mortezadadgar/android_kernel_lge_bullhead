@@ -17,7 +17,7 @@
 #ifndef __DRIVERS_VIDEO_TEGRA_DC_NVHDCP_H
 #define __DRIVERS_VIDEO_TEGRA_DC_NVHDCP_H
 #include <video/nvhdcp.h>
-#include <hdmi.h>
+#include "hdmi.h"
 
 struct tegra_nvhdcp;
 #ifdef CONFIG_TEGRA_NVHDCP
