@@ -1,5 +1,6 @@
 #include "tegra124-nyan.dtsi"
 #include "tegra124-nyan-big-emc.dtsi"
+#include "marvell_txpwrlimit.dtsi"
 
 / {
 	compatible = "google,nyan-big", "google,nyan", "nvidia,tegra124";
