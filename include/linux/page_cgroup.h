@@ -6,11 +6,7 @@ enum {
 	PCG_LOCK,  /* Lock for pc->mem_cgroup and following bits. */
 	PCG_USED, /* this object is in use. */
 	PCG_MIGRATION, /* under page migration */
-	__NR_PCG_FLAGS,
 };
-
-#ifndef __GENERATING_BOUNDS_H
-#include <generated/bounds.h>
 
 #ifdef CONFIG_MEMCG
 #include <linux/bit_spinlock.h>
@@ -139,7 +135,5 @@ static inline void swap_cgroup_swapoff(int type)
 }
 
 #endif /* CONFIG_MEMCG_SWAP */
-
-#endif /* !__GENERATING_BOUNDS_H */
 
 #endif /* __LINUX_PAGE_CGROUP_H */
