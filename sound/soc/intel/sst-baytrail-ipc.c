@@ -927,8 +927,7 @@ void sst_byt_dsp_free(struct device *dev, struct sst_pdata *pdata)
 }
 EXPORT_SYMBOL_GPL(sst_byt_dsp_free);
 
-/* IRQs must be off here */
-int sst_byt_dsp_suspend_noirq(struct device *dev, struct sst_pdata *pdata)
+int sst_byt_dsp_suspend_late(struct device *dev, struct sst_pdata *pdata)
 {
 	struct sst_byt *byt = pdata->dsp;
 
@@ -936,14 +935,6 @@ int sst_byt_dsp_suspend_noirq(struct device *dev, struct sst_pdata *pdata)
 	sst_dsp_reset(byt->dsp);
 	sst_byt_drop_all(byt);
 	dev_dbg(byt->dev, "dsp in reset\n");
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(sst_byt_dsp_suspend_noirq);
-
-int sst_byt_dsp_suspend_late(struct device *dev, struct sst_pdata *pdata)
-{
-	struct sst_byt *byt = pdata->dsp;
 
 	dev_dbg(byt->dev, "free all blocks and unload fw\n");
 	sst_fw_unload(byt->fw);
