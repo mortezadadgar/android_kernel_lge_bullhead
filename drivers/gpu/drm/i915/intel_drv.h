@@ -167,6 +167,8 @@ struct intel_panel {
 		bool enabled;
 		struct backlight_device *device;
 	} backlight;
+
+	void (*backlight_power)(struct intel_connector *, bool enable);
 };
 
 struct intel_connector {

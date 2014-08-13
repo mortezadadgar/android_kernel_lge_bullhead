@@ -796,6 +796,8 @@ void intel_panel_disable_backlight(struct intel_connector *connector)
 
 	spin_lock_irqsave(&dev_priv->backlight_lock, flags);
 
+	if (panel->backlight.device)
+		panel->backlight.device->props.power = FB_BLANK_POWERDOWN;
 	panel->backlight.enabled = false;
 	intel_panel_actually_set_backlight(connector, 0);
 
@@ -924,6 +926,8 @@ void intel_panel_enable_backlight(struct intel_connector *connector)
 	 */
 	panel->backlight.enabled = true;
 	intel_panel_actually_set_backlight(connector, panel->backlight.level);
+	if (panel->backlight.device)
+		panel->backlight.device->props.power = FB_BLANK_UNBLANK;
 
 	spin_unlock_irqrestore(&dev_priv->backlight_lock, flags);
 }
@@ -954,6 +958,7 @@ intel_panel_detect(struct drm_device *dev)
 static int intel_backlight_device_update_status(struct backlight_device *bd)
 {
 	struct intel_connector *connector = bl_get_data(bd);
+	struct intel_panel *panel = &connector->panel;
 	struct drm_device *dev = connector->base.dev;
 
 	mutex_lock(&dev->mode_config.mutex);
@@ -962,6 +967,22 @@ static int intel_backlight_device_update_status(struct backlight_device *bd)
 	intel_panel_set_backlight(connector, bd->props.brightness,
 				  bd->props.max_brightness);
 	mutex_unlock(&dev->mode_config.mutex);
+
+	/*
+	 * Allow flipping bl_power as a sub-state of enabled. Sadly the
+	 * backlight class device does not make it easy to to differentiate
+	 * between callbacks for brightness and bl_power, so our backlight_power
+	 * callback needs to take this into account.
+	 */
+	if (panel->backlight.enabled) {
+		if (panel->backlight_power) {
+			bool enable = bd->props.power == FB_BLANK_UNBLANK;
+			panel->backlight_power(connector, enable);
+		}
+	} else {
+		bd->props.power = FB_BLANK_POWERDOWN;
+	}
+
 	return 0;
 }
 
@@ -1008,6 +1029,11 @@ static int intel_backlight_device_register(struct intel_connector *connector)
 	props.brightness = scale_hw_to_user(connector,
 					    panel->backlight.level,
 					    props.max_brightness);
+
+	if (panel->backlight.enabled)
+		props.power = FB_BLANK_UNBLANK;
+	else
+		props.power = FB_BLANK_POWERDOWN;
 
 	/*
 	 * Note: using the same name independent of the connector prevents
