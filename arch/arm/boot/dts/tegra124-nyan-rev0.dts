@@ -149,14 +149,14 @@
 			compatible = "isil,isl29018";
 			reg = <0x44>;
 			interrupt-parent = <&gpio>;
-			interrupts = <TEGRA_GPIO(X, 3) GPIO_ACTIVE_HIGH>;
+			interrupts = <TEGRA_GPIO(X, 3) IRQ_TYPE_NONE>;
 		};
 
 		trackpad {
 			compatible = "atmel,atmel_mxt_tp";
 			reg = <0x4b>;
 			interrupt-parent = <&gpio>;
-			interrupts = <TEGRA_GPIO(W, 3) GPIO_ACTIVE_HIGH>;
+			interrupts = <TEGRA_GPIO(W, 3) IRQ_TYPE_EDGE_FALLING>;
 			wakeup-source;
 		};
 
@@ -164,7 +164,7 @@
 			compatible = "atmel,atmel_mxt_tp";
 			reg = <0x25>;
 			interrupt-parent = <&gpio>;
-			interrupts = <TEGRA_GPIO(W, 3) GPIO_ACTIVE_HIGH>;
+			interrupts = <TEGRA_GPIO(W, 3) IRQ_TYPE_EDGE_FALLING>;
 			wakeup-source;
 		};
 	};
