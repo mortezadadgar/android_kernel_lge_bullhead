@@ -1706,7 +1706,7 @@ static int __noreturn rcu_gp_kthread(void *arg)
 				break;
 			cond_resched();
 			ACCESS_ONCE(rsp->gp_activity) = jiffies;
-			flush_signals(current);
+			WARN_ON(signal_pending(current));
 		}
 
 		/* Handle quiescent-state forcing. */
@@ -1740,7 +1740,7 @@ static int __noreturn rcu_gp_kthread(void *arg)
 				/* Deal with stray signal. */
 				cond_resched();
 				ACCESS_ONCE(rsp->gp_activity) = jiffies;
-				flush_signals(current);
+				WARN_ON(signal_pending(current));
 			}
 			j = jiffies_till_next_fqs;
 			if (j > HZ) {
