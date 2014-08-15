@@ -142,7 +142,7 @@
 		clock-frequency = <100000>;
 
 		trackpad@15 {
-			compatible = "elan_i2c";
+			compatible = "elan,i2c_touchpad";
 			reg = <0x15>;
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(W, 3) IRQ_TYPE_EDGE_FALLING>;
