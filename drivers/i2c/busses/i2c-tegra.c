@@ -60,6 +60,7 @@
 #define I2C_FIFO_STATUS_RX_SHIFT		0
 #define I2C_INT_MASK				0x064
 #define I2C_INT_STATUS				0x068
+#define I2C_INT_BUS_CLEAR_DONE			(1<<11)
 #define I2C_INT_PACKET_XFER_COMPLETE		(1<<7)
 #define I2C_INT_ALL_PACKETS_XFER_COMPLETE	(1<<6)
 #define I2C_INT_TX_FIFO_OVERFLOW		(1<<5)
@@ -101,6 +102,21 @@
 #define I2C_HEADER_CONTINUE_XFER		(1<<15)
 #define I2C_HEADER_MASTER_ADDR_SHIFT		12
 #define I2C_HEADER_SLAVE_ADDR_SHIFT		1
+
+#define I2C_BUS_CLEAR_CNFG			0x084
+#define I2C_BC_SCLK_THRESHOLD			(9<<16)
+#define I2C_BC_STOP_COND			(1<<2)
+#define I2C_BC_TERMINATE			(1<<1)
+#define I2C_BC_ENABLE				(1<<0)
+
+#define I2C_BUS_CLEAR_STATUS			0x088
+#define I2C_BC_STATUS				(1<<0)
+
+#define I2C_CONFIG_LOAD				0x08C
+#define I2C_MSTR_CONFIG_LOAD			(1 << 0)
+#define I2C_SLV_CONFIG_LOAD			(1 << 1)
+#define I2C_TIMEOUT_CONFIG_LOAD			(1 << 2)
+
 /*
  * msg_end_type: The bus control which need to be send at end of transfer.
  * @MSG_END_STOP: Send stop pulse at end of transfer.
@@ -520,6 +536,9 @@ static irqreturn_t tegra_i2c_isr(int irq, void *dev_id)
 		goto err;
 	}
 
+	if (status & I2C_INT_BUS_CLEAR_DONE)
+		goto err;
+
 	if (i2c_dev->msg_read && (status & I2C_INT_RX_FIFO_DATA_REQ)) {
 		if (i2c_dev->msg_buf_remaining)
 			tegra_i2c_empty_rx_fifo(i2c_dev);
@@ -547,7 +566,7 @@ err:
 	/* An error occurred, mask all interrupts */
 	tegra_i2c_mask_irq(i2c_dev, I2C_INT_NO_ACK | I2C_INT_ARBITRATION_LOST |
 		I2C_INT_PACKET_XFER_COMPLETE | I2C_INT_TX_FIFO_DATA_REQ |
-		I2C_INT_RX_FIFO_DATA_REQ);
+		I2C_INT_RX_FIFO_DATA_REQ | I2C_INT_BUS_CLEAR_DONE);
 	i2c_writel(i2c_dev, status, I2C_INT_STATUS);
 	if (i2c_dev->is_dvc)
 		dvc_writel(i2c_dev, DVC_STATUS_I2C_DONE_INTR, DVC_STATUS);
@@ -562,6 +581,7 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 	u32 packet_header;
 	u32 int_mask;
 	int ret;
+	unsigned long timeout = jiffies + msecs_to_jiffies(100);
 
 	tegra_i2c_flush_fifos(i2c_dev);
 
@@ -639,6 +659,37 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 		udelay(DIV_ROUND_UP(2 * 1000000, i2c_dev->bus_clk_rate));
 
 	tegra_i2c_init(i2c_dev);
+
+	/* Arbitration Lost occurs, Start recovery */
+	if (i2c_dev->msg_err == I2C_ERR_ARBITRATION_LOST) {
+		INIT_COMPLETION(i2c_dev->msg_complete);
+		i2c_writel(i2c_dev, I2C_BC_ENABLE
+				| I2C_BC_SCLK_THRESHOLD
+				| I2C_BC_STOP_COND
+				| I2C_BC_TERMINATE
+				, I2C_BUS_CLEAR_CNFG);
+
+		i2c_writel(i2c_dev, I2C_MSTR_CONFIG_LOAD,
+				I2C_CONFIG_LOAD);
+		while (i2c_readl(i2c_dev, I2C_CONFIG_LOAD) != 0) {
+			if (time_after(jiffies, timeout)) {
+				dev_warn(i2c_dev->dev,
+					"timeout config_load");
+				return -ETIMEDOUT;
+			}
+			usleep_range(1000, 1500);
+		}
+
+		tegra_i2c_unmask_irq(i2c_dev, I2C_INT_BUS_CLEAR_DONE);
+
+		wait_for_completion_timeout(&i2c_dev->msg_complete,
+			TEGRA_I2C_TIMEOUT);
+
+		if (!(i2c_readl(i2c_dev, I2C_BUS_CLEAR_STATUS) & I2C_BC_STATUS))
+			dev_warn(i2c_dev->dev, "Un-recovered Arbitration lost\n");
+		return -EAGAIN;
+	}
+
 	if (i2c_dev->msg_err == I2C_ERR_NO_ACK) {
 		if (msg->flags & I2C_M_IGNORE_NAK)
 			return 0;
