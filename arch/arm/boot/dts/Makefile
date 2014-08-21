@@ -202,7 +202,8 @@ dtb-$(CONFIG_ARCH_TEGRA_124_SOC) += tegra124-nyan-rev0.dtb \
 	tegra124-nyan-rev1.dtb \
 	tegra124-nyan-big-rev0_2.dtb \
 	tegra124-nyan-big.dtb \
-	tegra124-nyan-blaze.dtb
+	tegra124-nyan-blaze.dtb \
+	tegra124-nyan-kitty.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += versatile-ab.dtb \
 	versatile-pb.dtb
 dtb-$(CONFIG_ARCH_VEXPRESS) += vexpress-v2p-ca5s.dtb \

@@ -1,0 +1,14 @@
+/ {
+	memory-controller@7001b000 {
+		emc-table@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			nvidia,ram-code = <0>;
+		};
+		emc-table@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			nvidia,ram-code = <1>;
+		};
+	};
+};
