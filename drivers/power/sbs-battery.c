@@ -54,6 +54,8 @@ enum {
 	REG_MODEL_NAME,
 };
 
+static DEFINE_MUTEX(sbs_lock);
+
 /* Battery Mode defines */
 #define BATTERY_MODE_OFFSET		0x03
 #define BATTERY_MODE_MASK		0x8000
@@ -493,16 +495,19 @@ static int sbs_get_battery_capacity(struct i2c_client *client,
 	s32 ret;
 	enum sbs_battery_mode mode = BATTERY_MODE_WATTS;
 
+	mutex_lock(&sbs_lock);
 	if (power_supply_is_amp_property(psp))
 		mode = BATTERY_MODE_AMPS;
 
 	mode = sbs_set_battery_mode(client, mode);
-	if (mode < 0)
-		return mode;
+	if (mode < 0) {
+		ret = mode;
+		goto err;
+	}
 
 	ret = sbs_read_word_data(client, sbs_data[reg_offset].addr);
 	if (ret < 0)
-		return ret;
+		goto err;
 
 	if (psp == POWER_SUPPLY_PROP_CAPACITY) {
 		/* sbs spec says that this can be >100 %
@@ -513,9 +518,14 @@ static int sbs_get_battery_capacity(struct i2c_client *client,
 
 	ret = sbs_set_battery_mode(client, mode);
 	if (ret < 0)
-		return ret;
+		goto err;
 
+	mutex_unlock(&sbs_lock);
 	return 0;
+
+err:
+	mutex_unlock(&sbs_lock);
+	return ret;
 }
 
 static char sbs_serial[5];
