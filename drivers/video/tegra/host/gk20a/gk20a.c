@@ -731,6 +731,8 @@ int nvhost_gk20a_finalize_poweron(struct platform_device *dev)
 		goto done;
 	}
 
+	wait_event(g->pmu.boot_wq, g->pmu.pmu_state == PMU_STATE_STARTED);
+
 	gk20a_channel_resume(g);
 	set_user_nice(current, nice_value);
 
@@ -905,6 +907,7 @@ static int gk20a_probe(struct platform_device *dev)
 	spin_lock_init(&gk20a->mc_enable_lock);
 
 	init_waitqueue_head(&gk20a->gr.init_wq);
+	init_waitqueue_head(&gk20a->pmu.boot_wq);
 
 	return 0;
 }

@@ -796,6 +796,7 @@ struct pmu_gk20a {
 	u32 elpg_stat;
 
 	int pmu_state;
+	wait_queue_head_t boot_wq;
 
 #define PMU_ELPG_ENABLE_ALLOW_DELAY_MSEC	1 /* msec */
 	struct work_struct pg_init;

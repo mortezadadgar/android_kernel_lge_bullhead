@@ -1948,6 +1948,8 @@ static void pmu_setup_hw_enable_elpg(struct gk20a *g)
 		gk20a_pmu_enable_elpg(g);
 
 	udelay(50);
+
+	wake_up(&g->pmu.boot_wq);
 }
 
 int gk20a_init_pmu_support(struct gk20a *g)
