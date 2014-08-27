@@ -452,6 +452,7 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 	int err = 0;
 	int clk_multiplier = I2C_CLK_MULTIPLIER_STD_FAST_MODE;
 	u32 clk_divisor;
+	unsigned long timeout = jiffies + msecs_to_jiffies(100);
 
 	err = tegra_i2c_clock_enable(i2c_dev);
 	if (err < 0) {
@@ -495,6 +496,15 @@ static int tegra_i2c_init(struct tegra_i2c_dev *i2c_dev)
 
 	if (tegra_i2c_flush_fifos(i2c_dev))
 		err = -ETIMEDOUT;
+
+	i2c_writel(i2c_dev, I2C_MSTR_CONFIG_LOAD, I2C_CONFIG_LOAD);
+	while (i2c_readl(i2c_dev, I2C_CONFIG_LOAD) != 0) {
+		if (time_after(jiffies, timeout)) {
+			dev_warn(i2c_dev->dev, "timeout config_load");
+			return -ETIMEDOUT;
+		}
+		usleep_range(1000, 1500);
+	}
 
 	tegra_i2c_clock_disable(i2c_dev);
 
