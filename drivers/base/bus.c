@@ -10,6 +10,7 @@
  *
  */
 
+#include <linux/async.h>
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/errno.h>
@@ -530,15 +531,12 @@ void bus_probe_device(struct device *dev)
 {
 	struct bus_type *bus = dev->bus;
 	struct subsys_interface *sif;
-	int ret;
 
 	if (!bus)
 		return;
 
-	if (bus->p->drivers_autoprobe) {
-		ret = device_attach(dev);
-		WARN_ON(ret < 0);
-	}
+	if (bus->p->drivers_autoprobe)
+		device_initial_probe(dev);
 
 	mutex_lock(&bus->p->mutex);
 	list_for_each_entry(sif, &bus->p->interfaces, node)
@@ -670,6 +668,17 @@ static ssize_t driver_uevent_store(struct device_driver *drv,
 }
 static DRIVER_ATTR(uevent, S_IWUSR, NULL, driver_uevent_store);
 
+static void driver_attach_async(void *_drv, async_cookie_t cookie)
+{
+	struct device_driver *drv = _drv;
+	int ret;
+
+	ret = driver_attach(drv);
+
+	pr_debug("bus: '%s': driver %s async attach completed: %d\n",
+		 drv->bus->name, drv->name, ret);
+}
+
 /**
  * bus_add_driver - Add a driver to the bus.
  * @drv: driver.
@@ -702,9 +711,15 @@ int bus_add_driver(struct device_driver *drv)
 
 	klist_add_tail(&priv->knode_bus, &bus->p->klist_drivers);
 	if (drv->bus->p->drivers_autoprobe) {
-		error = driver_attach(drv);
-		if (error)
-			goto out_unregister;
+		if (drv->async_probe) {
+			pr_debug("bus: '%s': probing driver %s asynchronously\n",
+				drv->bus->name, drv->name);
+			async_schedule(driver_attach_async, drv);
+		} else {
+			error = driver_attach(drv);
+			if (error)
+				goto out_unregister;
+		}
 	}
 	module_add_driver(drv->owner, drv);
 
