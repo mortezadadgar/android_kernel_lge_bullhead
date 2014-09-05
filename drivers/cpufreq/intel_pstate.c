@@ -323,6 +323,28 @@ static ssize_t store_min_perf_pct(struct kobject *a, struct attribute *b,
 	return count;
 }
 
+static ssize_t show_aperf_mperf(struct kobject *kobj, struct attribute *attr,
+				char *buf)
+{
+	unsigned int cpu;
+	struct cpudata *cpudata;
+	int len = 0;
+
+	for_each_online_cpu(cpu) {
+		if (!all_cpu_data[cpu])
+			continue;
+
+		cpudata = all_cpu_data[cpu];
+		len += snprintf(buf + len, PAGE_SIZE - len, "%d %llu %llu\n",
+				cpudata->pstate.max_pstate * 100000,
+				cpudata->prev_aperf, cpudata->prev_mperf);
+		if (len >= PAGE_SIZE)
+			return len;
+	}
+
+	return len;
+}
+
 show_one(no_turbo, no_turbo);
 show_one(max_perf_pct, max_perf_pct);
 show_one(min_perf_pct, min_perf_pct);
@@ -331,10 +353,13 @@ define_one_global_rw(no_turbo);
 define_one_global_rw(max_perf_pct);
 define_one_global_rw(min_perf_pct);
 
+define_one_global_ro(aperf_mperf);
+
 static struct attribute *intel_pstate_attributes[] = {
 	&no_turbo.attr,
 	&max_perf_pct.attr,
 	&min_perf_pct.attr,
+	&aperf_mperf.attr,
 	NULL
 };
 
