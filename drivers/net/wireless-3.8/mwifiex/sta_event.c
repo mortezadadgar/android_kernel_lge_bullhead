@@ -248,6 +248,8 @@ int mwifiex_process_sta_event(struct mwifiex_private *priv)
 			reason_code =
 				le16_to_cpu(*(__le16 *)adapter->event_body);
 			mwifiex_reset_connect_state(priv, reason_code);
+			dev_notice(adapter->dev, "Event: Deauthenticated; reason %d\n",
+				   reason_code);
 		}
 		break;
 
@@ -258,6 +260,8 @@ int mwifiex_process_sta_event(struct mwifiex_private *priv)
 			reason_code =
 				le16_to_cpu(*(__le16 *)adapter->event_body);
 			mwifiex_reset_connect_state(priv, reason_code);
+			dev_notice(adapter->dev, "Event: Disassociated; reason %d\n",
+				   reason_code);
 		}
 		break;
 
@@ -268,6 +272,8 @@ int mwifiex_process_sta_event(struct mwifiex_private *priv)
 			reason_code =
 				le16_to_cpu(*(__le16 *)adapter->event_body);
 			mwifiex_reset_connect_state(priv, reason_code);
+			dev_notice(adapter->dev, "Event: Link lost; reason %d\n",
+				   reason_code);
 		}
 		break;
 

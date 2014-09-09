@@ -1515,8 +1515,8 @@ mwifiex_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 	if (mwifiex_deauthenticate(priv, NULL))
 		return -EFAULT;
 
-	wiphy_dbg(wiphy, "info: successfully disconnected from %pM:"
-		" reason code %d\n", priv->cfg_bssid, reason_code);
+	wiphy_dbg(wiphy, "info: successfully disconnected from %pM: code %d\n",
+		  priv->cfg_bssid, reason_code);
 
 	memset(priv->cfg_bssid, 0, ETH_ALEN);
 
@@ -1754,8 +1754,9 @@ mwifiex_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 		return -EINVAL;
 	}
 
-	wiphy_dbg(wiphy, "info: Trying to associate to %s and bssid %pM\n",
-		  (char *) sme->ssid, sme->bssid);
+	dev_notice(priv->adapter->dev,
+		   "info: trying to associate to %s and bssid %pM\n",
+		   (char *)sme->ssid, sme->bssid);
 
 	ret = mwifiex_cfg80211_assoc(priv, sme->ssid_len, sme->ssid, sme->bssid,
 				     priv->bss_mode, sme->channel, sme, 0);
@@ -1763,13 +1764,13 @@ mwifiex_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 		cfg80211_connect_result(priv->netdev, priv->cfg_bssid, NULL, 0,
 					NULL, 0, WLAN_STATUS_SUCCESS,
 					GFP_KERNEL);
-		dev_dbg(priv->adapter->dev,
-			"info: associated to bssid %pM successfully\n",
-			priv->cfg_bssid);
+		dev_notice(priv->adapter->dev,
+			   "info: associated to bssid %pM successfully\n",
+			   priv->cfg_bssid);
 	} else {
-		dev_dbg(priv->adapter->dev,
-			"info: association to bssid %pM failed\n",
-			priv->cfg_bssid);
+		dev_notice(priv->adapter->dev,
+			   "info: association to bssid %pM failed\n",
+			   priv->cfg_bssid);
 		memset(priv->cfg_bssid, 0, ETH_ALEN);
 
 		if (ret > 0)

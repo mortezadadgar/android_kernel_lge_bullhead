@@ -1405,6 +1405,7 @@ static int mwifiex_deauthenticate_infra(struct mwifiex_private *priv, u8 *mac)
 	else
 		memcpy(mac_address, mac, ETH_ALEN);
 
+	dev_notice(priv->adapter->dev, "disconnecting from %pM\n", mac_address);
 	ret = mwifiex_send_cmd(priv, HostCmd_CMD_802_11_DEAUTHENTICATE,
 			       HostCmd_ACT_GEN_SET, 0, mac_address, true);
 
