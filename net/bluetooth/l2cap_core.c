@@ -1148,6 +1148,24 @@ static void l2cap_start_connection(struct l2cap_chan *chan)
 	}
 }
 
+static void l2cap_request_info(struct l2cap_conn *conn)
+{
+	struct l2cap_info_req req;
+
+	if (conn->info_state & L2CAP_INFO_FEAT_MASK_REQ_SENT)
+		return;
+
+	req.type = cpu_to_le16(L2CAP_IT_FEAT_MASK);
+
+	conn->info_state |= L2CAP_INFO_FEAT_MASK_REQ_SENT;
+	conn->info_ident = l2cap_get_ident(conn);
+
+	schedule_delayed_work(&conn->info_timer, L2CAP_INFO_TIMEOUT);
+
+	l2cap_send_cmd(conn, conn->info_ident, L2CAP_INFO_REQ,
+		       sizeof(req), &req);
+}
+
 static void l2cap_do_start(struct l2cap_chan *chan)
 {
 	struct l2cap_conn *conn = chan->conn;
@@ -1157,26 +1175,17 @@ static void l2cap_do_start(struct l2cap_chan *chan)
 		return;
 	}
 
-	if (conn->info_state & L2CAP_INFO_FEAT_MASK_REQ_SENT) {
-		if (!(conn->info_state & L2CAP_INFO_FEAT_MASK_REQ_DONE))
-			return;
-
-		if (l2cap_chan_check_security(chan) &&
-		    __l2cap_no_conn_pending(chan)) {
-			l2cap_start_connection(chan);
-		}
-	} else {
-		struct l2cap_info_req req;
-		req.type = __constant_cpu_to_le16(L2CAP_IT_FEAT_MASK);
-
-		conn->info_state |= L2CAP_INFO_FEAT_MASK_REQ_SENT;
-		conn->info_ident = l2cap_get_ident(conn);
-
-		schedule_delayed_work(&conn->info_timer, L2CAP_INFO_TIMEOUT);
-
-		l2cap_send_cmd(conn, conn->info_ident, L2CAP_INFO_REQ,
-			       sizeof(req), &req);
+	if (!(conn->info_state & L2CAP_INFO_FEAT_MASK_REQ_SENT)) {
+		l2cap_request_info(conn);
+		return;
 	}
+
+	if (!(conn->info_state & L2CAP_INFO_FEAT_MASK_REQ_DONE))
+		return;
+
+	if (l2cap_chan_check_security(chan) &&
+	    __l2cap_no_conn_pending(chan))
+		l2cap_start_connection(chan);
 }
 
 static inline int l2cap_mode_supported(__u8 mode, __u32 feat_mask)
@@ -1241,6 +1250,7 @@ static void l2cap_conn_start(struct l2cap_conn *conn)
 		l2cap_chan_lock(chan);
 
 		if (chan->chan_type != L2CAP_CHAN_CONN_ORIENTED) {
+			l2cap_chan_ready(chan);
 			l2cap_chan_unlock(chan);
 			continue;
 		}
@@ -1405,6 +1415,9 @@ static void l2cap_conn_ready(struct l2cap_conn *conn)
 	if (hcon->out && hcon->type == LE_LINK)
 		smp_conn_security(hcon, hcon->pending_sec_level);
 
+	if (hcon->type == ACL_LINK)
+		l2cap_request_info(conn);
+
 	mutex_lock(&conn->chan_lock);
 
 	list_for_each_entry(chan, &conn->chan_l, list) {
@@ -1421,8 +1434,8 @@ static void l2cap_conn_ready(struct l2cap_conn *conn)
 				l2cap_chan_ready(chan);
 
 		} else if (chan->chan_type != L2CAP_CHAN_CONN_ORIENTED) {
-			l2cap_chan_ready(chan);
-
+			if (conn->info_state & L2CAP_INFO_FEAT_MASK_REQ_DONE)
+				l2cap_chan_ready(chan);
 		} else if (chan->state == BT_CONNECT)
 			l2cap_do_start(chan);
 
