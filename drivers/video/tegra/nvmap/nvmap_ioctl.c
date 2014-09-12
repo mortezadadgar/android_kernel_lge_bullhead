@@ -263,31 +263,6 @@ out:
 	return err;
 }
 
-int nvmap_ioctl_getid(struct file *filp, void __user *arg)
-{
-	struct nvmap_client *client = filp->private_data;
-	struct nvmap_create_handle op;
-	struct nvmap_handle *h = NULL;
-	ulong handle;
-
-	if (copy_from_user(&op, arg, sizeof(op)))
-		return -EFAULT;
-
-	handle = unmarshal_user_handle(op.handle);
-	if (!handle)
-		return -EINVAL;
-
-	h = (struct nvmap_handle *)handle;
-
-	op.id = marshal_id((ulong)h);
-	if (client == h->owner)
-		h->global = true;
-
-	nvmap_handle_put(h);
-
-	return copy_to_user(arg, &op, sizeof(op)) ? -EFAULT : 0;
-}
-
 static int nvmap_share_release(struct inode *inode, struct file *file)
 {
 	struct nvmap_handle *h = file->private_data;
