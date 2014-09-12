@@ -248,7 +248,7 @@ static void nvavp_add_iova_info_locked(struct nvavp_clientctx *clientctx,
 	struct nvavp_info *nvavp = clientctx->nvavp;
 	struct rb_node **p = &clientctx->iova_handles.rb_node;
 
-	dev_info(&nvavp->nvhost_dev->dev,
+	dev_dbg(&nvavp->nvhost_dev->dev,
 		"add iova addr (0x%lx))\n", (unsigned long)h->addr);
 
 	if (parent) {
