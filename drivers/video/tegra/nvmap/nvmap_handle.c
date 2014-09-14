@@ -925,7 +925,12 @@ EXPORT_SYMBOL(nvmap_free_handle_id);
 void nvmap_free_handle_user_id(struct nvmap_client *client,
 			       unsigned long user_id)
 {
-	nvmap_free_handle_id(client, unmarshal_user_id(user_id));
+	unsigned long id;
+	id = unmarshal_user_id(user_id);
+	if (id) {
+		nvmap_free_handle_id(client, id);
+		nvmap_handle_put((struct nvmap_handle *)id);
+	}
 }
 
 static void add_handle_ref(struct nvmap_client *client,
@@ -1107,6 +1112,7 @@ struct nvmap_handle_ref *nvmap_create_handle_from_fd(
 	if (IS_ERR_VALUE(id))
 		return ERR_PTR(id);
 	ref = nvmap_duplicate_handle_id(client, id, 1);
+	nvmap_handle_put((struct nvmap_handle *)id);
 	return ref;
 }
 
