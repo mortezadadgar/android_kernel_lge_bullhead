@@ -118,7 +118,6 @@ static const char recov_packet[HELLO_PACKET_LEN] = {0x55, 0x55, 0x80, 0x80};
 /* test_bit definition */
 #define	LOCK_FILE_OPERATE	0
 #define	LOCK_CMD_HANDSHAKE	1
-#define	LOCK_FINGER_REPORT	2
 #define	LOCK_FW_UPDATE	3
 
 /* kfifo return value definition */
@@ -1654,8 +1653,6 @@ static irqreturn_t elan_work_func(int irq, void *work)
 
 	mutex_lock(&ts->i2c_mutex);
 
-	set_bit(LOCK_FINGER_REPORT, &ts->flags);
-
 	/* Read multi_queue header */
 	rc = elan_get_data(client, (u8 *)buf, ts->rx_size);
 	if (rc < 0)
@@ -1678,8 +1675,6 @@ static irqreturn_t elan_work_func(int irq, void *work)
 	if (rc < 0)
 		goto fail;
 
-	clear_bit(LOCK_FINGER_REPORT, &ts->flags);
-
 	mutex_unlock(&ts->i2c_mutex);
 
 	/* parsing data and send it out */
@@ -1695,7 +1690,6 @@ static irqreturn_t elan_work_func(int irq, void *work)
 	return IRQ_HANDLED;
 
 fail:
-	clear_bit(LOCK_FINGER_REPORT, &ts->flags);
 	mutex_unlock(&ts->i2c_mutex);
 	ts->rx_size = QUEUE_HEADER_SIZE;
 
