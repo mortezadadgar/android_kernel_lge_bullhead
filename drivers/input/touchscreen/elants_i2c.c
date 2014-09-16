@@ -2005,11 +2005,6 @@ err_release:
 	return -err;
 }
 
-static const struct i2c_device_id elan_ts_id[] = {
-	{DEVICE_NAME, 0},
-	{}
-};
-
 #ifdef CONFIG_PM_SLEEP
 static int elan_suspend(struct device *dev)
 {
@@ -2078,19 +2073,22 @@ static int elan_resume(struct device *dev)
 
 	return 0;
 }
+#endif
 
 static SIMPLE_DEV_PM_OPS(elan_pm_ops, elan_suspend, elan_resume);
-#endif
+
+static const struct i2c_device_id elan_ts_id[] = {
+	{ DEVICE_NAME, 0 },
+	{ }
+};
+MODULE_DEVICE_TABLE(i2c, elan_ts_id);
 
 #ifdef CONFIG_ACPI
 static const struct acpi_device_id elants_acpi_id[] = {
 	{ "ELAN0001", 0 },
 	{ }
 };
-
 MODULE_DEVICE_TABLE(acpi, elants_acpi_id);
-#else
-MODULE_DEVICE_TABLE(i2c, elan_ts_id);
 #endif
 
 #ifdef CONFIG_OF
@@ -2108,18 +2106,12 @@ static struct i2c_driver elan_ts_driver = {
 	.driver = {
 		.name = DEVICE_NAME,
 		.owner = THIS_MODULE,
-#ifdef CONFIG_PM_SLEEP
 		.pm = &elan_pm_ops,
-#endif
-#ifdef CONFIG_ACPI
 		.acpi_match_table = ACPI_PTR(elants_acpi_id),
-#endif
 		.of_match_table = of_match_ptr(elan_of_match),
 	},
 };
-
 module_i2c_driver(elan_ts_driver);
-
 
 MODULE_AUTHOR("Scott Liu <scott.liu@emc.com.tw>");
 MODULE_DESCRIPTION("Elan I2c Touchscreen driver");
