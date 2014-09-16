@@ -212,6 +212,9 @@ struct elants_data {
 
 	struct mutex i2c_mutex;	/* Protects I2C accesses to device */
 
+	/* Guards against concurrent access to the device via sysfs/debugfs */
+	struct mutex sysfs_mutex;
+
 	unsigned long flags;
 
 	unsigned short i2caddr;
@@ -224,7 +227,6 @@ struct elants_data {
 	struct mt_device td;
 
 	/* fields required for debug fs */
-	struct mutex dbfs_mutex;
 	struct dentry *dbfs_root;
 
 	/* Add for TS driver debug */
@@ -240,7 +242,7 @@ struct elants_data {
 
 static int elan_touch_pull_frame(struct elants_data *ts, u8 *buf);
 static int elan_initialize(struct i2c_client *client);
-static int elan_fw_update(struct i2c_client *client);
+static int elan_fw_update(struct elants_data *ts);
 
 /*
  *  Function implement
@@ -359,7 +361,7 @@ static int elan_dbfs_open(struct inode *inode, struct file *file)
 
 	disable_irq(ts->client->irq);
 
-	retval = mutex_lock_interruptible(&ts->dbfs_mutex);
+	retval = mutex_lock_interruptible(&ts->sysfs_mutex);
 	if (retval)
 		return retval;
 
@@ -370,7 +372,7 @@ static int elan_dbfs_open(struct inode *inode, struct file *file)
 
 	file->private_data = ts;
 dbfs_out:
-	mutex_unlock(&ts->dbfs_mutex);
+	mutex_unlock(&ts->sysfs_mutex);
 	return retval;
 }
 
@@ -440,7 +442,7 @@ static int elan_dbfs_release(struct inode *inode, struct file *file)
 		return -ENODEV;
 
 	enable_irq(ts->client->irq);
-	mutex_unlock(&ts->dbfs_mutex);
+	mutex_unlock(&ts->sysfs_mutex);
 
 	return 0;
 }
@@ -460,8 +462,6 @@ static int elan_dbfs_init(struct elants_data *ts)
 	if (ts->dbfs_root == ERR_PTR(-ENODEV))
 		ts->dbfs_root = NULL;
 
-	mutex_init(&ts->dbfs_mutex);
-
 	debugfs_create_file("elan-iap",
 		0666, ts->dbfs_root, ts, &elan_debug_fops);
 
@@ -471,14 +471,14 @@ static int elan_dbfs_init(struct elants_data *ts)
 static void elan_dbfs_remove(struct elants_data *ts)
 {
 	debugfs_remove_recursive(ts->dbfs_root);
-	mutex_destroy(&ts->dbfs_mutex);
+	mutex_destroy(&ts->sysfs_mutex);
 
 	return;
 }
 
-static int elan_calibrate(struct i2c_client *client)
+static int elan_calibrate(struct elants_data *ts)
 {
-	struct elants_data *ts = i2c_get_clientdata(client);
+	struct i2c_client *client = ts->client;
 	int ret = 0;
 	const u8 w_flashkey[4] = { 0x54, 0xC0, 0xE1, 0x5A };
 	const u8 rek[4] = { 0x54, 0x29, 0x00, 0x01 };
@@ -530,31 +530,41 @@ err2:
 /*
  * sysfs interface
  */
-static ssize_t show_calibrate(struct device *dev,
-			      struct device_attribute *attr, char *buf)
+static ssize_t calibrate_store(struct device *dev,
+			       struct device_attribute *attr,
+			      const char *buf, size_t count)
 {
 	struct i2c_client *client = to_i2c_client(dev);
-	int ret = 0;
+	struct elants_data *ts = i2c_get_clientdata(client);
+	int error;
 
-	ret = elan_calibrate(client);
-	return sprintf(buf, "%s\n",
-		       (ret == 0) ? "calibrate finish" : "calibrate fail");
+	error = mutex_lock_interruptible(&ts->sysfs_mutex);
+	if (error)
+		return error;
+
+	error = elan_calibrate(ts);
+
+	mutex_unlock(&ts->sysfs_mutex);
+	return error ?: count;
 }
 
 static ssize_t write_update_fw(struct device *dev,
 			       struct device_attribute *attr,
 			       const char *buf, size_t count)
 {
-	int ret;
 	struct i2c_client *client = to_i2c_client(dev);
+	struct elants_data *ts = i2c_get_clientdata(client);
+	int error;
 
-	ret = elan_fw_update(client);
-	if (ret)
-		dev_err(dev, "firmware update failed.\n");
-	else
-		dev_dbg(dev, "firmware update succeeded.\n");
+	error = mutex_lock_interruptible(&ts->sysfs_mutex);
+	if (error)
+		return error;
 
-	return ret ? ret : count;
+	error = elan_fw_update(ts);
+	dev_dbg(dev, "firmware update result: %d\n", error);
+
+	mutex_unlock(&ts->sysfs_mutex);
+	return error ?: count;
 }
 
 static ssize_t show_iap_mode(struct device *dev,
@@ -567,7 +577,7 @@ static ssize_t show_iap_mode(struct device *dev,
 		       (ts->iap_mode == 0) ? "Normal" : "Recovery");
 }
 
-static DEVICE_ATTR(calibrate, S_IRUGO, show_calibrate, NULL);
+static DEVICE_ATTR(calibrate, S_IWUSR, NULL, calibrate_store);
 static DEVICE_ATTR(iap_mode, S_IRUGO, show_iap_mode, NULL);
 static DEVICE_ATTR(update_fw, S_IWUSR, NULL, write_update_fw);
 
@@ -1034,8 +1044,9 @@ static int __elan_fastboot(struct i2c_client *client)
  * The file path is located /system/etc/firmware at Android.
  * The file path usually is located at /lib/firmware.
  */
-static int elan_fw_update(struct i2c_client *client)
+static int elan_fw_update(struct elants_data *ts)
 {
+	struct i2c_client *client = ts->client;
 	int rc = 0;
 	int page = 0;
 	int fw_size = 0, fw_pages;
@@ -1049,7 +1060,6 @@ static int elan_fw_update(struct i2c_client *client)
 	const u8 enter_iap2[4] = { 0x54, 0x00, 0x12, 0x34 };
 	const u8 iap_rc[4] = { 0x55, 0xaa, 0x33, 0xcc };
 	const u8 ack_ok[2] = { 0xaa, 0xaa };
-	struct elants_data *ts = i2c_get_clientdata(client);
 
 	ENTER_LOG();
 
@@ -1230,7 +1240,7 @@ err:
 	enable_irq(client->irq);
 	elan_msleep(100);
 	/* we need to calibrate touchscreen */
-	elan_calibrate(client);
+	elan_calibrate(ts);
 
 	return rc;
 }
@@ -1955,6 +1965,7 @@ static int elan_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	mutex_init(&ts->i2c_mutex);
 	mutex_init(&ts->fifo_mutex);
+	mutex_init(&ts->sysfs_mutex);
 	init_waitqueue_head(&ts->wait);
 	spin_lock_init(&ts->rx_kfifo_lock);
 
