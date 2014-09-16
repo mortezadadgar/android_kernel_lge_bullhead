@@ -1976,10 +1976,6 @@ static int elan_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto err_release;
 	}
 
-	if (!client->dev.platform_data)
-		dev_err(&client->dev,
-			"%s No platform data provided\n", DEVICE_NAME);
-
 	/* set initial i2c address */
 	client->addr = DEV_MASTER;
 	ts->i2caddr = client->addr;
