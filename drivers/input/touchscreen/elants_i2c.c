@@ -38,7 +38,6 @@
 #include <linux/version.h>
 #include <linux/kfifo.h>
 #include <linux/slab.h>
-#include <linux/debugfs.h>
 #include <linux/firmware.h>
 #include <linux/version.h>
 #include <linux/input/mt.h>
@@ -226,9 +225,6 @@ struct elants_data {
 
 	struct mt_device td;
 
-	/* fields required for debug fs */
-	struct dentry *dbfs_root;
-
 	/* Add for TS driver debug */
 	long int irq_count;
 	long int packet_count;
@@ -346,134 +342,6 @@ static int elan_i2c_read_block(struct i2c_client *client,
 
 	ret = i2c_transfer(client->adapter, msgs, 2);
 	return (ret == 2) ? len : ret;
-}
-
-static int elan_dbfs_open(struct inode *inode, struct file *file)
-{
-	int retval = 0;
-	struct elants_data *ts = inode->i_private;
-	struct i2c_client *client = ts->client;
-
-	ENTER_LOG();
-
-	if (!ts)
-		return -ENODEV;
-
-	disable_irq(ts->client->irq);
-
-	retval = mutex_lock_interruptible(&ts->sysfs_mutex);
-	if (retval)
-		return retval;
-
-	if (!kobject_get(&ts->client->dev.kobj)) {
-		retval = -ENODEV;
-		goto dbfs_out;
-	}
-
-	file->private_data = ts;
-dbfs_out:
-	mutex_unlock(&ts->sysfs_mutex);
-	return retval;
-}
-
-static ssize_t elan_dbfs_read(struct file *file,
-			      char __user *buffer, size_t count, loff_t *ppos)
-{
-	u8 rxbuf[256];
-	int ret = -1;
-	struct elants_data *ts = file->private_data;
-	struct i2c_adapter *adap = ts->client->adapter;
-	struct i2c_msg msg;
-
-	if (count > 256)
-		return -EMSGSIZE;
-	msg.addr = ts->i2caddr;
-	msg.flags = ts->client->flags & I2C_M_TEN;
-	msg.flags |= I2C_M_RD;
-	msg.len = count;
-	msg.buf = rxbuf;
-
-	ret = i2c_transfer(adap, &msg, 1);
-	if (ret == 1)
-		if (copy_to_user(buffer, rxbuf, count))
-			return -EFAULT;
-
-	/* If everything went ok (i.e. 1 msg transmitted), return #bytes
-	   transmitted, else error code. */
-	return (ret == 1) ? count : ret;
-}
-
-static ssize_t elan_dbfs_write(struct file *file,
-			       const char __user *buffer, size_t count,
-			       loff_t *ppos)
-{
-	int ret;
-	u8 txbuf[256];
-	struct elants_data *ts = file->private_data;
-	struct i2c_adapter *adap = ts->client->adapter;
-	struct i2c_msg msg;
-
-	if (count > 256)
-		return -EMSGSIZE;
-
-	if (copy_from_user(txbuf, buffer, count))
-		return -EFAULT;
-
-	msg.addr = ts->i2caddr;
-	msg.flags = ts->client->flags & I2C_M_TEN;
-	msg.len = count;
-	msg.buf = (char *)txbuf;
-
-	ret = i2c_transfer(adap, &msg, 1);
-	if (ret != 1)
-		dev_err(&ts->client->dev,
-			"i2c_master_send fail, ret=%d\n", ret);
-
-	/* If everything went ok (i.e. 1 msg transmitted), return #bytes
-	   transmitted, else error code. */
-	return (ret == 1) ? count : ret;
-}
-
-static int elan_dbfs_release(struct inode *inode, struct file *file)
-{
-	struct elants_data *ts = file->private_data;
-
-	if (!ts)
-		return -ENODEV;
-
-	enable_irq(ts->client->irq);
-	mutex_unlock(&ts->sysfs_mutex);
-
-	return 0;
-}
-
-static const struct file_operations elan_debug_fops = {
-	.owner = THIS_MODULE,
-	.open = elan_dbfs_open,
-	.release = elan_dbfs_release,
-	.read = elan_dbfs_read,
-	.write = elan_dbfs_write,
-};
-
-static int elan_dbfs_init(struct elants_data *ts)
-{
-	/* Create a global debugfs root for all elan ts devices */
-	ts->dbfs_root = debugfs_create_dir(DEVICE_NAME, NULL);
-	if (ts->dbfs_root == ERR_PTR(-ENODEV))
-		ts->dbfs_root = NULL;
-
-	debugfs_create_file("elan-iap",
-		0666, ts->dbfs_root, ts, &elan_debug_fops);
-
-	return 0;
-}
-
-static void elan_dbfs_remove(struct elants_data *ts)
-{
-	debugfs_remove_recursive(ts->dbfs_root);
-	mutex_destroy(&ts->sysfs_mutex);
-
-	return;
 }
 
 static int elan_calibrate(struct elants_data *ts)
@@ -1713,9 +1581,6 @@ static int elan_remove(struct i2c_client *client)
 	int ret = 0;
 	struct elants_data *ts = i2c_get_clientdata(client);
 
-	/* remove dbfs */
-	elan_dbfs_remove(ts);
-
 	/* remove sysfs */
 	sysfs_remove_group(&client->dev.kobj, &elan_attribute_group);
 
@@ -1968,13 +1833,6 @@ static int elan_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	mutex_init(&ts->sysfs_mutex);
 	init_waitqueue_head(&ts->wait);
 	spin_lock_init(&ts->rx_kfifo_lock);
-
-	/* set dbfs for user-space program */
-	err = elan_dbfs_init(ts);
-	if (err < 0) {
-		dev_err(&client->dev, "error create elan debugfs.\n");
-		goto err_release;
-	}
 
 	/* set initial i2c address */
 	client->addr = DEV_MASTER;
