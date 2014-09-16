@@ -595,12 +595,6 @@ static ssize_t show_bc_version_value(struct device *dev,
 		       "IAP:%.2x\n", ts->bc_version, ts->iap_version);
 }
 
-static ssize_t show_drv_version_value(struct device *dev,
-				      struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%s\n", DRV_VERSION);
-}
-
 static ssize_t show_iap_mode(struct device *dev,
 			     struct device_attribute *attr, char *buf)
 {
@@ -616,7 +610,6 @@ static DEVICE_ATTR(fw_version, S_IRUGO, show_fw_version_value, NULL);
 static DEVICE_ATTR(hw_version, S_IRUGO, show_hw_version_value, NULL);
 static DEVICE_ATTR(test_version, S_IRUGO, show_test_version_value, NULL);
 static DEVICE_ATTR(bc_version, S_IRUGO, show_bc_version_value, NULL);
-static DEVICE_ATTR(drv_version, S_IRUGO, show_drv_version_value, NULL);
 static DEVICE_ATTR(iap_mode, S_IRUGO, show_iap_mode, NULL);
 static DEVICE_ATTR(update_fw, S_IWUSR, NULL, write_update_fw);
 
@@ -626,7 +619,6 @@ static struct attribute *elan_attributes[] = {
 	&dev_attr_hw_version.attr,
 	&dev_attr_test_version.attr,
 	&dev_attr_bc_version.attr,
-	&dev_attr_drv_version.attr,
 	&dev_attr_update_fw.attr,
 	&dev_attr_iap_mode.attr,
 	NULL
