@@ -186,7 +186,7 @@ struct mt_device {
 struct elants_data {
 	bool wake_irq_enabled;
 
-	u16 fw_id;
+	u16 hw_version;
 	u16 fw_version;
 	u8 test_version;
 	u8 solution_version;
@@ -557,44 +557,6 @@ static ssize_t write_update_fw(struct device *dev,
 	return ret ? ret : count;
 }
 
-static ssize_t show_fw_version_value(struct device *dev,
-				     struct device_attribute *attr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct elants_data *ts = i2c_get_clientdata(client);
-
-	return sprintf(buf, "%.4x\n", ts->fw_version);
-}
-
-static ssize_t show_hw_version_value(struct device *dev,
-				     struct device_attribute *attr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct elants_data *ts = i2c_get_clientdata(client);
-
-	return sprintf(buf, "%.4x\n", ts->fw_id);
-}
-
-static ssize_t show_test_version_value(struct device *dev,
-				       struct device_attribute *attr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct elants_data *ts = i2c_get_clientdata(client);
-
-	return sprintf(buf, "Test:%.2x\nSolution:%.2x\n",
-		       ts->test_version, ts->solution_version);
-}
-
-static ssize_t show_bc_version_value(struct device *dev,
-				     struct device_attribute *attr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct elants_data *ts = i2c_get_clientdata(client);
-
-	return sprintf(buf, "Bootcode:%.2x\n"
-		       "IAP:%.2x\n", ts->bc_version, ts->iap_version);
-}
-
 static ssize_t show_iap_mode(struct device *dev,
 			     struct device_attribute *attr, char *buf)
 {
@@ -606,21 +568,69 @@ static ssize_t show_iap_mode(struct device *dev,
 }
 
 static DEVICE_ATTR(calibrate, S_IRUGO, show_calibrate, NULL);
-static DEVICE_ATTR(fw_version, S_IRUGO, show_fw_version_value, NULL);
-static DEVICE_ATTR(hw_version, S_IRUGO, show_hw_version_value, NULL);
-static DEVICE_ATTR(test_version, S_IRUGO, show_test_version_value, NULL);
-static DEVICE_ATTR(bc_version, S_IRUGO, show_bc_version_value, NULL);
 static DEVICE_ATTR(iap_mode, S_IRUGO, show_iap_mode, NULL);
 static DEVICE_ATTR(update_fw, S_IWUSR, NULL, write_update_fw);
 
+struct elants_version_attribute {
+	struct device_attribute dattr;
+	size_t field_offset;
+	size_t field_size;
+};
+
+#define __ELANTS_FIELD_SIZE(_field)					\
+	sizeof(((struct elants_data *)NULL)->_field)
+#define __ELANTS_VERIFY_SIZE(_field)					\
+	(BUILD_BUG_ON_ZERO(__ELANTS_FIELD_SIZE(_field) > 2) +		\
+	 __ELANTS_FIELD_SIZE(_field))
+#define ELANTS_VERSION_ATTR(_field)					\
+	struct elants_version_attribute elants_ver_attr_##_field = {	\
+		.dattr = __ATTR(_field, S_IRUGO,			\
+				elants_version_attribute_show, NULL),	\
+		.field_offset = offsetof(struct elants_data, _field),	\
+		.field_size = __ELANTS_VERIFY_SIZE(_field),		\
+	}
+
+static ssize_t elants_version_attribute_show(struct device *dev,
+					     struct device_attribute *dattr,
+					     char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct elants_data *ts = i2c_get_clientdata(client);
+	struct elants_version_attribute *attr =
+		container_of(dattr, struct elants_version_attribute, dattr);
+	u8 *field = (u8 *)((char *)ts + attr->field_offset);
+	unsigned int fmt_size;
+	unsigned int val;
+
+	if (attr->field_size == 1) {
+		val = *field;
+		fmt_size = 2; /* 2 HEX digits */
+	} else {
+		val = *(u16 *)field;
+		fmt_size = 4; /* 4 HEX digits */
+	}
+
+	return sprintf(buf, "%0*x\n", fmt_size, val);
+}
+
+static ELANTS_VERSION_ATTR(fw_version);
+static ELANTS_VERSION_ATTR(hw_version);
+static ELANTS_VERSION_ATTR(test_version);
+static ELANTS_VERSION_ATTR(solution_version);
+static ELANTS_VERSION_ATTR(bc_version);
+static ELANTS_VERSION_ATTR(iap_version);
+
 static struct attribute *elan_attributes[] = {
 	&dev_attr_calibrate.attr,
-	&dev_attr_fw_version.attr,
-	&dev_attr_hw_version.attr,
-	&dev_attr_test_version.attr,
-	&dev_attr_bc_version.attr,
 	&dev_attr_update_fw.attr,
 	&dev_attr_iap_mode.attr,
+
+	&elants_ver_attr_fw_version.dattr.attr,
+	&elants_ver_attr_hw_version.dattr.attr,
+	&elants_ver_attr_test_version.dattr.attr,
+	&elants_ver_attr_solution_version.dattr.attr,
+	&elants_ver_attr_bc_version.dattr.attr,
+	&elants_ver_attr_iap_version.dattr.attr,
 	NULL
 };
 
@@ -760,9 +770,9 @@ static int __fw_id_packet_handler(struct i2c_client *client)
 		}
 
 		if (buf_recv[0] == CMD_HEADER_RESP) {
-			ts->fw_id =
+			ts->hw_version =
 			    parse_version_number(buf_recv, sizeof(buf_recv));
-			if (ts->fw_id == 0xffff) {
+			if (ts->hw_version == 0xffff) {
 				dev_err(&client->dev,
 					"FW id is empty, "
 					"suggest IAP ELAN chip\n");
@@ -771,7 +781,7 @@ static int __fw_id_packet_handler(struct i2c_client *client)
 		} else {
 			elan_dbg(client, "read fw retry count=%d\n", retry_cnt);
 			if (retry_cnt == MAX_RETRIES - 1) {
-				ts->fw_id = 0xffff;
+				ts->hw_version = 0xffff;
 				dev_err(&client->dev,
 					"Fail to read fw id for %d times, "
 					"suggest IAP ELAN chip\n", MAX_RETRIES);
@@ -1194,7 +1204,7 @@ static int elan_fw_update(struct i2c_client *client)
 	if (rc < 0) {
 		dev_err(&client->dev, "TS Setup handshake fail!! (%d)\n", rc);
 
-		ts->fw_id = 0xffff;
+		ts->hw_version = 0xffff;
 		ts->fw_version = 0xffff;
 		ts->test_version = 0xff;
 		ts->solution_version = 0xff;
