@@ -36,7 +36,6 @@
 #include <linux/uaccess.h>
 #include <linux/buffer_head.h>
 #include <linux/version.h>
-#include <linux/kfifo.h>
 #include <linux/slab.h>
 #include <linux/firmware.h>
 #include <linux/version.h>
@@ -113,7 +112,6 @@ static const char recov_packet[HELLO_PACKET_LEN] = {0x55, 0x55, 0x80, 0x80};
 #define	LOCK_CMD_HANDSHAKE	1
 #define	LOCK_FW_UPDATE	3
 
-/* kfifo return value definition */
 #define	RET_OK	0
 #define	RET_CMDRSP	1
 #define	RET_FAIL	-1
@@ -210,10 +208,8 @@ struct elants_data {
 
 	unsigned long flags;
 
-	struct kfifo fifo;
-	struct mutex fifo_mutex;
-	wait_queue_head_t wait;
-	spinlock_t rx_kfifo_lock;
+	char cmd_resp[CMD_RESP_LEN];
+	struct completion cmd_done;
 
 	struct mt_device td;
 
@@ -228,7 +224,6 @@ struct elants_data {
 	u16 mq_header_fail;
 };
 
-static int elan_touch_pull_frame(struct elants_data *ts, u8 *buf);
 static int elan_initialize(struct i2c_client *client);
 static int elan_fw_update(struct elants_data *ts);
 
@@ -338,51 +333,33 @@ static int elan_i2c_read_block(struct i2c_client *client,
 static int elan_calibrate(struct elants_data *ts)
 {
 	struct i2c_client *client = ts->client;
-	int ret = 0;
-	const u8 w_flashkey[4] = { 0x54, 0xC0, 0xE1, 0x5A };
-	const u8 rek[4] = { 0x54, 0x29, 0x00, 0x01 };
-	const u8 resp_rek[4] = { CMD_HEADER_REK, 0x66, 0x66, 0x66 };
-	u8 rbuf[4] = { 0 };
+	int ret, error;
+	static const u8 w_flashkey[] = { 0x54, 0xC0, 0xE1, 0x5A };
+	static const u8 rek[] = { 0x54, 0x29, 0x00, 0x01 };
+	static const u8 rek_resp[] = { CMD_HEADER_REK, 0x66, 0x66, 0x66 };
 
-	ENTER_LOG();
+	elan_set_data(client, w_flashkey, sizeof(w_flashkey));
 
-	elan_set_data(client, w_flashkey, 4);
-	elan_set_data(client, rek, 4);
-
-	/* We will wait for non O_NONBLOCK handles until a signal or data */
-	mutex_lock(&ts->fifo_mutex);
-
-	while (kfifo_len(&ts->fifo) == 0) {
-		mutex_unlock(&ts->fifo_mutex);
-		ret =
-		    wait_event_interruptible_timeout(ts->wait,
-						     kfifo_len(&ts->fifo),
-						     msecs_to_jiffies
-						     (ELAN_CALI_TIMEOUT_MSEC));
-		if (ret <= 0) {
-			ret = -ETIMEDOUT;
-			dev_err(&client->dev, "timeout!! wake_up(ts->wait)\n");
-			goto err2;
-		}
-		mutex_lock(&ts->fifo_mutex);
-	}
-	if (elan_touch_pull_frame(ts, rbuf) < 0) {
-		ret = -EINVAL;
-		dev_err(&client->dev, "pull_frame fail!!\n");
-		goto err1;
+	INIT_COMPLETION(ts->cmd_done); // XXX reinit_completion(&ts->cmd_done);
+	elan_set_data(client, rek, sizeof(rek));
+	ret = wait_for_completion_interruptible_timeout(&ts->cmd_done,
+				msecs_to_jiffies(ELAN_CALI_TIMEOUT_MSEC));
+	if (ret <= 0) {
+		error = ret < 0 ? ret : -ETIMEDOUT;
+		dev_err(&client->dev,
+			"error while waiting for calibration to complete: %d\n",
+			error);
+		return error;
 	}
 
-	dev_info(&client->dev, "Get Data [%*phC]\n", 4, rbuf);
-	ret = 0;
-err1:
-	mutex_unlock(&ts->fifo_mutex);
-err2:
-	if (memcmp(resp_rek, rbuf, 4)) {
-		ret = -EINVAL;
-		dev_err(&client->dev, "reK fail!!\n");
+	if (memcmp(rek_resp, ts->cmd_resp, sizeof(rek_resp))) {
+		dev_err(&client->dev,
+			"unexpected calibration response: %*ph\n",
+			(int)sizeof(ts->cmd_resp), ts->cmd_resp);
+		return -EINVAL;
 	}
 
-	return ret;
+	return 0;
 }
 
 /*
@@ -1090,43 +1067,6 @@ err:
 }
 
 /*
-* Pulls a frame from the FIFO into the provided data buffer.
-* The data buffer must be at least CMD_RESP_LEN bytes long.
-*
-* ts: our elan touch device
-* buf: data buffer which stored data from fifo.
-*/
-static int elan_touch_pull_frame(struct elants_data *ts, u8 *buf)
-{
-	struct i2c_client *client = ts->client;
-
-	ENTER_LOG();
-
-	WARN_ON(kfifo_out_locked(&ts->fifo, buf, CMD_RESP_LEN,
-				 &ts->rx_kfifo_lock)
-		!= CMD_RESP_LEN);
-	return CMD_RESP_LEN;
-}
-
-/*
- * Empty old frames out of the FIFO until we can fit the new one into
- * the other end.
- *
- * ts: our elan touch device
- * room_needed: space needed
- */
-static void elan_touch_fifo_clean_old(struct elants_data *ts, int room_needed)
-{
-	u8 buffer[CMD_RESP_LEN];
-	struct i2c_client *client = ts->client;
-
-	ENTER_LOG();
-
-	while (kfifo_len(&ts->fifo) + room_needed >= FIFO_SIZE)
-		elan_touch_pull_frame(ts, buffer);
-}
-
-/*
  * Parsing report header and get data information.
  *
  * client: the i2c device to recieve from
@@ -1147,24 +1087,15 @@ static int elan_get_repo_info(struct i2c_client *client, u8 *buf)
 		if (!memcmp(buf, hello_packet, 4))
 			ts->wdt_reset++;
 		return RET_CMDRSP;
+
 	case CMD_HEADER_RESP:
 	case CMD_HEADER_REK:
-		/* Queue the data, using the fifo lock to serialize
-		 * the multiple accesses to the FIFO
-		 */
-		elan_dbg(client, "recv CMD_HEADER_RESP\n");
+		elan_dbg(client, "recv CMD_HEADER_RESP: [%*phC]\n", 4, buf);
+		memcpy(ts->cmd_resp, buf, sizeof(ts->cmd_resp));
+		complete(&ts->cmd_done);
 
-		mutex_lock(&ts->fifo_mutex);
-		if (kfifo_len(&ts->fifo) + CMD_RESP_LEN >= FIFO_SIZE)
-			elan_touch_fifo_clean_old(ts, CMD_RESP_LEN);
-		/* Push the data */
-		kfifo_in_locked(&ts->fifo, buf,
-				CMD_RESP_LEN, &ts->rx_kfifo_lock);
-		mutex_unlock(&ts->fifo_mutex);
-
-		elan_dbg(client, "wake_up [%*phC]\n", 4, buf);
-		wake_up_interruptible(&ts->wait);
 		return RET_CMDRSP;
+
 		/* Buffer mode header */
 	case QUEUE_HEADER_NORMAL:
 		elan_dbg(client,
@@ -1568,11 +1499,8 @@ static int elan_remove(struct i2c_client *client)
 
 	if (&ts->i2c_mutex)
 		mutex_destroy(&ts->i2c_mutex);
-	if (&ts->fifo_mutex)
-		mutex_destroy(&ts->fifo_mutex);
 
 	kfree(ts->td.slots);
-	kfifo_free(&ts->fifo);
 	kfree(ts);
 
 	return ret;
@@ -1783,7 +1711,6 @@ err_release:
  */
 static int elan_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	int err;
 	union i2c_smbus_data dummy;
 	struct elants_data *ts;
 
@@ -1805,23 +1732,11 @@ static int elan_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return -ENOMEM;
 
 	mutex_init(&ts->i2c_mutex);
-	mutex_init(&ts->fifo_mutex);
 	mutex_init(&ts->sysfs_mutex);
-	init_waitqueue_head(&ts->wait);
-	spin_lock_init(&ts->rx_kfifo_lock);
+	init_completion(&ts->cmd_done);
 
 	ts->client = client;
 	i2c_set_clientdata(client, ts);
-
-	/* initial kfifo */
-	err = kfifo_alloc(&ts->fifo, FIFO_SIZE, GFP_KERNEL);
-	if (err)
-		goto err_release;
-
-	if (!kfifo_initialized(&ts->fifo)) {
-		dev_err(&client->dev, "%s error kfifo_alloc\n", __func__);
-		goto err_release;
-	}
 
 	/* Says HELLO to touch device */
 	async_schedule(elan_initialize_async, ts);
@@ -1838,10 +1753,6 @@ static int elan_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		dev_err(&client->dev, "sysfs create group error\n");
 
 	return 0;
-
-err_release:
-	elan_remove(client);
-	return -err;
 }
 
 #ifdef CONFIG_PM_SLEEP
