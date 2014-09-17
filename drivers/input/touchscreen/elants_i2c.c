@@ -79,12 +79,6 @@ MODULE_PARM_DESC(debug, "print a lot of debug information");
 static const char hello_packet[HELLO_PACKET_LEN] = {0x55, 0x55, 0x55, 0x55};
 static const char recov_packet[HELLO_PACKET_LEN] = {0x55, 0x55, 0x80, 0x80};
 
-/* Elan I2C Address definition */
-#define	DEV_MASTER	0x10
-#define	DEV_SLAVE1	0x20
-#define	DEV_SLAVE2	0x21
-#define	MAX_DEVICE	3
-
 /* Finger report information */
 #define	REPORT_HEADER_10_FINGER	0x62
 #define	PACKET_SIZE	55
@@ -216,8 +210,6 @@ struct elants_data {
 
 	unsigned long flags;
 
-	unsigned short i2caddr;
-
 	struct kfifo fifo;
 	struct mutex fifo_mutex;
 	wait_queue_head_t wait;
@@ -274,7 +266,6 @@ static int elan_async_rw(struct i2c_client *client,
 							u8 *buffer,
 							const __u16 buf_len)
 {
-	struct elants_data *ts = i2c_get_clientdata(client);
 	struct i2c_adapter *adap = client->adapter;
 	struct i2c_msg msgs[2];
 	int num_of_msgs = 0;
@@ -286,7 +277,7 @@ static int elan_async_rw(struct i2c_client *client,
 	if (cmd_len) {
 		elan_dbg(client,
 			 "%s cmd: %*phC, addr=%x\n",
-			 __func__, (int)cmd_len, command, ts->i2caddr);
+			 __func__, (int)cmd_len, command, client->addr);
 
 		msgs[msg_id].addr = client->addr;
 		msgs[msg_id].flags = client->flags & I2C_M_TEN;
@@ -316,7 +307,7 @@ static int elan_async_rw(struct i2c_client *client,
 	if (buf_len)
 		elan_dbg(client,
 			 "%s buffer: %*phC, addr=%x\n",
-			 __func__, (int)buf_len, buffer, ts->i2caddr);
+			 __func__, (int)buf_len, buffer, client->addr);
 
 	return (rc < 0) ? -EIO : 0;
 }
@@ -355,7 +346,6 @@ static int elan_calibrate(struct elants_data *ts)
 
 	ENTER_LOG();
 
-	ts->i2caddr = DEV_MASTER;
 	elan_set_data(client, w_flashkey, 4);
 	elan_set_data(client, rek, 4);
 
@@ -543,18 +533,14 @@ static int elan_sw_reset(struct i2c_client *client)
 	return ret;
 }
 
-static int elan_boot(struct i2c_client *client, u16 addr, u8 type)
+static int elan_boot(struct i2c_client *client, u8 type)
 {
 	int rc;
-	struct elants_data *ts = i2c_get_clientdata(client);
 	u8 command[2][4] = {
 		{0x4D, 0x61, 0x69, 0x6E},
 		{0x45, 0x49, 0x41, 0x50},
 	};
 
-	ENTER_LOG();
-
-	ts->i2caddr = addr;
 	rc = elan_set_data(client, command[type], 4);
 	if (rc < 0) {
 		if (type == E_BOOT_IAP)
@@ -562,11 +548,9 @@ static int elan_boot(struct i2c_client *client, u16 addr, u8 type)
 		else
 			dev_dbg(&client->dev,
 				"Boot normal fail, error=%d\n", rc);
-		ts->i2caddr = DEV_MASTER;
 		return -EINVAL;
 	}
-	dev_info(&client->dev, "Boot success -- 0x%x\n", addr);
-	ts->i2caddr = DEV_MASTER;
+	dev_info(&client->dev, "Boot success -- 0x%x\n", client->addr);
 	return 0;
 }
 
@@ -607,8 +591,6 @@ static int __hello_packet_handler(struct i2c_client *client)
 
 		return -ENODEV;
 	}
-
-	ts->i2caddr = DEV_MASTER;
 
 	return rc;
 }
@@ -893,7 +875,7 @@ static int __elan_fastboot(struct i2c_client *client)
 
 	ENTER_LOG();
 
-	rc = elan_boot(client, DEV_MASTER, E_BOOT_NORM);
+	rc = elan_boot(client, E_BOOT_NORM);
 	if (rc < 0)
 		return -1;
 
@@ -921,7 +903,7 @@ static int elan_fw_update(struct elants_data *ts)
 	int retry;
 	bool force = false;
 	u8 buf[4];
-	u16 send_id = DEV_MASTER;
+	u16 send_id;
 	const struct firmware *p_fw_entry;
 	const u8 *fw_data;
 	const u8 enter_iap[4] = { 0x45, 0x49, 0x41, 0x50 };
@@ -961,8 +943,6 @@ static int elan_fw_update(struct elants_data *ts)
 		goto err;
 	}
 
-	ts->i2caddr = DEV_MASTER;
-
 	/* Recovery mode detection! */
 	if (force) {
 		elan_dbg(client, "Recover mode procedure!\n");
@@ -972,7 +952,6 @@ static int elan_fw_update(struct elants_data *ts)
 		elan_dbg(client, "Normal IAP procedure!\n");
 		elan_sw_reset(client);
 
-		ts->i2caddr = DEV_MASTER;
 		elan_set_data(client, enter_iap, 4);
 	}
 	elan_msleep(10);
@@ -981,7 +960,7 @@ static int elan_fw_update(struct elants_data *ts)
 	rc = elan_get_data(client, buf, 4);
 	if (rc < 0) {
 		dev_err(&client->dev, "Enter IAP fail!! [Read IAPRC=%d, addr-%.2x fail]\n",
-				rc, ts->i2caddr);
+				rc, client->addr);
 		rc = -ENODEV;
 		goto err;
 	} else {
@@ -994,18 +973,16 @@ static int elan_fw_update(struct elants_data *ts)
 		}
 	}
 
-	ts->i2caddr = DEV_MASTER;
-	send_id = ts->i2caddr;
+	send_id = client->addr;
 	rc = elan_set_data(client, (const u8 *)&send_id, 1);
 	if (rc < 0) {
 		dev_err(&client->dev, "send dummy byte error addr=%.2x\n",
-			ts->i2caddr);
+			client->addr);
 		rc = -ENODEV;
 		goto err;
 	}
 
 	/* Clear the last page of Master */
-	ts->i2caddr = DEV_MASTER;
 	rc = elan_set_data(client, fw_data, ELAN_FW_PAGESIZE);
 	if (rc < 0) {
 		dev_err(&client->dev, "Clean the last page fail\n");
@@ -1023,7 +1000,6 @@ static int elan_fw_update(struct elants_data *ts)
 	fw_pages = (fw_size / ELAN_FW_PAGESIZE);
 	elan_dbg(client, "IAP Pages = %d\n", fw_pages);
 
-	ts->i2caddr = DEV_MASTER;
 	for (page = 0; page < fw_pages; page++) {
 		bool page_written_successfully = false;
 		for (retry = 0; retry < MAX_FW_UPDATE_RETRIES; retry++) {
@@ -1833,10 +1809,6 @@ static int elan_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	mutex_init(&ts->sysfs_mutex);
 	init_waitqueue_head(&ts->wait);
 	spin_lock_init(&ts->rx_kfifo_lock);
-
-	/* set initial i2c address */
-	client->addr = DEV_MASTER;
-	ts->i2caddr = client->addr;
 
 	ts->client = client;
 	i2c_set_clientdata(client, ts);
