@@ -168,8 +168,7 @@ struct mt_device {
 	struct mt_slot curdata;	/* placeholder of incoming data */
 	__u8 num_received;	/* how many contacts we received */
 	bool curvalid;		/* is the current contact valid? */
-	unsigned mt_flags;	/* flags to pass to input-mt */
-	struct mt_slot *slots;
+	struct mt_slot slots[MAX_CONTACT_NUM];
 };
 
 
@@ -1299,7 +1298,7 @@ static void elan_mt_emit_event(struct mt_device *td, struct input_dev *input)
 	int i;
 
 	for (i = 0; i < MAX_CONTACT_NUM; ++i) {
-		struct mt_slot *s = &(td->slots[i]);
+		struct mt_slot *s = &td->slots[i];
 		if (!s->seen_in_this_frame)
 			s->touch_state = false;
 
@@ -1500,7 +1499,6 @@ static int elan_remove(struct i2c_client *client)
 	if (&ts->i2c_mutex)
 		mutex_destroy(&ts->i2c_mutex);
 
-	kfree(ts->td.slots);
 	kfree(ts);
 
 	return ret;
@@ -1538,11 +1536,8 @@ static int elan_input_dev_create(struct elants_data *ts)
 	input_abs_set_res(ts->input, ABS_X, ts->x_res);
 	input_abs_set_res(ts->input, ABS_Y, ts->y_res);
 
-	ts->td.mt_flags |= INPUT_MT_DIRECT;
-
 	/* Multitouch input params setup */
-	err =
-	    input_mt_init_slots(ts->input, MAX_CONTACT_NUM, ts->td.mt_flags);
+	err = input_mt_init_slots(ts->input, MAX_CONTACT_NUM, INPUT_MT_DIRECT);
 	if (err) {
 		dev_err(&client->dev,
 			"allocate memory for MT slots failed, %d\n", err);
@@ -1558,23 +1553,14 @@ static int elan_input_dev_create(struct elants_data *ts)
 
 	input_set_drvdata(ts->input, ts);
 
-	ts->td.slots = kzalloc(MAX_CONTACT_NUM * sizeof(struct mt_slot),
-			       GFP_KERNEL);
-	if (!ts->td.slots) {
-		dev_err(&client->dev, "cannot allocate multitouch slots\n");
-		goto err_free_device;
-	}
-
 	err = input_register_device(ts->input);
 	if (err) {
 		dev_err(&client->dev, "unable to register input device\n");
-		goto err_free_slot;
+		goto err_free_device;
 	}
 
 	return 0;
 
-err_free_slot:
-	kfree(ts->td.slots);
 err_free_device:
 	input_free_device(ts->input);
 	ts->input = NULL;
