@@ -67,6 +67,8 @@ struct tegra_dc_dp_link_config {
 	u32	drive_current;
 	u32     preemphasis;
 	u32	postcursor;
+	u8	aux_rd_interval;
+	bool	tps3_supported;
 };
 
 
@@ -134,4 +136,27 @@ void tegra_dc_sor_set_voltage_swing(struct tegra_dc_sor_data *sor,
 	u32 cust_drive_current, u32 cust_preemphasis);
 
 void tegra_dc_detach(struct tegra_dc_sor_data *sor);
+void tegra_sor_precharge_lanes(struct tegra_dc_sor_data *sor);
+
+static inline u32 tegra_sor_readl(struct tegra_dc_sor_data *sor, u32 reg)
+{
+	u32 reg_val = readl(sor->base + reg * 4);
+	return reg_val;
+}
+
+static inline void tegra_sor_writel(struct tegra_dc_sor_data *sor,
+	u32 reg, u32 val)
+{
+	writel(val, sor->base + reg * 4);
+}
+
+static inline void tegra_sor_write_field(struct tegra_dc_sor_data *sor,
+	u32 reg, u32 mask, u32 val)
+{
+	u32 reg_val = tegra_sor_readl(sor, reg);
+	reg_val &= ~mask;
+	reg_val |= val;
+	tegra_sor_writel(sor, reg, reg_val);
+}
+
 #endif

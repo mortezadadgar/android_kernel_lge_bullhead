@@ -53,27 +53,6 @@
 
 #define DC_N_WINDOWS 5
 
-static inline u32 tegra_sor_readl(struct tegra_dc_sor_data *sor, u32 reg)
-{
-	u32 reg_val = readl(sor->base + reg * 4);
-	return reg_val;
-}
-
-static inline void tegra_sor_writel(struct tegra_dc_sor_data *sor,
-	u32 reg, u32 val)
-{
-	writel(val, sor->base + reg * 4);
-}
-
-static inline void tegra_sor_write_field(struct tegra_dc_sor_data *sor,
-	u32 reg, u32 mask, u32 val)
-{
-	u32 reg_val = tegra_sor_readl(sor, reg);
-	reg_val &= ~mask;
-	reg_val |= val;
-	tegra_sor_writel(sor, reg, reg_val);
-}
-
 static u32 tegra_dc_sor_poll_register(struct tegra_dc_sor_data *sor,
 	u32 reg, u32 mask, u32 exp_val, u32 poll_interval_us, u32 timeout_ms)
 {
@@ -1527,4 +1506,33 @@ void tegra_dc_sor_power_down_unused_lanes(struct tegra_dc_sor_data *sor)
 			"Wait for lane power down failed: %d\n", err);
 		return;
 	}
+}
+
+void tegra_sor_precharge_lanes(struct tegra_dc_sor_data *sor)
+{
+	const struct tegra_dc_dp_link_config *cfg = sor->link_cfg;
+	u32 val = 0;
+
+	switch (cfg->lane_count) {
+	case 4:
+		val |= (NV_SOR_DP_PADCTL_PD_TXD_3_NO |
+			NV_SOR_DP_PADCTL_PD_TXD_2_NO);
+		/* fall through */
+	case 2:
+		val |= NV_SOR_DP_PADCTL_PD_TXD_1_NO;
+	case 1:
+		val |= NV_SOR_DP_PADCTL_PD_TXD_0_NO;
+		break;
+	default:
+		dev_dbg(&sor->dc->ndev->dev,
+			"dp: invalid lane number %d\n", cfg->lane_count);
+		return;
+	}
+
+	tegra_sor_write_field(sor, NV_SOR_DP_PADCTL(sor->portnum),
+		(0xf << NV_SOR_DP_PADCTL_COMODE_TXD_0_DP_TXD_2_SHIFT),
+		(val << NV_SOR_DP_PADCTL_COMODE_TXD_0_DP_TXD_2_SHIFT));
+	usleep_range(15, 100);
+	tegra_sor_write_field(sor, NV_SOR_DP_PADCTL(sor->portnum),
+		(0xf << NV_SOR_DP_PADCTL_COMODE_TXD_0_DP_TXD_2_SHIFT), 0);
 }

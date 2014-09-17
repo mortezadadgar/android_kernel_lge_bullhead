@@ -23,6 +23,7 @@
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
 #include <linux/clk-provider.h>
+#include <linux/io.h>
 
 #include "dp.h"
 #include "sor.h"
@@ -30,6 +31,11 @@
 #include "dpaux_regs.h"
 #include "dc_priv.h"
 #include "edid.h"
+
+static void tegra_dp_lt_config(struct tegra_dc_dp_data *dp,
+				u32 pe[4], u32 vs[4], u32 pc[4]);
+static int tegra_dp_link_config(struct tegra_dc_dp_data *dp,
+	const struct tegra_dc_dp_link_config *cfg);
 
 static inline u32 tegra_dpaux_readl(struct tegra_dc_dp_data *dp, u32 reg)
 {
@@ -628,7 +634,7 @@ static void tegra_dc_dp_dump_link_cfg(struct tegra_dc_dp_data *dp,
 		cfg->vblank_sym);
 };
 
-static bool tegra_dc_dp_lower_config(struct tegra_dc_dp_data *dp,
+static bool _tegra_dp_lower_link_config(struct tegra_dc_dp_data *dp,
 	struct tegra_dc_dp_link_config *cfg)
 {
 	if (cfg->link_bw == SOR_LINK_SPEED_G1_62) {
@@ -836,6 +842,8 @@ static int tegra_dc_dp_init_max_link_cfg(struct tegra_dc_dp_data *dp,
 			&dpcd_data));
 
 	cfg->max_lane_count = dpcd_data & NV_DPCD_MAX_LANE_COUNT_MASK;
+	cfg->tps3_supported = (dpcd_data &
+		NV_DPCD_MAX_LANE_COUNT_TPS3_SUPPORTED_YES) ? true : false;
 
 	cfg->support_enhanced_framing =
 		(dpcd_data & NV_DPCD_MAX_LANE_COUNT_ENHANCED_FRAMING_YES) ?
@@ -845,6 +853,9 @@ static int tegra_dc_dp_init_max_link_cfg(struct tegra_dc_dp_data *dp,
 			&dpcd_data));
 	cfg->downspread = (dpcd_data & NV_DPCD_MAX_DOWNSPREAD_VAL_0_5_PCT) ?
 		true : false;
+
+	CHECK_RET(tegra_dc_dp_dpcd_read(dp, 0x0e,
+			&cfg->aux_rd_interval));
 
 	CHECK_RET(tegra_dc_dp_dpcd_read(dp, NV_DPCD_MAX_LINK_BANDWIDTH,
 			&cfg->max_link_bw));
@@ -1288,6 +1299,418 @@ static bool tegra_dc_dp_link_trained(struct tegra_dc_dp_data *dp,
 	return true;
 }
 
+static bool tegra_dp_channel_eq_status(struct tegra_dc_dp_data *dp)
+{
+	u32 cnt;
+	u32 n_lanes = dp->link_cfg.lane_count;
+	u8 data_ptr;
+	bool ce_done = true;
+
+	for (cnt = 0; cnt < n_lanes / 2; cnt++) {
+		tegra_dc_dp_dpcd_read(dp,
+			(NV_DPCD_LANE0_1_STATUS + cnt), &data_ptr);
+
+		if (n_lanes == 1) {
+			ce_done = (data_ptr &
+			(0x1 << NV_DPCD_STATUS_LANEX_CHN_EQ_DONE_SHIFT)) &&
+			(data_ptr &
+			(0x1 << NV_DPCD_STATUS_LANEX_SYMBOL_LOCKED_SHFIT));
+			break;
+		} else if (!(data_ptr &
+		(0x1 << NV_DPCD_STATUS_LANEX_CHN_EQ_DONE_SHIFT)) ||
+		!(data_ptr &
+		(0x1 << NV_DPCD_STATUS_LANEX_SYMBOL_LOCKED_SHFIT)) ||
+		!(data_ptr &
+		(0x1 << NV_DPCD_STATUS_LANEXPLUS1_CHN_EQ_DONE_SHIFT)) ||
+		!(data_ptr &
+		(0x1 << NV_DPCD_STATUS_LANEXPLUS1_SYMBOL_LOCKED_SHIFT))) {
+			ce_done = false;
+			break;
+		}
+	}
+
+	if (ce_done) {
+		tegra_dc_dp_dpcd_read(dp,
+			NV_DPCD_LANE_ALIGN_STATUS_UPDATED, &data_ptr);
+		if (!(data_ptr &
+			NV_DPCD_LANE_ALIGN_STATUS_UPDATED_DONE_YES))
+			ce_done = false;
+	}
+
+	return ce_done;
+}
+
+static bool tegra_dp_clock_recovery_status(struct tegra_dc_dp_data *dp)
+{
+	u32 cnt;
+	u32 n_lanes = dp->link_cfg.lane_count;
+	u8 data_ptr;
+
+	for (cnt = 0; cnt < n_lanes / 2; cnt++) {
+		tegra_dc_dp_dpcd_read(dp,
+			(NV_DPCD_LANE0_1_STATUS + cnt), &data_ptr);
+
+		if (n_lanes == 1)
+			return (data_ptr & 0x1) ? true : false;
+		else if (!(data_ptr & 0x1) ||
+			!(data_ptr &
+			(0x1 << NV_DPCD_STATUS_LANEXPLUS1_CR_DONE_SHIFT)))
+			return false;
+	}
+
+	return true;
+}
+
+static void tegra_dp_lt_adjust(struct tegra_dc_dp_data *dp,
+				u32 pe[4], u32 vs[4], u32 pc[4],
+				bool pc_supported)
+{
+	size_t cnt;
+	u8 data_ptr;
+	u32 n_lanes = dp->link_cfg.lane_count;
+
+	for (cnt = 0; cnt < n_lanes / 2; cnt++) {
+		tegra_dc_dp_dpcd_read(dp,
+			(NV_DPCD_LANE0_1_ADJUST_REQ + cnt), &data_ptr);
+		pe[2 * cnt] = (data_ptr & NV_DPCD_ADJUST_REQ_LANEX_PE_MASK) >>
+					NV_DPCD_ADJUST_REQ_LANEX_PE_SHIFT;
+		vs[2 * cnt] = (data_ptr & NV_DPCD_ADJUST_REQ_LANEX_DC_MASK) >>
+					NV_DPCD_ADJUST_REQ_LANEX_DC_SHIFT;
+		pe[1 + 2 * cnt] =
+			(data_ptr & NV_DPCD_ADJUST_REQ_LANEXPLUS1_PE_MASK) >>
+					NV_DPCD_ADJUST_REQ_LANEXPLUS1_PE_SHIFT;
+		vs[1 + 2 * cnt] =
+			(data_ptr & NV_DPCD_ADJUST_REQ_LANEXPLUS1_DC_MASK) >>
+					NV_DPCD_ADJUST_REQ_LANEXPLUS1_DC_SHIFT;
+	}
+
+	if (pc_supported) {
+		tegra_dc_dp_dpcd_read(dp,
+				NV_DPCD_ADJUST_REQ_POST_CURSOR2, &data_ptr);
+		for (cnt = 0; cnt < n_lanes; cnt++) {
+			pc[cnt] = (data_ptr >>
+			NV_DPCD_ADJUST_REQ_POST_CURSOR2_LANE_SHIFT(cnt)) &
+			NV_DPCD_ADJUST_REQ_POST_CURSOR2_LANE_MASK;
+		}
+	}
+}
+
+static inline u32 tegra_dp_wait_aux_training(struct tegra_dc_dp_data *dp,
+							bool is_clk_recovery)
+{
+	if (!dp->link_cfg.aux_rd_interval)
+		is_clk_recovery ? usleep_range(150, 200) :
+					usleep_range(450, 500);
+	else
+		msleep(dp->link_cfg.aux_rd_interval * 4);
+
+	return dp->link_cfg.aux_rd_interval;
+}
+
+static void tegra_dp_tpg(struct tegra_dc_dp_data *dp, u32 tp, u32 n_lanes)
+{
+	tegra_dc_sor_set_dp_linkctl(dp->sor, true, tp, &dp->link_cfg);
+
+	if (tp == training_pattern_disabled)
+		tegra_dc_dp_dpcd_write(dp, NV_DPCD_TRAINING_PATTERN_SET,
+			(tp | NV_DPCD_TRAINING_PATTERN_SET_SC_DISABLED_F));
+	else
+		tegra_dc_dp_dpcd_write(dp, NV_DPCD_TRAINING_PATTERN_SET,
+			(tp | NV_DPCD_TRAINING_PATTERN_SET_SC_DISABLED_T));
+}
+
+static inline void tegra_dp_save_link_config(struct tegra_dc_dp_data *dp,
+				struct tegra_dc_dp_link_config *old_cfg)
+{
+	*old_cfg = dp->link_cfg;
+}
+
+static inline void tegra_dp_restore_link_config(struct tegra_dc_dp_data *dp,
+				struct tegra_dc_dp_link_config *old_cfg)
+{
+	dp->link_cfg = *old_cfg;
+	tegra_dp_link_config(dp, old_cfg);
+}
+
+static bool tegra_dp_lower_link_config(struct tegra_dc_dp_data *dp,
+	struct tegra_dc_dp_link_config *cfg)
+{
+	struct tegra_dc_dp_link_config tmp_cfg;
+
+	tegra_dp_save_link_config(dp, &tmp_cfg);
+	cfg->is_valid = false;
+
+	if (!_tegra_dp_lower_link_config(dp, cfg))
+		goto fail;
+
+	if (!tegra_dc_dp_calc_config(dp, dp->mode, cfg))
+		goto fail;
+
+	cfg->is_valid = true;
+	tegra_dp_link_config(dp, cfg);
+	return true;
+
+fail:
+	tegra_dp_restore_link_config(dp, &tmp_cfg);
+	return false;
+}
+
+static int _tegra_dp_channel_eq(struct tegra_dc_dp_data *dp, u32 pe[4],
+				u32 vs[4], u32 pc[4], bool pc_supported,
+				u32 n_lanes)
+{
+	bool cr_done = true;
+	bool ce_done = true;
+	u32 retry_cnt = 1;
+retry:
+	tegra_dp_wait_aux_training(dp, false);
+
+	cr_done = tegra_dp_clock_recovery_status(dp);
+	ce_done = tegra_dp_channel_eq_status(dp);
+
+	if (!cr_done) {
+		dev_err(&dp->dc->ndev->dev,
+			"dp: CR failed in channel EQ sequence!\n");
+		goto fail;
+	}
+
+	if (ce_done)
+		return 0;
+
+	if (++retry_cnt > 5)
+		goto fail;
+
+	tegra_dp_lt_adjust(dp, pe, vs, pc, pc_supported);
+
+	tegra_dp_lt_config(dp, pe, vs, pc);
+
+	goto retry;
+
+fail:
+	if (tegra_dp_lower_link_config(dp, &dp->link_cfg))
+		return -EAGAIN;
+
+	return -EBUSY;
+}
+
+static int tegra_dp_channel_eq(struct tegra_dc_dp_data *dp,
+					u32 pe[4], u32 vs[4], u32 pc[4])
+{
+	u32 n_lanes = dp->link_cfg.lane_count;
+	bool pc_supported = dp->link_cfg.tps3_supported;
+	int err;
+	u32 tp_src = training_pattern_2;
+
+	if (pc_supported)
+		tp_src = training_pattern_3;
+
+	tegra_dp_tpg(dp, tp_src, n_lanes);
+
+	err = _tegra_dp_channel_eq(dp, pe, vs, pc, pc_supported, n_lanes);
+
+	tegra_dp_tpg(dp, training_pattern_disabled, n_lanes);
+
+	return err;
+}
+
+static void tegra_dp_set_tx_pu(struct tegra_dc_dp_data *dp, u32 pe[4],
+				u32 vs[4], u32 pc[4])
+{
+	tegra_sor_write_field(dp->sor,
+			NV_SOR_DP_PADCTL(dp->sor->portnum),
+			NV_SOR_DP_PADCTL_TX_PU_ENABLE,
+			NV_SOR_DP_PADCTL_TX_PU_DISABLE);
+}
+
+static void tegra_dp_lt_config(struct tegra_dc_dp_data *dp,
+				u32 pe[4], u32 vs[4], u32 pc[4])
+{
+	struct tegra_dc_sor_data *sor = dp->sor;
+	u32 n_lanes = dp->link_cfg.lane_count;
+	bool pc_supported = dp->link_cfg.tps3_supported;
+	u32 cnt;
+	u32 val;
+
+	for (cnt = 0; cnt < n_lanes; cnt++) {
+		u32 mask = 0;
+		u32 pe_reg, vs_reg, pc_reg;
+		u32 shift = 0;
+
+		switch (cnt) {
+		case 0:
+			mask = NV_SOR_PR_LANE2_DP_LANE0_MASK;
+			shift = NV_SOR_PR_LANE2_DP_LANE0_SHIFT;
+			break;
+		case 1:
+			mask = NV_SOR_PR_LANE1_DP_LANE1_MASK;
+			shift = NV_SOR_PR_LANE1_DP_LANE1_SHIFT;
+			break;
+		case 2:
+			mask = NV_SOR_PR_LANE0_DP_LANE2_MASK;
+			shift = NV_SOR_PR_LANE0_DP_LANE2_SHIFT;
+			break;
+		case 3:
+			mask = NV_SOR_PR_LANE3_DP_LANE3_MASK;
+			shift = NV_SOR_PR_LANE3_DP_LANE3_SHIFT;
+			break;
+		default:
+			dev_err(&dp->dc->ndev->dev,
+				"dp: incorrect lane cnt\n");
+		}
+
+		pe_reg = tegra_dp_pe_regs[pc[cnt]][vs[cnt]][pe[cnt]];
+		vs_reg = tegra_dp_vs_regs[pc[cnt]][vs[cnt]][pe[cnt]];
+		pc_reg = tegra_dp_pc_regs[pc[cnt]][vs[cnt]][pe[cnt]];
+		tegra_sor_write_field(sor, NV_SOR_PR(sor->portnum),
+						mask, (pe_reg << shift));
+		tegra_sor_write_field(sor, NV_SOR_DC(sor->portnum),
+						mask, (vs_reg << shift));
+		if (pc_supported) {
+			tegra_sor_write_field(
+					sor, NV_SOR_POSTCURSOR(sor->portnum),
+					mask, (pc_reg << shift));
+		}
+	}
+
+	tegra_dp_set_tx_pu(dp, pe, vs, pc);
+	usleep_range(15, 20);
+
+	for (cnt = 0; cnt < n_lanes; cnt++) {
+		u32 max_vs_flag = tegra_dp_is_max_vs(pe[cnt], vs[cnt]);
+		u32 max_pe_flag = tegra_dp_is_max_pe(pe[cnt], vs[cnt]);
+
+		val = (vs[cnt] << NV_DPCD_TRAINING_LANEX_SET_DC_SHIFT) |
+			(max_vs_flag ?
+			NV_DPCD_TRAINING_LANEX_SET_DC_MAX_REACHED_T :
+			NV_DPCD_TRAINING_LANEX_SET_DC_MAX_REACHED_F) |
+			(pe[cnt] << NV_DPCD_TRAINING_LANEX_SET_PE_SHIFT) |
+			(max_pe_flag ?
+			NV_DPCD_TRAINING_LANEX_SET_PE_MAX_REACHED_T :
+			NV_DPCD_TRAINING_LANEX_SET_PE_MAX_REACHED_F);
+		tegra_dc_dp_dpcd_write(dp,
+			(NV_DPCD_TRAINING_LANE0_SET + cnt), val);
+	}
+
+	if (pc_supported) {
+		for (cnt = 0; cnt < n_lanes / 2; cnt++) {
+			u32 max_pc_flag0 = tegra_dp_is_max_pc(pc[cnt]);
+			u32 max_pc_flag1 = tegra_dp_is_max_pc(pc[cnt + 1]);
+			val = (pc[cnt] << NV_DPCD_LANEX_SET2_PC2_SHIFT) |
+				(max_pc_flag0 ?
+				NV_DPCD_LANEX_SET2_PC2_MAX_REACHED_T :
+				NV_DPCD_LANEX_SET2_PC2_MAX_REACHED_F) |
+				(pc[cnt + 1] <<
+				NV_DPCD_LANEXPLUS1_SET2_PC2_SHIFT) |
+				(max_pc_flag1 ?
+				NV_DPCD_LANEXPLUS1_SET2_PC2_MAX_REACHED_T :
+				NV_DPCD_LANEXPLUS1_SET2_PC2_MAX_REACHED_F);
+			tegra_dc_dp_dpcd_write(dp,
+				(NV_DPCD_TRAINING_LANE0_1_SET2 + cnt), val);
+		}
+	}
+}
+
+static int _tegra_dp_clk_recovery(struct tegra_dc_dp_data *dp, u32 pe[4],
+					u32 vs[4], u32 pc[4], bool pc_supported,
+					u32 n_lanes)
+{
+	bool cr_done = true;
+	u32 vs_temp[4];
+	u32 retry_cnt = 1;
+retry:
+	tegra_dp_lt_config(dp, pe, vs, pc);
+	tegra_dp_wait_aux_training(dp, true);
+
+	cr_done = tegra_dp_clock_recovery_status(dp);
+	if (cr_done)
+		return 0;
+
+	memcpy(vs_temp, vs, sizeof(vs_temp));
+
+	tegra_dp_lt_adjust(dp, pe, vs, pc, pc_supported);
+
+	if (!memcmp(vs_temp, vs, sizeof(vs_temp))) {
+		if (retry_cnt++ >= 5)
+			return -EBUSY;
+		goto retry;
+	}
+
+	return _tegra_dp_clk_recovery(dp, pe, vs, pc, pc_supported, n_lanes);
+}
+
+static int tegra_dp_clk_recovery(struct tegra_dc_dp_data *dp,
+					u32 pe[4], u32 vs[4], u32 pc[4])
+{
+	u32 n_lanes = dp->link_cfg.lane_count;
+	bool pc_supported = dp->link_cfg.tps3_supported;
+	int err;
+
+	tegra_dp_tpg(dp, training_pattern_1, n_lanes);
+
+	err = _tegra_dp_clk_recovery(dp, pe, vs, pc, pc_supported, n_lanes);
+	if (err < 0)
+		tegra_dp_tpg(dp, training_pattern_disabled, n_lanes);
+
+	return err;
+}
+
+static int tegra_dp_full_lt(struct tegra_dc_dp_data *dp)
+{
+	struct tegra_dc_sor_data *sor = dp->sor;
+	int err;
+	u32 pe[4] = {
+		preemphasis_disabled,
+		preemphasis_disabled,
+		preemphasis_disabled,
+		preemphasis_disabled
+	};
+	u32 vs[4] = {
+		drive_current_Level0,
+		drive_current_Level0,
+		drive_current_Level0,
+		drive_current_Level0
+	};
+	u32 pc[4] = {
+		post_cursor2_Level0,
+		post_cursor2_Level0,
+		post_cursor2_Level0,
+		post_cursor2_Level0
+	};
+
+	tegra_sor_precharge_lanes(sor);
+
+retry_cr:
+	memset(pe, preemphasis_disabled, sizeof(pe));
+	memset(vs, drive_current_Level0, sizeof(vs));
+	memset(pc, post_cursor2_Level0, sizeof(pc));
+
+	err = tegra_dp_clk_recovery(dp, pe, vs, pc);
+	if (err < 0) {
+		if (tegra_dp_lower_link_config(dp, &dp->link_cfg))
+			goto retry_cr;
+
+		dev_err(&dp->dc->ndev->dev, "dp: clk recovery failed\n");
+		goto fail;
+	}
+
+	err = tegra_dp_channel_eq(dp, pe, vs, pc);
+	if (err < 0) {
+		if (err == -EAGAIN)
+			goto retry_cr;
+
+		dev_err(&dp->dc->ndev->dev,
+			"dp: channel equalization failed\n");
+		goto fail;
+	}
+
+	tegra_dc_dp_dump_link_cfg(dp, &dp->link_cfg);
+
+	return 0;
+
+fail:
+	return err;
+}
+
 static int tegra_dc_dp_fast_link_training(struct tegra_dc_dp_data *dp,
 	const struct tegra_dc_dp_link_config *cfg)
 {
@@ -1413,7 +1836,13 @@ static int tegra_dp_link_config(struct tegra_dc_dp_data *dp,
 	ret = tegra_dc_dp_fast_link_training(dp, cfg);
 	if (ret) {
 		dev_err(&dp->dc->ndev->dev, "dp: fast link training failed\n");
-		return ret;
+
+		/* Try full link training then */
+		if (tegra_dp_full_lt(dp)) {
+			dev_err(&dp->dc->ndev->dev,
+				"dp: full link training failed\n");
+			return ret;
+		}
 	}
 
 	/* Everything goes well, double check the link config */
@@ -1454,7 +1883,7 @@ static int tegra_dc_dp_explore_link_cfg(struct tegra_dc_dp_data *dp,
 		memcpy(cfg, &temp_cfg, sizeof(temp_cfg));
 
 		/* try to lower the config */
-		if (!tegra_dc_dp_lower_config(dp, &temp_cfg))
+		if (!_tegra_dp_lower_link_config(dp, &temp_cfg))
 			break;
 	}
 
