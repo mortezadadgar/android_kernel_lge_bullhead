@@ -40,6 +40,7 @@
  * reported that occasionally drop HPD.
  */
 #define HPD_DROP_TIMEOUT_MS 3000
+#define HOTPLUG_ALIVE_MS 1000
 #define CHECK_PLUG_STATE_DELAY_MS 10
 #define CHECK_EDID_DELAY_MS 60
 
@@ -77,6 +78,7 @@ static const char * const state_names[] = {
 	"Check Plug",
 	"Check EDID",
 	"Disabled",
+	"Hotplug Alive",
 	"Enabled",
 	"Wait for HPD reassert",
 	"Recheck EDID"
@@ -112,8 +114,8 @@ static void hdmi_state_machine_handle_hpd_l(int cur_hpd)
 {
 	int tgt_state, timeout;
 
-	if ((HDMI_STATE_DONE_ENABLED == work_state.state) && !cur_hpd) {
-		/* Did HPD drop while we were in DONE_ENABLED?  If so, hold
+	if ((HDMI_STATE_HOTPLUG_ALIVE == work_state.state) && !cur_hpd) {
+		/* Did HPD drop while we were in HOTPLUG_ALIVE?  If so, hold
 		 * steady and wait to see if it comes back.
 		 */
 		tgt_state = HDMI_STATE_DONE_WAIT_FOR_HPD_REASSERT;
@@ -257,7 +259,7 @@ static void handle_check_edid_l(struct tegra_dc_hdmi_data *hdmi)
 
 	hdmi->dc->connected = true;
 	tegra_dc_ext_process_hotplug(hdmi->dc->ndev->id);
-	hdmi_state_machine_set_state_l(HDMI_STATE_DONE_ENABLED, -1);
+	hdmi_state_machine_set_state_l(HDMI_STATE_HOTPLUG_ALIVE, HOTPLUG_ALIVE_MS);
 
 	return;
 
@@ -265,6 +267,15 @@ end_disabled:
 	hdmi->eld_retrieved = false;
 	hdmi_disable_l(hdmi);
 	hdmi_state_machine_set_state_l(HDMI_STATE_DONE_DISABLED, -1);
+}
+
+
+static void handle_hotplug_alive_l(struct tegra_dc_hdmi_data *hdmi)
+{
+	/* After one second, move to HDMI_STATE_DONE_ENABLED, so it will no longer
+	 * wait for reassert if dropped.
+	 */
+	hdmi_state_machine_set_state_l(HDMI_STATE_DONE_ENABLED, -1);
 }
 
 static void handle_wait_for_hpd_reassert_l(struct tegra_dc_hdmi_data *hdmi)
@@ -378,6 +389,7 @@ static const dispatch_func_t state_machine_dispatch[] = {
 	handle_check_plug_state_l,	/* STATE_CHECK_PLUG_STATE */
 	handle_check_edid_l,		/* STATE_CHECK_EDID */
 	NULL,				/* STATE_DONE_DISABLED */
+	handle_hotplug_alive_l,		/* STATE_HOTPLUG_ALIVE */
 	NULL,				/* STATE_DONE_ENABLED */
 	handle_wait_for_hpd_reassert_l,	/* STATE_DONE_WAIT_FOR_HPD_REASSERT */
 	handle_recheck_edid_l,		/* STATE_DONE_RECHECK_EDID */

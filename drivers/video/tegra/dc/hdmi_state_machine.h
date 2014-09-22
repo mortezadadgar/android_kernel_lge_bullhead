@@ -55,8 +55,15 @@ enum {
 	 */
 	HDMI_STATE_DONE_DISABLED,
 
-	/* DONE_ENABLED is the state we say in after being reset and disovering
-	 * a valid EDID at the other end of a plugged cable.
+	/* HOTPLUG_ALIVE is the state just after discovering a valid
+	 * EDID at the other end of a plugged cable, but less than 1 second has
+	 * passed.  If the HPD line is asserted low at this time, go to
+	 * DONE_WAIT_FOR_HPD_REASSERT
+	 */
+	HDMI_STATE_HOTPLUG_ALIVE,
+
+	/* DONE_ENABLED is the state after it has been enabled for 1 second.
+	 * Then, if the HPD line is asserted low, go directly to DONE_DISABLED.
 	 */
 	HDMI_STATE_DONE_ENABLED,
 
