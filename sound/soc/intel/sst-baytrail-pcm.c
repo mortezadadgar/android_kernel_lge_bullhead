@@ -50,9 +50,6 @@ struct sst_byt_pcm_data {
 	u32 hw_ptr;
 
 	struct work_struct work;
-
-	bool resume;
-	bool resume_stop;
 };
 
 /* private data for the driver */
@@ -163,7 +160,7 @@ static int sst_byt_pcm_restore_stream_context(struct snd_pcm_substream *substrea
 	}
 
 	sst_byt_stream_start(byt, pcm_data->stream);
-	pcm_data->resume = false;
+
 	dev_dbg(rtd->dev, "stream context restored at offset %d\n",
 		pcm_data->hw_ptr);
 
@@ -195,14 +192,8 @@ static int sst_byt_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
-		if (!pcm_data->resume) {
-			if (pcm_data->resume_stop)
-				pcm_data->resume_stop = false;
-			else {
-				pcm_data->hw_ptr = 0;
-				sst_byt_stream_start(byt, pcm_data->stream);
-			}
-		}
+		pcm_data->hw_ptr = 0;
+		sst_byt_stream_start(byt, pcm_data->stream);
 		break;
 	case SNDRV_PCM_TRIGGER_RESUME:
 		schedule_work(&pcm_data->work);
@@ -211,14 +202,10 @@ static int sst_byt_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		sst_byt_stream_resume(byt, pcm_data->stream);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
-		if (!pcm_data->resume)
-			sst_byt_stream_stop(byt, pcm_data->stream);
-		else
-			pcm_data->resume_stop = true;
+		sst_byt_stream_stop(byt, pcm_data->stream);
 		break;
-	case SNDRV_PCM_TRIGGER_SUSPEND:
-		pcm_data->resume = true;
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+	case SNDRV_PCM_TRIGGER_SUSPEND:
 		sst_byt_stream_pause(byt, pcm_data->stream);
 		break;
 	default:
