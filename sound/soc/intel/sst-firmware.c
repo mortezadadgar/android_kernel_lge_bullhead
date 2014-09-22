@@ -117,17 +117,21 @@ EXPORT_SYMBOL_GPL(sst_fw_reload);
 
 void sst_fw_unload(struct sst_fw *sst_fw)
 {
-	struct sst_dsp *dsp = sst_fw->dsp;
-	struct sst_module *module;
+        struct sst_dsp *dsp = sst_fw->dsp;
+        struct sst_module *module, *tmp;
 
-	dev_dbg(dsp->dev, "unloading firmware\n");
+        dev_dbg(dsp->dev, "unloading firmware\n");
 
-	mutex_lock(&dsp->mutex);
-	list_for_each_entry(module, &dsp->module_list, list) {
-		if (module->sst_fw == sst_fw)
-			block_module_remove(module);
-	}
-	mutex_unlock(&dsp->mutex);
+        mutex_lock(&dsp->mutex);
+        list_for_each_entry_safe(module, tmp, &dsp->module_list, list) {
+                if (module->sst_fw == sst_fw) {
+                        block_module_remove(module);
+                        list_del(&module->list);
+                        kfree(module);
+                }
+        }
+
+        mutex_unlock(&dsp->mutex);
 }
 EXPORT_SYMBOL_GPL(sst_fw_unload);
 
