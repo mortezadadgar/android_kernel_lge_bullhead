@@ -190,7 +190,6 @@ static int sst_byt_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		snd_soc_platform_get_drvdata(rtd->platform);
 	struct sst_byt_pcm_data *pcm_data = &pdata->pcm[substream->stream];
 	struct sst_byt *byt = pdata->byt;
-	bool is_suspend_late = sst_byt_get_suspend_late_state(byt);
 
 	dev_dbg(rtd->dev, "PCM: trigger %d\n", cmd);
 
@@ -206,13 +205,7 @@ static int sst_byt_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		}
 		break;
 	case SNDRV_PCM_TRIGGER_RESUME:
-		if (is_suspend_late) {
-			sst_byt_set_suspend_late(byt, false);
-			schedule_work(&pcm_data->work);
-		} else {
-			sst_byt_stream_resume(byt, pcm_data->stream);
-			pcm_data->resume = false;
-		}
+		schedule_work(&pcm_data->work);
 		break;
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		sst_byt_stream_resume(byt, pcm_data->stream);
@@ -291,8 +284,6 @@ static int sst_byt_pcm_open(struct snd_pcm_substream *substream)
 		return -EINVAL;
 
 	mutex_lock(&pcm_data->mutex);
-
-	sst_byt_set_suspend_late(byt, false);
 
 	pcm_data->substream = substream;
 
@@ -515,7 +506,6 @@ static int sst_byt_pcm_dev_suspend_noirq(struct device *dev)
 static int sst_byt_pcm_dev_suspend_late(struct device *dev)
 {
 	struct sst_pdata *sst_pdata = dev_get_platdata(dev);
-	struct sst_byt *byt = sst_pdata->dsp;
 	int ret;
 
 	dev_dbg(dev, "suspending late\n");
@@ -525,8 +515,6 @@ static int sst_byt_pcm_dev_suspend_late(struct device *dev)
 		dev_err(dev, "failed to suspend %d\n", ret);
 		return ret;
 	}
-
-	sst_byt_set_suspend_late(byt, true);
 
 	return ret;
 }
