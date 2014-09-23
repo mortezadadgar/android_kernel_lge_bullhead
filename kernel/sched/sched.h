@@ -349,11 +349,15 @@ struct cfs_rq {
 	 * the blocked sched_entities on the rq.
 	 * utilization_load_avg is the sum of the average running time of the
 	 * sched_entities on the rq.
+	 * utilization_blocked_avg is the utilization equivalent of
+	 * blocked_load_avg, i.e. the sum of running contributions of blocked
+	 * sched_entities associated with the rq.
 	 */
-	unsigned long runnable_load_avg, blocked_load_avg, utilization_load_avg;
+	unsigned long runnable_load_avg, blocked_load_avg;
+	unsigned long utilization_load_avg, utilization_blocked_avg;
 	atomic64_t decay_counter;
 	u64 last_decay;
-	atomic_long_t removed_load;
+	atomic_long_t removed_load, removed_utilization;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	/* Required to track per-cpu representation of a task_group */
