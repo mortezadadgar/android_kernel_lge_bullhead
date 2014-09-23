@@ -1843,6 +1843,11 @@ static int tegra_dp_link_config(struct tegra_dc_dp_data *dp,
 				"dp: full link training failed\n");
 			return ret;
 		}
+	} else {
+		/* set to a known-good drive setting if fast link succeeded */
+		tegra_dc_sor_set_voltage_swing(dp->sor,
+			dp->dc->out->dp->drive_current,
+			dp->dc->out->dp->preemphasis);
 	}
 
 	/* Everything goes well, double check the link config */
@@ -2232,9 +2237,6 @@ static void tegra_dc_dp_enable(struct tegra_dc *dc)
 	 * (about hundreds milli-watts, varies from boards).
 	 */
 	tegra_dc_sor_power_down_unused_lanes(dp->sor);
-
-	tegra_dc_sor_set_voltage_swing(dp->sor, dc->out->dp->drive_current,
-		dc->out->dp->preemphasis);
 
 	dp->enabled = true;
 
