@@ -1410,6 +1410,17 @@ unsigned tegra_dc_get_out_max_pixclock(const struct tegra_dc *dc)
 }
 EXPORT_SYMBOL(tegra_dc_get_out_max_pixclock);
 
+int tegra_dc_is_enabled(struct platform_device *ndev)
+{
+	struct tegra_dc *dc = platform_get_drvdata(ndev);
+
+	if (dc)
+		return dc->enabled ? 1 : 0;
+	else
+		return -EINVAL;
+}
+EXPORT_SYMBOL(tegra_dc_is_enabled);
+
 void tegra_dc_enable_crc(struct tegra_dc *dc)
 {
 	u32 val;

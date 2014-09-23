@@ -481,6 +481,10 @@ static void venice_bl_notify_after(struct device *unused, int brightness)
 {
 	int ret;
 
+	/* Make sure that tegra dc 0 enable is completed */
+	if (tegra_dc_is_enabled(disp1_device) != 1)
+		return;
+
 	if (lcd_bl_en) {
 		if (brightness && !bl_enabled) {
 			msleep(pwm_to_bl_on);

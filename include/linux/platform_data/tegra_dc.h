@@ -23,6 +23,7 @@
 #include <linux/types.h>
 #include <linux/fb.h>
 #include <drm/drm_fixed.h>
+#include <linux/platform_device.h>
 
 #define TEGRA_MAX_DC		2
 
@@ -777,6 +778,8 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc, const struct fb_videomode *fbmode,
 unsigned tegra_dc_get_out_height(const struct tegra_dc *dc);
 unsigned tegra_dc_get_out_width(const struct tegra_dc *dc);
 unsigned tegra_dc_get_out_max_pixclock(const struct tegra_dc *dc);
+
+int tegra_dc_is_enabled(struct platform_device *ndev);
 
 /* PM0 and PM1 signal control */
 #define TEGRA_PWM_PM0 0
