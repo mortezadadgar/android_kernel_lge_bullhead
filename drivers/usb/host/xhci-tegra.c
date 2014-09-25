@@ -1321,12 +1321,12 @@ static int tegra_xhci_bus_notifier(struct notifier_block *nb,
 
 static const struct tegra_xusb_soc_config tegra114_soc_config = {
 	.use_hs_src_clk2 = true,
-	.firmware_file = "tegra11x/tegra_xusb_firmware",
+	.firmware_file = "nvidia/tegra124/xusb.bin",
 };
 
 static const struct tegra_xusb_soc_config tegra124_soc_config = {
 	.use_hs_src_clk2 = false,
-	.firmware_file = "tegra12x/tegra_xusb_firmware",
+	.firmware_file = "nvidia/tegra124/xusb.bin",
 };
 
 static struct of_device_id tegra_xhci_of_match[] = {
