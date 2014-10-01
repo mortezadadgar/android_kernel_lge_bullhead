@@ -157,7 +157,8 @@ static void hdmi_disable_l(struct tegra_dc_hdmi_data *hdmi)
 		tegra_dc_disable(hdmi->dc);
 	}
 	hdmi->dc->connected = false;
-	tegra_fb_update_monspecs(hdmi->dc->fb, NULL, NULL);
+	if (hdmi->dc->fb)
+		tegra_fb_update_monspecs(hdmi->dc->fb, NULL, NULL);
 	tegra_dc_ext_process_hotplug(hdmi->dc->ndev->id);
 }
 
