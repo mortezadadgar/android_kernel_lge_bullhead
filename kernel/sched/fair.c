@@ -2577,7 +2577,8 @@ static long __update_entity_utilization_avg_contrib(struct sched_entity *se)
 		__update_task_entity_utilization(se);
 	else
 		se->avg.utilization_avg_contrib =
-					group_cfs_rq(se)->utilization_load_avg;
+				group_cfs_rq(se)->utilization_load_avg +
+				group_cfs_rq(se)->utilization_blocked_avg;
 
 	return se->avg.utilization_avg_contrib - old_contrib;
 }
@@ -4647,13 +4648,17 @@ done:
 
 static int get_cpu_usage(int cpu)
 {
+	int sum;
 	unsigned long usage = cpu_rq(cpu)->cfs.utilization_load_avg;
+	unsigned long blocked = cpu_rq(cpu)->cfs.utilization_blocked_avg;
 	unsigned long capacity_orig = capacity_orig_of(cpu);
 
-	if (usage >= capacity_orig)
+	sum = usage + blocked;
+
+	if (sum >= capacity_orig)
 		return capacity_orig;
 
-	return usage;
+	return sum;
 }
 
 /*
