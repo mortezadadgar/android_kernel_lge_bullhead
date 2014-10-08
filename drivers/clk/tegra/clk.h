@@ -666,6 +666,7 @@ void tegra_super_clk_gen4_init(void __iomem *clk_base,
 enum shared_bus_users_mode {
 	SHARED_FLOOR = 0,
 	SHARED_BW,
+	SHARED_ISO_BW,
 	SHARED_CEILING,
 	SHARED_AUTO,
 	SHARED_OVERRIDE,
@@ -679,6 +680,7 @@ struct tegra_clk_cbus_shared {
 	struct list_head	shared_bus_list;
 	struct clk		*shared_bus_backup;
 	u32			flags;
+	unsigned long		iso_usages;
 	unsigned long		min_rate;
 	unsigned long		max_rate;
 	bool			rate_updating;
@@ -712,7 +714,8 @@ struct tegra_clk_cbus_shared {
 
 struct clk *tegra_clk_register_shared(const char *name,
 		const char **parent, u8 num_parents, unsigned long flags,
-		enum shared_bus_users_mode mode, const char *client);
+		unsigned long usages, enum shared_bus_users_mode mode,
+		const char *client);
 struct clk *tegra_clk_register_cbus(const char *name,
 		const char *parent, unsigned long flags,
 		const char *backup, unsigned long min_rate,

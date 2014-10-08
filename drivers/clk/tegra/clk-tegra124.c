@@ -1466,23 +1466,23 @@ static __init void tegra124_shared_clk_init(void)
 	clks[TEGRA124_CLK_C3BUS] = clk;
 
 	clk = tegra_clk_register_shared("msenc.cbus", &cbus_parents[0], 1, 0, 0,
-					"msenc");
+					0, "msenc");
 	clks[TEGRA124_CLK_MSENC_CBUS] = clk;
 
 	clk = tegra_clk_register_shared("vde.cbus", &cbus_parents[0], 1, 0, 0,
-					"vde");
+					0, "vde");
 	clks[TEGRA124_CLK_VDE_CBUS] = clk;
 
 	clk = tegra_clk_register_shared("se.cbus", &cbus_parents[0], 1, 0, 0,
-					"se");
+					0, "se");
 	clks[TEGRA124_CLK_SE_CBUS] = clk;
 
 	clk = tegra_clk_register_shared("tsec.cbus", &cbus_parents[1], 1, 0, 0,
-					"tsec");
+					0, "tsec");
 	clks[TEGRA124_CLK_TSEC_CBUS] = clk;
 
 	clk = tegra_clk_register_shared("vic03.cbus", &cbus_parents[1], 1, 0, 0,
-					"vic03");
+					0, "vic03");
 	clks[TEGRA124_CLK_VIC03_CBUS] = clk;
 
 	clk = tegra_clk_register_sbus_cmplx("sbus", "sclk", 0, "pclk",

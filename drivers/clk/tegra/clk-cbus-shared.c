@@ -22,6 +22,7 @@
 #include <linux/clk.h>
 #include <linux/tegra-soc.h>
 #include <linux/tegra-dvfs.h>
+#include <linux/platform_data/tegra_emc.h>
 
 #include "clk.h"
 
@@ -215,7 +216,10 @@ static int _clk_shared_bus_update(struct clk *bus)
 	unsigned long top_rate = 0;
 	unsigned long rate = cbus->min_rate;
 	unsigned long bw = 0;
+	unsigned long iso_bw = 0;
 	unsigned long ceiling = cbus->max_rate;
+	unsigned long ceiling_but_iso = cbus->max_rate;
+	unsigned long usage_flags = 0;
 
 	list_for_each_entry(c, &cbus->shared_bus_list,
 			u.shared_bus_user.node) {
@@ -227,8 +231,13 @@ static int _clk_shared_bus_update(struct clk *bus)
 		if (c->u.shared_bus_user.enabled ||
 		    (c->u.shared_bus_user.mode == SHARED_CEILING)) {
 			unsigned long request_rate = c->u.shared_bus_user.rate;
+			usage_flags |= c->iso_usages;
 
 			switch (c->u.shared_bus_user.mode) {
+			case SHARED_ISO_BW:
+				iso_bw += request_rate;
+				if (iso_bw > cbus->max_rate)
+					iso_bw = cbus->max_rate;
 			case SHARED_BW:
 				bw += request_rate;
 				if (bw > cbus->max_rate)
@@ -257,7 +266,22 @@ static int _clk_shared_bus_update(struct clk *bus)
 	 */
 	if (!top_rate)
 		rate = clk_get_rate(bus);
+
+	if (!strcmp(__clk_get_name(bus), "emc_master")) {
+		unsigned long iso_bw_min = 0;
+		struct tegra_clk_emc *emc = to_clk_emc(
+				__clk_get_hw(__clk_get_parent(bus)));
+		if (!IS_ERR(emc) && emc->emc_ops->emc_apply_efficiency) {
+			bw = emc->emc_ops->emc_apply_efficiency(
+				bw, iso_bw, cbus->max_rate, usage_flags,
+				&iso_bw_min);
+			iso_bw_min = clk_round_rate(bus, iso_bw_min);
+		}
+		ceiling_but_iso = max(ceiling_but_iso, iso_bw_min);
+	}
+
 	rate = override_rate ? : max(rate, bw);
+	ceiling = min(ceiling, ceiling_but_iso);
 	ceiling = override_rate ? cbus->max_rate : ceiling;
 
 	rate = _clk_cap_shared_bus(bus, rate, ceiling);
@@ -607,7 +631,8 @@ struct clk *tegra_clk_register_cbus(const char *name,
 
 struct clk *tegra_clk_register_shared(const char *name,
 		const char **parent, u8 num_parents, unsigned long flags,
-		enum shared_bus_users_mode mode, const char *client)
+		unsigned long usages, enum shared_bus_users_mode mode,
+		const char *client)
 {
 	struct tegra_clk_cbus_shared *shared;
 	struct clk_init_data init;
@@ -644,6 +669,7 @@ struct clk *tegra_clk_register_shared(const char *name,
 		shared->u.shared_bus_user.rate = clk_get_rate(parent_clk);
 
 	shared->flags = flags;
+	shared->iso_usages = usages;
 
 	if (num_parents > 1) {
 		struct clk *c = __clk_lookup(parent[1]);

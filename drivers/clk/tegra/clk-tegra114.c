@@ -1288,31 +1288,31 @@ static __init void tegra114_shared_clk_init(void)
 	clks[TEGRA114_CLK_C3BUS] = clk;
 
 	clk = tegra_clk_register_shared("3d.cbus", cbus_parents,
-				ARRAY_SIZE(cbus_parents), 0, 0, "3d");
+				ARRAY_SIZE(cbus_parents), 0, 0, 0, "3d");
 	clks[TEGRA114_CLK_GR3D_CBUS] = clk;
 
 	clk = tegra_clk_register_shared("2d.cbus", cbus_parents,
-				ARRAY_SIZE(cbus_parents), 0, 0, "2d");
+				ARRAY_SIZE(cbus_parents), 0, 0, 0, "2d");
 	clks[TEGRA114_CLK_GR2D_CBUS] = clk;
 
 	clk = tegra_clk_register_shared("epp.cbus", cbus_parents,
-				ARRAY_SIZE(cbus_parents), 0, 0, "2d");
+				ARRAY_SIZE(cbus_parents), 0, 0, 0, "2d");
 	clks[TEGRA114_CLK_EPP_CBUS] = clk;
 
 	clk = tegra_clk_register_shared("msenc.cbus", &cbus_parents[1], 1, 0, 0,
-					"msenc");
+					0, "msenc");
 	clks[TEGRA114_CLK_MSENC_CBUS] = clk;
 
 	clk = tegra_clk_register_shared("tsec.cbus", &cbus_parents[1], 1, 0, 0,
-					"tsec");
+					0, "tsec");
 	clks[TEGRA114_CLK_TSEC_CBUS] = clk;
 
 	clk = tegra_clk_register_shared("vde.cbus", &cbus_parents[1], 1, 0, 0,
-					"vde");
+					0, "vde");
 	clks[TEGRA114_CLK_VDE_CBUS] = clk;
 
 	clk = tegra_clk_register_shared("se.cbus", &cbus_parents[1], 1, 0, 0,
-					"se");
+					0, "se");
 	clks[TEGRA114_CLK_SE_CBUS] = clk;
 
 	clk = tegra_clk_register_sbus_cmplx("sbus", "sclk", 0, "pclk",
@@ -1324,10 +1324,10 @@ static __init void tegra114_shared_clk_init(void)
 						12750000, 1066000000);
 	clks[TEGRA114_CLK_EMC_MASTER] = clk;
 
-	clk = tegra_clk_register_shared("3d.emc", emc_master, 1, 0, 0, NULL);
+	clk = tegra_clk_register_shared("3d.emc", emc_master, 1, 0, 0, 0, NULL);
 	clks[TEGRA114_CLK_GR3D_EMC] = clk;
 
-	clk = tegra_clk_register_shared("2d.emc", emc_master, 1, 0, 0, NULL);
+	clk = tegra_clk_register_shared("2d.emc", emc_master, 1, 0, 0, 0, NULL);
 	clks[TEGRA114_CLK_GR2D_EMC] = clk;
 
 	tegra_shared_clk_init(tegra114_clks);
