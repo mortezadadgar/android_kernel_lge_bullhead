@@ -2373,12 +2373,6 @@ out:
 	msleep(50);
 	clk_disable_unprepare(dp->clk);
 
-	if (dc->out && dc->out->prepoweroff)
-		dc->out->prepoweroff();
-
-	if (dc->out && dc->out->disable)
-		dc->out->disable();
-
 	return ret;
 }
 
