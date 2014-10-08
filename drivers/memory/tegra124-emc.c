@@ -53,6 +53,8 @@
 #define STRAPPING_OPT_A_RAM_CODE_SHIFT	4
 #define STRAPPING_OPT_A_RAM_CODE_MASK	(0xF << STRAPPING_OPT_A_RAM_CODE_SHIFT)
 
+#define MHZ 1000000
+
 static bool emc_enable = true;
 module_param(emc_enable, bool, 0644);
 
@@ -381,6 +383,55 @@ static const char *tegra_emc_src_names[TEGRA_EMC_SRC_COUNT] = {
 	[TEGRA_EMC_SRC_PLLC2] = "pll_c2",
 	[TEGRA_EMC_SRC_PLLC3] = "pll_c3",
 	[TEGRA_EMC_SRC_PLLC_UD] = "pll_c_ud",
+};
+
+static u8 tegra124_emc_bw_efficiency = 80;
+
+/* in MHZ */
+static u32 bw_calc_freqs[] = {
+	5, 10, 20, 30, 40, 60, 80, 100, 120, 140, 160, 180
+};
+
+/* LPDDR3 table */
+static u32 tegra124_lpddr3_emc_usage_shared_os_idle[] = {
+	18, 29, 43, 48, 51, 61, 62, 66, 71, 74, 70, 60, 50
+};
+static u32 tegra124_lpddr3_emc_usage_shared_general[] = {
+	17, 25, 35, 43, 50, 50, 50, 50, 50, 50, 50, 50, 45
+};
+
+/* the following is for DDR3: */
+static u32 tegra124_ddr3_emc_usage_shared_os_idle[] = {
+	21, 30, 43, 48, 51, 61, 62, 66, 71, 74, 70, 60, 60
+};
+static u32 tegra124_ddr3_emc_usage_shared_general[] = {
+	20, 26, 35, 43, 50, 50, 50, 50, 50, 50, 50, 50, 50
+};
+
+static u8 iso_share_calc_tegra124_os_idle(unsigned long iso_bw);
+static u8 iso_share_calc_tegra124_general(unsigned long iso_bw);
+
+static struct emc_iso_usage tegra124_emc_iso_usage[] = {
+	{
+		BIT(EMC_USER_DC1),
+		80, iso_share_calc_tegra124_os_idle
+	},
+	{
+		BIT(EMC_USER_DC2),
+		80, iso_share_calc_tegra124_os_idle
+	},
+	{
+		BIT(EMC_USER_DC1) | BIT(EMC_USER_DC2),
+		50, iso_share_calc_tegra124_general
+	},
+	{
+		BIT(EMC_USER_DC1) | BIT(EMC_USER_VI),
+		50, iso_share_calc_tegra124_general
+	},
+	{
+		BIT(EMC_USER_DC1) | BIT(EMC_USER_DC2) | BIT(EMC_USER_VI),
+		50, iso_share_calc_tegra124_general
+	},
 };
 
 static inline void emc_writel(u32 val, unsigned long addr)
@@ -1085,12 +1136,101 @@ static void tegra124_emc_get_backup_parent(struct clk **backup_parent,
 	*backup_rate = emc_backup_rate;
 }
 
+static inline int bw_calc_get_freq_idx(unsigned long bw)
+{
+	int max_idx = ARRAY_SIZE(bw_calc_freqs) - 1;
+	int idx = (bw > bw_calc_freqs[max_idx] * MHZ) ? max_idx : 0;
+
+	for (; idx < max_idx; idx++) {
+		u32 freq = bw_calc_freqs[idx] * MHZ;
+		if (bw < freq) {
+			if (idx)
+				idx--;
+			break;
+		} else if (bw == freq)
+			break;
+	}
+	return idx;
+}
+
+static u8 iso_share_calc_tegra124_os_idle(unsigned long iso_bw)
+{
+	int freq_idx = bw_calc_get_freq_idx(iso_bw);
+
+	if (tegra_dram_type == DRAM_TYPE_DDR3)
+		return tegra124_ddr3_emc_usage_shared_os_idle[freq_idx];
+	else
+		return tegra124_lpddr3_emc_usage_shared_os_idle[freq_idx];
+}
+
+static u8 iso_share_calc_tegra124_general(unsigned long iso_bw)
+{
+	int freq_idx = bw_calc_get_freq_idx(iso_bw);
+
+	if (tegra_dram_type == DRAM_TYPE_DDR3)
+		return tegra124_ddr3_emc_usage_shared_general[freq_idx];
+	else
+		return tegra124_lpddr3_emc_usage_shared_general[freq_idx];
+}
+
+static u8 tegra124_emc_get_iso_share(u32 usage_flags, unsigned long iso_bw)
+{
+	int i;
+	u8 iso_share = 100;
+
+	if (usage_flags) {
+		for (i = 0; i < ARRAY_SIZE(tegra124_emc_iso_usage); i++) {
+			u8 share;
+			u32 flags = tegra124_emc_iso_usage[i].emc_usage_flags;
+
+			if (!flags)
+				continue;
+
+			share = tegra124_emc_iso_usage[i].iso_share_calculator(
+						iso_bw);
+			if (!share) {
+				WARN(1, "%s: entry %d: iso_share 0\n",
+				     __func__, i);
+				continue;
+			}
+
+			if ((flags & usage_flags) == flags)
+				iso_share = min(iso_share, share);
+		}
+	}
+	return iso_share;
+}
+
+unsigned long tegra124_emc_apply_efficiency(unsigned long total_bw,
+	unsigned long iso_bw, unsigned long max_rate, u32 usage_flags,
+	unsigned long *iso_bw_min)
+{
+	u8 efficiency = tegra124_emc_get_iso_share(usage_flags, iso_bw);
+
+	if (iso_bw && efficiency && (efficiency < 100)) {
+		iso_bw /= efficiency;
+		iso_bw = (iso_bw < max_rate / 100) ?
+				(iso_bw * 100) : max_rate;
+	}
+	if (iso_bw_min)
+		*iso_bw_min = iso_bw;
+
+	efficiency = tegra124_emc_bw_efficiency;
+	if (total_bw && efficiency && (efficiency < 100)) {
+		total_bw = total_bw / efficiency;
+		total_bw = (total_bw < max_rate / 100) ?
+				(total_bw * 100) : max_rate;
+	}
+	return max(total_bw, iso_bw);
+}
+
 static const struct emc_clk_ops tegra124_emc_clk_ops = {
 	.emc_get_rate = tegra124_emc_get_rate,
 	.emc_set_rate = tegra124_emc_set_rate,
 	.emc_round_rate = tegra124_emc_round_rate,
 	.emc_predict_parent = tegra124_emc_predict_parent,
 	.emc_get_backup_parent = tegra124_emc_get_backup_parent,
+	.emc_apply_efficiency = tegra124_emc_apply_efficiency,
 };
 
 const struct emc_clk_ops *tegra124_emc_get_ops(void)

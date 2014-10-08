@@ -24,6 +24,21 @@
 
 #define TEGRA_EMC_NUM_REGS 46
 
+enum emc_user_id {
+	EMC_USER_DC1 = 0,
+	EMC_USER_DC2,
+	EMC_USER_VI,
+	EMC_USER_MSENC,
+	EMC_USER_2D,
+	EMC_USER_3D,
+	EMC_USER_BB,
+	EMC_USER_VDE,
+	EMC_USER_VI2,
+	EMC_USER_ISPA,
+	EMC_USER_ISPB,
+	EMC_USER_NUM,
+};
+
 struct tegra_emc_table {
 	unsigned long rate;
 	u32 regs[TEGRA_EMC_NUM_REGS];
@@ -41,6 +56,15 @@ struct emc_clk_ops {
 	struct clk *	(*emc_predict_parent)(unsigned long, unsigned long *);
 	void		(*emc_get_backup_parent)(struct clk **,
 							unsigned long *);
+	unsigned long   (*emc_apply_efficiency)(unsigned long total_bw,
+		unsigned long iso_bw, unsigned long max_rate, u32 usage_flags,
+		unsigned long *iso_bw_min);
+};
+
+struct emc_iso_usage {
+	u32 emc_usage_flags;
+	u8 iso_usage_share;
+	u8 (*iso_share_calculator)(unsigned long iso_bw);
 };
 
 #ifdef CONFIG_TEGRA114_EMC
