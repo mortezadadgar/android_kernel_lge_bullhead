@@ -86,7 +86,7 @@ static unsigned long tegra_dc_find_max_bandwidth(struct tegra_dc_win *wins[],
 static unsigned long tegra_dc_calc_win_bandwidth(struct tegra_dc *dc,
 	struct tegra_dc_win *w)
 {
-	unsigned long ret;
+	u64 ret;
 	int tiled_windows_bw_multiplier;
 	unsigned long bpp;
 	unsigned in_w;
@@ -115,8 +115,9 @@ static unsigned long tegra_dc_calc_win_bandwidth(struct tegra_dc *dc,
 	/* brackets are used to avoid compiler rearranging expression such
 	   that the intermediate result may overflow 32bits */
 	ret = (dc->mode.pclk / 1000UL) * (bpp / 8) *
-		(in_w / w->out_w) * (WIN_IS_TILED(w) ?
+		in_w * (WIN_IS_TILED(w) ?
 		tiled_windows_bw_multiplier : 1);
+	ret = div_u64(ret, w->out_w);
 
 	return ret;
 }
