@@ -386,6 +386,8 @@ static const char *tegra_emc_src_names[TEGRA_EMC_SRC_COUNT] = {
 };
 
 static u8 tegra124_emc_bw_efficiency = 80;
+static u8 tegra124_emc_iso_share = 100;
+static unsigned long last_iso_bw;
 
 /* in MHZ */
 static u32 bw_calc_freqs[] = {
@@ -1198,6 +1200,8 @@ static u8 tegra124_emc_get_iso_share(u32 usage_flags, unsigned long iso_bw)
 				iso_share = min(iso_share, share);
 		}
 	}
+	last_iso_bw = iso_bw;
+	tegra124_emc_iso_share = iso_share;
 	return iso_share;
 }
 
@@ -1733,6 +1737,83 @@ static const struct file_operations emc_stats_fops = {
 	.release	= single_release,
 };
 
+static int efficiency_get(void *data, u64 *val)
+{
+	*val = tegra124_emc_bw_efficiency;
+	return 0;
+}
+static int efficiency_set(void *data, u64 val)
+{
+	tegra124_emc_bw_efficiency = (val > 100) ? 100 : val;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(efficiency_fops, efficiency_get,
+			efficiency_set, "%llu\n");
+
+static const char *emc_user_names[EMC_USER_NUM] = {
+	"DC1",
+	"DC2",
+	"VI",
+	"MSENC",
+	"2D",
+	"3D",
+	"BB",
+	"VDE",
+	"VI2",
+	"ISPA",
+	"ISPB",
+};
+
+static int emc_usage_table_show(struct seq_file *s, void *data)
+{
+	int i, j;
+
+	seq_printf(s, "EMC USAGE\t\tISO SHARE %% @ last bw %lu\n", last_iso_bw);
+
+	for (i = 0; i < ARRAY_SIZE(tegra124_emc_iso_usage); i++) {
+		u32 flags = tegra124_emc_iso_usage[i].emc_usage_flags;
+		u8 share = tegra124_emc_iso_usage[i].iso_usage_share;
+		bool fixed_share = true;
+		bool first = false;
+
+		if (tegra124_emc_iso_usage[i].iso_share_calculator) {
+			share = tegra124_emc_iso_usage[i].iso_share_calculator(
+				last_iso_bw);
+			fixed_share = false;
+		}
+
+		seq_printf(s, "[%d]: ", i);
+		if (!flags) {
+			seq_puts(s, "reserved\n");
+			continue;
+		}
+
+		for (j = 0; j < EMC_USER_NUM; j++) {
+			u32 mask = 0x1 << j;
+			if (!(flags & mask))
+				continue;
+			seq_printf(s, "%s%s", first ? "+" : "",
+				   emc_user_names[j]);
+			first = true;
+		}
+		seq_printf(s, "\r\t\t\t= %d(%s across bw)\n",
+			   share, fixed_share ? "fixed" : "vary");
+	}
+	return 0;
+}
+
+static int emc_usage_table_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, emc_usage_table_show, inode->i_private);
+}
+
+static const struct file_operations emc_usage_table_fops = {
+	.open		= emc_usage_table_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int __init tegra_emc_debug_init(void)
 {
 	struct dentry *emc_debugfs_root;
@@ -1750,6 +1831,18 @@ static int __init tegra_emc_debug_init(void)
 
 	if (!debugfs_create_u32("clkchange_delay", S_IRUGO | S_IWUSR,
 		emc_debugfs_root, (u32 *)&clkchange_delay))
+		goto err_out;
+
+	if (!debugfs_create_file("efficiency", S_IRUGO | S_IWUSR,
+				 emc_debugfs_root, NULL, &efficiency_fops))
+		goto err_out;
+
+	if (!debugfs_create_file("emc_usage_table", S_IRUGO, emc_debugfs_root,
+		NULL, &emc_usage_table_fops))
+		goto err_out;
+
+	if (!debugfs_create_u8("emc_iso_share", S_IRUGO, emc_debugfs_root,
+			      &tegra124_emc_iso_share))
 		goto err_out;
 
 	return 0;
