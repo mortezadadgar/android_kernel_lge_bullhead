@@ -226,8 +226,12 @@ void tegra_dc_program_bandwidth(struct tegra_dc *dc, bool use_new)
 		emc_freq = tegra_dc_kbps_to_emc(dc, bw);
 		clk_set_rate(dc->emc_clk, emc_freq);
 
-		/* going from non-zero to 0 */
-		if (dc->bw_kbps && !dc->new_bw_kbps &&
+		/* disabling dc->emc_clk if both of dc->bw_kbps
+		 * and dc->new_bw_kpbs are set to 0, and
+		 * dc->vblank_ref_count is 0
+		 */
+		if (!dc->bw_kbps && !dc->new_bw_kbps &&
+			!dc->vblank_ref_count &&
 			__clk_get_enable_count(dc->emc_clk))
 			clk_disable_unprepare(dc->emc_clk);
 
