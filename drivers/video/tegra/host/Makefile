@@ -30,7 +30,8 @@ nvhost-objs = \
 	chip_support.o \
 	nvhost_memmgr.o \
 	nvhost_scale.o \
-	user_hwctx.o
+	user_hwctx.o \
+	nvhost_vm.o
 
 obj-$(all_configs) += nvhost.o
 obj-$(all_configs) += host1x/
