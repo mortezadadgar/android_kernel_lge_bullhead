@@ -47,6 +47,7 @@
 #include "nvhost_memmgr.h"
 #include "chip_support.h"
 #include "nvhost_acm.h"
+#include "nvhost_vm.h"
 
 #include "nvhost_syncpt.h"
 #include "nvhost_channel.h"
@@ -166,6 +167,9 @@ struct nvhost_channel_userctx {
 	u32 priority;
 	int clientid;
 	bool timeout_debug_dump;
+
+	/* context address space */
+	struct nvhost_vm *vm;
 };
 
 static int nvhost_channelrelease(struct inode *inode, struct file *filp)
@@ -177,6 +181,8 @@ static int nvhost_channelrelease(struct inode *inode, struct file *filp)
 	filp->private_data = NULL;
 
 	nvhost_module_remove_client(priv->ch->dev, priv);
+
+	nvhost_vm_put(priv->vm);
 
 	if (priv->hwctx) {
 		struct nvhost_channel *ch = priv->ch;
@@ -237,6 +243,8 @@ static int __nvhost_channelopen(struct inode *inode,
 	pdata = dev_get_drvdata(ch->dev->dev.parent);
 	priv->timeout = pdata->nvhost_timeout_default;
 	priv->timeout_debug_dump = true;
+
+	priv->vm = nvhost_vm_allocate(ch->dev);
 
 	return 0;
 fail:
@@ -414,6 +422,8 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 	job->num_syncpts = args->num_syncpt_incrs;
 	job->priority = ctx->priority;
 	job->clientid = ctx->clientid;
+	job->vm = ctx->vm;
+	nvhost_vm_get(job->vm);
 
 	/* mass copy class_ids */
 	if (args->class_ids) {

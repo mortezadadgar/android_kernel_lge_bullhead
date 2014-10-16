@@ -29,6 +29,8 @@ struct nvhost_channel;
 struct nvhost_hwctx;
 struct nvhost_waitchk;
 struct nvhost_syncpt;
+struct nvhost_vm;
+struct nvhost_vm_pin;
 struct sg_table;
 
 struct nvhost_job_gather {
@@ -51,12 +53,6 @@ struct nvhost_job_syncpt {
 struct nvhost_pinid {
 	u32 id;
 	u32 index;
-};
-
-struct nvhost_job_unpin {
-	struct sg_table *sgt;
-	struct dma_buf *buf;
-	struct dma_buf_attachment *attach;
 };
 
 /*
@@ -88,8 +84,6 @@ struct nvhost_job {
 	struct nvhost_reloc *relocarray;
 	struct nvhost_reloc_shift *relocshiftarray;
 	int num_relocs;
-	struct nvhost_job_unpin *unpins;
-	int num_unpins;
 
 	struct nvhost_pinid *pin_ids;
 	dma_addr_t *addr_phys;
@@ -121,6 +115,12 @@ struct nvhost_job {
 
 	/* Context to be freed */
 	struct nvhost_hwctx *hwctxref;
+
+	/* Pointer to vm structure*/
+	struct nvhost_vm *vm;
+
+	/* Pointer to address space state at the time of submission */
+	struct nvhost_vm_pin *pin;
 
 	/* Set to true to force an added wait-for-idle before the job */
 	int serialize;
