@@ -149,6 +149,7 @@ int tegra30_ahub_enable_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
 	int reg, val;
 
+	clk_prepare_enable(ahub->clk_ahub_emc);
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -169,6 +170,7 @@ int tegra30_ahub_disable_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 	val = tegra30_apbif_read(reg);
 	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_RX_EN;
 	tegra30_apbif_write(reg, val);
+	clk_disable_unprepare(ahub->clk_ahub_emc);
 
 	return 0;
 }
@@ -239,6 +241,7 @@ int tegra30_ahub_enable_tx_fifo(enum tegra30_ahub_txcif txcif)
 	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
 	int reg, val;
 
+	clk_prepare_enable(ahub->clk_ahub_emc);
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -259,6 +262,7 @@ int tegra30_ahub_disable_tx_fifo(enum tegra30_ahub_txcif txcif)
 	val = tegra30_apbif_read(reg);
 	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_TX_EN;
 	tegra30_apbif_write(reg, val);
+	clk_disable_unprepare(ahub->clk_ahub_emc);
 
 	return 0;
 }
@@ -536,13 +540,21 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 		goto err_clk_put_d_audio;
 	}
 
+	ahub->clk_ahub_emc = clk_get(&pdev->dev, "ahub.emc");
+	if (IS_ERR(ahub->clk_ahub_emc)) {
+		dev_err(&pdev->dev, "Can't retrieve ahub emc clock\n");
+		ret = PTR_ERR(ahub->clk_ahub_emc);
+		goto err_clk_put_apbif;
+	}
+	clk_set_rate(ahub->clk_ahub_emc, 68000000);
+
 	if (of_property_read_u32_array(pdev->dev.of_node,
 				"nvidia,dma-request-selector",
 				of_dma, 2) < 0) {
 		dev_err(&pdev->dev,
 			"Missing property nvidia,dma-request-selector\n");
 		ret = -ENODEV;
-		goto err_clk_put_d_audio;
+		goto err_clk_put_ahub_emc;
 	}
 	ahub->dma_sel = of_dma[1];
 
@@ -550,7 +562,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	if (!res0) {
 		dev_err(&pdev->dev, "No apbif memory resource\n");
 		ret = -ENODEV;
-		goto err_clk_put_apbif;
+		goto err_clk_put_ahub_emc;
 	}
 
 	region = devm_request_mem_region(&pdev->dev, res0->start,
@@ -558,7 +570,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	if (!region) {
 		dev_err(&pdev->dev, "request region apbif failed\n");
 		ret = -EBUSY;
-		goto err_clk_put_apbif;
+		goto err_clk_put_ahub_emc;
 	}
 	ahub->apbif_addr = res0->start;
 
@@ -567,7 +579,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	if (!regs_apbif) {
 		dev_err(&pdev->dev, "ioremap apbif failed\n");
 		ret = -ENOMEM;
-		goto err_clk_put_apbif;
+		goto err_clk_put_ahub_emc;
 	}
 
 	ahub->regmap_apbif = devm_regmap_init_mmio(&pdev->dev, regs_apbif,
@@ -575,7 +587,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	if (IS_ERR(ahub->regmap_apbif)) {
 		dev_err(&pdev->dev, "apbif regmap init failed\n");
 		ret = PTR_ERR(ahub->regmap_apbif);
-		goto err_clk_put_apbif;
+		goto err_clk_put_ahub_emc;
 	}
 	regcache_cache_only(ahub->regmap_apbif, true);
 
@@ -583,7 +595,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	if (!res1) {
 		dev_err(&pdev->dev, "No ahub memory resource\n");
 		ret = -ENODEV;
-		goto err_clk_put_apbif;
+		goto err_clk_put_ahub_emc;
 	}
 
 	region = devm_request_mem_region(&pdev->dev, res1->start,
@@ -591,7 +603,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	if (!region) {
 		dev_err(&pdev->dev, "request region ahub failed\n");
 		ret = -EBUSY;
-		goto err_clk_put_apbif;
+		goto err_clk_put_ahub_emc;
 	}
 
 	regs_ahub = devm_ioremap(&pdev->dev, res1->start,
@@ -599,7 +611,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	if (!regs_ahub) {
 		dev_err(&pdev->dev, "ioremap ahub failed\n");
 		ret = -ENOMEM;
-		goto err_clk_put_apbif;
+		goto err_clk_put_ahub_emc;
 	}
 
 	ahub->regmap_ahub = devm_regmap_init_mmio(&pdev->dev, regs_ahub,
@@ -607,7 +619,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 	if (IS_ERR(ahub->regmap_ahub)) {
 		dev_err(&pdev->dev, "ahub regmap init failed\n");
 		ret = PTR_ERR(ahub->regmap_ahub);
-		goto err_clk_put_apbif;
+		goto err_clk_put_ahub_emc;
 	}
 	regcache_cache_only(ahub->regmap_ahub, true);
 
@@ -624,6 +636,8 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 
 err_pm_disable:
 	pm_runtime_disable(&pdev->dev);
+err_clk_put_ahub_emc:
+	clk_put(ahub->clk_ahub_emc);
 err_clk_put_apbif:
 	clk_put(ahub->clk_apbif);
 err_clk_put_d_audio:

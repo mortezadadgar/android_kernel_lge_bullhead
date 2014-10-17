@@ -524,6 +524,7 @@ struct tegra30_ahub {
 	struct device *dev;
 	struct clk *clk_d_audio;
 	struct clk *clk_apbif;
+	struct clk *clk_ahub_emc;
 	int dma_sel;
 	resource_size_t apbif_addr;
 	struct regmap *regmap_apbif;
