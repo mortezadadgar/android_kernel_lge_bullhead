@@ -603,11 +603,12 @@
 			 <&tegra_car TEGRA124_CLK_AFC2>,
 			 <&tegra_car TEGRA124_CLK_AFC3>,
 			 <&tegra_car TEGRA124_CLK_AFC4>,
-			 <&tegra_car TEGRA124_CLK_AFC5>;
+			 <&tegra_car TEGRA124_CLK_AFC5>,
+			 <&tegra_car TEGRA124_CLK_AHUB_EMC>;
 		clock-names = "d_audio", "apbif", "i2s0", "i2s1", "i2s2",
 			      "i2s3", "i2s4", "dam0", "dam1", "dam2",
 			      "spdif_in", "amx", "amx1", "adx", "adx1",
-			      "afc0", "afc1", "afc2", "afc3", "afc4", "afc5";
+			      "afc0", "afc1", "afc2", "afc3", "afc4", "afc5", "ahub.emc";
 		ranges = <0x70301000 0x0 0x70301000 0x500>;
 		#address-cells = <1>;
 		#size-cells = <1>;
