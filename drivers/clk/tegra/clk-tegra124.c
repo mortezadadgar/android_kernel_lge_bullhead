@@ -1027,6 +1027,7 @@ static struct tegra_clk tegra124_clks[tegra_clk_max] __initdata = {
 	[tegra_clk_ispa_emc] = { .dt_id = TEGRA124_CLK_ISPA_EMC, .present = true },
 	[tegra_clk_ispb_emc] = { .dt_id = TEGRA124_CLK_ISPB_EMC, .present = true },
 	[tegra_clk_xusb_emc] = { .dt_id = TEGRA124_CLK_XUSB_EMC, .present = true },
+	[tegra_clk_ahub_emc] = { .dt_id = TEGRA124_CLK_AHUB_EMC, .present = true },
 };
 
 static struct tegra_devclk devclks[] __initdata = {
@@ -1140,6 +1141,7 @@ static struct tegra_devclk devclks[] __initdata = {
 	{ .con_id = "hda", .dt_id = TEGRA124_CLK_HDA },
 	{ .con_id = "hda2codec_2x", .dt_id = TEGRA124_CLK_HDA2CODEC_2X },
 	{ .con_id = "hda2hdmi", .dt_id = TEGRA124_CLK_HDA2HDMI },
+	{ .con_id = "ahub.emc", .dt_id = TEGRA124_CLK_AHUB_EMC },
 };
 
 static struct clk **clks;

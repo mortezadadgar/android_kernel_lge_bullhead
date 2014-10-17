@@ -102,6 +102,7 @@ static struct tegra_shared_clk shared_clks[] = {
 	SHARED_CLK("ispa.emc", "emc_master", SHARED_ISO_BW, 0, BIT(EMC_USER_ISPA), NULL, tegra_clk_ispa_emc),
 	SHARED_CLK("ispb.emc", "emc_master", SHARED_ISO_BW, 0, BIT(EMC_USER_ISPB), NULL, tegra_clk_ispb_emc),
 	SHARED_CLK("xusb.emc", "emc_master", SHARED_BW, 0, 0, NULL, tegra_clk_xusb_emc),
+	SHARED_CLK("ahub.emc", "emc_master", SHARED_BW, 0, 0, NULL, tegra_clk_ahub_emc),
 };
 
 void __init tegra_shared_clk_init(struct tegra_clk *tegra_clks)

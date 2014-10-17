@@ -304,6 +304,7 @@ enum clk_id {
 	tegra_clk_ispa_emc,
 	tegra_clk_ispb_emc,
 	tegra_clk_xusb_emc,
+	tegra_clk_ahub_emc,
 	tegra_clk_max,
 };
 
