@@ -231,7 +231,8 @@ static irqreturn_t hpd_irq(int irq, void *data)
 {
 	struct tegra_output *output = data;
 
-	drm_helper_hpd_irq_event(output->connector.dev);
+	if (output->connector.dev)
+		drm_helper_hpd_irq_event(output->connector.dev);
 
 	return IRQ_HANDLED;
 }
@@ -303,6 +304,13 @@ int tegra_output_probe(struct tegra_output *output)
 		}
 
 		output->connector.polled = DRM_CONNECTOR_POLL_HPD;
+
+		/*
+		 * Disable the interrupt until the connector has been
+		 * initialized to avoid a race in the hotplug interrupt
+		 * handler.
+		 */
+		disable_irq(output->hpd_irq);
 	}
 
 	return 0;
@@ -378,10 +386,24 @@ int tegra_output_init(struct drm_device *drm, struct tegra_output *output)
 		break;
 	}
 
+	/*
+	 * The connector is now registered and ready to receive hotplug events
+	 * so the hotplug interrupt can be enabled.
+	 */
+	if (gpio_is_valid(output->hpd_gpio))
+		enable_irq(output->hpd_irq);
+
 	return 0;
 }
 
 int tegra_output_exit(struct tegra_output *output)
 {
+	/*
+	 * The connector is going away, so the interrupt must be disabled to
+	 * prevent the hotplug interrupt handler from potentially crashing.
+	 */
+	if (gpio_is_valid(output->hpd_gpio))
+		disable_irq(output->hpd_irq);
+
 	return 0;
 }
