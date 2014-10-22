@@ -94,12 +94,14 @@ ieee80211_operating_class_to_band(u8 operating_class,
 #define NL80211_FEATURE_USERSPACE_MPM 0
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,10,0) */
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0)
+#define IEEE80211_RADIOTAP_MCS_HAVE_STBC 0
+#endif
+
 #if CFG80211_VERSION < KERNEL_VERSION(3,11,0)
 #define IEEE80211_MAX_CHAINS 4
 
 #define MONITOR_FLAG_ACTIVE 0
-
-#define IEEE80211_RADIOTAP_MCS_HAVE_STBC 0
 
 static inline void cfg80211_rx_unprot_mlme_mgmt(struct net_device *dev,
 						void *data, int len)
@@ -167,10 +169,12 @@ ieee80211_chandef_rate_flags(struct cfg80211_chan_def *chandef)
 #define cfg80211_sched_scan_stopped_rtnl cfg80211_sched_scan_stopped
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,11,0) */
 
-#if CFG80211_VERSION < KERNEL_VERSION(3,12,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
 #define IEEE80211_CHAN_HALF 0
 #define IEEE80211_CHAN_QUARTER 0
+#endif
 
+#if CFG80211_VERSION < KERNEL_VERSION(3,12,0)
 static inline int
 ieee80211_chandef_max_power(struct cfg80211_chan_def *chandef)
 {
@@ -236,6 +240,15 @@ ieee80211_mandatory_rates(struct ieee80211_supported_band *sband)
 }
 
 #define ieee80211_mandatory_rates(sband, width) ieee80211_mandatory_rates(sband)
+
+/* PCIe device capabilities flags have been renamed in (upstream)
+ * commit d2ab1fa68c61f01b28ab0859a972c892d81f5d32 (PCI: Rename PCIe
+ * capability definitions to follow convention).  This was just a
+ * clean rename, without any functional changes.  We use one of the
+ * renamed flags, so define it to the old one.
+ */
+#define PCI_EXP_DEVCTL2_LTR_EN PCI_EXP_LTR_EN
+
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,12,0) */
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,13,0)
