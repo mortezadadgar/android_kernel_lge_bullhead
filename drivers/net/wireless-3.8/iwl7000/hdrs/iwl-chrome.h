@@ -81,6 +81,17 @@ static inline void idr_preload_end(void)
 #define netdev_notifier_info_to_dev(ndev)	ndev
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0) */
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
+/* PCIe device capabilities flags have been renamed in (upstream)
+ * commit d2ab1fa68c61f01b28ab0859a972c892d81f5d32 (PCI: Rename PCIe
+ * capability definitions to follow convention).  This was just a
+ * clean rename, without any functional changes.  We use one of the
+ * renamed flags, so define it to the old one.
+ */
+#define PCI_EXP_DEVCTL2_LTR_EN PCI_EXP_LTR_EN
+
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0) */
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,13,0)
 #define __genl_const
 static inline int

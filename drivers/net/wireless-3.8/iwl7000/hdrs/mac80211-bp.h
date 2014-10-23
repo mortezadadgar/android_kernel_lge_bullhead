@@ -240,15 +240,6 @@ ieee80211_mandatory_rates(struct ieee80211_supported_band *sband)
 }
 
 #define ieee80211_mandatory_rates(sband, width) ieee80211_mandatory_rates(sband)
-
-/* PCIe device capabilities flags have been renamed in (upstream)
- * commit d2ab1fa68c61f01b28ab0859a972c892d81f5d32 (PCI: Rename PCIe
- * capability definitions to follow convention).  This was just a
- * clean rename, without any functional changes.  We use one of the
- * renamed flags, so define it to the old one.
- */
-#define PCI_EXP_DEVCTL2_LTR_EN PCI_EXP_LTR_EN
-
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,12,0) */
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,13,0)
