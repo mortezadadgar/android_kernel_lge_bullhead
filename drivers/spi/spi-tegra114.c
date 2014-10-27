@@ -487,6 +487,91 @@ static int tegra_spi_start_rx_dma(struct tegra_spi_data *tspi, int len)
 	return 0;
 }
 
+static int tegra_spi_init_dma_param(struct tegra_spi_data *tspi,
+			bool dma_to_memory)
+{
+	struct dma_chan *dma_chan;
+	u32 *dma_buf;
+	dma_addr_t dma_phys;
+	int ret;
+	struct dma_slave_config dma_sconfig;
+	dma_cap_mask_t mask;
+
+	dma_cap_zero(mask);
+	dma_cap_set(DMA_SLAVE, mask);
+	dma_chan = dma_request_channel(mask, NULL, NULL);
+	if (!dma_chan) {
+		dev_err(tspi->dev,
+			"Dma channel is not available, will try later\n");
+		return -EPROBE_DEFER;
+	}
+
+	dma_buf = dma_alloc_coherent(tspi->dev, tspi->dma_buf_size,
+				&dma_phys, GFP_KERNEL);
+	if (!dma_buf) {
+		dev_err(tspi->dev, " Not able to allocate the dma buffer\n");
+		dma_release_channel(dma_chan);
+		return -ENOMEM;
+	}
+
+	dma_sconfig.slave_id = tspi->dma_req_sel;
+	if (dma_to_memory) {
+		dma_sconfig.src_addr = tspi->phys + SPI_RX_FIFO;
+		dma_sconfig.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+		dma_sconfig.src_maxburst = 0;
+	} else {
+		dma_sconfig.dst_addr = tspi->phys + SPI_TX_FIFO;
+		dma_sconfig.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+		dma_sconfig.dst_maxburst = 0;
+	}
+
+	ret = dmaengine_slave_config(dma_chan, &dma_sconfig);
+	if (ret)
+		goto scrub;
+	if (dma_to_memory) {
+		tspi->rx_dma_chan = dma_chan;
+		tspi->rx_dma_buf = dma_buf;
+		tspi->rx_dma_phys = dma_phys;
+	} else {
+		tspi->tx_dma_chan = dma_chan;
+		tspi->tx_dma_buf = dma_buf;
+		tspi->tx_dma_phys = dma_phys;
+	}
+	return 0;
+
+scrub:
+	dma_free_coherent(tspi->dev, tspi->dma_buf_size, dma_buf, dma_phys);
+	dma_release_channel(dma_chan);
+	return ret;
+}
+
+static void tegra_spi_deinit_dma_param(struct tegra_spi_data *tspi,
+	bool dma_to_memory)
+{
+	u32 *dma_buf;
+	dma_addr_t dma_phys;
+	struct dma_chan *dma_chan;
+
+	if (dma_to_memory) {
+		dma_buf = tspi->rx_dma_buf;
+		dma_chan = tspi->rx_dma_chan;
+		dma_phys = tspi->rx_dma_phys;
+		tspi->rx_dma_chan = NULL;
+		tspi->rx_dma_buf = NULL;
+	} else {
+		dma_buf = tspi->tx_dma_buf;
+		dma_chan = tspi->tx_dma_chan;
+		dma_phys = tspi->tx_dma_phys;
+		tspi->tx_dma_buf = NULL;
+		tspi->tx_dma_chan = NULL;
+	}
+	if (!dma_chan)
+		return;
+
+	dma_free_coherent(tspi->dev, tspi->dma_buf_size, dma_buf, dma_phys);
+	dma_release_channel(dma_chan);
+}
+
 static int tegra_spi_start_dma_based_transfer(
 		struct tegra_spi_data *tspi, struct spi_transfer *t)
 {
@@ -494,6 +579,35 @@ static int tegra_spi_start_dma_based_transfer(
 	unsigned int len;
 	int ret = 0;
 	unsigned long status;
+
+	if (tspi->rx_dma_buf == NULL) {
+		if (!tspi->dma_req_sel)
+			return -EIO;
+
+		ret = tegra_spi_init_dma_param(tspi, true);
+		if (ret < 0) {
+			dev_err(tspi->dev,
+				"RxDma Init failed, err %d\n", ret);
+			return -EIO;
+		}
+	}
+
+	if (tspi->tx_dma_buf == NULL) {
+		if (!tspi->dma_req_sel)
+			return -EIO;
+
+		ret = tegra_spi_init_dma_param(tspi, false);
+		if (ret < 0) {
+			dev_err(tspi->dev,
+				"TxDma Init failed, err %d\n", ret);
+			tegra_spi_deinit_dma_param(tspi, true);
+			return -EIO;
+		}
+
+		tspi->max_buf_size = tspi->dma_buf_size;
+		init_completion(&tspi->tx_dma_complete);
+		init_completion(&tspi->rx_dma_complete);
+	}
 
 	/* Make sure that Rx and Tx fifo are empty */
 	status = tegra_spi_readl(tspi, SPI_FIFO_STATUS);
@@ -590,91 +704,6 @@ static int tegra_spi_start_cpu_based_transfer(
 	val |= SPI_DMA_EN;
 	tegra_spi_writel(tspi, val, SPI_DMA_CTL);
 	return 0;
-}
-
-static int tegra_spi_init_dma_param(struct tegra_spi_data *tspi,
-			bool dma_to_memory)
-{
-	struct dma_chan *dma_chan;
-	u32 *dma_buf;
-	dma_addr_t dma_phys;
-	int ret;
-	struct dma_slave_config dma_sconfig;
-	dma_cap_mask_t mask;
-
-	dma_cap_zero(mask);
-	dma_cap_set(DMA_SLAVE, mask);
-	dma_chan = dma_request_channel(mask, NULL, NULL);
-	if (!dma_chan) {
-		dev_err(tspi->dev,
-			"Dma channel is not available, will try later\n");
-		return -EPROBE_DEFER;
-	}
-
-	dma_buf = dma_alloc_coherent(tspi->dev, tspi->dma_buf_size,
-				&dma_phys, GFP_KERNEL);
-	if (!dma_buf) {
-		dev_err(tspi->dev, " Not able to allocate the dma buffer\n");
-		dma_release_channel(dma_chan);
-		return -ENOMEM;
-	}
-
-	dma_sconfig.slave_id = tspi->dma_req_sel;
-	if (dma_to_memory) {
-		dma_sconfig.src_addr = tspi->phys + SPI_RX_FIFO;
-		dma_sconfig.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-		dma_sconfig.src_maxburst = 0;
-	} else {
-		dma_sconfig.dst_addr = tspi->phys + SPI_TX_FIFO;
-		dma_sconfig.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-		dma_sconfig.dst_maxburst = 0;
-	}
-
-	ret = dmaengine_slave_config(dma_chan, &dma_sconfig);
-	if (ret)
-		goto scrub;
-	if (dma_to_memory) {
-		tspi->rx_dma_chan = dma_chan;
-		tspi->rx_dma_buf = dma_buf;
-		tspi->rx_dma_phys = dma_phys;
-	} else {
-		tspi->tx_dma_chan = dma_chan;
-		tspi->tx_dma_buf = dma_buf;
-		tspi->tx_dma_phys = dma_phys;
-	}
-	return 0;
-
-scrub:
-	dma_free_coherent(tspi->dev, tspi->dma_buf_size, dma_buf, dma_phys);
-	dma_release_channel(dma_chan);
-	return ret;
-}
-
-static void tegra_spi_deinit_dma_param(struct tegra_spi_data *tspi,
-	bool dma_to_memory)
-{
-	u32 *dma_buf;
-	dma_addr_t dma_phys;
-	struct dma_chan *dma_chan;
-
-	if (dma_to_memory) {
-		dma_buf = tspi->rx_dma_buf;
-		dma_chan = tspi->rx_dma_chan;
-		dma_phys = tspi->rx_dma_phys;
-		tspi->rx_dma_chan = NULL;
-		tspi->rx_dma_buf = NULL;
-	} else {
-		dma_buf = tspi->tx_dma_buf;
-		dma_chan = tspi->tx_dma_chan;
-		dma_phys = tspi->tx_dma_phys;
-		tspi->tx_dma_buf = NULL;
-		tspi->tx_dma_chan = NULL;
-	}
-	if (!dma_chan)
-		return;
-
-	dma_free_coherent(tspi->dev, tspi->dma_buf_size, dma_buf, dma_phys);
-	dma_release_channel(dma_chan);
 }
 
 static unsigned long tegra_spi_setup_transfer_one(struct spi_device *spi,
@@ -1144,23 +1173,6 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	tspi->max_buf_size = SPI_FIFO_DEPTH << 2;
 	tspi->dma_buf_size = DEFAULT_SPI_DMA_BUF_LEN;
 
-	if (tspi->dma_req_sel) {
-		ret = tegra_spi_init_dma_param(tspi, true);
-		if (ret < 0) {
-			dev_err(&pdev->dev, "RxDma Init failed, err %d\n", ret);
-			goto exit_free_irq;
-		}
-
-		ret = tegra_spi_init_dma_param(tspi, false);
-		if (ret < 0) {
-			dev_err(&pdev->dev, "TxDma Init failed, err %d\n", ret);
-			goto exit_rx_dma_free;
-		}
-		tspi->max_buf_size = tspi->dma_buf_size;
-		init_completion(&tspi->tx_dma_complete);
-		init_completion(&tspi->rx_dma_complete);
-	}
-
 	init_completion(&tspi->xfer_completion);
 
 	pm_runtime_enable(&pdev->dev);
@@ -1191,9 +1203,6 @@ exit_pm_disable:
 	pm_runtime_disable(&pdev->dev);
 	if (!pm_runtime_status_suspended(&pdev->dev))
 		tegra_spi_runtime_suspend(&pdev->dev);
-	tegra_spi_deinit_dma_param(tspi, false);
-exit_rx_dma_free:
-	tegra_spi_deinit_dma_param(tspi, true);
 exit_free_irq:
 	free_irq(spi_irq, tspi);
 exit_free_master:
