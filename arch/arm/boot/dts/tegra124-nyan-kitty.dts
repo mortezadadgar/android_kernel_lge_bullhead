@@ -65,6 +65,13 @@
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
 			};
+			bt_irq {
+				nvidia,pins = "pu6";
+				nvidia,function = "rsvd3";
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_ENABLE>;
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+			};
 		};
 	};
 
@@ -86,6 +93,9 @@
 		calib-1v8-offsets = <0x7676>;
 		calib-1v8-offsets-uhs-modes = <0x3f>;
 		max-frequency = <204000000>;
+		bt-wake {
+			nvidia,pmc-wakeup = <&pmc 1 7 2>;
+		};
 	};
 
 	sdhci@700b0400 {
