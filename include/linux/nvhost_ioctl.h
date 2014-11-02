@@ -285,6 +285,25 @@ struct nvhost_set_ctxswitch_args {
 	__u32 pad;
 };
 
+struct nvhost_channel_buffer {
+	__u32 dmabuf_fd;	/* in */
+	__u32 reserved0;	/* reserved, must be 0 */
+	__u64 reserved1[2];	/* reserved, must be 0 */
+	__u64 address;		/* out, device view to the buffer */
+};
+
+struct nvhost_channel_unmap_buffer_args {
+	__u32 num_buffers;	/* in, number of buffers to unmap */
+	__u32 reserved;		/* reserved, must be 0 */
+	__u64 table_address;	/* pointer to beginning of buffer */
+};
+
+struct nvhost_channel_map_buffer_args {
+	__u32 num_buffers;	/* in, number of buffers to map */
+	__u32 reserved;		/* reserved, must be 0 */
+	__u64 table_address;	/* pointer to beginning of buffer */
+};
+
 #define NVHOST_IOCTL_CHANNEL_GET_SYNCPOINTS	\
 	_IOR(NVHOST_IOCTL_MAGIC, 2, struct nvhost_get_param_args)
 #define NVHOST_IOCTL_CHANNEL_GET_WAITBASES	\
@@ -337,6 +356,12 @@ struct nvhost_set_ctxswitch_args {
 	_IOR(NVHOST_IOCTL_MAGIC,  109, struct nvhost_free_obj_ctx_args)
 #define NVHOST_IOCTL_CHANNEL_ZCULL_BIND		\
 	_IOWR(NVHOST_IOCTL_MAGIC, 110, struct nvhost_zcull_bind_args)
+
+#define	NVHOST_IOCTL_CHANNEL_MAP_BUFFER	\
+	_IOWR(NVHOST_IOCTL_MAGIC, 28, struct nvhost_channel_map_buffer_args)
+#define	NVHOST_IOCTL_CHANNEL_UNMAP_BUFFER	\
+	_IOWR(NVHOST_IOCTL_MAGIC, 29, struct nvhost_channel_unmap_buffer_args)
+
 #define NVHOST_IOCTL_CHANNEL_SET_ERROR_NOTIFIER  \
 	_IOWR(NVHOST_IOCTL_MAGIC, 111, struct nvhost_set_error_notifier)
 #define NVHOST_IOCTL_CHANNEL_OPEN	\
