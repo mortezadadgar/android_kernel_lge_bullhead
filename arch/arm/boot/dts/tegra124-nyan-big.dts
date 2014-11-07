@@ -5,10 +5,12 @@
 / {
 	model = "Google Nyan Big Rev 3+";
 
-	compatible = "google,nyan-big-rev7", "google,nyan-big-rev6",
-			"google,nyan-big-rev5", "google,nyan-big-rev4",
-			"google,nyan-big-rev3", "google,nyan-big",
-			"google,nyan", "nvidia,tegra124";
+	compatible = "google,nyan-big-rev10", "google,nyan-big-rev9",
+			"google,nyan-big-rev8", "google,nyan-big-rev7",
+			"google,nyan-big-rev6", "google,nyan-big-rev5",
+			"google,nyan-big-rev4", "google,nyan-big-rev3",
+			"google,nyan-big", "google,nyan",
+			"nvidia,tegra124";
 
 	sdhci@700b0600 {
 		max-frequency = <200000000>;

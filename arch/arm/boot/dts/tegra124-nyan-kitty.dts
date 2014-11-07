@@ -7,10 +7,13 @@
 / {
 	model = "Google Nyan Kitty";
 
-	compatible = "google,nyan-kitty-rev5", "google,nyan-kitty-rev4",
-			"google,nyan-kitty-rev3", "google,nyan-kitty-rev2",
-			"google,nyan-kitty-rev1", "google,nyan-kitty-rev0",
-			"google,nyan", "nvidia,tegra124";
+	compatible = "google,nyan-kitty-rev10", "google,nyan-kitty-rev9",
+			"google,nyan-kitty-rev8", "google,nyan-kitty-rev7",
+			"google,nyan-kitty-rev6", "google,nyan-kitty-rev5",
+			"google,nyan-kitty-rev4", "google,nyan-kitty-rev3",
+			"google,nyan-kitty-rev2", "google,nyan-kitty-rev1",
+			"google,nyan-kitty-rev0", "google,nyan",
+			"nvidia,tegra124";
 
 	host1x@50000000 {
 		dc@54200000 {
