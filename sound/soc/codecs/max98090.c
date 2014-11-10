@@ -841,43 +841,100 @@ static int max98090_micinput_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-/* Save state when temporarily shutting down the codec to change registers that
- * must only be changes while in software shutdown.
- */
-struct max98090_shdn_state {
-	int old_shdn;
-	int old_level_control;
-};
-
-static void max98090_shdn_save(struct snd_soc_codec *codec,
-			       struct max98090_shdn_state *state)
+/* Save state and shutdown codec. */
+static void max98090_shdn_save(struct snd_soc_codec *codec)
 {
-	regmap_read(codec->control_data, M98090_REG_DEVICE_SHUTDOWN,
-			&state->old_shdn);
-	if (state->old_shdn & M98090_SHDNN_MASK) {
-		regmap_read(codec->control_data,
-			M98090_REG_LEVEL_CONTROL, &state->old_level_control);
+	unsigned int shutdown_reg;
+	struct max98090_priv *max98090 = snd_soc_codec_get_drvdata(codec);
+
+	regmap_read(max98090->regmap, M98090_REG_DEVICE_SHUTDOWN,
+			&shutdown_reg);
+	/* Shutdown only if needed. */
+	if (shutdown_reg & M98090_SHDNN_MASK) {
+		/* Only save state if state is not saved before. */
+		if (!max98090->state.saved) {
+			regmap_read(max98090->regmap,
+				M98090_REG_LEVEL_CONTROL,
+				&max98090->state.old_level_control);
+			max98090->state.old_shdn = shutdown_reg;
+			max98090->state.saved = 1;
+		}
+
 		/* Enable volume smoothing, disable zero cross.  This will cause
 		 * a quick 40ms ramp to mute on shutdown.
 		 */
-		regmap_write(codec->control_data,
+		regmap_write(max98090->regmap,
 			M98090_REG_LEVEL_CONTROL, M98090_VSENN_MASK);
-		regmap_write(codec->control_data,
+		regmap_write(max98090->regmap,
 			M98090_REG_DEVICE_SHUTDOWN, 0x00);
+		regcache_mark_dirty(max98090->regmap);
 		msleep(40);
 	}
 }
 
-static void max98090_shdn_restore(struct snd_soc_codec *codec,
-				  struct max98090_shdn_state *state)
+static void max98090_shdn_restore(struct snd_soc_codec *codec)
 {
-	if (state->old_shdn & M98090_SHDNN_MASK) {
-		regmap_write(codec->control_data,
-			M98090_REG_LEVEL_CONTROL, state->old_level_control);
+	struct max98090_priv *max98090 = snd_soc_codec_get_drvdata(codec);
+
+	if (!max98090->state.saved)
+		return;
+
+	/* Turn on codec and restore level control if it was on. */
+	if (max98090->state.old_shdn & M98090_SHDNN_MASK) {
+		regmap_write(max98090->regmap,
+			M98090_REG_LEVEL_CONTROL,
+			max98090->state.old_level_control);
 		mdelay(1); /* Let input path stablize before releasing shdn. */
-		regmap_write(codec->control_data,
-			M98090_REG_DEVICE_SHUTDOWN, state->old_shdn);
+		regmap_write(max98090->regmap,
+			M98090_REG_DEVICE_SHUTDOWN, max98090->state.old_shdn);
+		regcache_sync(max98090->regmap);
+		/* Clear saved state. */
+		max98090->state.saved = 0;
 	}
+}
+
+/*
+ * On max98090, DMIC should be enabled when shutdown bit is 0.
+ * However, DAPM does not support customizing procedure to
+ * shutdown codec, update a register, and turn on codec.
+ * In PRE_PMU case, we shutdown codec. After that before POST_PMU,
+ * the shutdown register is not protected. In reality, an extra
+ * shutdown and restore after DMIC is enabled is good enough to make
+ * DMIC works properly even if codec was on when DMIC was turned on.
+ * Max98091 is not subjected to this issue.
+ */
+static int dmic_event(struct snd_soc_dapm_widget *w,
+			 struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	struct max98090_priv *max98090 = snd_soc_codec_get_drvdata(codec);
+
+	if (max98090->devtype == MAX98091)
+		return 0;
+
+	switch (event) {
+	/* Shutdown codec */
+	case SND_SOC_DAPM_PRE_PMU:
+		mutex_lock(&max98090->mutex);
+		max98090_shdn_save(codec);
+		mutex_unlock(&max98090->mutex);
+		max98090->dmic_post_pmu_done = false;
+		break;
+	/* Shutdown and resotre codec. Use the flag dmic_post_pmu_done to
+	 * save one shutdown/restore cycle because DMICL_ENA and DMICR_ENA
+	 * shares this callback. */
+	case SND_SOC_DAPM_POST_PMU:
+		if (max98090->dmic_post_pmu_done)
+			return 0;
+		mutex_lock(&max98090->mutex);
+		max98090_shdn_save(codec);
+		max98090_shdn_restore(codec);
+		mutex_unlock(&max98090->mutex);
+		max98090->dmic_post_pmu_done = true;
+		break;
+	}
+
+	return 0;
 }
 
 static const char *mic1_mux_text[] = { "IN12", "IN56" };
@@ -1184,9 +1241,11 @@ static const struct snd_soc_dapm_widget max98090_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("SDOEN", M98090_REG_IO_CONFIGURATION,
 		M98090_SDOEN_SHIFT, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("DMICL_ENA", M98090_REG_DIGITAL_MIC_ENABLE,
-		 M98090_DIGMICL_SHIFT, 0, NULL, 0),
+		 M98090_DIGMICL_SHIFT, 0, dmic_event,
+		 SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU),
 	SND_SOC_DAPM_SUPPLY("DMICR_ENA", M98090_REG_DIGITAL_MIC_ENABLE,
-		 M98090_DIGMICR_SHIFT, 0, NULL, 0),
+		 M98090_DIGMICR_SHIFT, 0, dmic_event,
+		 SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU),
 	SND_SOC_DAPM_SUPPLY("AHPF", M98090_REG_FILTER_CONFIG,
 		M98090_AHPF_SHIFT, 0, NULL, 0),
 
@@ -1673,11 +1732,15 @@ static int max98090_dai_set_fmt(struct snd_soc_dai *codec_dai,
 	struct max98090_priv *max98090 = snd_soc_codec_get_drvdata(codec);
 	struct max98090_cdata *cdata;
 	u8 regval;
+	int ret = 0;
 
 	max98090->dai_fmt = fmt;
 	cdata = &max98090->dai[0];
 
 	if (fmt != cdata->fmt) {
+		mutex_lock(&max98090->mutex);
+		/* Shutdown to config clock mode. */
+		max98090_shdn_save(codec);
 		cdata->fmt = fmt;
 
 		regval = 0;
@@ -1713,7 +1776,8 @@ static int max98090_dai_set_fmt(struct snd_soc_dai *codec_dai,
 		case SND_SOC_DAIFMT_CBM_CFS:
 		default:
 			dev_err(codec->dev, "DAI clock mode unsupported");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit_reset_shdn;
 		}
 		snd_soc_write(codec, M98090_REG_MASTER_MODE, regval);
 
@@ -1731,7 +1795,8 @@ static int max98090_dai_set_fmt(struct snd_soc_dai *codec_dai,
 			/* Not supported mode */
 		default:
 			dev_err(codec->dev, "DAI format unsupported");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit_reset_shdn;
 		}
 
 		switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
@@ -1748,7 +1813,8 @@ static int max98090_dai_set_fmt(struct snd_soc_dai *codec_dai,
 			break;
 		default:
 			dev_err(codec->dev, "DAI invert mode unsupported");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto exit_reset_shdn;
 		}
 
 		/*
@@ -1764,7 +1830,10 @@ static int max98090_dai_set_fmt(struct snd_soc_dai *codec_dai,
 			M98090_REG_INTERFACE_FORMAT, regval);
 	}
 
-	return 0;
+exit_reset_shdn:
+	max98090_shdn_restore(codec);
+	mutex_unlock(&max98090->mutex);
+	return ret;
 }
 
 static int max98090_set_tdm_slot(struct snd_soc_dai *codec_dai,
@@ -1818,8 +1887,10 @@ static int max98090_set_bias_level(struct snd_soc_codec *codec,
 
 	case SND_SOC_BIAS_STANDBY:
 		if (codec->dapm.bias_level == SND_SOC_BIAS_OFF) {
+			mutex_lock(&max98090->mutex);
 			snd_soc_update_bits(codec, M98090_REG_DEVICE_SHUTDOWN,
 				M98090_SHDNN_MASK, M98090_SHDNN_MASK);
+			mutex_unlock(&max98090->mutex);
 			ret = regcache_sync(max98090->regmap);
 			if (ret != 0) {
 				dev_err(codec->dev,
@@ -1833,12 +1904,15 @@ static int max98090_set_bias_level(struct snd_soc_codec *codec,
 		/* Set internal pull-up to lowest power mode */
 		snd_soc_update_bits(codec, M98090_REG_JACK_DETECT,
 			M98090_JDWK_MASK, M98090_JDWK_MASK);
+		mutex_lock(&max98090->mutex);
 		snd_soc_update_bits(codec, M98090_REG_DEVICE_SHUTDOWN,
 				M98090_SHDNN_MASK, 0);
+		mutex_unlock(&max98090->mutex);
 		regcache_mark_dirty(max98090->regmap);
 		break;
 	}
 	codec->dapm.bias_level = level;
+
 	return 0;
 }
 
@@ -1998,19 +2072,28 @@ static int max98090_dai_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_codec *codec = dai->codec;
 	struct max98090_priv *max98090 = snd_soc_codec_get_drvdata(codec);
 	struct max98090_cdata *cdata;
-	struct max98090_shdn_state state;
+	unsigned int new_lrclk = params_rate(params);
+	snd_pcm_format_t new_pcm_format = params_format(params);
+	bool lrclk_changed = (new_lrclk != max98090->lrclk);
+	bool format_changed = (new_pcm_format != max98090->pcm_format);
 	int ret = 0;
 
-	max98090_shdn_save(codec, &state);
+	max98090->lrclk = new_lrclk;
+	max98090->pcm_format = new_pcm_format;
 
 	cdata = &max98090->dai[0];
 	max98090->bclk = snd_soc_params_to_bclk(params);
 	if (params_channels(params) == 1)
 		max98090->bclk *= 2;
 
-	max98090->lrclk = params_rate(params);
+	/* Checks if we needs to shutdown and config format, clock or mode. */
+	if (!lrclk_changed && !format_changed && !max98090->sysclk_changed)
+		return 0;
 
-	switch (params_format(params)) {
+	mutex_lock(&max98090->mutex);
+	max98090_shdn_save(codec);
+
+	switch (max98090->pcm_format) {
 	case SNDRV_PCM_FORMAT_S16_LE:
 		snd_soc_update_bits(codec, M98090_REG_INTERFACE_FORMAT,
 			M98090_WS_MASK, 0);
@@ -2043,10 +2126,15 @@ static int max98090_dai_hw_params(struct snd_pcm_substream *substream,
 
 	max98090_configure_dmic(max98090, FS_DMIC_TARGET, max98090->pclk,
 		max98090->lrclk);
+	/* Mark that the sysclk change which results in pclk change, dmic
+	 * configuration change, and bclk configuration change (for master mode)
+	 * have been handled. */
+	max98090->sysclk_changed = false;
 
 
 exit_reset_shdn:
-	max98090_shdn_restore(codec, &state);
+	max98090_shdn_restore(codec);
+	mutex_unlock(&max98090->mutex);
 	return ret;
 }
 
@@ -2058,10 +2146,18 @@ static int max98090_dai_set_sysclk(struct snd_soc_dai *dai,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct max98090_priv *max98090 = snd_soc_codec_get_drvdata(codec);
+	int ret = 0;
 
 	/* Requested clock frequency is already setup */
 	if (freq == max98090->sysclk)
 		return 0;
+
+	/*
+	 * sysclk is not set before. Shutdown codec and set system clock
+	 * registers.
+	 */
+	mutex_lock(&max98090->mutex);
+	max98090_shdn_save(codec);
 
 	/* Setup clocks for slave mode, and using the PLL
 	 * PSCLK = 0x01 (when master clk is 10MHz to 20MHz)
@@ -2082,15 +2178,20 @@ static int max98090_dai_set_sysclk(struct snd_soc_dai *dai,
 		max98090->pclk = freq >> 2;
 	} else {
 		dev_err(codec->dev, "Invalid master clock frequency\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto exit_reset_shdn;
 	}
 
 	max98090->sysclk = freq;
+	max98090->sysclk_changed = true;
 
 	dev_info(codec->dev, "mclk %d, pclk %d\n", max98090->sysclk,
 			max98090->pclk);
 
-	return 0;
+exit_reset_shdn:
+	max98090_shdn_restore(codec);
+	mutex_unlock(&max98090->mutex);
+	return ret;
 }
 
 static int max98090_dai_digital_mute(struct snd_soc_dai *codec_dai, int mute)
@@ -2214,10 +2315,12 @@ static void max98090_pll_work(struct work_struct *work)
 	for (i = 0; i < 10; i++) {
 
 		/* toggle shutdown OFF then ON */
+		mutex_lock(&max98090->mutex);
 		snd_soc_update_bits(codec, M98090_REG_DEVICE_SHUTDOWN,
 			M98090_SHDNN_MASK, 0);
 		snd_soc_update_bits(codec, M98090_REG_DEVICE_SHUTDOWN,
 			M98090_SHDNN_MASK, M98090_SHDNN_MASK);
+		mutex_unlock(&max98090->mutex);
 
 		/* give PLL time to lock */
 		msleep(1);
@@ -2418,6 +2521,11 @@ static int max98090_probe(struct snd_soc_codec *codec)
 	max98090->sysclk = (unsigned)-1;
 	max98090->pclk = (unsigned)-1;
 	max98090->master = false;
+	max98090->sysclk_changed = false;
+	max98090->pcm_format = (unsigned)-1;
+	max98090->dmic_post_pmu_done = false;
+	max98090->state.saved = 0;
+	mutex_init(&max98090->mutex);
 
 	cdata = &max98090->dai[0];
 	cdata->rate = (unsigned)-1;
