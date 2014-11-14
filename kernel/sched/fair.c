@@ -2324,9 +2324,9 @@ static __always_inline int __update_entity_runnable_avg(u64 now, int cpu,
 							int runnable,
 							int running)
 {
-	u64 delta, periods;
-	u32 runnable_contrib;
-	int delta_w, decayed = 0;
+	u64 delta, scaled_delta, periods;
+	u32 runnable_contrib, scaled_runnable_contrib;
+	int delta_w, scaled_delta_w, decayed = 0;
 	unsigned long scale_freq = arch_scale_freq_capacity(NULL, cpu);
 
 	delta = now - sa->last_runnable_update;
@@ -2360,11 +2360,12 @@ static __always_inline int __update_entity_runnable_avg(u64 now, int cpu,
 		 * period and accrue it.
 		 */
 		delta_w = 1024 - delta_w;
+		scaled_delta_w = (delta_w * scale_freq) >> SCHED_CAPACITY_SHIFT;
+
 		if (runnable)
-			sa->runnable_avg_sum += delta_w;
+			sa->runnable_avg_sum += scaled_delta_w;
 		if (running)
-			sa->running_avg_sum += delta_w * scale_freq
-				>> SCHED_CAPACITY_SHIFT;
+			sa->running_avg_sum += scaled_delta_w;
 		sa->avg_period += delta_w;
 
 		delta -= delta_w;
@@ -2382,20 +2383,23 @@ static __always_inline int __update_entity_runnable_avg(u64 now, int cpu,
 
 		/* Efficiently calculate \sum (1..n_period) 1024*y^i */
 		runnable_contrib = __compute_runnable_contrib(periods);
+		scaled_runnable_contrib = (runnable_contrib * scale_freq)
+						>> SCHED_CAPACITY_SHIFT;
+
 		if (runnable)
-			sa->runnable_avg_sum += runnable_contrib;
+			sa->runnable_avg_sum += scaled_runnable_contrib;
 		if (running)
-			sa->running_avg_sum += runnable_contrib * scale_freq
-				>> SCHED_CAPACITY_SHIFT;
+			sa->running_avg_sum += scaled_runnable_contrib;
 		sa->avg_period += runnable_contrib;
 	}
 
 	/* Remainder of delta accrued against u_0` */
+	scaled_delta = (delta * scale_freq) >> SCHED_CAPACITY_SHIFT;
+
 	if (runnable)
-		sa->runnable_avg_sum += delta;
+		sa->runnable_avg_sum += scaled_delta;
 	if (running)
-		sa->running_avg_sum += delta * scale_freq
-			>> SCHED_CAPACITY_SHIFT;
+		sa->running_avg_sum += scaled_delta;
 	sa->avg_period += delta;
 
 	return decayed;
