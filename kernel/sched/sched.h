@@ -817,6 +817,39 @@ static inline unsigned int group_first_cpu(struct sched_group *group)
 
 extern int group_balance_cpu(struct sched_group *sg);
 
+/*
+ * Check that the per-cpu provided sd energy data is consistent for all cpus
+ * within the mask.
+ */
+static inline void check_sched_energy_data(int cpu, sched_domain_energy_f fn,
+					   const struct cpumask *cpumask)
+{
+	struct cpumask mask;
+	int i;
+
+	cpumask_xor(&mask, cpumask, get_cpu_mask(cpu));
+
+	for_each_cpu(i, &mask) {
+		int y;
+
+		BUG_ON(fn(i)->nr_idle_states != fn(cpu)->nr_idle_states);
+
+		for (y = 0; y < (fn(i)->nr_idle_states); y++) {
+			BUG_ON(fn(i)->idle_states[y].power !=
+					fn(cpu)->idle_states[y].power);
+		}
+
+		BUG_ON(fn(i)->nr_cap_states != fn(cpu)->nr_cap_states);
+
+		for (y = 0; y < (fn(i)->nr_cap_states); y++) {
+			BUG_ON(fn(i)->cap_states[y].cap !=
+					fn(cpu)->cap_states[y].cap);
+			BUG_ON(fn(i)->cap_states[y].power !=
+					fn(cpu)->cap_states[y].power);
+		}
+	}
+}
+
 #else
 
 static inline void sched_ttwu_pending(void) { }
