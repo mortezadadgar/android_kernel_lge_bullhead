@@ -332,7 +332,7 @@ static int send_motion_host_cmd(struct cros_ec_accel_state *st,
 	struct cros_ec_command msg;
 
 	/* Set up the host command structure. */
-	msg.version = 0;
+	msg.version = 1;
 	msg.command = EC_CMD_MOTION_SENSE_CMD;
 	msg.outdata = (uint8_t *)param;
 	msg.outsize = sizeof(struct ec_params_motion_sense);
