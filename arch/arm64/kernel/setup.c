@@ -410,6 +410,7 @@ void __init setup_arch(char **cmdline_p)
 	*cmdline_p = boot_command_line;
 
 	init_mem_pgprot();
+	early_fixmap_init();
 	early_ioremap_init();
 
 	parse_early_param();
