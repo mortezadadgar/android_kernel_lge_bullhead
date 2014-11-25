@@ -4599,32 +4599,40 @@ next:
 done:
 	return target;
 }
+
 /*
  * get_cpu_usage returns the amount of capacity of a CPU that is used by CFS
  * tasks. The unit of the return value must be the one of capacity so we can
  * compare the usage with the capacity of the CPU that is available for CFS
  * task (ie cpu_capacity).
+ *
  * cfs.utilization_load_avg is the sum of running time of runnable tasks on a
  * CPU. It represents the amount of utilization of a CPU in the range
- * [0..SCHED_LOAD_SCALE].  The usage of a CPU can't be higher than the full
- * capacity of the CPU because it's about the running time on this CPU.
- * Nevertheless, cfs.utilization_load_avg can be higher than SCHED_LOAD_SCALE
- * because of unfortunate rounding in avg_period and running_load_avg or just
- * after migrating tasks until the average stabilizes with the new running
- * time. So we need to check that the usage stays into the range
- * [0..cpu_capacity_orig] and cap if necessary.
- * Without capping the usage, a group could be seen as overloaded (CPU0 usage
- * at 121% + CPU1 usage at 80%) whereas CPU1 has 20% of available capacity
+ * [0..capacity_orig] where capacity_orig is the cpu_capacity available at the
+ * highest frequency (arch_scale_freq_capacity()). The usage of a CPU converges
+ * towards a sum equal to or less than the current capacity (capacity_curr <=
+ * capacity_orig) of the CPU because it is the running time on this CPU scaled
+ * by capacity_curr. Nevertheless, cfs.utilization_load_avg can be higher than
+ * capacity_curr or even higher than capacity_orig because of unfortunate
+ * rounding in avg_period and running_load_avg or just after migrating tasks
+ * (and new task wakeups) until the average stabilizes with the new running
+ * time. We need to check that the usage stays into the range
+ * [0..capacity_orig] and cap if necessary. Without capping the usage, a group
+ * could be seen as overloaded (CPU0 usage at 121% + CPU1 usage at 80%) whereas
+ * CPU1 has 20% of available capacity. We allow usage to overshoot
+ * capacity_curr (but not capacity_orig) as it useful for predicting the
+ * capacity required after task migrations (scheduler-driven DVFS).
  */
+
 static int get_cpu_usage(int cpu)
 {
 	unsigned long usage = cpu_rq(cpu)->cfs.utilization_load_avg;
-	unsigned long capacity = capacity_orig_of(cpu);
+	unsigned long capacity_orig = capacity_orig_of(cpu);
 
-	if (usage >= SCHED_LOAD_SCALE)
-		return capacity;
+	if (usage >= capacity_orig)
+		return capacity_orig;
 
-	return (usage * capacity) >> SCHED_LOAD_SHIFT;
+	return usage;
 }
 
 /*
