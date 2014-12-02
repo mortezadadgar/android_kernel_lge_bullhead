@@ -1512,11 +1512,9 @@ long kgsl_ioctl_device_waittimestamp_ctxtid(
 	unsigned int temp_cur_ts = 0;
 	struct kgsl_context *context;
 
-	mutex_lock(&device->mutex);
-
 	context = kgsl_context_get_owner(dev_priv, param->context_id);
 	if (context == NULL)
-		goto out;
+		return result;
 
 	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED,
 		&temp_cur_ts);
@@ -1531,9 +1529,7 @@ long kgsl_ioctl_device_waittimestamp_ctxtid(
 		&temp_cur_ts);
 	trace_kgsl_waittimestamp_exit(device, temp_cur_ts, result);
 
-out:
 	kgsl_context_put(context);
-	mutex_unlock(&device->mutex);
 
 	return result;
 }
