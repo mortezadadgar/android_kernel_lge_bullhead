@@ -18,6 +18,7 @@ GZFLAGS		:=-9
 LIBGCC 		:= $(shell $(CC) $(KBUILD_CFLAGS) -print-libgcc-file-name)
 
 KBUILD_DEFCONFIG := defconfig
+KBUILD_CFLAGS	+= -fno-pic
 
 KBUILD_CFLAGS	+= -mgeneral-regs-only
 ifeq ($(CONFIG_CPU_BIG_ENDIAN), y)
