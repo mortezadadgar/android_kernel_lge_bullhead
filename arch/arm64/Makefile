@@ -58,6 +58,7 @@ else
 KBUILD_CFLAGS   += -mcpu=cortex-a53
 endif
 KBUILD_CFLAGS	+= $(call cc-option, -mpc-relative-literal-loads)
+KBUILD_CFLAGS	+= -fno-pic
 KBUILD_CFLAGS	+= -fno-asynchronous-unwind-tables
 KBUILD_AFLAGS	+= $(vdso32)
 
