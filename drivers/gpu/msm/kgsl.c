@@ -562,9 +562,7 @@ int kgsl_context_init(struct kgsl_device_private *dev_priv,
 		 * detached contexts waiting to finish
 		 */
 
-		mutex_unlock(&device->mutex);
 		flush_workqueue(device->events_wq);
-		mutex_lock(&device->mutex);
 		id = _kgsl_get_context_id(device);
 	}
 
@@ -643,10 +641,7 @@ static void kgsl_context_detach(struct kgsl_context *context)
 
 	trace_kgsl_context_detach(device, context);
 
-	/* we need to hold device mutex to detach */
-	mutex_lock(&device->mutex);
 	context->device->ftbl->drawctxt_detach(context);
-	mutex_unlock(&device->mutex);
 
 	/*
 	 * Cancel all pending events after the device-specific context is
@@ -2590,7 +2585,6 @@ long kgsl_ioctl_drawctxt_create(struct kgsl_device_private *dev_priv,
 	struct kgsl_context *context = NULL;
 	struct kgsl_device *device = dev_priv->device;
 
-	mutex_lock(&device->mutex);
 	context = device->ftbl->drawctxt_create(dev_priv, &param->flags);
 	if (IS_ERR(context)) {
 		result = PTR_ERR(context);
@@ -2605,7 +2599,6 @@ long kgsl_ioctl_drawctxt_create(struct kgsl_device_private *dev_priv,
 	write_unlock(&device->context_lock);
 
 done:
-	mutex_unlock(&device->mutex);
 	return result;
 }
 
