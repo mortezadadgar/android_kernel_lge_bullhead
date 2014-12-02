@@ -363,12 +363,6 @@ adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
 	if (drawctxt == NULL)
 		return ERR_PTR(-ENOMEM);
 
-	ret = kgsl_context_init(dev_priv, &drawctxt->base);
-	if (ret != 0) {
-		kfree(drawctxt);
-		return ERR_PTR(ret);
-	}
-
 	drawctxt->timestamp = 0;
 
 	drawctxt->base.flags = local;
@@ -391,6 +385,18 @@ adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
 	 * drawctxt pending list based on priority.
 	 */
 	plist_node_init(&drawctxt->pending, drawctxt->base.priority);
+
+	/*
+	 * Now initialize the common part of the context. This allocates the
+	 * context id, and then possibly another thread could look it up.
+	 * So we want all of our initializtion that doesn't require the context
+	 * id to be done before this call.
+	 */
+	ret = kgsl_context_init(dev_priv, &drawctxt->base);
+	if (ret != 0) {
+		kfree(drawctxt);
+		return ERR_PTR(ret);
+	}
 
 	kgsl_sharedmem_writel(device, &device->memstore,
 			KGSL_MEMSTORE_OFFSET(drawctxt->base.id, soptimestamp),
@@ -443,8 +449,10 @@ void adreno_drawctxt_detach(struct kgsl_context *context)
 	rb = drawctxt->rb;
 
 	/* deactivate context */
+	mutex_lock(&device->mutex);
 	if (rb->drawctxt_active == drawctxt)
 		adreno_drawctxt_switch(adreno_dev, rb, NULL, 0);
+	mutex_unlock(&device->mutex);
 
 	spin_lock(&drawctxt->lock);
 
@@ -477,11 +485,9 @@ void adreno_drawctxt_detach(struct kgsl_context *context)
 	spin_unlock(&drawctxt->lock);
 	/*
 	 * internal_timestamp is set in adreno_ringbuffer_addcmds,
-	 * which holds the device mutex. The entire context destroy
-	 * process requires the device mutex as well. But lets
-	 * make sure we notice if the locking changes.
+	 * which holds the device mutex.
 	 */
-	BUG_ON(!mutex_is_locked(&device->mutex));
+	mutex_lock(&device->mutex);
 
 	/*
 	 * Wait for the last global timestamp to pass before continuing.
@@ -512,6 +518,8 @@ void adreno_drawctxt_detach(struct kgsl_context *context)
 			drawctxt->timestamp);
 
 	adreno_profile_process_results(adreno_dev);
+
+	mutex_unlock(&device->mutex);
 
 	/* wake threads waiting to submit commands from this context */
 	wake_up_all(&drawctxt->waiting);
