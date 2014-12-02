@@ -162,21 +162,19 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 	if (len != sizeof(priv))
 		return -EINVAL;
 
-	mutex_lock(&device->mutex);
-
 	context = kgsl_context_get_owner(owner, context_id);
 
 	if (context == NULL)
-		goto unlock;
+		return -EINVAL;
 
 	if (test_bit(KGSL_CONTEXT_PRIV_INVALID, &context->priv))
-		goto unlock;
+		goto out;
 
 	pt = kgsl_sync_pt_create(context->timeline, context, timestamp);
 	if (pt == NULL) {
 		KGSL_DRV_CRIT_RATELIMIT(device, "kgsl_sync_pt_create failed\n");
 		ret = -ENOMEM;
-		goto unlock;
+		goto out;
 	}
 
 	fence = sync_fence_create("", pt);
@@ -185,7 +183,7 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 		kgsl_sync_pt_destroy(pt);
 		KGSL_DRV_CRIT_RATELIMIT(device, "sync_fence_create failed\n");
 		ret = -ENOMEM;
-		goto unlock;
+		goto out;
 	}
 
 	priv.fence_fd = get_unused_fd_flags(0);
@@ -194,7 +192,7 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 			"Unable to get a file descriptor: %d\n",
 			priv.fence_fd);
 		ret = priv.fence_fd;
-		goto unlock;
+		goto out;
 	}
 
 	/*
@@ -205,38 +203,29 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 
 	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED, &cur);
 
-	if (timestamp_cmp(cur, timestamp) >= 0)
+	if (timestamp_cmp(cur, timestamp) >= 0) {
+		ret = 0;
 		kgsl_sync_timeline_signal(context->timeline, cur);
-	else {
+	} else {
 		ret = _add_fence_event(device, context, timestamp);
 		if (ret)
-			goto unlock;
+			goto out;
 	}
-
-	kgsl_context_put(context);
-
-	/* Unlock the mutex before copying to user */
-	mutex_unlock(&device->mutex);
 
 	if (copy_to_user(data, &priv, sizeof(priv))) {
 		ret = -EFAULT;
 		goto out;
 	}
 	sync_fence_install(fence, priv.fence_fd);
-
-	return 0;
-
-unlock:
-	kgsl_context_put(context);
-	mutex_unlock(&device->mutex);
-
 out:
-	if (priv.fence_fd >= 0)
-		put_unused_fd(priv.fence_fd);
+	kgsl_context_put(context);
+	if (ret) {
+		if (priv.fence_fd >= 0)
+			put_unused_fd(priv.fence_fd);
 
-	if (fence)
-		sync_fence_put(fence);
-
+		if (fence)
+			sync_fence_put(fence);
+	}
 	return ret;
 }
 
