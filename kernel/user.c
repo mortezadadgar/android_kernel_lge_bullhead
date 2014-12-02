@@ -53,6 +53,7 @@ struct user_namespace init_user_ns = {
 	.proc_inum = PROC_USER_INIT_INO,
 	.may_mount_sysfs = true,
 	.may_mount_proc = true,
+	.flags = USERNS_INIT_FLAGS,
 };
 EXPORT_SYMBOL_GPL(init_user_ns);
 
