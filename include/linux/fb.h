@@ -726,7 +726,7 @@ extern int fb_videomode_from_videomode(const struct videomode *vm,
 				       struct fb_videomode *fbmode);
 
 /* drivers/video/modedb.c */
-#define VESA_MODEDB_SIZE 34
+#define VESA_MODEDB_SIZE 43
 #define CEA_MODEDB_SIZE 65
 #define HDMI_EXT_MODEDB_SIZE 5
 extern void fb_var_to_videomode(struct fb_videomode *mode,
