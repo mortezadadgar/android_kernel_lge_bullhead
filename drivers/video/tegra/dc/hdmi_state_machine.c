@@ -43,6 +43,7 @@
 #define HOTPLUG_ALIVE_MS 1000
 #define CHECK_PLUG_STATE_DELAY_MS 10
 #define CHECK_EDID_DELAY_MS 60
+#define HPD_DEBOUNCE_MS 500
 
 /************************************************************
  *
@@ -120,6 +121,11 @@ static void hdmi_state_machine_handle_hpd_l(int cur_hpd)
 		 */
 		tgt_state = HDMI_STATE_DONE_WAIT_FOR_HPD_REASSERT;
 		timeout = HPD_DROP_TIMEOUT_MS;
+	} else
+	if ((HDMI_STATE_DONE_ENABLED == work_state.state) && !cur_hpd) {
+		/* HPD drop, wait to see if it re-asserts in HPD_DEBOUNCE_MS */
+		tgt_state = HDMI_STATE_DONE_WAIT_FOR_HPD_REASSERT;
+		timeout = HPD_DEBOUNCE_MS;
 	} else
 	if (HDMI_STATE_DONE_WAIT_FOR_HPD_REASSERT == work_state.state &&
 		cur_hpd) {
