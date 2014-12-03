@@ -1516,6 +1516,8 @@ int iwl_mvm_unified_sched_scan_lmac(struct iwl_mvm *mvm,
 
 	cmd->n_channels = (u8)req->n_channels;
 
+	cmd->delay = cpu_to_le32(req->delay);
+
 	if (iwl_mvm_scan_pass_all(mvm, req))
 		flags |= IWL_MVM_LMAC_SCAN_FLAG_PASS_ALL;
 	else
@@ -2006,7 +2008,13 @@ int iwl_mvm_sched_scan_umac(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 				cpu_to_le16(req->interval / MSEC_PER_SEC);
 	sec_part->schedule[0].iter_count = 0xff;
 
-	sec_part->delay = 0;
+	if (req->delay > ((u16)~0U)) {
+		IWL_DEBUG_SCAN(mvm,
+			       "delay value is > 16-bits, set to max possible\n");
+		sec_part->delay = cpu_to_le16((u16)~0U);
+	} else {
+		sec_part->delay = cpu_to_le16(req->delay);
+	}
 
 	iwl_mvm_build_unified_scan_probe(mvm, vif, ies, &sec_part->preq);
 
