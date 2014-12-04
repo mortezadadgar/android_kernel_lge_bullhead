@@ -1702,15 +1702,6 @@ static void sdhci_enable_sdio_irq_nolock(struct sdhci_host *host, int enable)
 		goto out;
 
 	if (enable)
-		host->flags |= SDHCI_SDIO_IRQ_ENABLED;
-	else
-		host->flags &= ~SDHCI_SDIO_IRQ_ENABLED;
-
-	/* SDIO IRQ will be enabled as appropriate in runtime resume */
-	if (host->runtime_suspended)
-		goto out;
-
-	if (enable)
 		sdhci_unmask_irqs(host, SDHCI_INT_CARD_INT);
 	else
 		sdhci_mask_irqs(host, SDHCI_INT_CARD_INT);
@@ -1723,9 +1714,17 @@ static void sdhci_enable_sdio_irq(struct mmc_host *mmc, int enable)
 	struct sdhci_host *host = mmc_priv(mmc);
 	unsigned long flags;
 
+	sdhci_runtime_pm_get(host);
+
 	spin_lock_irqsave(&host->lock, flags);
+	if (enable)
+		host->flags |= SDHCI_SDIO_IRQ_ENABLED;
+	else
+		host->flags &= ~SDHCI_SDIO_IRQ_ENABLED;
 	sdhci_enable_sdio_irq_nolock(host, enable);
 	spin_unlock_irqrestore(&host->lock, flags);
+
+	sdhci_runtime_pm_put(host);
 }
 
 static int sdhci_do_start_signal_voltage_switch(struct sdhci_host *host,
@@ -2448,7 +2447,7 @@ static irqreturn_t sdhci_irq(int irq, void *dev_id)
 
 	spin_lock(&host->lock);
 
-	if (host->runtime_suspended) {
+	if (host->runtime_suspended && !sdhci_sdio_irq_enabled(host)) {
 		spin_unlock(&host->lock);
 		pr_warning("%s: got irq while runtime suspended\n",
 		       mmc_hostname(host->mmc));
@@ -2541,8 +2540,11 @@ out:
 	/*
 	 * We have to delay this as it calls back into the driver.
 	 */
-	if (cardint)
-		mmc_signal_sdio_irq(host->mmc);
+	if (cardint) {
+		sdhci_enable_sdio_irq_nolock(host, false);
+		host->mmc->sdio_irq_pending = true;
+		wake_up_process(host->mmc->sdio_irq_thread);
+	}
 
 	return result;
 }
@@ -2696,7 +2698,7 @@ int sdhci_runtime_suspend_host(struct sdhci_host *host)
 		pm_qos_update_request(host->mmc->qos, PM_QOS_DEFAULT_VALUE);
 
 	spin_lock_irqsave(&host->lock, flags);
-	sdhci_mask_irqs(host, SDHCI_INT_ALL_MASK);
+	sdhci_mask_irqs(host, SDHCI_INT_ALL_MASK & ~SDHCI_INT_CARD_INT);
 	spin_unlock_irqrestore(&host->lock, flags);
 
 	synchronize_irq(host->irq);

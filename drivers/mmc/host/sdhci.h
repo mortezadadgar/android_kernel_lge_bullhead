@@ -396,6 +396,11 @@ extern void sdhci_card_detect(struct sdhci_host *host);
 extern int sdhci_add_host(struct sdhci_host *host);
 extern void sdhci_remove_host(struct sdhci_host *host, int dead);
 
+static inline bool sdhci_sdio_irq_enabled(struct sdhci_host *host)
+{
+	return !!(host->flags & SDHCI_SDIO_IRQ_ENABLED);
+}
+
 #ifdef CONFIG_PM
 extern int sdhci_suspend_host(struct sdhci_host *host);
 extern int sdhci_resume_host(struct sdhci_host *host);
