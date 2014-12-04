@@ -4,7 +4,7 @@
  * Copyright (c) 2013 ELAN Microelectronics Corp.
  *
  * Author: 林政維 (Duson Lin) <dusonlin@emc.com.tw>
- * Version: 1.5.5
+ * Version: 1.5.6
  *
  * Based on cyapa driver:
  * copyright (c) 2011-2012 Cypress Semiconductor, Inc.
@@ -40,7 +40,7 @@
 #include <linux/of.h>
 
 #define DRIVER_NAME		"elan_i2c"
-#define ELAN_DRIVER_VERSION	"1.5.5"
+#define ELAN_DRIVER_VERSION	"1.5.6"
 #define ETP_PRESSURE_OFFSET	25
 #define ETP_MAX_PRESSURE	255
 #define ETP_FWIDTH_REDUCE	90
@@ -135,8 +135,9 @@
 #define ETP_FW_IAP_PAGE_ERR	(1<<5)
 #define ETP_FW_IAP_INTERFACE_ERR (1<<4)
 #define ETP_FW_PAGE_SIZE	64
-#define ETP_FW_PAGE_COUNT	768
-#define ETP_FW_SIZE		(ETP_FW_PAGE_SIZE * ETP_FW_PAGE_COUNT)
+#define ETP_FW_VAILDPAGE_COUNT	768
+#define ETP_FW_SIGNATURE_SIZE	6
+#define ETP_FW_SIGNATURE_ADDRESS	0xBFFA
 
 enum tp_mode {
 	UNKNOWN_MODE,
@@ -293,11 +294,14 @@ static int elan_check_fw(struct elan_tp_data *data,
 {
 	struct device *dev = &data->client->dev;
 	u8 val[3];
+	static const u8 signature[] = {0xAA, 0x55, 0xCC, 0x33, 0xFF, 0xFF};
+	const u8 *fw_signature = &fw->data[ETP_FW_SIGNATURE_ADDRESS];
 
-	/* Firmware must match exact PAGE_NUM * PAGE_SIZE bytes */
-	if (fw->size != ETP_FW_SIZE) {
-		dev_err(dev, "invalid firmware size = %zu, expected %d.\n",
-			fw->size, ETP_FW_SIZE);
+	/* Firmware file must match signature data */
+	if (memcmp(fw_signature, signature, sizeof(signature)) != 0) {
+		dev_err(dev, "signature mismatch (expected %*ph, got %*ph)\n",
+			     (int)sizeof(signature), signature,
+			     (int)sizeof(signature), fw_signature);
 		return -EBADF;
 	}
 
@@ -610,7 +614,7 @@ static int elan_firmware(struct elan_tp_data *data, const char *fw_name)
 	sw_checksum = 0;
 	fw_checksum = 0;
 	boot_page_count = (data->iap_start_addr * 2) / ETP_FW_PAGE_SIZE;
-	for (i = boot_page_count; i < ETP_FW_PAGE_COUNT; i++) {
+	for (i = boot_page_count; i < ETP_FW_VAILDPAGE_COUNT; i++) {
 		u16 checksum = 0;
 		const u8 *page = &fw->data[i * ETP_FW_PAGE_SIZE];
 
