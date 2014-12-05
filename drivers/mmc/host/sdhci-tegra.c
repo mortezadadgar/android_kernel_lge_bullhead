@@ -318,12 +318,34 @@ static void tegra_sdhci_clock_disable(struct sdhci_host *sdhci)
 	clk_disable_unprepare(pltfm_host->clk);
 }
 
+static void tegra_sdhci_set_clock(struct sdhci_host *sdhci, unsigned long rate)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
+	struct sdhci_tegra *tegra_host = pltfm_host->priv;
+	u32 val;
+
+	clk_set_rate(pltfm_host->clk, rate);
+	rate = clk_get_rate(pltfm_host->clk);
+	tegra_host->current_clk = rate;
+
+	/*
+	 * Program BASE_CLK_FREQ so that sdhci_add_host() reads the correct
+	 * clock frequency in SDHCI_CAPABILITIES.
+	 */
+	val = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
+	rate /= 1000000;
+	val &= ~(SDHCI_VNDR_CLK_CTRL_BASE_CLK_FREQ_MASK <<
+		 SDHCI_VNDR_CLK_CTRL_BASE_CLK_FREQ_SHIFT);
+	val |= (rate & SDHCI_VNDR_CLK_CTRL_BASE_CLK_FREQ_MASK) <<
+		SDHCI_VNDR_CLK_CTRL_BASE_CLK_FREQ_SHIFT;
+	sdhci_writel(sdhci, val, SDHCI_VNDR_CLK_CTRL);
+}
+
 static void tegra_sdhci_init_clock(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct sdhci_tegra *tegra_host = pltfm_host->priv;
 	unsigned long rate;
-	u32 val;
 	int i;
 
 	if (!sdhci->mmc->f_max) {
@@ -347,21 +369,8 @@ static void tegra_sdhci_init_clock(struct sdhci_host *sdhci)
 	 * the clock later in sdhci_set_clock().
 	 */
 	rate = tegra_host->thole_coeffs[tegra_host->tuning_freq_idx].freq_hz;
-	clk_set_rate(pltfm_host->clk, rate);
-	rate = clk_get_rate(pltfm_host->clk);
-	tegra_host->current_clk = rate;
 
-	/*
-	 * Program BASE_CLK_FREQ so that sdhci_add_host() reads the correct
-	 * clock frequency in SDHCI_CAPABILITIES.
-	 */
-	val = sdhci_readl(sdhci, SDHCI_VNDR_CLK_CTRL);
-	rate /= 1000000;
-	val &= ~(SDHCI_VNDR_CLK_CTRL_BASE_CLK_FREQ_MASK <<
-		 SDHCI_VNDR_CLK_CTRL_BASE_CLK_FREQ_SHIFT);
-	val |= (rate & SDHCI_VNDR_CLK_CTRL_BASE_CLK_FREQ_MASK) <<
-		SDHCI_VNDR_CLK_CTRL_BASE_CLK_FREQ_SHIFT;
-	sdhci_writel(sdhci, val, SDHCI_VNDR_CLK_CTRL);
+	tegra_sdhci_set_clock(sdhci, rate);
 }
 
 static void tegra_sdhci_set_tap_delay(struct sdhci_host *sdhci,
@@ -1895,7 +1904,12 @@ static int tegra_sdhci_runtime_suspend(struct device *dev)
 	int ret;
 
 	ret = sdhci_runtime_suspend_host(host);
-	tegra_sdhci_clock_disable(host);
+
+	/* Leave clock on for SDIO, but lower it so Vcore may scale */
+	if (!sdhci_sdio_irq_enabled(host))
+		tegra_sdhci_clock_disable(host);
+	else
+		tegra_sdhci_set_clock(host, 3000000);
 
 	return ret;
 }
@@ -1905,7 +1919,11 @@ static int tegra_sdhci_runtime_resume(struct device *dev)
 	struct sdhci_host *host = dev_get_drvdata(dev);
 	int ret;
 
-	tegra_sdhci_clock_enable(host);
+	if (!sdhci_sdio_irq_enabled(host))
+		tegra_sdhci_clock_enable(host);
+	else
+		tegra_sdhci_init_clock(host);
+
 	ret = sdhci_runtime_resume_host(host);
 
 	return ret;
