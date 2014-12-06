@@ -1428,7 +1428,21 @@
 			"DMICR", "Int Mic",
 			"IN34", "Mic Jack",
 			"Speakers", "SPKR",
-			"Speakers", "SPKL";
+			"Speakers", "SPKL",
+			/*
+			 * DMIC enable register can not be safely toggled when
+			 * shutdown bit is 1. This causes a short audio drop in
+			 * playback whenever a capture stream starts. To
+			 * overcome this problem, turn on DMIC enable bit during
+			 * all audio playback cases. Captured audio is not sent
+			 * outside of codec because SDOEN is not enabled.
+			 */
+	                "HPL", "DMICL_ENA",
+	                "HPR", "DMICR_ENA",
+	                "SPKL", "DMICL_ENA",
+	                "SPKR", "DMICR_ENA",
+	                "RCVL", "DMICL_ENA",
+	                "RCVR", "DMICR_ENA";
 
 		nvidia,i2s-controller = <&tegra_i2s1>;
 		nvidia,audio-codec = <&max98090>;
