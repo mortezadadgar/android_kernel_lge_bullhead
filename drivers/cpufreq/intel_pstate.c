@@ -52,8 +52,6 @@ static inline int32_t div_fp(int32_t x, int32_t y)
 	return div_s64((int64_t)x << FRAC_BITS, (int64_t)y);
 }
 
-static u64 energy_divisor;
-
 struct sample {
 	int32_t core_pct_busy;
 	u64 aperf;
@@ -594,7 +592,6 @@ static inline void intel_pstate_sample(struct cpudata *cpu)
 
 	rdmsrl(MSR_IA32_APERF, aperf);
 	rdmsrl(MSR_IA32_MPERF, mperf);
-
 	cpu->sample_ptr = (cpu->sample_ptr + 1) % SAMPLE_COUNT;
 	cpu->samples[cpu->sample_ptr].aperf = aperf;
 	cpu->samples[cpu->sample_ptr].mperf = mperf;
@@ -648,21 +645,8 @@ static inline void intel_pstate_adjust_busy_pstate(struct cpudata *cpu)
 static void intel_pstate_timer_func(unsigned long __data)
 {
 	struct cpudata *cpu = (struct cpudata *) __data;
-	struct sample *sample;
-	u64 energy;
 
 	intel_pstate_sample(cpu);
-
-	sample = &cpu->samples[cpu->sample_ptr];
-	rdmsrl(MSR_PKG_ENERGY_STATUS, energy);
-	trace_pstate_sample(sample->core_pct_busy,
-			intel_pstate_get_scaled_busy(cpu),
-			cpu->pstate.current_pstate,
-			sample->mperf,
-			sample->aperf,
-			energy/energy_divisor,
-			sample->freq);
-
 	intel_pstate_adjust_busy_pstate(cpu);
 	intel_pstate_set_sample_time(cpu);
 }
@@ -874,7 +858,6 @@ static int __init intel_pstate_init(void)
 	int cpu, rc = 0;
 	const struct x86_cpu_id *id;
 	struct cpu_defaults *cpu_info;
-	u64 units;
 
 	if (no_load)
 		return -ENODEV;
@@ -901,12 +884,8 @@ static int __init intel_pstate_init(void)
 	if (rc)
 		goto out;
 
-	rdmsrl(MSR_RAPL_POWER_UNIT, units);
-	energy_divisor = 1 << ((units >> 8) & 0x1f); /* bits{12:8} */
-
 	intel_pstate_debug_expose_params();
 	intel_pstate_sysfs_expose_params();
-
 	return rc;
 out:
 	get_online_cpus();
