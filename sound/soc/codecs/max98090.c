@@ -903,25 +903,8 @@ static const char *dmic_mux_text[] = { "ADC", "DMIC" };
 static const struct soc_enum dmic_mux_enum =
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(dmic_mux_text), dmic_mux_text);
 
-static int put_dmic_mux_shdn(struct snd_kcontrol *kcontrol,
-			     struct snd_ctl_elem_value *ucontrol)
-{
-	struct snd_soc_dapm_widget_list *wlist = snd_kcontrol_chip(kcontrol);
-	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
-	struct snd_soc_codec *codec = widget->codec;
-	int ret = 0;
-	struct max98090_shdn_state state;
-
-	max98090_shdn_save(codec, &state);
-	ret = snd_soc_dapm_put_enum_virt(kcontrol, ucontrol);
-	max98090_shdn_restore(codec, &state);
-
-	return ret;
-}
-
 static const struct snd_kcontrol_new max98090_dmic_mux =
-	SOC_DAPM_ENUM_EXT("DMIC Mux", dmic_mux_enum,
-		snd_soc_dapm_get_enum_virt, put_dmic_mux_shdn);
+	SOC_DAPM_ENUM_VIRT("DMIC Mux", dmic_mux_enum);
 
 static const char *max98090_micpre_text[] = { "Off", "On" };
 
