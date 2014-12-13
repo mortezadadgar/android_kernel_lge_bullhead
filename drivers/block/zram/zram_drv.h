@@ -67,7 +67,8 @@ static const size_t max_zpage_size = PAGE_SIZE / 10 * 9;
 enum zram_pageflags {
 	/* Page consists entirely of zeros */
 	ZRAM_SAME = ZRAM_FLAG_SHIFT,
-        ZRAM_ACCESS,    /* page is now accessed */
+	ZRAM_ACCESS,	/* page is now accessed */
+
 	__NR_ZRAM_PAGEFLAGS,
 };
 
