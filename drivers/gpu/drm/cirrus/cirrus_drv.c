@@ -111,6 +111,7 @@ static struct drm_driver driver = {
 	.gem_prime_import_sg_table = cirrus_gem_prime_import_sg_table,
 	.gem_prime_vmap = cirrus_gem_prime_vmap,
 	.gem_prime_vunmap = cirrus_gem_prime_vunmap,
+	.gem_prime_mmap = cirrus_gem_prime_mmap
 };
 
 static struct pci_driver cirrus_pci_driver = {
