@@ -335,7 +335,11 @@ static int cirrus_crtc_page_flip(struct drm_crtc *crtc,
 	struct drm_device *dev = crtc->dev;
 	unsigned long flags;
 
-	cirrus_crtc_do_set_base(crtc, fb, 0, 0, true);
+	struct drm_framebuffer *old_fb = crtc->fb;
+
+	crtc->fb = fb;
+
+	cirrus_crtc_do_set_base(crtc, old_fb, 0, 0, true);
 
 	spin_lock_irqsave(&dev->event_lock, flags);
 	if (event)
@@ -343,8 +347,6 @@ static int cirrus_crtc_page_flip(struct drm_crtc *crtc,
 	spin_unlock_irqrestore(&dev->event_lock, flags);
 
 	drm_handle_vblank(dev, 0);
-
-	crtc->fb = fb;
 
 	return 0;
 }
