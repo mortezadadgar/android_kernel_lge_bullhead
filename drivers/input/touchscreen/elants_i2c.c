@@ -1754,24 +1754,23 @@ static int elan_suspend(struct device *dev)
 	int rc = 0, retry_cnt;
 
 	ENTER_LOG();
-
 	/* Command not support in IAP recovery mode */
 	if (test_bit(LOCK_FW_UPDATE, &ts->flags))
 		return 0;
 
 	mutex_lock(&ts->i2c_mutex);
-
-	for (retry_cnt = 0; retry_cnt < MAX_RETRIES; retry_cnt++) {
-		rc = elan_set_data(client, set_sleep_cmd,
-				   sizeof(set_sleep_cmd));
-		if (rc < 0)
-			dev_err(&client->dev, "suspend command failed!\n");
-		else
-			break;
-	}
-
-	if (device_may_wakeup(dev))
+	if (!device_may_wakeup(dev)) {
+		for (retry_cnt = 0; retry_cnt < MAX_RETRIES; retry_cnt++) {
+			rc = elan_set_data(client, set_sleep_cmd,
+						sizeof(set_sleep_cmd));
+			if (rc < 0)
+				dev_err(&client->dev, "suspend command failed!\n");
+			else
+				break;
+		}
+	} else {
 		ts->wake_irq_enabled = (enable_irq_wake(client->irq) == 0);
+	}
 
 	disable_irq(client->irq);
 
@@ -1793,18 +1792,19 @@ static int elan_resume(struct device *dev)
 	if (test_bit(LOCK_FW_UPDATE, &ts->flags))
 		return 0;
 
-	if (device_may_wakeup(dev) && ts->wake_irq_enabled)
-		disable_irq_wake(client->irq);
-
 	mutex_lock(&ts->i2c_mutex);
 
-	for (retry_cnt = 0; retry_cnt < MAX_RETRIES; retry_cnt++) {
-		rc = elan_set_data(client, set_active_cmd,
-				   sizeof(set_active_cmd));
-		if (rc < 0)
-			dev_err(&client->dev, "resume command failed!\n");
-		else
-			break;
+	if (device_may_wakeup(dev) && ts->wake_irq_enabled) {
+		disable_irq_wake(client->irq);
+	} else {
+		for (retry_cnt = 0; retry_cnt < MAX_RETRIES; retry_cnt++) {
+			rc = elan_set_data(client, set_active_cmd,
+						sizeof(set_active_cmd));
+			if (rc < 0)
+				dev_err(&client->dev, "resume command failed!\n");
+			else
+				break;
+		}
 	}
 
 	enable_irq(client->irq);
