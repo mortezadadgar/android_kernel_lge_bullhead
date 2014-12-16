@@ -708,7 +708,7 @@ perf_trace_##call(void *__data, proto)					\
 	struct ftrace_event_call *event_call = __data;			\
 	struct ftrace_data_offsets_##call __maybe_unused __data_offsets;\
 	struct ftrace_raw_##call *entry;				\
-	struct pt_regs __regs;						\
+	struct pt_regs *__regs;						\
 	u64 __addr = 0, __count = 1;					\
 	struct task_struct *__task = NULL;				\
 	struct hlist_head *head;					\
@@ -716,7 +716,6 @@ perf_trace_##call(void *__data, proto)					\
 	int __data_size;						\
 	int rctx;							\
 									\
-	perf_fetch_caller_regs(&__regs);				\
 									\
 	__data_size = ftrace_get_offsets_##call(&__data_offsets, args); \
 	__entry_size = ALIGN(__data_size + sizeof(*entry) + sizeof(u32),\
@@ -732,13 +731,15 @@ perf_trace_##call(void *__data, proto)					\
 	if (!entry)							\
 		return;							\
 									\
+	perf_fetch_caller_regs(__regs);					\
+									\
 	tstruct								\
 									\
 	{ assign; }							\
 									\
 	head = this_cpu_ptr(event_call->perf_events);			\
 	perf_trace_buf_submit(entry, __entry_size, rctx, __addr,	\
-		__count, &__regs, head, __task);			\
+		__count, __regs, head, __task);				\
 }
 
 /*

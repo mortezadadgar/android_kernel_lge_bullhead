@@ -1183,7 +1183,7 @@ kprobe_perf_func(struct trace_probe *tp, struct pt_regs *regs)
 		     "profile buffer not large enough"))
 		return;
 
-	entry = perf_trace_buf_prepare(size, call->event.type, regs, &rctx);
+	entry = perf_trace_buf_prepare(size, call->event.type, NULL, &rctx);
 	if (!entry)
 		return;
 
@@ -1215,7 +1215,7 @@ kretprobe_perf_func(struct trace_probe *tp, struct kretprobe_instance *ri,
 		     "profile buffer not large enough"))
 		return;
 
-	entry = perf_trace_buf_prepare(size, call->event.type, regs, &rctx);
+	entry = perf_trace_buf_prepare(size, call->event.type, NULL, &rctx);
 	if (!entry)
 		return;
 
