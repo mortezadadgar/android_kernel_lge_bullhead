@@ -888,7 +888,7 @@
 		emc-table@1 {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			nvidia,ram-code = <1>;
+			nvidia,ram-code = <1 4>;
 			emc-table@12750 {
 				compatible = "nvidia,tegra12-emc-table";
 				reg = <12750>;
