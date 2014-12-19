@@ -458,7 +458,7 @@ static void tegra_crtc_disable(struct drm_crtc *crtc)
 	struct drm_device *drm = crtc->dev;
 	struct drm_plane *plane;
 
-	drm_for_each_legacy_plane(plane, &drm->mode_config.plane_list) {
+	list_for_each_entry(plane, &drm->mode_config.plane_list, head) {
 		if (plane->crtc == crtc) {
 			tegra_plane_disable(plane);
 			plane->crtc = NULL;
