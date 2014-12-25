@@ -53,22 +53,6 @@ static const struct snd_soc_dapm_route byt_audio_map[] = {
 	{"Headphone", NULL, "HPR"},
 	{"Ext Spk", NULL, "SPKL"},
 	{"Ext Spk", NULL, "SPKR"},
-
-	/*
-	 * DMIC enable register can not be safely toggled when shutdown bit
-	 * is 1. This causes a short audio drop in playback whenever a capture
-	 * stream starts. To overcome this problem, turn on DMIC enable bit
-	 * during all audio playback cases.
-	 * Captured audio is not sent outside of codec because SDOEN is not
-	 * enabled.
-	 */
-	{"HPL", NULL, "DMICL_ENA"},
-	{"HPR", NULL, "DMICR_ENA"},
-	{"SPKL", NULL, "DMICL_ENA"},
-	{"SPKR", NULL, "DMICR_ENA"},
-	{"RCVL", NULL, "DMICL_ENA"},
-	{"RCVR", NULL, "DMICR_ENA"},
-
 };
 
 static const struct snd_kcontrol_new byt_mc_controls[] = {
