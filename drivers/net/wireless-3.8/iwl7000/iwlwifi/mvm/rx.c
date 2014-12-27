@@ -62,6 +62,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 #include <linux/etherdevice.h>
+#include <linux/skbuff.h>
 #include "iwl-trans.h"
 #include "mvm.h"
 #include "fw-api.h"
@@ -310,6 +311,19 @@ static void iwl_mvm_rx_handle_tcm(struct iwl_mvm *mvm,
 }
 #endif
 
+static void iwl_mvm_rx_csum(struct ieee80211_sta *sta,
+			    struct sk_buff *skb,
+			    u32 status)
+{
+	struct iwl_mvm_sta *mvmsta = iwl_mvm_sta_from_mac80211(sta);
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(mvmsta->vif);
+
+	if (mvmvif->features & NETIF_F_RXCSUM &&
+	    status & RX_MPDU_RES_STATUS_CSUM_DONE &&
+	    status & RX_MPDU_RES_STATUS_CSUM_OK)
+		skb->ip_summed = CHECKSUM_UNNECESSARY;
+}
+
 /*
  * iwl_mvm_rx_rx_mpdu - REPLY_RX_MPDU_CMD handler
  *
@@ -446,6 +460,9 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 		iwl_mvm_rx_handle_tcm(mvm, sta, hdr, len, phy_info,
 				      rate_n_flags);
 #endif
+
+	if (sta && ieee80211_is_data(hdr->frame_control))
+		iwl_mvm_rx_csum(sta, skb, rx_pkt_status);
 
 #ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
 	/*
