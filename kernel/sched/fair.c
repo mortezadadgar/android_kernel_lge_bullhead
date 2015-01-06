@@ -4612,6 +4612,57 @@ next_cpu:
 	return total_energy;
 }
 
+/*
+ * energy_diff(): Estimate the energy impact of changing the utilization
+ * distribution. eenv specifies the change: utilisation amount, source, and
+ * destination cpu. Source or destination cpu may be -1 in which case the
+ * utilization is removed from or added to the system (e.g. task wake-up). If
+ * both are specified, the utilization is migrated.
+ */
+static int energy_diff(struct energy_env *eenv)
+{
+	struct sched_domain *sd;
+	struct sched_group *sg;
+	int sd_cpu = -1, energy_before = 0, energy_after = 0;
+
+	struct energy_env eenv_before = {
+		.usage_delta	= 0,
+		.src_cpu	= eenv->src_cpu,
+		.dst_cpu	= eenv->dst_cpu,
+	};
+
+	if (eenv->src_cpu == eenv->dst_cpu)
+		return 0;
+
+	sd_cpu = (eenv->src_cpu != -1) ? eenv->src_cpu : eenv->dst_cpu;
+	sd = rcu_dereference(per_cpu(sd_ea, sd_cpu));
+
+	if (!sd)
+		return 0; /* Error */
+
+	sg = sd->groups;
+	do {
+		if (eenv->src_cpu != -1 && cpumask_test_cpu(eenv->src_cpu,
+							sched_group_cpus(sg))) {
+			eenv_before.sg_top = eenv->sg_top = sg;
+			energy_before += sched_group_energy(&eenv_before);
+			energy_after += sched_group_energy(eenv);
+
+			/* src_cpu and dst_cpu may belong to the same group */
+			continue;
+		}
+
+		if (eenv->dst_cpu != -1	&& cpumask_test_cpu(eenv->dst_cpu,
+							sched_group_cpus(sg))) {
+			eenv_before.sg_top = eenv->sg_top = sg;
+			energy_before += sched_group_energy(&eenv_before);
+			energy_after += sched_group_energy(eenv);
+		}
+	} while (sg = sg->next, sg != sd->groups);
+
+	return energy_after-energy_before;
+}
+
 static int wake_wide(struct task_struct *p)
 {
 	int factor = this_cpu_read(sd_llc_size);
