@@ -886,6 +886,7 @@ static int elan_fw_update(struct elants_data *ts)
 	const u8 enter_iap2[4] = { 0x54, 0x00, 0x12, 0x34 };
 	const u8 iap_rc[4] = { 0x55, 0xaa, 0x33, 0xcc };
 	const u8 ack_ok[2] = { 0xaa, 0xaa };
+	const u8 close_idle_cmd[] = {0x54, 0x2c, 0x01, 0x01};
 
 	ENTER_LOG();
 
@@ -926,8 +927,11 @@ static int elan_fw_update(struct elants_data *ts)
 	} else {
 		/* Start IAP Procedure */
 		elan_dbg(client, "Normal IAP procedure!\n");
+		/* Close idle mode */
+		elan_set_data(client, close_idle_cmd, 4);
+		elan_msleep(60);
 		elan_sw_reset(client);
-
+		elan_msleep(20);
 		elan_set_data(client, enter_iap, 4);
 	}
 	elan_msleep(10);
