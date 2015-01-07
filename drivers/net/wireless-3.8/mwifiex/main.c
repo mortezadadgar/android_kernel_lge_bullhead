@@ -944,6 +944,8 @@ int mwifiex_remove_card(struct mwifiex_adapter *adapter, struct semaphore *sem)
 
 	adapter->surprise_removed = true;
 
+	mwifiex_terminate_workqueue(adapter);
+
 	/* Stop data */
 	for (i = 0; i < adapter->priv_num; i++) {
 		priv = adapter->priv[i];
@@ -995,8 +997,6 @@ int mwifiex_remove_card(struct mwifiex_adapter *adapter, struct semaphore *sem)
 		if (priv)
 			kfree(priv->wdev);
 	}
-
-	mwifiex_terminate_workqueue(adapter);
 
 	/* Unregister device */
 	dev_dbg(adapter->dev, "info: unregister device\n");
