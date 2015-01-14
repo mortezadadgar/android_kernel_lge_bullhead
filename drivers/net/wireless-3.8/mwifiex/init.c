@@ -242,6 +242,7 @@ static void mwifiex_init_adapter(struct mwifiex_adapter *adapter)
 	adapter->hs_cfg.gpio = HOST_SLEEP_CFG_GPIO_DEF;
 	adapter->hs_cfg.gap = HOST_SLEEP_CFG_GAP_DEF;
 	adapter->hs_activated = false;
+	adapter->rf_led_enabled = false;
 
 	memset(adapter->event_body, 0, sizeof(adapter->event_body));
 	adapter->hw_dot_11n_dev_cap = 0;

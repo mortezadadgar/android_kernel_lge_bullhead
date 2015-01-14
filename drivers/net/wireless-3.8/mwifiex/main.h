@@ -99,6 +99,10 @@ enum {
 
 #define PKT_TYPE_MGMT	0xE5
 
+#define MWIFIEX_LED_ON		1
+#define MWIFIEX_LED_OFF		0
+#define MWIFIEX_LED_MAX		3
+
 /*
  * Do not check for data_received for USB, as data_received
  * is handled in mwifiex_usb_recv for USB
@@ -781,6 +785,7 @@ struct mwifiex_adapter {
 	struct mwifiex_hs_config_param hs_cfg;
 	u8 hs_activated;
 	u16 hs_activate_wait_q_woken;
+	bool rf_led_enabled;
 	wait_queue_head_t hs_activate_wait_q;
 	bool is_suspended;
 	bool hs_enabling;
@@ -1147,6 +1152,7 @@ int mwifiex_wait_queue_complete(struct mwifiex_adapter *adapter,
 				struct cmd_ctrl_node *cmd_queued);
 int mwifiex_bss_start(struct mwifiex_private *priv, struct cfg80211_bss *bss,
 		      struct cfg80211_ssid *req_ssid);
+int mwifiex_set_led(struct mwifiex_adapter *adapter, int on);
 int mwifiex_cancel_hs(struct mwifiex_private *priv, int cmd_type);
 int mwifiex_enable_hs(struct mwifiex_adapter *adapter);
 int mwifiex_disable_auto_ds(struct mwifiex_private *priv);
@@ -1263,6 +1269,9 @@ u8 mwifiex_get_center_freq_index(struct mwifiex_private *priv, u8 band,
 void mwifiex_uap_del_sta_data(struct mwifiex_private *priv,
 			      struct mwifiex_sta_node *node);
 int mwifiex_init_channel_scan_gap(struct mwifiex_adapter *adapter);
+
+int mwifiex_sysfs_register(struct mwifiex_private *priv);
+void mwifiex_sysfs_unregister(struct mwifiex_private *priv);
 
 #ifdef CONFIG_DEBUG_FS
 void mwifiex_debugfs_init(void);

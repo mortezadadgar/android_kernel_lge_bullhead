@@ -174,6 +174,7 @@ enum MWIFIEX_802_11_PRIVACY_FILTER {
 #define TLV_TYPE_TDLS_IDLE_TIMEOUT  (PROPRIETARY_TLV_BASE_ID + 194)
 #define TLV_TYPE_SCAN_CHANNEL_GAP   (PROPRIETARY_TLV_BASE_ID + 197)
 #define TLV_TYPE_API_REV	    (PROPRIETARY_TLV_BASE_ID + 199)
+#define TLV_TYPE_LED_CONTROL        (PROPRIETARY_TLV_BASE_ID + 205)
 
 #define MWIFIEX_TX_DATA_BUF_SIZE_2K        2048
 
@@ -300,6 +301,7 @@ enum MWIFIEX_802_11_PRIVACY_FILTER {
 #define HostCmd_CMD_802_11_AD_HOC_JOIN                0x002c
 #define HostCmd_CMD_802_11_AD_HOC_STOP                0x0040
 #define HostCmd_CMD_802_11_MAC_ADDRESS                0x004D
+#define HostCmd_CMD_802_11_LED_CONTROL                0X004E
 #define HostCmd_CMD_802_11D_DOMAIN_INFO               0x005b
 #define HostCmd_CMD_802_11_KEY_MATERIAL               0x005e
 #define HostCmd_CMD_802_11_BG_SCAN_QUERY              0x006c
@@ -961,6 +963,16 @@ struct ieee_types_oper_mode_ntf {
 	u8 oper_mode;
 } __packed;
 
+struct mwifiex_led_param {
+	__le16 mode;
+	__le16 on;
+} __packed;
+
+struct mwifiex_ie_types_led_param {
+	struct mwifiex_ie_types_header header;
+	struct mwifiex_led_param led_cfg;
+} __packed;
+
 struct host_cmd_ds_802_11_ad_hoc_start {
 	u8 ssid[IEEE80211_MAX_SSID_LEN];
 	u8 bss_mode;
@@ -1067,6 +1079,11 @@ struct host_cmd_ds_802_11_hs_cfg_enh {
 		struct mwifiex_hs_config_param hs_config;
 		struct hs_activate_param hs_activate;
 	} params;
+} __packed;
+
+struct host_cmd_ds_802_11_led_control {
+	__le16 action;
+	__le16 num_led;
 } __packed;
 
 enum SNMP_MIB_INDEX {
@@ -1807,6 +1824,7 @@ struct host_cmd_ds_command {
 		struct host_cmd_ds_sta_deauth sta_deauth;
 		struct host_cmd_11ac_vht_cfg vht_cfg;
 		struct host_cmd_ds_tdls_oper tdls_oper;
+		struct host_cmd_ds_802_11_led_control led_cfg;
 	} params;
 } __packed;
 
