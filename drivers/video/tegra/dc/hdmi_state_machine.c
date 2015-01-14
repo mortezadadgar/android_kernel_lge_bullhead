@@ -127,6 +127,11 @@ static void hdmi_state_machine_handle_hpd_l(int cur_hpd)
 		tgt_state = HDMI_STATE_DONE_WAIT_FOR_HPD_REASSERT;
 		timeout = HPD_DEBOUNCE_MS;
 	} else
+	if (HDMI_STATE_DONE_ENABLED == work_state.state && cur_hpd) {
+		/* Looks like HPD dropped but came back quickly, ignore it. */
+		pr_info("%s: ignoring bouncing hpd\n", __func__);
+		return;
+	} else
 	if (HDMI_STATE_DONE_WAIT_FOR_HPD_REASSERT == work_state.state &&
 		cur_hpd) {
 		/* Looks like HPD dropped and eventually came back.  Re-read the
