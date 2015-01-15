@@ -149,7 +149,7 @@ int tegra30_ahub_enable_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
 	int reg, val;
 
-	clk_prepare_enable(ahub->clk_ahub_emc);
+	clk_enable(ahub->clk_ahub_emc);
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -170,7 +170,7 @@ int tegra30_ahub_disable_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 	val = tegra30_apbif_read(reg);
 	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_RX_EN;
 	tegra30_apbif_write(reg, val);
-	clk_disable_unprepare(ahub->clk_ahub_emc);
+	clk_disable(ahub->clk_ahub_emc);
 
 	return 0;
 }
@@ -241,7 +241,7 @@ int tegra30_ahub_enable_tx_fifo(enum tegra30_ahub_txcif txcif)
 	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
 	int reg, val;
 
-	clk_prepare_enable(ahub->clk_ahub_emc);
+	clk_enable(ahub->clk_ahub_emc);
 	reg = TEGRA30_AHUB_CHANNEL_CTRL +
 	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
 	val = tegra30_apbif_read(reg);
@@ -262,7 +262,7 @@ int tegra30_ahub_disable_tx_fifo(enum tegra30_ahub_txcif txcif)
 	val = tegra30_apbif_read(reg);
 	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_TX_EN;
 	tegra30_apbif_write(reg, val);
-	clk_disable_unprepare(ahub->clk_ahub_emc);
+	clk_disable(ahub->clk_ahub_emc);
 
 	return 0;
 }
@@ -547,6 +547,10 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 		goto err_clk_put_apbif;
 	}
 	clk_set_rate(ahub->clk_ahub_emc, 68000000);
+	if (clk_prepare(ahub->clk_ahub_emc)) {
+		clk_put(ahub->clk_ahub_emc);
+		goto err_clk_put_apbif;
+	}
 
 	if (of_property_read_u32_array(pdev->dev.of_node,
 				"nvidia,dma-request-selector",
@@ -637,6 +641,7 @@ static int tegra30_ahub_probe(struct platform_device *pdev)
 err_pm_disable:
 	pm_runtime_disable(&pdev->dev);
 err_clk_put_ahub_emc:
+	clk_unprepare(ahub->clk_ahub_emc);
 	clk_put(ahub->clk_ahub_emc);
 err_clk_put_apbif:
 	clk_put(ahub->clk_apbif);
@@ -656,6 +661,8 @@ static int tegra30_ahub_remove(struct platform_device *pdev)
 	if (!pm_runtime_status_suspended(&pdev->dev))
 		tegra30_ahub_runtime_suspend(&pdev->dev);
 
+	clk_unprepare(ahub->clk_ahub_emc);
+	clk_put(ahub->clk_ahub_emc);
 	clk_put(ahub->clk_apbif);
 	clk_put(ahub->clk_d_audio);
 
