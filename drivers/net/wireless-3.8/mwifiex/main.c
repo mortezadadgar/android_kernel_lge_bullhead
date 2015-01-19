@@ -555,10 +555,11 @@ static int
 mwifiex_open(struct net_device *dev)
 {
 	struct mwifiex_private *priv = mwifiex_netdev_get_priv(dev);
-	netif_tx_start_all_queues(dev);
 
 	if (priv->adapter->led_support)
 		mwifiex_set_led(priv->adapter, MWIFIEX_LED_ON);
+
+	netif_carrier_off(dev);
 	return 0;
 }
 
