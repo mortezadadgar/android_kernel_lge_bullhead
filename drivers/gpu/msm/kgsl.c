@@ -1043,20 +1043,8 @@ static struct kgsl_process_private *kgsl_process_private_open(
 	 */
 
 	if (private->fd_count++ == 0) {
-		int ret = kgsl_process_init_sysfs(device, private);
-		if (ret) {
-			kgsl_process_private_put(private);
-			private = ERR_PTR(ret);
-			goto done;
-		}
-
-		ret = kgsl_process_init_debugfs(private);
-		if (ret) {
-			kgsl_process_uninit_sysfs(private);
-			kgsl_process_private_put(private);
-			private = ERR_PTR(ret);
-			goto done;
-		}
+		kgsl_process_init_sysfs(device, private);
+		kgsl_process_init_debugfs(private);
 
 		list_add(&private->list, &kgsl_driver.process_list);
 	}
