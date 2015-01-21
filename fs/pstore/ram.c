@@ -132,6 +132,18 @@ ramoops_get_next_prz(struct persistent_ram_zone *przs[], uint *c, uint max,
 	return prz;
 }
 
+static int ramoops_read_kmsg_hdr(char *buffer, struct timespec *time)
+{
+	int header_length = 0;
+
+	if (sscanf(buffer, RAMOOPS_KERNMSG_HDR "%lu.%lu\n%n",
+			&time->tv_sec, &time->tv_nsec, &header_length) != 2) {
+		time->tv_sec = 0;
+		time->tv_nsec = 0;
+	}
+	return header_length;
+}
+
 static ssize_t ramoops_pstore_read(u64 *id, enum pstore_type_id *type,
 				   int *count, struct timespec *time,
 				   char **buf, struct pstore_info *psi)
@@ -141,9 +153,19 @@ static ssize_t ramoops_pstore_read(u64 *id, enum pstore_type_id *type,
 	struct ramoops_context *cxt = psi->data;
 	struct persistent_ram_zone *prz;
 
-	prz = ramoops_get_next_prz(cxt->przs, &cxt->dump_read_cnt,
-				   cxt->max_dump_cnt, id, type,
-				   PSTORE_TYPE_DMESG, 1);
+	/* Ramoops headers provide time stamps for PSTORE_TYPE_DMESG, but
+	 * PSTORE_TYPE_CONSOLE and PSTORE_TYPE_FTRACE don't currently have
+	 * valid time stamps, so it is initialized to zero.
+	 */
+	time->tv_sec = 0;
+	time->tv_nsec = 0;
+
+	do {
+		prz = ramoops_get_next_prz(cxt->przs, &cxt->dump_read_cnt,
+					   cxt->max_dump_cnt, id, type,
+					   PSTORE_TYPE_DMESG, 1);
+	} while (prz && !ramoops_read_kmsg_hdr(persistent_ram_old(prz), time));
+
 	if (!prz)
 		prz = ramoops_get_next_prz(&cxt->cprz, &cxt->console_read_cnt,
 					   1, id, type, PSTORE_TYPE_CONSOLE, 0);
@@ -152,10 +174,6 @@ static ssize_t ramoops_pstore_read(u64 *id, enum pstore_type_id *type,
 					   1, id, type, PSTORE_TYPE_FTRACE, 0);
 	if (!prz)
 		return 0;
-
-	/* TODO(kees): Bogus time for the moment. */
-	time->tv_sec = 0;
-	time->tv_nsec = 0;
 
 	size = persistent_ram_old_size(prz);
 
