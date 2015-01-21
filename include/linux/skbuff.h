@@ -680,6 +680,7 @@ extern int	       skb_to_sgvec(struct sk_buff *skb,
 				    int len);
 extern int	       skb_cow_data(struct sk_buff *skb, int tailbits,
 				    struct sk_buff **trailer);
+struct sk_buff         *skb_clone_sk(struct sk_buff *skb);
 extern int	       skb_pad(struct sk_buff *skb, int pad);
 #define dev_kfree_skb(a)	consume_skb(a)
 
