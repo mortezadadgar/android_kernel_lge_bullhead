@@ -1742,6 +1742,7 @@ mwifiex_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 			 struct cfg80211_connect_params *sme)
 {
 	struct mwifiex_private *priv = mwifiex_netdev_get_priv(dev);
+	struct mwifiex_adapter *adapter = priv->adapter;
 	int ret;
 
 	if (priv->bss_mode != NL80211_IFTYPE_STATION) {
@@ -1754,6 +1755,13 @@ mwifiex_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 	if (priv->wdev && priv->wdev->current_bss) {
 		wiphy_warn(wiphy, "%s: already connected\n", dev->name);
 		return -EALREADY;
+	}
+
+	if (adapter->surprise_removed || adapter->num_cmd_timeout) {
+		wiphy_err(wiphy,
+			  "%s: Ignore connection. Card removed or FW in bad state\n",
+			  dev->name);
+		return -EFAULT;
 	}
 
 	dev_notice(priv->adapter->dev,
