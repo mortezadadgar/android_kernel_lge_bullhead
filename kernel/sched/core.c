@@ -6036,6 +6036,7 @@ static void init_sched_energy(int cpu, struct sched_domain *sd,
 	struct sched_group_energy *sge = sg->sge;
 	sched_domain_energy_f fn = tl->energy;
 	struct cpumask *mask = sched_group_cpus(sg);
+	int nr_idle_states_below = 0;
 
 	if (fn && sd->child && !sd->child->groups->sge) {
 		pr_err("BUG: EAS setup broken for CPU%d\n", cpu);
@@ -6059,7 +6060,18 @@ static void init_sched_energy(int cpu, struct sched_domain *sd,
 	if (cpumask_weight(mask) > 1)
 		check_sched_energy_data(cpu, fn, mask);
 
+	/* Figure out the number of true cpuidle states below current group */
+	sd = sd->child;
+	for_each_lower_domain(sd) {
+		nr_idle_states_below += sd->groups->sge->nr_idle_states;
+
+		/* Disregard non-cpuidle 'active' idle states */
+		if (sd->child)
+			nr_idle_states_below--;
+	}
+
 	sge->nr_idle_states = fn(cpu)->nr_idle_states;
+	sge->nr_idle_states_below = nr_idle_states_below;
 	sge->nr_cap_states = fn(cpu)->nr_cap_states;
 	sge->idle_states = (struct idle_state *)
 			   ((void *)&sge->cap_states +
