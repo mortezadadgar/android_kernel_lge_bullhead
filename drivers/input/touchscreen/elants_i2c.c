@@ -75,8 +75,9 @@ MODULE_PARM_DESC(debug, "print a lot of debug information");
 
 /* Firmware boot mode packets definition */
 #define HELLO_PACKET_LEN	4
+#define RECOV_PACKET_LEN	4
 static const char hello_packet[HELLO_PACKET_LEN] = {0x55, 0x55, 0x55, 0x55};
-static const char recov_packet[HELLO_PACKET_LEN] = {0x55, 0x55, 0x80, 0x80};
+static const char recov_packet[RECOV_PACKET_LEN] = {0x55, 0x55, 0x80, 0x80};
 
 /* Finger report information */
 #define	REPORT_HEADER_10_FINGER	0x62
@@ -92,12 +93,12 @@ static const char recov_packet[HELLO_PACKET_LEN] = {0x55, 0x55, 0x80, 0x80};
 /* Command header definition */
 #define	CMD_HEADER_WRITE	0x54
 #define	CMD_HEADER_READ		0x53
-#define	CMD_HEADER_6B_READ	0x5B
+#define	CMD_HEADER_5B_READ	0x5B
 #define	CMD_HEADER_RESP		0x52
-#define	CMD_HEADER_6B_RESP	0x9B
+#define	CMD_HEADER_5B_RESP	0x9B
 #define	CMD_HEADER_HELLO	0x55
 #define	CMD_HEADER_REK		0x66
-#define	CMD_RESP_LEN		4
+#define CMD_MAX_RESP_LEN	17
 
 /* FW information position */
 #define	FW_POS_HEADER	0
@@ -142,6 +143,12 @@ static const char recov_packet[HELLO_PACKET_LEN] = {0x55, 0x55, 0x80, 0x80};
 
 /* calibration timeout definition */
 #define	ELAN_CALI_TIMEOUT_MSEC	10000
+
+/* command response timeout definition */
+#define	ELAN_CMD_RESP_TIMEOUT_MSEC	500
+
+/* hello packet timeout definition */
+#define	ELAN_HELLO_TIMEOUT_MSEC	2000
 
 /*
  * struct multi_queue_header - used by buffer queue header
@@ -207,7 +214,7 @@ struct elants_data {
 
 	unsigned long flags;
 
-	char cmd_resp[CMD_RESP_LEN];
+	char cmd_resp[CMD_MAX_RESP_LEN];
 	struct completion cmd_done;
 
 	struct mt_device td;
@@ -307,26 +314,30 @@ static int elan_async_rw(struct i2c_client *client,
 }
 
 static int elan_i2c_read_block(struct i2c_client *client,
-			       u8 *cmd, u8 *val, u16 len)
+			       u8 *cmd, u16 cmd_len, u8 *val, u16 resp_len)
 {
-	struct i2c_msg msgs[2];
-	int ret;
+	struct elants_data *ts = i2c_get_clientdata(client);
+	int ret, error;
 
-	ENTER_LOG();
+	ts->rx_size = resp_len;
+	disable_irq(client->irq);
+	INIT_COMPLETION(ts->cmd_done);
+	elan_set_data(client, cmd, cmd_len);
+	enable_irq(client->irq);
+	ret = wait_for_completion_interruptible_timeout(&ts->cmd_done,
+				msecs_to_jiffies(ELAN_CMD_RESP_TIMEOUT_MSEC));
+	if (ret <= 0) {
+		error = ret < 0 ? ret : -ETIMEDOUT;
+		dev_err(&client->dev,
+			"error while waiting for elan response to complete: %d\n",
+			error);
+		ts->rx_size = QUEUE_HEADER_SIZE;
+		return error;
+	}
+	memcpy(val, ts->cmd_resp, resp_len);
+	ts->rx_size = QUEUE_HEADER_SIZE;
 
-	msgs[0].addr = client->addr;
-	msgs[0].flags = client->flags & I2C_M_TEN;
-	msgs[0].len = 4;
-	msgs[0].buf = cmd;
-
-	msgs[1].addr = client->addr;
-	msgs[1].flags = client->flags & I2C_M_TEN;
-	msgs[1].flags |= I2C_M_RD;
-	msgs[1].len = len;
-	msgs[1].buf = val;
-
-	ret = i2c_transfer(client->adapter, msgs, 2);
-	return (ret == 2) ? len : ret;
+	return ret;
 }
 
 static int elan_calibrate(struct elants_data *ts)
@@ -351,10 +362,10 @@ static int elan_calibrate(struct elants_data *ts)
 		return error;
 	}
 
-	if (memcmp(rek_resp, ts->cmd_resp, sizeof(rek_resp))) {
+	if (memcmp(rek_resp, ts->cmd_resp, 4)) {
 		dev_err(&client->dev,
 			"unexpected calibration response: %*ph\n",
-			(int)sizeof(ts->cmd_resp), ts->cmd_resp);
+			4, ts->cmd_resp);
 		return -EINVAL;
 	}
 
@@ -509,26 +520,6 @@ static int elan_sw_reset(struct i2c_client *client)
 	return ret;
 }
 
-static int elan_boot(struct i2c_client *client, u8 type)
-{
-	int rc;
-	u8 command[2][4] = {
-		{0x4D, 0x61, 0x69, 0x6E},
-		{0x45, 0x49, 0x41, 0x50},
-	};
-
-	rc = elan_set_data(client, command[type], 4);
-	if (rc < 0) {
-		if (type == E_BOOT_IAP)
-			dev_err(&client->dev, "Boot IAP fail, error=%d\n", rc);
-		else
-			dev_dbg(&client->dev,
-				"Boot normal fail, error=%d\n", rc);
-		return -EINVAL;
-	}
-	dev_info(&client->dev, "Boot success -- 0x%x\n", client->addr);
-	return 0;
-}
 
 /*
  * This is always the first packet that comes from
@@ -539,32 +530,34 @@ static int elan_boot(struct i2c_client *client, u8 type)
  */
 static int __hello_packet_handler(struct i2c_client *client)
 {
-	int rc = 0;
-	u8 buf_recv[HELLO_PACKET_LEN] = {0};
+	int rc = 0, error = 0;
 	struct elants_data *ts = i2c_get_clientdata(client);
 
 	ENTER_LOG();
 
-	rc = elan_get_data(client, buf_recv, HELLO_PACKET_LEN);
-
-	/* Print buf_recv anyway */
-	dev_info(&client->dev, "rc=%d Hello Packet:%*phC\n",
-			rc, HELLO_PACKET_LEN, buf_recv);
-
-	if (rc < 0) {
+	/* Wait hello packet received */
+	rc = wait_for_completion_interruptible_timeout(&ts->cmd_done,
+				msecs_to_jiffies(ELAN_HELLO_TIMEOUT_MSEC));
+	if (rc <= 0) {
+		error = rc < 0 ? rc : -ETIMEDOUT;
 		dev_err(&client->dev,
-			"%s: Try recovery because of no hello\n", __func__);
+			"error while waiting for hello packet to complete: %d\n",
+			error);
+		return error;
 	}
 
-	if (memcmp(buf_recv, hello_packet, HELLO_PACKET_LEN)) {
-		if (!memcmp(buf_recv, recov_packet, HELLO_PACKET_LEN)) {
+	/* Print ts->cmd_resp anyway */
+	dev_info(&client->dev, "rc=%d Hello Packet:%*phC\n",
+			rc, HELLO_PACKET_LEN, ts->cmd_resp);
+
+	if (memcmp(ts->cmd_resp, hello_packet, HELLO_PACKET_LEN)) {
+		if (!memcmp(ts->cmd_resp, recov_packet, RECOV_PACKET_LEN)) {
 			dev_info(&client->dev,
 					"got mainflow recovery message\n");
 
 			ts->iap_mode = IAP_MODE_ENABLE;
 			set_bit(LOCK_FW_UPDATE, &ts->flags);
 		}
-
 		return -ENODEV;
 	}
 
@@ -598,7 +591,8 @@ static int __fw_id_packet_handler(struct i2c_client *client)
 		return 0;
 
 	for (retry_cnt = 0; retry_cnt < MAX_RETRIES; retry_cnt++) {
-		rc = elan_i2c_read_block(client, (u8 *) cmd, buf_recv, 4);
+		rc = elan_i2c_read_block(client, (u8 *) cmd, sizeof(cmd),
+					 buf_recv, 4);
 		if (rc < 0) {
 			elan_dbg(client,
 				 "read fw id rc=%d, buf=%*phC\n", rc, 4,
@@ -614,6 +608,7 @@ static int __fw_id_packet_handler(struct i2c_client *client)
 					"suggest IAP ELAN chip\n");
 				return -EINVAL;
 			}
+			break;
 		} else {
 			elan_dbg(client, "read fw retry count=%d\n", retry_cnt);
 			if (retry_cnt == MAX_RETRIES - 1) {
@@ -643,7 +638,8 @@ static int __fw_version_packet_handler(struct i2c_client *client)
 		return 0;
 
 	for (retry_cnt = 0; retry_cnt < MAX_RETRIES; retry_cnt++) {
-		rc = elan_i2c_read_block(client, (u8 *) cmd, buf_recv, 4);
+		rc = elan_i2c_read_block(client, (u8 *) cmd, sizeof(cmd),
+					 buf_recv, 4);
 		if (rc < 0) {
 			elan_dbg(client,
 				 "read fw version rc=%d, buf=%*phC\n", rc, 4,
@@ -660,6 +656,7 @@ static int __fw_version_packet_handler(struct i2c_client *client)
 					"suggest IAP ELAN chip\n");
 				return -EINVAL;
 			}
+			break;
 		} else {
 			elan_dbg(client, "read fw retry count=%d\n", retry_cnt);
 			if (retry_cnt == MAX_RETRIES - 1) {
@@ -691,7 +688,8 @@ static int __test_version_packet_handler(struct i2c_client *client)
 		return 0;
 
 	for (retry_cnt = 0; retry_cnt < MAX_RETRIES; retry_cnt++) {
-		rc = elan_i2c_read_block(client, (u8 *) cmd, buf_recv, 4);
+		rc = elan_i2c_read_block(client, (u8 *) cmd, sizeof(cmd),
+					 buf_recv, 4);
 		if (rc < 0) {
 			elan_dbg(client,
 				 "read test version error rc=%d, buf=%*phC\n",
@@ -706,6 +704,7 @@ static int __test_version_packet_handler(struct i2c_client *client)
 			ts->solution_version =
 			    (((buf_recv[2] & 0x0f) << 4) |
 			     ((buf_recv[3] & 0xf0) >> 4));
+			break;
 		} else {
 			elan_dbg(client, "read fw retry count=%d\n", retry_cnt);
 			if (retry_cnt == MAX_RETRIES - 1) {
@@ -738,7 +737,8 @@ static int __bc_version_packet_handler(struct i2c_client *client)
 		return 0;
 
 	rc = elan_i2c_read_block(client, (u8 *) get_bc_ver_cmd,
-				 buf_recv, sizeof(buf_recv));
+				 sizeof(get_bc_ver_cmd), buf_recv,
+				 sizeof(buf_recv));
 	if (rc < 0) {
 		dev_err(&client->dev,
 			"Read BC version error rc=%d, buf=%*phC\n", rc, 4,
@@ -760,7 +760,7 @@ static int __ts_info_handler(struct i2c_client *client)
 	u8 buf_recv[17] = {0};
 	u16 phy_x, phy_y;
 	const u8 get_resolution_cmd[] = {
-		CMD_HEADER_6B_READ, 0x00, 0x00, 0x00, 0x00, 0x00};
+		CMD_HEADER_5B_READ, 0x00, 0x00, 0x00, 0x00, 0x00};
 	const u8 get_osr_cmd[] = {
 		CMD_HEADER_READ, E_INFO_OSR, 0x00, 0x01};
 	const u8 get_physical_scan_cmd[] = {
@@ -775,24 +775,18 @@ static int __ts_info_handler(struct i2c_client *client)
 		return 0;
 
 	/* Get trace number */
-	rc = elan_async_rw(client, (u8 *)get_resolution_cmd,
-				(__u16)sizeof(get_resolution_cmd),
-				buf_recv, (__u16)sizeof(buf_recv));
-	if (rc < 0) {
-		elan_dbg(client, "ts_info error rc=%d\n", rc);
-		return rc;
-	}
+	elan_i2c_read_block(client, (u8 *) get_resolution_cmd,
+			    sizeof(get_resolution_cmd), buf_recv, 17);
 
-	if (buf_recv[0] == CMD_HEADER_6B_RESP) {
+	if (buf_recv[0] == CMD_HEADER_5B_RESP) {
 		ts->rows = (buf_recv[2] + buf_recv[6] + buf_recv[10]);
 		ts->cols = (buf_recv[3] + buf_recv[7] + buf_recv[11]);
 	} else
 		dev_warn(&client->dev, "Read TS Information failed!\n");
 
 	/* Process mm_to_pixel information */
-	rc = elan_async_rw(client, (u8 *)get_osr_cmd,
-				(__u16)sizeof(get_osr_cmd),
-				buf_recv, (__u16)sizeof(buf_recv));
+	rc = elan_i2c_read_block(client, (u8 *) get_osr_cmd,
+				 sizeof(get_osr_cmd), buf_recv, 4);
 	if (rc < 0) {
 		elan_dbg(client, "ts_info error rc=%d\n", rc);
 		return rc;
@@ -803,9 +797,8 @@ static int __ts_info_handler(struct i2c_client *client)
 	else
 		dev_warn(&client->dev, "Read TS OSR failed!\n");
 
-	rc = elan_async_rw(client, (u8 *)get_physical_scan_cmd,
-				(__u16)sizeof(get_physical_scan_cmd),
-				buf_recv, (__u16)sizeof(buf_recv));
+	rc = elan_i2c_read_block(client, (u8 *) get_physical_scan_cmd,
+				 sizeof(get_physical_scan_cmd), buf_recv, 4);
 	if (rc < 0) {
 		elan_dbg(client, "ts_info error rc=%d\n", rc);
 		return rc;
@@ -816,9 +809,8 @@ static int __ts_info_handler(struct i2c_client *client)
 	else
 		dev_warn(&client->dev, "Read TS PHY_SCAN failed!\n");
 
-	rc = elan_async_rw(client, (u8 *)get_physical_drive_cmd,
-				(__u16)sizeof(get_physical_drive_cmd),
-				buf_recv, (__u16)sizeof(buf_recv));
+	rc = elan_i2c_read_block(client, (u8 *) get_physical_drive_cmd,
+				 sizeof(get_physical_drive_cmd), buf_recv, 4);
 	if (rc < 0) {
 		elan_dbg(client, "ts_info error rc=%d\n", rc);
 		return rc;
@@ -843,22 +835,6 @@ static int __ts_info_handler(struct i2c_client *client)
 	ts->y_res = DIV_ROUND_CLOSEST(ts->y_max, phy_y);
 
 	return 0;
-}
-
-static int __elan_fastboot(struct i2c_client *client)
-{
-	int rc = 0;
-
-	ENTER_LOG();
-
-	rc = elan_boot(client, E_BOOT_NORM);
-	if (rc < 0)
-		return -1;
-
-	/* Wait for Hello packets */
-	msleep(BOOT_TIME_DELAY_MS);
-
-	return rc;
 }
 
 /**
@@ -899,9 +875,6 @@ static int elan_fw_update(struct elants_data *ts)
 	rc = test_and_set_bit(LOCK_FW_UPDATE, &ts->flags);
 	if (rc)
 		dev_info(&client->dev, "Recovery IAP detection\n");
-
-	/* avoid interrupt */
-	disable_irq(client->irq);
 
 	dev_info(&client->dev, "request_firmware name = %s\n",
 		 ELAN_FW_FILENAME);
@@ -1028,9 +1001,6 @@ static int elan_fw_update(struct elants_data *ts)
 
 	dev_info(&client->dev, "fw update finish..check OK??\n");
 
-	/* old iap need wait 200ms for WDT and rest is for hello packets */
-	msleep(300);
-
 	clear_bit(LOCK_FW_UPDATE, &ts->flags);
 	ts->iap_mode = 0;
 
@@ -1061,8 +1031,7 @@ err:
 
 	release_firmware(p_fw_entry);
 	/* We don't release LOCK_FW_UPDATE flag if fail */
-	enable_irq(client->irq);
-	elan_msleep(100);
+	elan_msleep(600);
 	/* we need to calibrate touchscreen */
 	elan_calibrate(ts);
 
@@ -1089,12 +1058,22 @@ static int elan_get_repo_info(struct i2c_client *client, u8 *buf)
 	case CMD_HEADER_HELLO:
 		if (!memcmp(buf, hello_packet, 4))
 			ts->wdt_reset++;
+		memcpy(ts->cmd_resp, buf, 4);
+		elan_dbg(client, "recv CMD_HEADER_HELLO: [%*phC]\n", 4, buf);
+		complete(&ts->cmd_done);
 		return RET_CMDRSP;
 
 	case CMD_HEADER_RESP:
 	case CMD_HEADER_REK:
 		elan_dbg(client, "recv CMD_HEADER_RESP: [%*phC]\n", 4, buf);
-		memcpy(ts->cmd_resp, buf, sizeof(ts->cmd_resp));
+		memcpy(ts->cmd_resp, buf, 4);
+		complete(&ts->cmd_done);
+
+		return RET_CMDRSP;
+
+	case CMD_HEADER_5B_RESP:
+		elan_dbg(client, "recv CMD_HEADER_5B_READ: [%*phC]\n", 17, buf);
+		memcpy(ts->cmd_resp, buf, 17);
 		complete(&ts->cmd_done);
 
 		return RET_CMDRSP;
@@ -1583,32 +1562,19 @@ static int elan_initialize(struct i2c_client *client)
 	int rc = 0, retry_cnt = 0;
 
 	ENTER_LOG();
-
+	INIT_COMPLETION(ts->cmd_done);
 	for (retry_cnt = 0; retry_cnt < MAX_RETRIES; retry_cnt++) {
 		rc = elan_sw_reset(client);
-		if (rc < 0) {
-			dev_err(&client->dev, "Software reset failed\n");
-			/* Continue initializing if it's the last try */
-			if (retry_cnt < MAX_RETRIES - 1)
-				continue;
-		}
-
-		ts->rx_size = QUEUE_HEADER_SIZE;
-
-		rc = __elan_fastboot(client);
-		if (rc < 0) {
-			dev_err(&client->dev, "fastboot failed, rc=%d\n", rc);
-			/* Continue initializing if it's the last try */
-			if (retry_cnt < MAX_RETRIES - 1)
-				continue;
-		}
-
-		rc = __hello_packet_handler(client);
 		if (rc < 0)
-			dev_err(&client->dev, "hello packet error\n");
+			dev_err(&client->dev, "Software reset failed\n");
 		else
 			break;
 	}
+	ts->rx_size = QUEUE_HEADER_SIZE;
+
+	rc = __hello_packet_handler(client);
+	if (rc < 0)
+		dev_err(&client->dev, "hello packet error\n");
 
 	rc = __fw_id_packet_handler(client);
 	if (rc < 0) {
@@ -1657,18 +1623,6 @@ static void elan_initialize_async(void *data, async_cookie_t cookie)
 	unsigned long irqflags;
 	int err = 0;
 
-	mutex_lock(&ts->i2c_mutex);
-
-	err = elan_initialize(client);
-	if (err < 0)
-		dev_err(&client->dev, "probe failed! unbind device.\n");
-
-	err = elan_input_dev_create(ts);
-	if (err) {
-		dev_err(&client->dev, "%s crated failed, %d\n", __func__, err);
-		goto err_release;
-	}
-
 	/*
 	 * Systems using device tree should set up interrupt via DTS,
 	 * the rest will use the default falling edge interrupts.
@@ -1684,7 +1638,15 @@ static void elan_initialize_async(void *data, async_cookie_t cookie)
 		goto err_release;
 	}
 
-	mutex_unlock(&ts->i2c_mutex);
+	err = elan_initialize(client);
+	if (err < 0)
+		dev_err(&client->dev, "probe failed! unbind device.\n");
+
+	err = elan_input_dev_create(ts);
+	if (err) {
+		dev_err(&client->dev, "%s crated failed, %d\n", __func__, err);
+		goto err_release;
+	}
 
 	return;
 
