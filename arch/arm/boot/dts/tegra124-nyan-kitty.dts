@@ -21,7 +21,7 @@
 			width = <476>;
 			height = <268>;
 			power-off-time = <1000>;
-			pwm-to-bl-on = <500>;
+			pwm-to-bl-on = <20>;
 			bl-off-to-pwm = <100>;
 		};
 
