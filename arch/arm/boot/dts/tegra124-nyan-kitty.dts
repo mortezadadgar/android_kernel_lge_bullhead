@@ -117,6 +117,16 @@
 		max-frequency = <200000000>;
 	};
 
+        regulators {
+                avdd_lcd: regulator@5 {
+                        gpio;
+                };
+
+                lcd_bl_en: regulator@7 {
+                        gpio = <&ams3722 4 GPIO_ACTIVE_HIGH>; /* AS3722 GPIO 4 */
+                };
+        };
+
 	backlight {
 		pwms = <&pwm 1 47619>;
 		brightness-levels =
