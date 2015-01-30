@@ -97,6 +97,7 @@ struct tegra_nvhdcp {
 	u32				num_bksv_list;
 	u64				bksv_list[TEGRA_NVHDCP_MAX_DEVS];
 	int				fail_count;
+	atomic_t			requested;
 };
 
 static inline bool nvhdcp_is_plugged(struct tegra_nvhdcp *nvhdcp)
@@ -1062,12 +1063,19 @@ disable:
 
 static int tegra_nvhdcp_on(struct tegra_nvhdcp *nvhdcp)
 {
+	if (delayed_work_pending(&nvhdcp->work))
+		return 0;
+
+	mutex_lock(&nvhdcp->lock);
 	nvhdcp->state = STATE_UNAUTHENTICATED;
 	if (nvhdcp_is_plugged(nvhdcp)) {
 		nvhdcp->fail_count = 0;
+		mutex_unlock(&nvhdcp->lock);
 		queue_delayed_work(nvhdcp->downstream_wq, &nvhdcp->work,
 						msecs_to_jiffies(100));
+		mutex_lock(&nvhdcp->lock);
 	}
+	mutex_unlock(&nvhdcp->lock);
 	return 0;
 }
 
@@ -1096,6 +1104,10 @@ void tegra_nvhdcp_set_plug(struct tegra_nvhdcp *nvhdcp, bool hpd)
 
 	if (hpd) {
 		nvhdcp_set_plugged(nvhdcp, true);
+		if (atomic_read(&nvhdcp->policy) ==
+				TEGRA_NVHDCP_POLICY_ON_DEMAND &&
+				!atomic_read(&nvhdcp->requested))
+			return;
 		tegra_nvhdcp_on(nvhdcp);
 	} else {
 		nvhdcp_set_plugged(nvhdcp, false);
@@ -1105,7 +1117,11 @@ void tegra_nvhdcp_set_plug(struct tegra_nvhdcp *nvhdcp, bool hpd)
 
 int tegra_nvhdcp_set_policy(struct tegra_nvhdcp *nvhdcp, int pol)
 {
-	if (pol == TEGRA_NVHDCP_POLICY_ALWAYS_ON) {
+	if (pol == TEGRA_NVHDCP_POLICY_ON_DEMAND) {
+		nvhdcp_info("using \"on demand\" policy.\n");
+		if (atomic_xchg(&nvhdcp->policy, pol) != pol)
+			tegra_nvhdcp_off(nvhdcp);
+	} else if (pol == TEGRA_NVHDCP_POLICY_ALWAYS_ON) {
 		nvhdcp_info("using \"always on\" policy.\n");
 		if (atomic_xchg(&nvhdcp->policy, pol) != pol) {
 			/* policy changed, start working */
@@ -1151,9 +1167,12 @@ static long nvhdcp_dev_ioctl(struct file *filp,
 
 	switch (cmd) {
 	case TEGRAIO_NVHDCP_ON:
+		atomic_set(&nvhdcp->requested, 1);
+		nvhdcp_set_plugged(nvhdcp, true);
 		return tegra_nvhdcp_on(nvhdcp);
 
 	case TEGRAIO_NVHDCP_OFF:
+		atomic_set(&nvhdcp->requested, 0);
 		return tegra_nvhdcp_off(nvhdcp);
 
 	case TEGRAIO_NVHDCP_SET_POLICY:
@@ -1283,6 +1302,7 @@ struct tegra_nvhdcp *tegra_nvhdcp_create(struct tegra_dc_hdmi_data *hdmi,
 	}
 
 	nvhdcp->state = STATE_UNAUTHENTICATED;
+	atomic_set(&nvhdcp->requested, 0);
 
 	nvhdcp->downstream_wq = create_singlethread_workqueue(nvhdcp->name);
 	INIT_DELAYED_WORK(&nvhdcp->work, nvhdcp_downstream_worker);

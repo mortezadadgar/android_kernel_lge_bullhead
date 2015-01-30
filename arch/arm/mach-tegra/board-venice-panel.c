@@ -406,7 +406,8 @@ struct tegra_hdmi_out nyan_hdmi_out = {
 
 static struct tegra_dc_out venice_disp2_out = {
 	.type		 = TEGRA_DC_OUT_HDMI,
-	.flags		 = TEGRA_DC_OUT_HOTPLUG_HIGH,
+	.flags		 = TEGRA_DC_OUT_HOTPLUG_HIGH |
+			   TEGRA_DC_OUT_NVHDCP_POLICY_ON_DEMAND,
 	.parent_clk	 = "pll_d2_out0",
 	.dcc_bus	 = 3,
 	.max_pixclock	 = KHZ2PICOS(297000),
