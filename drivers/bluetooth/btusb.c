@@ -24,6 +24,7 @@
 #include <linux/module.h>
 #include <linux/usb.h>
 #include <linux/firmware.h>
+#include <linux/of.h>
 
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
@@ -33,9 +34,14 @@
 static bool disable_scofix;
 static bool force_scofix;
 
+static int marvell_cmd_in_progress;
+static wait_queue_head_t marvell_wait_q;
+static bool marvell_led_support;
+
 static bool reset = 1;
 
 static struct usb_driver btusb_driver;
+static int btusb_send_frame(struct hci_dev *hdev, struct sk_buff *skb);
 
 #define BTUSB_IGNORE		0x01
 #define BTUSB_DIGIANSWER	0x02
@@ -49,6 +55,7 @@ static struct usb_driver btusb_driver;
 #define BTUSB_INTEL_BOOT	0x200
 #define BTUSB_BCM_PATCHRAM	0x400
 #define BTUSB_MARVELL		0x800
+#define BTUSB_MARVELL_LED_COMMAND      0xfc77
 
 static const struct usb_device_id btusb_table[] = {
 	/* Generic Bluetooth USB device */
@@ -299,6 +306,7 @@ struct btusb_data {
 	unsigned int sco_num;
 	int isoc_altsetting;
 	int suspend_count;
+	bool is_marvell_device;
 };
 
 static inline void btusb_free_frags(struct btusb_data *data)
@@ -501,10 +509,34 @@ static void btusb_intr_complete(struct urb *urb)
 	if (urb->status == 0) {
 		hdev->stat.byte_rx += urb->actual_length;
 
-		if (btusb_recv_intr(data, urb->transfer_buffer,
-				    urb->actual_length) < 0) {
-			BT_ERR("%s corrupted event packet", hdev->name);
-			hdev->stat.err_rx++;
+		if (data->is_marvell_device && marvell_cmd_in_progress) {
+			struct hci_ev_cmd_complete *ev;
+			struct hci_event_hdr *hdr;
+			bool consume_ev = false;
+
+			hdr = urb->transfer_buffer;
+			if (hdr->evt == HCI_EV_CMD_COMPLETE) {
+				ev = (void *)((u8 *)hdr + HCI_EVENT_HDR_SIZE);
+				if (__le16_to_cpu(ev->opcode) ==
+						BTUSB_MARVELL_LED_COMMAND) {
+					consume_ev = true;
+					marvell_cmd_in_progress = false;
+					wake_up_interruptible(&marvell_wait_q);
+				}
+			}
+
+			if (!consume_ev &&
+			    btusb_recv_intr(data, urb->transfer_buffer,
+					    urb->actual_length) < 0) {
+				BT_ERR("%s corrupted event packet", hdev->name);
+				hdev->stat.err_rx++;
+			}
+		} else {
+			if (btusb_recv_intr(data, urb->transfer_buffer,
+					    urb->actual_length) < 0) {
+				BT_ERR("%s corrupted event packet", hdev->name);
+				hdev->stat.err_rx++;
+			}
 		}
 	} else if (urb->status == -ENOENT) {
 		/* Avoid suspend failed when usb_kill_urb */
@@ -833,6 +865,71 @@ done:
 	kfree_skb(skb);
 }
 
+static void btusb_marvell_config_led(struct hci_dev *hdev, bool status)
+{
+	u8 config_led[] = { 0x09, 0x00, 0x01, 0x01 };
+	int len = HCI_COMMAND_HDR_SIZE + sizeof(config_led);
+	struct hci_command_hdr *hdr;
+	struct sk_buff *skb;
+
+	if (marvell_cmd_in_progress)
+		return;
+
+	skb = bt_skb_alloc(len, GFP_ATOMIC);
+	if (!skb)
+		return;
+
+	hdr = (struct hci_command_hdr *)skb_put(skb, HCI_COMMAND_HDR_SIZE);
+	hdr->opcode = cpu_to_le16(BTUSB_MARVELL_LED_COMMAND);
+	hdr->plen   = sizeof(config_led);
+
+	if (status)
+		config_led[1] = 0x01;
+
+	memcpy(skb_put(skb, sizeof(config_led)), config_led,
+	       sizeof(config_led));
+	bt_cb(skb)->pkt_type = HCI_COMMAND_PKT;
+
+	marvell_cmd_in_progress = true;
+	btusb_send_frame(hdev, skb);
+	wait_event_interruptible_timeout(marvell_wait_q,
+					 !marvell_cmd_in_progress, HZ);
+}
+
+static ssize_t
+btusb_marvell_sysfs_get_led_support(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	return snprintf(buf, 10, "%d\n", marvell_led_support);
+}
+
+static ssize_t btusb_marvell_sysfs_set_led_support(struct device *dev,
+					      struct device_attribute *attr,
+					      const char *buf, size_t count)
+{
+	bool res;
+	struct hci_dev *hdev = to_hci_dev(dev);
+
+	if (strtobool(buf, &res))
+		return -EINVAL;
+
+	marvell_led_support = !!res;
+
+	if (test_bit(HCI_UP, &hdev->flags)) {
+		if (marvell_led_support)
+			btusb_marvell_config_led(hdev, true);
+		else
+			btusb_marvell_config_led(hdev, false);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(led, S_IRUGO | S_IWUSR,
+		   btusb_marvell_sysfs_get_led_support,
+		   btusb_marvell_sysfs_set_led_support);
+
 static int btusb_open(struct hci_dev *hdev)
 {
 	struct btusb_data *data = hci_get_drvdata(hdev);
@@ -867,6 +964,9 @@ static int btusb_open(struct hci_dev *hdev)
 
 done:
 	usb_autopm_put_interface(data->intf);
+
+	if (data->is_marvell_device && marvell_led_support)
+		btusb_marvell_config_led(hdev, true);
 	return 0;
 
 failed:
@@ -890,8 +990,17 @@ static int btusb_close(struct hci_dev *hdev)
 
 	BT_DBG("%s", hdev->name);
 
+	if (data->is_marvell_device && marvell_led_support &&
+	    usb_get_intfdata(data->intf))
+		btusb_marvell_config_led(hdev, false);
+
 	if (!test_and_clear_bit(HCI_RUNNING, &hdev->flags))
 		return 0;
+
+	if (data->is_marvell_device) {
+		marvell_cmd_in_progress = false;
+		wake_up_interruptible(&marvell_wait_q);
+	}
 
 	cancel_work_sync(&data->work);
 	cancel_work_sync(&data->waker);
@@ -2044,8 +2153,11 @@ static int btusb_probe(struct usb_interface *intf,
 		set_bit(HCI_QUIRK_STRICT_DUPLICATE_FILTER, &hdev->quirks);
 	}
 
-	if (id->driver_info & BTUSB_MARVELL)
+	if (id->driver_info & BTUSB_MARVELL) {
 		hdev->set_bdaddr = btusb_set_bdaddr_marvell;
+		data->is_marvell_device = true;
+		init_waitqueue_head(&marvell_wait_q);
+	}
 
 	if (id->driver_info & BTUSB_INTEL_BOOT)
 		set_bit(HCI_QUIRK_RAW_DEVICE, &hdev->quirks);
@@ -2122,6 +2234,12 @@ static int btusb_probe(struct usb_interface *intf,
 
 	usb_set_intfdata(intf, data);
 
+	/* Create sysfs file to control Marvell LED feature */
+	if (id->driver_info & BTUSB_MARVELL) {
+		if (device_create_file(&hdev->dev, &dev_attr_led))
+			BT_ERR("failed to create sysfs file led\n");
+	}
+
 	return 0;
 }
 
@@ -2137,6 +2255,9 @@ static void btusb_disconnect(struct usb_interface *intf)
 
 	hdev = data->hdev;
 	usb_set_intfdata(data->intf, NULL);
+
+	if (data->is_marvell_device)
+		device_remove_file(&hdev->dev, &dev_attr_led);
 
 	if (data->isoc)
 		usb_set_intfdata(data->isoc, NULL);
@@ -2170,6 +2291,11 @@ static int btusb_suspend(struct usb_interface *intf, pm_message_t message)
 		spin_unlock_irq(&data->txlock);
 		data->suspend_count--;
 		return -EBUSY;
+	}
+
+	if (data->is_marvell_device) {
+		marvell_cmd_in_progress = 0;
+		wake_up_interruptible(&marvell_wait_q);
 	}
 
 	cancel_work_sync(&data->work);
