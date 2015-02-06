@@ -186,6 +186,24 @@ static int chromeos_arm_probe(struct platform_device *pdev)
 	gpio_export(gpio, 0);
 	gpio_export_link(&pdev->dev, "write-protect", gpio);
 
+	gpio = of_get_named_gpio_flags(np, "recovery-gpio", 0, &flags);
+	if (!gpio_is_valid(gpio)) {
+		dev_err(&pdev->dev, "invalid recovery gpio descriptor\n");
+		err = -EINVAL;
+		goto err;
+	}
+
+	active_low = !!(flags & OF_GPIO_ACTIVE_LOW);
+
+	err = gpio_request_one(gpio, GPIOF_DIR_IN, "firmware-recovery");
+	if (err)
+		goto err;
+	err = gpio_sysfs_set_active_low(gpio, active_low);
+	if (err)
+		goto err;
+	gpio_export(gpio, 0);
+	gpio_export_link(&pdev->dev, "recovery", gpio);
+
 	if (!of_property_read_u32_array(np, "elog-panic-event",
 					elog_panic_event,
 					ARRAY_SIZE(elog_panic_event))) {
