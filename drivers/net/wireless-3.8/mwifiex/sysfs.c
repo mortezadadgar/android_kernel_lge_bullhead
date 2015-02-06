@@ -38,6 +38,13 @@ mwifiex_sysfs_set_led_support(struct device *dev, struct device_attribute *attr,
 
 	priv->adapter->led_support = !!res;
 
+	if (priv->netdev->flags & IFF_UP) {
+		if (priv->adapter->led_support)
+			mwifiex_set_led(priv->adapter, MWIFIEX_LED_ON);
+		else
+			mwifiex_set_led(priv->adapter, MWIFIEX_LED_OFF);
+	}
+
 	return count;
 }
 
