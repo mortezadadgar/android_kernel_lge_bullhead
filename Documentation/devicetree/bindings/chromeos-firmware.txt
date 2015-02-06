@@ -6,6 +6,7 @@ firmware might update this node prior to booting the kernel.
 Required properties:
 
   - write-protect-gpio : Describe the write-protect GPIO of the system.
+  - recovery-gpio : Describe the recovery  GPIO of the system.
   - nonvolatile-context-storage : Storage device type that firmware used for
     vboot nonvolatile context.  It should be one of "disk", "mkbp", or "nvram".
     Kernel should look for the device that firmware actually used in the

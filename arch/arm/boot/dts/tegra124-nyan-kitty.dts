@@ -15,6 +15,12 @@
 			"google,nyan-kitty-rev0", "google,nyan",
 			"nvidia,tegra124";
 
+	firmware {
+		chromeos {
+			recovery-gpio = <&gpio TEGRA_GPIO(Q, 7) GPIO_ACTIVE_LOW>;
+		};
+	};
+
 	host1x@50000000 {
 		dc@54200000 {
 			depth = <24>;
