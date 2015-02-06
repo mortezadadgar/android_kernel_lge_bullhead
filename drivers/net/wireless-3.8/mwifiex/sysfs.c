@@ -18,17 +18,17 @@
 #include "main.h"
 
 static ssize_t
-mwifiex_sysfs_get_rf_led(struct device *dev, struct device_attribute *attr,
-			 char *buf)
+mwifiex_sysfs_get_led_support(struct device *dev, struct device_attribute *attr,
+			      char *buf)
 {
 	struct mwifiex_private *priv = to_net_dev(dev)->ml_priv;
 
-	return snprintf(buf, 10, "%d\n", priv->adapter->rf_led_enabled);
+	return snprintf(buf, 10, "%d\n", priv->adapter->led_support);
 }
 
 static ssize_t
-mwifiex_sysfs_set_rf_led(struct device *dev, struct device_attribute *attr,
-			 const char *buf, size_t count)
+mwifiex_sysfs_set_led_support(struct device *dev, struct device_attribute *attr,
+			      const char *buf, size_t count)
 {
 	struct mwifiex_private *priv = to_net_dev(dev)->ml_priv;
 	bool res;
@@ -36,21 +36,21 @@ mwifiex_sysfs_set_rf_led(struct device *dev, struct device_attribute *attr,
 	if (strtobool(buf, &res))
 		return -EINVAL;
 
-	priv->adapter->rf_led_enabled = !!res;
+	priv->adapter->led_support = !!res;
 
 	return count;
 }
 
-static DEVICE_ATTR(rf_led, S_IRUGO | S_IWUSR,
-		   mwifiex_sysfs_get_rf_led,
-		   mwifiex_sysfs_set_rf_led);
+static DEVICE_ATTR(led, S_IRUGO | S_IWUSR,
+		   mwifiex_sysfs_get_led_support,
+		   mwifiex_sysfs_set_led_support);
 
 int mwifiex_sysfs_register(struct mwifiex_private *priv)
 {
 	int ret;
 
-	/* Create sysfs file to control RF LED feature */
-	ret = device_create_file(&priv->netdev->dev, &dev_attr_rf_led);
+	/* Create sysfs file to control LED feature */
+	ret = device_create_file(&priv->netdev->dev, &dev_attr_led);
 	if (ret)
 		dev_err(priv->adapter->dev,
 			"failed to create sysfs file rf_led\n");
@@ -60,6 +60,6 @@ int mwifiex_sysfs_register(struct mwifiex_private *priv)
 
 void mwifiex_sysfs_unregister(struct mwifiex_private *priv)
 {
-	device_remove_file(&priv->netdev->dev, &dev_attr_rf_led);
+	device_remove_file(&priv->netdev->dev, &dev_attr_led);
 }
 

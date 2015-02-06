@@ -498,7 +498,7 @@ mwifiex_open(struct net_device *dev)
 	struct mwifiex_private *priv = mwifiex_netdev_get_priv(dev);
 	netif_tx_start_all_queues(dev);
 
-	if (priv->adapter->rf_led_enabled)
+	if (priv->adapter->led_support)
 		mwifiex_set_led(priv->adapter, MWIFIEX_LED_ON);
 	return 0;
 }
@@ -520,7 +520,7 @@ mwifiex_close(struct net_device *dev)
 
 	netif_tx_stop_all_queues(dev);
 
-	if (priv->adapter->rf_led_enabled)
+	if (priv->adapter->led_support)
 		mwifiex_set_led(priv->adapter, MWIFIEX_LED_OFF);
 	return 0;
 }

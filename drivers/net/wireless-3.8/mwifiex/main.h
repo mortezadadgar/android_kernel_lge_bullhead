@@ -786,7 +786,7 @@ struct mwifiex_adapter {
 	struct mwifiex_hs_config_param hs_cfg;
 	u8 hs_activated;
 	u16 hs_activate_wait_q_woken;
-	bool rf_led_enabled;
+	bool led_support;
 	wait_queue_head_t hs_activate_wait_q;
 	bool is_suspended;
 	bool hs_enabling;
