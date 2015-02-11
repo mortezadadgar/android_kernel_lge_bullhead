@@ -783,7 +783,7 @@ static int verity_get_device(struct dm_target *ti, char *devname,
 			return 0;
 
 		/* No need to be too aggressive since this is a slow path. */
-		wait_for_device_probe();
+		msleep(500);
 	} while (dev_wait && (driver_probe_done() != 0 || *dm_dev == NULL));
 	async_synchronize_full();
 	return -1;
