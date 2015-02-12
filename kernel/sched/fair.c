@@ -2330,6 +2330,9 @@ static __always_inline int __update_entity_runnable_avg(u64 now, int cpu,
 	unsigned long scale_freq = arch_scale_freq_capacity(NULL, cpu);
 	unsigned long scale_cpu = arch_scale_cpu_capacity(NULL, cpu);
 
+	trace_sched_contrib_scale_f(cpu, scale_freq, scale_cpu);
+
+
 	delta = now - sa->last_runnable_update;
 	/*
 	 * This should only happen when time goes backwards, which it
@@ -2628,6 +2631,9 @@ static inline void update_entity_load_avg(struct sched_entity *se,
 	contrib_delta = __update_entity_load_avg_contrib(se);
 	utilization_delta = __update_entity_utilization_avg_contrib(se);
 
+	if (entity_is_task(se))
+		trace_sched_load_avg_task(task_of(se), &se->avg);
+
 	if (!update_cfs_rq)
 		return;
 
@@ -2639,6 +2645,8 @@ static inline void update_entity_load_avg(struct sched_entity *se,
 		subtract_utilization_blocked_contrib(cfs_rq,
 							-utilization_delta);
 	}
+
+	trace_sched_load_avg_cpu(cpu, cfs_rq);
 }
 
 /*
