@@ -239,7 +239,7 @@ static void _find_mem_entries(struct kgsl_mmu *mmu, unsigned int faultaddr,
 	unsigned int ptbase, struct _mem_entry *preventry,
 	struct _mem_entry *nextentry)
 {
-	struct kgsl_process_private *private;
+	struct kgsl_process_private *private = NULL, *p;
 	int id = kgsl_mmu_get_ptname_from_ptbase(mmu, ptbase);
 
 	memset(preventry, 0, sizeof(*preventry));
@@ -249,19 +249,23 @@ static void _find_mem_entries(struct kgsl_mmu *mmu, unsigned int faultaddr,
 	nextentry->gpuaddr = 0xFFFFFFFF;
 
 	mutex_lock(&kgsl_driver.process_mutex);
+	list_for_each_entry(p, &kgsl_driver.process_list, list) {
+		if (p->pagetable && (p->pagetable->name == id)) {
+			if (kgsl_process_private_get(p))
+				private = p;
+			break;
+		}
+	}
+	mutex_unlock(&kgsl_driver.process_mutex);
 
-	list_for_each_entry(private, &kgsl_driver.process_list, list) {
-
-		if (private->pagetable && (private->pagetable->name != id))
-			continue;
-
+	if (private != NULL) {
 		spin_lock(&private->mem_lock);
 		_prev_entry(private, faultaddr, preventry);
 		_next_entry(private, faultaddr, nextentry);
 		spin_unlock(&private->mem_lock);
-	}
 
-	mutex_unlock(&kgsl_driver.process_mutex);
+		kgsl_process_private_put(private);
+	}
 }
 
 static void _print_entry(struct kgsl_device *device, struct _mem_entry *entry)
