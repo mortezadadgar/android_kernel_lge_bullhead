@@ -98,6 +98,9 @@
 #define MAX_FW_UPDATE_RETRIES	30
 
 #define ELAN_FW_PAGESIZE	132
+#define ELAN_FW_FWVER_OFFSET	0x850a
+#define ELAN_FW_HWVER_OFFSET	0x871a
+#define ELAN_FW_MIN_SIZE	(ELAN_FW_HWVER_OFFSET + sizeof(u16))
 
 /* calibration timeout definition */
 #define ELAN_CALI_TIMEOUT_MSEC	10000
@@ -698,6 +701,27 @@ static int elants_i2c_do_update_firmware(struct i2c_client *client,
 	return 0;
 }
 
+static bool elants_i2c_firmware_compatible(struct elants_data *ts,
+					   const u8 *fw_data)
+{
+	u16 new_hw_ver = get_unaligned_le16(&fw_data[ELAN_FW_HWVER_OFFSET]);
+	u16 new_fw_ver = get_unaligned_le16(&fw_data[ELAN_FW_FWVER_OFFSET]);
+
+	dev_dbg(&ts->client->dev, "hw_ver = %#04x, new_hw_ver = %#04x\n",
+		ts->hw_version, new_hw_ver);
+	dev_dbg(&ts->client->dev, "fw_ver = %#04x, new_fw_ver = %#04x\n",
+		ts->fw_version, new_fw_ver);
+
+	if (ts->hw_version != new_hw_ver) {
+		dev_err(&ts->client->dev,
+			"hw_ver different, org = %#04x, new = %#04x\n",
+			ts->hw_version, new_hw_ver);
+		return false;
+	}
+
+	return true;
+}
+
 static int elants_i2c_fw_update(struct elants_data *ts)
 {
 	struct i2c_client *client = ts->client;
@@ -718,9 +742,15 @@ static int elants_i2c_fw_update(struct elants_data *ts)
 		return error;
 	}
 
-	if (fw->size % ELAN_FW_PAGESIZE) {
+	if (fw->size < ELAN_FW_MIN_SIZE || fw->size % ELAN_FW_PAGESIZE) {
 		dev_err(&client->dev, "invalid firmware length: %zu\n",
 			fw->size);
+		error = -EINVAL;
+		goto out;
+	}
+
+	if (!elants_i2c_firmware_compatible(ts, fw->data)) {
+		dev_err(&client->dev, "incompatible firmware\n");
 		error = -EINVAL;
 		goto out;
 	}
