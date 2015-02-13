@@ -42,6 +42,7 @@
 #include <linux/input/mt.h>
 #include <linux/acpi.h>
 #include <linux/of.h>
+#include <asm/unaligned.h>
 
 /* debug option */
 static bool debug = false;
@@ -837,6 +838,28 @@ static int __ts_info_handler(struct i2c_client *client)
 	return 0;
 }
 
+static int check_firmware_compatibility(struct elants_data *ts,
+					const u8 *fw_index)
+{
+	u16 new_hw_ver;
+	u16 new_fw_ver;
+
+	new_hw_ver = get_unaligned_le16(&fw_index[0x871a]);
+	new_fw_ver = get_unaligned_le16(&fw_index[0x850a]);
+	elan_dbg(ts->client, "hw_ver = 0x%x, new_hw_ver = 0x%x\n",
+				ts->hw_version, new_hw_ver);
+	elan_dbg(ts->client, "fw_ver = 0x%x, new_fw_ver = 0x%x\n",
+				ts->fw_version, new_fw_ver);
+
+	if (ts->hw_version != new_hw_ver) {
+		dev_err(&ts->client->dev, "Hw_ver different, org = %x  new = %x\n",
+				ts->hw_version, new_hw_ver);
+		return -1;
+	}
+
+	return 0;
+}
+
 /**
  * elan_fw_update - Elan firmware update in driver
  *
@@ -887,6 +910,12 @@ static int elan_fw_update(struct elants_data *ts)
 
 	fw_data = p_fw_entry->data;
 	fw_size = p_fw_entry->size;
+
+	rc = check_firmware_compatibility(ts, fw_data);
+	if (rc != 0) {
+		dev_err(&client->dev, "The hw_ver is different, exit fw update.\n");
+		goto err;
+	}
 
 	if (fw_size % ELAN_FW_PAGESIZE) {
 		dev_err(&client->dev, "Wrong file length(size=%d)\n", fw_size);
