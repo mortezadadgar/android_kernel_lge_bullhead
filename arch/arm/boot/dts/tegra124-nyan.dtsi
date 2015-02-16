@@ -13,6 +13,7 @@
 	firmware {
 		chromeos {
 			write-protect-gpio = <&gpio TEGRA_GPIO(R, 1) GPIO_ACTIVE_LOW>;
+			ddr-type = "ddr3l";
 		};
 	};
 
