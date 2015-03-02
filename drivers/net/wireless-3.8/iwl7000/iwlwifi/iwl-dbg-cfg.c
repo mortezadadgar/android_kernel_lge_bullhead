@@ -208,6 +208,9 @@ void iwl_dbg_cfg_load_ini(struct device *dev, struct iwl_dbg_cfg *dbgcfg)
 	char *data, *end, *pos;
 	int err;
 
+	if (dbgcfg->loaded)
+		return;
+
 	/* TODO: maybe add a per-device file? */
 	err = request_firmware(&fw, "iwl-dbg-cfg.ini", dev);
 	if (err)
@@ -304,4 +307,5 @@ void iwl_dbg_cfg_load_ini(struct device *dev, struct iwl_dbg_cfg *dbgcfg)
 	kfree(data);
  release:
 	release_firmware(fw);
+	dbgcfg->loaded = true;
 }
