@@ -81,6 +81,8 @@ struct iwl_dbg_cfg_bin {
 };
 
 struct iwl_dbg_cfg {
+	bool loaded;
+
 #define IWL_DBG_CFG(type, name)		type name;
 #define IWL_DBG_CFG_NODEF(type, name)	type name;
 #define IWL_DBG_CFG_BIN(name)		struct iwl_dbg_cfg_bin name;
@@ -251,6 +253,9 @@ struct iwl_dbg_cfg {
 #ifdef CPTCFG_IWLWIFI_DEBUG
 	IWL_MOD_PARAM(u32, debug_level)
 #endif /* CPTCFG_IWLWIFI_DEBUG */
+#ifdef CPTCFG_IWLWIFI_DISALLOW_OLDER_FW
+	IWL_DBG_CFG_NODEF(bool, load_old_fw)
+#endif /* CPTCFG_IWLWIFI_DISALLOW_OLDER_FW */
 #undef IWL_DBG_CFG
 #undef IWL_DBG_CFG_NODEF
 #undef IWL_DBG_CFG_BIN

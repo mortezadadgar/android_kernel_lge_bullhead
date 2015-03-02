@@ -423,7 +423,17 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 		sprintf(tag, "%d", drv->fw_index);
 	}
 
+#ifdef CPTCFG_IWLWIFI_DISALLOW_OLDER_FW
+	/* The dbg-cfg check here works because the first time we get
+	 * here we always load the 'api_max' version, and once that
+	 * has returned we load the dbg-cfg file.
+	 */
+	if ((drv->fw_index != drv->cfg->ucode_api_max &&
+	     !drv->trans->dbg_cfg.load_old_fw) ||
+	    drv->fw_index < drv->cfg->ucode_api_min) {
+#else
 	if (drv->fw_index < drv->cfg->ucode_api_min) {
+#endif
 		IWL_ERR(drv, "no suitable firmware found!\n");
 		return -ENOENT;
 	}
@@ -1394,6 +1404,10 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	if (!api_ok)
 		api_ok = api_max;
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	iwl_dbg_cfg_load_ini(drv->trans->dev, &drv->trans->dbg_cfg);
+#endif
+
 	pieces = kzalloc(sizeof(*pieces), GFP_KERNEL);
 	if (!pieces)
 		return;
@@ -1416,8 +1430,6 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	}
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-	iwl_dbg_cfg_load_ini(drv->trans->dev, &drv->trans->dbg_cfg);
-
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	/*
 	* Check if different uCode is required, according to configuration.
