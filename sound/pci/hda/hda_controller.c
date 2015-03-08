@@ -1214,6 +1214,9 @@ static unsigned int azx_rirb_get_response(struct hda_bus *bus,
 		}
 	}
 
+	if (bus->no_response_fallback)
+		return -1;
+
 	if (!chip->polling_mode && chip->poll_count < 2) {
 		dev_dbg(chip->card->dev, "azx_get_response timeout, "
 			   "polling the codec once: last cmd=0x%08x\n",
