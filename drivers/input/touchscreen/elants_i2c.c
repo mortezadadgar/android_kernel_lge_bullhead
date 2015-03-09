@@ -737,6 +737,12 @@ static int elants_i2c_fw_update(struct elants_data *ts)
 	error = request_firmware(&fw, fw_name, &client->dev);
 	kfree(fw_name);
 	if (error) {
+		dev_info(&client->dev,
+			 "request_firmware failed: %d, falling back to legacy name\n",
+			 error);
+		error = request_firmware(&fw, "elants_i2c.bin", &client->dev);
+	}
+	if (error) {
 		dev_err(&client->dev, "failed to request firmware: %d\n",
 			error);
 		return error;
