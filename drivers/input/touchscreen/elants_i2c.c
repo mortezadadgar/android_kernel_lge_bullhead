@@ -140,7 +140,10 @@ static const char recov_packet[RECOV_PACKET_LEN] = {0x55, 0x55, 0x80, 0x80};
 
 #define	ELAN_FW_PAGENUM	351
 #define	ELAN_FW_PAGESIZE	132
-#define	ELAN_FW_FILENAME	"elants_i2c.bin"
+#define	ELAN_FW_BASE_FILENAME	"elants_i2c"
+#define ELAN_FW_EXTENSION	"bin"
+#define ELAN_FW_FILENAME_MAX_LEN	(ARRAY_SIZE(ELAN_FW_BASE_FILENAME) + \
+					 ARRAY_SIZE(ELAN_FW_EXTENSION) + 5)
 
 /* calibration timeout definition */
 #define	ELAN_CALI_TIMEOUT_MSEC	10000
@@ -865,7 +868,9 @@ static int check_firmware_compatibility(struct elants_data *ts,
  *
  * client: our i2c client
  *
- * The firmware name is elants_i2c.bin
+ * The driver will first try to load a device-specific FW named
+ * elants_i2c_${HW_VERSION}.bin then fail over to the more generic
+ * "elants_i2c.bin".
  * The file path is located /system/etc/firmware at Android.
  * The file path usually is located at /lib/firmware.
  */
@@ -877,6 +882,7 @@ static int elan_fw_update(struct elants_data *ts)
 	int fw_size = 0, fw_pages;
 	int retry;
 	bool force = false;
+	char fw_filename_buffer[ELAN_FW_FILENAME_MAX_LEN];
 	u8 buf[4];
 	u16 send_id;
 	const struct firmware *p_fw_entry;
@@ -899,14 +905,30 @@ static int elan_fw_update(struct elants_data *ts)
 	if (rc)
 		dev_info(&client->dev, "Recovery IAP detection\n");
 
-	dev_info(&client->dev, "request_firmware name = %s\n",
-		 ELAN_FW_FILENAME);
-	rc = request_firmware(&p_fw_entry, ELAN_FW_FILENAME, &client->dev);
+
+	/*
+	 * First try to load a FW with the hw_version appended to the end.
+	 * Failing that, just load a FW without any hw version
+	 */
+	snprintf(fw_filename_buffer, ELAN_FW_FILENAME_MAX_LEN, "%s_%4x.%s",
+		 ELAN_FW_BASE_FILENAME, ts->hw_version, ELAN_FW_EXTENSION);
+	dev_info(&client->dev, "requesting fw name = %s\n", fw_filename_buffer);
+	rc = request_firmware(&p_fw_entry, fw_filename_buffer, &client->dev);
 	if (rc != 0) {
 		dev_err(&client->dev, "rc=%d, request_firmware fail\n", rc);
-		goto err;
-	} else
-		elan_dbg(client, "find FW!! Size=%zu\n", p_fw_entry->size);
+		snprintf(fw_filename_buffer, ELAN_FW_FILENAME_MAX_LEN, "%s.%s",
+			 ELAN_FW_BASE_FILENAME, ELAN_FW_EXTENSION);
+		dev_info(&client->dev, "Falling back to fw name = %s\n",
+			 fw_filename_buffer);
+		rc = request_firmware(&p_fw_entry, fw_filename_buffer,
+				      &client->dev);
+		if (rc != 0) {
+			dev_err(&client->dev,
+				"rc=%d, request_firmware fail\n", rc);
+			goto err;
+		}
+	}
+	elan_dbg(client, "Firmware loaded! Size=%zu\n", p_fw_entry->size);
 
 	fw_data = p_fw_entry->data;
 	fw_size = p_fw_entry->size;
