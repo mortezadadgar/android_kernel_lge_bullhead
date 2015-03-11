@@ -123,5 +123,6 @@ obj-$(CONFIG_REGULATOR_QPNP_OLEDB) += qpnp-oledb-regulator.o
 obj-$(CONFIG_REGULATOR_STUB) += stub-regulator.o
 obj-$(CONFIG_REGULATOR_KRYO) += kryo-regulator.o
 obj-$(CONFIG_REGULATOR_CPR2_GFX) += cpr2-gfx-regulator.o
+obj-$(CONFIG_REGULATOR_DW8768) += dw8768-regulator.o
 
 ccflags-$(CONFIG_REGULATOR_DEBUG) += -DDEBUG

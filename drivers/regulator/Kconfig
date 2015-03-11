@@ -1003,5 +1003,12 @@ config REGULATOR_STUB
 	  Clients can use the real regulator device names with proper
 	  constraint checking while the real driver is being developed.
 
+config REGULATOR_DW8768
+	bool "DONGWOON DW8768 regulator driver"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This driver supports DW8768 voltage regulator. DW8768 is a power
+	  supply IC to support general positive/negative driven LCDs.
 endif
 
