@@ -18,6 +18,7 @@ struct vm_area_struct;		/* vma defining user mapping in mm_types.h */
 #define VM_UNLIST	0x00000020	/* vm_struct is not listed in vmlist */
 #define VM_LOWMEM	0x00000040	/* Tracking of direct mapped lowmem */
 #define VM_NO_GUARD	0x00000080      /* don't add guard page */
+#define VM_KASAN	0x00000160      /* has allocated kasan shadow memory */
 /* bits [20..32] reserved for arch specific ioremap internals */
 
 /*
