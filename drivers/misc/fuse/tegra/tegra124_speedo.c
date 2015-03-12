@@ -89,6 +89,11 @@ static void rev_sku_to_speedo_ids(struct tegra_sku_info *sku_info,
 		sku_info->cpu_speedo_id = 2;
 		break;
 
+	case 0x87:
+		sku_info->cpu_speedo_id = 5;
+		sku_info->gpu_speedo_id = 1;
+		break;
+
 	case 0x07:
 		sku_info->cpu_speedo_id = 1;
 		sku_info->soc_speedo_id = 1;
