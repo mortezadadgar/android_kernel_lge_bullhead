@@ -78,6 +78,10 @@ static const struct tegra_edp_cpu_leakage_params tegra124_leakage_params[] = {
 		.cpu_speedo_id      = 3, /* Prod SKU */
 		TEGRA124_EDP_PARAMS_COMMON_PART,
 	},
+	{
+		.cpu_speedo_id      = 5, /* Prod SKU */
+		TEGRA124_EDP_PARAMS_COMMON_PART,
+	},
 };
 
 static unsigned int tegra124_edp_get_max_cpu_freq(void)
