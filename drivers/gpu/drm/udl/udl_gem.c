@@ -233,7 +233,8 @@ void udl_gem_free_object(struct drm_gem_object *gem_obj)
 	if (obj->pages)
 		udl_gem_put_pages(obj);
 
-	drm_gem_free_mmap_offset(gem_obj);
+	if (gem_obj->dev->mm_private)
+		drm_gem_free_mmap_offset(gem_obj);
 }
 
 /* the dumb interface doesn't work with the GEM straight MMAP
