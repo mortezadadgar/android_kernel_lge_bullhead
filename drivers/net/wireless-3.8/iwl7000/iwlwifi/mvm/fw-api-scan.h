@@ -726,4 +726,9 @@ struct iwl_umac_scan_iter_complete_notif {
 	struct iwl_scan_results_notif results[];
 } __packed; /* SCAN_ITER_COMPLETE_NTF_UMAC_API_S_VER_1 */
 
+enum iwl_scan_subcmd_ids {
+	GSCAN_START_CMD = 0x0,
+	GSCAN_STOP_CMD = 0x1,
+};
+
 #endif

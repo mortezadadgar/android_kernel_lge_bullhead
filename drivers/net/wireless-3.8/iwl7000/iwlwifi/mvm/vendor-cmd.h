@@ -93,6 +93,8 @@
  *	claused under CPTCFG_IWLMVM_P2P_OPPPS_TEST_WA
  * @IWL_MVM_VENDOR_CMD_GSCAN_GET_CAPABILITIES: get driver gscan capabilities as
  *	specified in %IWL_MVM_VENDOR_ATTR_GSCAN_*
+ * @IWL_MVM_VENDOR_CMD_GSCAN_START: set gscan parameters and start gscan
+ * @IWL_MVM_VENDOR_CMD_GSCAN_STOP: stop a previously started gscan
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -112,6 +114,8 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT,
 	IWL_MVM_VENDOR_CMD_OPPPS_WA,
 	IWL_MVM_VENDOR_CMD_GSCAN_GET_CAPABILITIES,
+	IWL_MVM_VENDOR_CMD_GSCAN_START,
+	IWL_MVM_VENDOR_CMD_GSCAN_STOP,
 };
 
 /**
@@ -128,6 +132,78 @@ enum iwl_mvm_vendor_load {
 	IWL_MVM_VENDOR_LOAD_LOW,
 	IWL_MVM_VENDOR_LOAD_MEDIUM,
 	IWL_MVM_VENDOR_LOAD_HIGH,
+};
+
+/**
+ * enum iwl_mvm_vendor_gscan_report_mode - gscan scan results report modes
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER: report that scan results are
+ *	available only when the scan results buffer reaches the report
+ *	threshold. The report threshold is set for each bucket. See
+ *	%IWL_MVM_VENDOR_ATTR_GSCAN_START_REPORT_THRESHOLD.
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE: like
+ *	%IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER + report that scan results are
+ *	available when scanning of this bucket is complete.
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE_RESULTS: like
+ *	%IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE + forward scan results
+ *	(beacons/probe responses) in real time to userspace.
+ * @NUM_IWL_MVM_VENDOR_GSCAN_REPORT: number of defined report modes for gscan.
+ */
+enum iwl_mvm_vendor_gscan_report_mode {
+	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER,
+	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE,
+	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE_RESULTS,
+	NUM_IWL_MVM_VENDOR_GSCAN_REPORT,
+};
+
+/**
+ * enum iwl_mvm_vendor_gscan_channel_spec - gscan channel specification
+ * @IWL_MVM_VENDOR_CHANNEL_SPEC_INVALID: attribute number 0 is reserved
+ * @IWL_MVM_VENDOR_CHANNEL_SPEC_CHANNEL: channel number
+ * @IWL_MVM_VENDOR_CHANNEL_SPEC_DWELL_TIME: u16 attribute specifying dwell
+ *	time on this channel.
+ * @IWL_MVM_VENDOR_CHANNEL_SPEC_PASSIVE: flag attribute. If set, passive
+ *	scan should be performed on this channel.
+ * @NUM_IWL_MVM_VENDOR_CHANNEL_SPEC: number of channel spec attributes.
+ * @MAX_IWL_MVM_VENDOR_CHANNEL_SPEC: highest channel spec attribute number.
+ */
+enum iwl_mvm_vendor_gscan_channel_spec {
+	IWL_MVM_VENDOR_CHANNEL_SPEC_INVALID,
+	IWL_MVM_VENDOR_CHANNEL_SPEC_CHANNEL,
+	IWL_MVM_VENDOR_CHANNEL_SPEC_DWELL_TIME,
+	IWL_MVM_VENDOR_CHANNEL_SPEC_PASSIVE,
+	NUM_IWL_MVM_VENDOR_CHANNEL_SPEC,
+	MAX_IWL_MVM_VENDOR_CHANNEL_SPEC =
+		NUM_IWL_MVM_VENDOR_CHANNEL_SPEC - 1,
+};
+
+/**
+ * enum iwl_mvm_vendor_gscan_bucket_spec - gscan bucket specification
+ * @IWL_MVM_VENDOR_BUCKET_SPEC_INVALID: attribute number 0 is reserved
+ * @IWL_MVM_VENDOR_BUCKET_SPEC_INDEX: bucket index
+ * @IWL_MVM_VENDOR_BUCKET_SPEC_BAND: band to scan as specified in
+ *	&enum iwl_gscan_band. When not set, the channel list is used.
+ * @IWL_MVM_VENDOR_BUCKET_SPEC_PERIOD: interval between this bucket scans,
+ *	in msecs.
+ * @IWL_MVM_VENDOR_BUCKET_SPEC_REPORT_MODE: when to report scan results.
+ *	Available modes are specified in &enum iwl_mvm_vendor_report_mode.
+ * @IWL_MVM_VENDOR_BUCKET_SPEC_CHANNELS: array of channels to scan for this
+ *	bucket. Each channel is specified with a nested attribute of
+ *	%IWL_MVM_VENDOR_CHANNEL_SPEC. This channel list is used when
+ *	%IWL_MVM_VENDOR_BUCKET_SPEC_BAND is set to
+ *	%IWL_MVM_VENDOR_BAND_UNSPECIFIED.
+ * @NUM_IWL_MVM_VENDOR_BUCKET_SPEC: number of bucket spec attributes.
+ * @MAX_IWL_MVM_VENDOR_BUCKET_SPEC: highest bucket spec attribute number.
+ */
+enum iwl_mvm_vendor_gscan_bucket_spec {
+	IWL_MVM_VENDOR_BUCKET_SPEC_INVALID,
+	IWL_MVM_VENDOR_BUCKET_SPEC_INDEX,
+	IWL_MVM_VENDOR_BUCKET_SPEC_BAND,
+	IWL_MVM_VENDOR_BUCKET_SPEC_PERIOD,
+	IWL_MVM_VENDOR_BUCKET_SPEC_REPORT_MODE,
+	IWL_MVM_VENDOR_BUCKET_SPEC_CHANNELS,
+	NUM_IWL_MVM_VENDOR_BUCKET_SPEC,
+	MAX_IWL_MVM_VENDOR_BUCKET_SPEC =
+		NUM_IWL_MVM_VENDOR_BUCKET_SPEC - 1,
 };
 
 /**
@@ -168,6 +244,17 @@ enum iwl_mvm_vendor_load {
  *	entries for significant change AP's
  * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_BSSID_HISTORY_ENTRIES: number of
  *	BSSID/RSSI entries that the device can hold
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAC_ADDR: mac address to be used on gscan scans
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAC_ADDR_MASK: mac address mask. Bits set to 0
+ *	will be copied from %IWL_MVM_VENDOR_ATTR_GSCAN_MAC_ADDR. Bits set to 1
+ *	will be randomized
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_AP_PER_SCAN: number of AP's to store in each
+ *	scan in the BSSID/RSSI history buffer (keep the highest RSSI AP's)
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD: report that scan results
+ *	are available when buffer is that much full. In percentage.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_BUCKET_SPECS: array of bucket specifications for
+ *	this gscan start command. Each bucket spec is a nested attribute of
+ *	&enum iwl_mvm_vendor_gscan_bucket_spec.
  *
  * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
  * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
@@ -198,6 +285,11 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_HOTLIST_APS,
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SIGNIFICANT_CHANGE_APS,
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_BSSID_HISTORY_ENTRIES,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAC_ADDR,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAC_ADDR_MASK,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_AP_PER_SCAN,
+	IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD,
+	IWL_MVM_VENDOR_ATTR_GSCAN_BUCKET_SPECS,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,

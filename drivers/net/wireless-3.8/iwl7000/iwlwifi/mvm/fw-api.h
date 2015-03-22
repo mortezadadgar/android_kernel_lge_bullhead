@@ -76,6 +76,7 @@
 #include "fw-api-scan.h"
 #include "fw-api-stats.h"
 #include "fw-api-tof.h"
+#include "fw-api-gscan.h"
 
 /* Tx queue numbers */
 enum {
@@ -268,6 +269,11 @@ enum {
 	SCAN_OFFLOAD_HOTSPOTS_QUERY_CMD = 0x59,
 
 	REPLY_MAX = 0xff,
+};
+
+/* command groups */
+enum {
+	SCAN_GROUP = 0x6,
 };
 
 /**
