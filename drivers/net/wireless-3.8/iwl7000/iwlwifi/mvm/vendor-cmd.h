@@ -6,7 +6,7 @@
  * GPL LICENSE SUMMARY
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -32,7 +32,7 @@
  * BSD LICENSE
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -91,6 +91,8 @@
  * @IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT: set the NIC's (SAR) TX power limit
  * @IWL_MVM_VENDOR_CMD_OPPPS_WA: wa to pass Sigma test - applicable code is
  *	claused under CPTCFG_IWLMVM_P2P_OPPPS_TEST_WA
+ * @IWL_MVM_VENDOR_CMD_GSCAN_GET_CAPABILITIES: get driver gscan capabilities as
+ *	specified in %IWL_MVM_VENDOR_ATTR_GSCAN_*
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -109,6 +111,7 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_TDLS_PEER_CACHE_QUERY,
 	IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT,
 	IWL_MVM_VENDOR_CMD_OPPPS_WA,
+	IWL_MVM_VENDOR_CMD_GSCAN_GET_CAPABILITIES,
 };
 
 /**
@@ -149,6 +152,22 @@ enum iwl_mvm_vendor_load {
  * @IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L: TX power limit for 5.2 GHz low (as 2.4)
  * @IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H: TX power limit for 5.2 GHz high (as 2.4)
  * @IWL_MVM_VENDOR_ATTR_OPPPS_WA: wa to pass Sigma test
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SCAN_CACHE_SIZE: scan cache size
+ *	(in bytes)
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SCAN_BUCKETS: maximum number of channel
+ *	buckets
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_AP_CACHE_PER_SCAN: maximum number of AP's
+ *	that can be stored per scan
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_RSSI_SAMPLE_SIZE: number of RSSI samples
+ *	used for averaging RSSI
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SCAN_REPORTING_THRESHOLD: max possible
+ *	report threshold. see %IWL_MVM_VENDOR_ATTR_GSCAN_START_REPORT_THRESHOLD
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_HOTLIST_APS: maximum number of entries for
+ *	hotlist AP's
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SIGNIFICANT_CHANGE_APS: maximum number of
+ *	entries for significant change AP's
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_BSSID_HISTORY_ENTRIES: number of
+ *	BSSID/RSSI entries that the device can hold
  *
  * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
  * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
@@ -171,6 +190,14 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L,
 	IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H,
 	IWL_MVM_VENDOR_ATTR_OPPPS_WA,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SCAN_CACHE_SIZE,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SCAN_BUCKETS,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_AP_CACHE_PER_SCAN,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_RSSI_SAMPLE_SIZE,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SCAN_REPORTING_THRESHOLD,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_HOTLIST_APS,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_SIGNIFICANT_CHANGE_APS,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_BSSID_HISTORY_ENTRIES,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,
