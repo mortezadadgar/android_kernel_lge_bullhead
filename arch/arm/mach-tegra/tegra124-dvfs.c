@@ -75,8 +75,8 @@ static struct dvfs cpu_dvfs = {
 
 /* CPU DVFS tables */
 static unsigned long cpu_max_freq[] = {
-/* speedo_id	0	 1	  2	   3      */
-		2014500, 2320500, 2116500, 2524500,
+/* speedo_id	0	 1	  2	   3	    4	     5	    */
+		2014500, 2320500, 2116500, 2524500, 1811000, 2218500,
 };
 
 static struct cpu_dvfs cpu_fv_dvfs_table[] = {
