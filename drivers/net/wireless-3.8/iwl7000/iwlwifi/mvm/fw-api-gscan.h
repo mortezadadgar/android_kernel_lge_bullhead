@@ -188,4 +188,36 @@ struct iwl_gscan_results_event {
 	struct iwl_gscan_scan_result results[];
 } __packed; /* GSCAN_SCAN_RESULTS_AVAILABLE_API_S_VER_1 */
 
+/**
+ * struct iwl_gscan_ap_threshold_params - RSSI tracking parameters
+ * @low_threshold: low RSSI threshold.
+ * @high_threshold: high RSSI threshold.
+ * @channel: operating channel number of the tracked AP.
+ * @reserved: reserved
+ * @bssid: BSSID of the AP to track.
+ */
+struct iwl_gscan_ap_threshold_params {
+	u8 low_threshold;
+	u8 high_threshold;
+	u8 channel;
+	u8 reserved;
+	u8 bssid[ETH_ALEN];
+} __packed; /* AP_THRESHOLD_PARAMS_S_VER_1 */
+
+#define MAX_HOTLIST_APS 32
+
+/**
+ * struct iwl_gscan_bssid_hotlist_cmd - set bssid hotlist command
+ * @lost_ap_sample_size: number of samples to confirm AP lost.
+ * @num_ap: number of APs in ap_list.
+ * @reserved: reserved
+ * @ap_list: APs to track and their parameters.
+ */
+struct iwl_gscan_bssid_hotlist_cmd {
+	u8 lost_ap_sample_size;
+	u8 num_ap;
+	__le16 reserved;
+	struct iwl_gscan_ap_threshold_params ap_list[MAX_HOTLIST_APS];
+} __packed; /* WIFI_BSSID_HOLTLIST_PARAMS_S_VER_1 */
+
 #endif

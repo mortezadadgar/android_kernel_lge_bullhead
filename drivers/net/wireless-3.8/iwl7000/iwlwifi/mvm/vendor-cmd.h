@@ -99,6 +99,10 @@
  *	from gscan. This event is sent when the scan results buffer has reached
  *	the report threshold, or when scanning a bucket with report mode
  *	%IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE was completed.
+ * @IWL_MVM_VENDOR_CMD_GSCAN_SET_BSSID_HOTLIST: set a list of AP's to track
+ *	changes in their RSSI and report scan results history when RSSI goes
+ *	above/below threshold. Sending this command with an empty list of AP's
+ *	will cancel previous set_bssid_hotlist request.
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -121,6 +125,7 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_GSCAN_START,
 	IWL_MVM_VENDOR_CMD_GSCAN_STOP,
 	IWL_MVM_VENDOR_CMD_GSCAN_RESULTS_EVENT,
+	IWL_MVM_VENDOR_CMD_GSCAN_SET_BSSID_HOTLIST,
 };
 
 /**
@@ -251,6 +256,30 @@ enum iwl_mvm_vendor_gscan_result {
 };
 
 /**
+ * enum iwl_mvm_vendor_ap_threshold_param - parameters for tracking AP's RSSI
+ * @IWL_MVM_VENDOR_AP_THRESHOLD_PARAM_INVALID: attribute number 0 is reserved.
+ * @IWL_MVM_VENDOR_AP_BSSID: BSSID of the BSS (6 octets)
+ * @IWL_MVM_VENDOR_AP_LOW_RSSI_THRESHOLD: low RSSI threshold. in dB.
+ * @IWL_MVM_VENDOR_AP_HIGH_RSSI_THRESHOLD: high RSSI threshold. in dB.
+ * @IWL_MVM_VENDOR_AP_CHANNEL_HINT: operating channel of the BSS.
+ *	This is only a hint, the BSS may be operating on a different channel.
+ * @NUM_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM: number of ap threshold param
+ *	attributes.
+ * @MAX_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM: highest ap threshold param
+ *	attribute number.
+ */
+enum iwl_mvm_vendor_ap_threshold_param {
+	IWL_MVM_VENDOR_AP_THRESHOLD_PARAM_INVALID,
+	IWL_MVM_VENDOR_AP_BSSID,
+	IWL_MVM_VENDOR_AP_LOW_RSSI_THRESHOLD,
+	IWL_MVM_VENDOR_AP_HIGH_RSSI_THRESHOLD,
+	IWL_MVM_VENDOR_AP_CHANNEL_HINT,
+	NUM_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM,
+	MAX_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM =
+		NUM_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM - 1,
+};
+
+/**
  * enum iwl_mvm_vendor_attr - attributes used in vendor commands
  * @__IWL_MVM_VENDOR_ATTR_INVALID: attribute 0 is invalid
  * @IWL_MVM_VENDOR_ATTR_LOW_LATENCY: low-latency flag attribute
@@ -303,6 +332,10 @@ enum iwl_mvm_vendor_gscan_result {
  *	specified in &enum iwl_mvm_vendor_results_event_type.
  * @IWL_MVM_VENDOR_ATTR_GSCAN_RESULTS: array of gscan results. Each result is a
  *	nested attribute of &enum iwl_mvm_vendor_gscan_result.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_LOST_AP_SAMPLE_SIZE: number of samples to confirm
+ *	ap loss.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_AP_LIST: an array of nested attributes of
+ *	&enum iwl_mvm_vendor_ap_threshold_param.
  *
  * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
  * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
@@ -340,6 +373,8 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_GSCAN_BUCKET_SPECS,
 	IWL_MVM_VENDOR_ATTR_GSCAN_RESULTS_EVENT_TYPE,
 	IWL_MVM_VENDOR_ATTR_GSCAN_RESULTS,
+	IWL_MVM_VENDOR_ATTR_GSCAN_LOST_AP_SAMPLE_SIZE,
+	IWL_MVM_VENDOR_ATTR_GSCAN_AP_LIST,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,
