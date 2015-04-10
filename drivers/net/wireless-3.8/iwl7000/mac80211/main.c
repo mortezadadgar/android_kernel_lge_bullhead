@@ -866,10 +866,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 #endif
 	}
 
-	/* Only HW csum features are currently compatible with mac80211 */
-	feature_whitelist = NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM |
-			    NETIF_F_HW_CSUM | NETIF_F_SG | NETIF_F_HIGHDMA |
-			    NETIF_F_GSO_SOFTWARE;
+	feature_whitelist = IEEE80211_SUPPORTED_NETDEV_FEATURES;
 	if (WARN_ON(hw->netdev_features & ~feature_whitelist ||
 		    hw->netdev_hw_features & ~feature_whitelist))
 		return -EINVAL;

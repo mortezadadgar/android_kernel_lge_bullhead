@@ -83,6 +83,12 @@ struct ieee80211_local;
 
 #define IEEE80211_DEAUTH_FRAME_LEN	(24 /* hdr */ + 2 /* reason */)
 
+/* Only these features can be passed through mac80211 */
+#define IEEE80211_SUPPORTED_NETDEV_FEATURES	\
+	(NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM | NETIF_F_HW_CSUM |	\
+	 NETIF_F_RXCSUM | NETIF_F_SG | NETIF_F_HIGHDMA |		\
+	 NETIF_F_GSO_SOFTWARE)
+
 struct ieee80211_fragment_entry {
 	unsigned long first_frag_time;
 	unsigned int seq;

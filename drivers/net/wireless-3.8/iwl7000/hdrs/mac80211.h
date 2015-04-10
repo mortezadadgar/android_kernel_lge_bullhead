@@ -3111,6 +3111,8 @@ enum ieee80211_reconfig_type {
  *
  * @get_ringparam: Get tx and rx ring current and maximum sizes.
  *
+ * @set_features: change netdev features for the given virtual interface
+ *
  * @tx_frames_pending: Check if there is any pending frame in the hardware
  *	queues before entering power save.
  *
@@ -3417,6 +3419,10 @@ struct ieee80211_ops {
 	int (*set_ringparam)(struct ieee80211_hw *hw, u32 tx, u32 rx);
 	void (*get_ringparam)(struct ieee80211_hw *hw,
 			      u32 *tx, u32 *tx_max, u32 *rx, u32 *rx_max);
+	int (*set_features)(struct ieee80211_hw *hw,
+			    struct ieee80211_vif *vif,
+			    netdev_features_t features,
+			    netdev_features_t changed);
 	bool (*tx_frames_pending)(struct ieee80211_hw *hw);
 	int (*set_bitrate_mask)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 				const struct cfg80211_bitrate_mask *mask);

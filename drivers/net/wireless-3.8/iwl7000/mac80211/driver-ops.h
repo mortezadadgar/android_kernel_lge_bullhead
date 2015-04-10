@@ -905,6 +905,28 @@ static inline void drv_get_ringparam(struct ieee80211_local *local,
 	trace_drv_return_void(local);
 }
 
+static inline int drv_set_features(struct ieee80211_local *local,
+				   struct ieee80211_sub_if_data *sdata,
+				   netdev_features_t features,
+				   netdev_features_t changed)
+{
+	int ret = -EOPNOTSUPP;
+
+	might_sleep();
+
+	if (!check_sdata_in_driver(sdata))
+		return -EIO;
+
+	trace_drv_set_features(local, sdata, features, changed);
+	if (local->ops->set_features)
+		ret = local->ops->set_features(&local->hw,
+					       &sdata->vif,
+					       features, changed);
+	trace_drv_return_int(local, ret);
+
+	return ret;
+}
+
 static inline bool drv_tx_frames_pending(struct ieee80211_local *local)
 {
 	bool ret = false;

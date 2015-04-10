@@ -1193,6 +1193,34 @@ TRACE_EVENT(drv_get_ringparam,
 	)
 );
 
+TRACE_EVENT(drv_set_features,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata,
+		 netdev_features_t features,
+		 netdev_features_t changed),
+
+	TP_ARGS(local, sdata, features, changed),
+
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		VIF_ENTRY
+		__field(netdev_features_t, features)
+		__field(netdev_features_t, changed)
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		VIF_ASSIGN;
+		__entry->features = features;
+		__entry->changed = changed;
+	),
+
+	TP_printk(
+		LOCAL_PR_FMT VIF_PR_FMT " features=0x%llx, changed=0x%llx",
+		LOCAL_PR_ARG, VIF_PR_ARG, __entry->features, __entry->changed
+	)
+);
+
 DEFINE_EVENT(local_only_evt, drv_tx_frames_pending,
 	TP_PROTO(struct ieee80211_local *local),
 	TP_ARGS(local)
