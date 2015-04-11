@@ -4,7 +4,7 @@
  * Copyright (c) 2013 ELAN Microelectronics Corp.
  *
  * Author: 林政維 (Duson Lin) <dusonlin@emc.com.tw>
- * Version: 1.5.6
+ * Version: 1.5.7
  *
  * Based on cyapa driver:
  * copyright (c) 2011-2012 Cypress Semiconductor, Inc.
@@ -40,7 +40,7 @@
 #include <linux/of.h>
 
 #define DRIVER_NAME		"elan_i2c"
-#define ELAN_DRIVER_VERSION	"1.5.6"
+#define ELAN_DRIVER_VERSION	"1.5.7"
 #define ETP_PRESSURE_OFFSET	25
 #define ETP_MAX_PRESSURE	255
 #define ETP_FWIDTH_REDUCE	90
@@ -106,6 +106,7 @@
 #define ETP_I2C_MAX_X_AXIS_CMD		0x0106
 #define ETP_I2C_MAX_Y_AXIS_CMD		0x0107
 #define ETP_I2C_RESOLUTION_CMD		0x0108
+#define ETP_I2C_PRESSURE_CMD		0x010A
 #define ETP_I2C_IAP_VERSION_CMD		0x0110
 #define ETP_I2C_SET_CMD			0x0300
 #define ETP_I2C_POWER_CMD		0x0307
@@ -158,6 +159,7 @@ struct elan_tp_data {
 	unsigned int		width_x;
 	unsigned int		width_y;
 	unsigned int		irq;
+	int			pressure_adjustment;
 	u16			product_id;
 	u16			fw_version;
 	u16			sm_version;
@@ -937,6 +939,18 @@ static int elan_get_iap_version(struct elan_tp_data *data)
 	return ret;
 }
 
+static int elan_get_pressure_adjustment(struct elan_tp_data *data)
+{
+	u8 val[3];
+	if (!data->smbus) {
+		elan_i2c_read_cmd(data->client,
+				  ETP_I2C_PRESSURE_CMD, val);
+		if ((val[0] >> 4) & 0x1)
+			return 0;
+	}
+	return ETP_PRESSURE_OFFSET;
+}
+
 static int elan_get_x_max(struct elan_tp_data *data)
 {
 	int ret;
@@ -1529,7 +1543,8 @@ static void elan_report_absolute(struct elan_tp_data *data, u8 *packet)
 	bool finger_on;
 	int pos_x, pos_y;
 	int pressure, mk_x, mk_y;
-	int i, area_x, area_y, major, minor, new_pressure;
+	int i, area_x, area_y, major, minor;
+	unsigned int scaled_pressure;
 	int btn_click;
 	u8  tp_info;
 	struct device *dev = &data->client->dev;
@@ -1591,16 +1606,18 @@ static void elan_report_absolute(struct elan_tp_data *data, u8 *packet)
 			major = max(area_x, area_y);
 			minor = min(area_x, area_y);
 
-			new_pressure = pressure + ETP_PRESSURE_OFFSET;
-			if (new_pressure > ETP_MAX_PRESSURE)
-				new_pressure = ETP_MAX_PRESSURE;
+			scaled_pressure = pressure + data->pressure_adjustment;
+
+			if (scaled_pressure > ETP_MAX_PRESSURE)
+				scaled_pressure = ETP_MAX_PRESSURE;
 
 			input_mt_slot(input, i);
 			input_mt_report_slot_state(input, MT_TOOL_FINGER,
 						   true);
 			input_report_abs(input, ABS_MT_POSITION_X, pos_x);
 			input_report_abs(input, ABS_MT_POSITION_Y, pos_y);
-			input_report_abs(input, ABS_MT_PRESSURE, new_pressure);
+			input_report_abs(input, ABS_MT_PRESSURE,
+					 scaled_pressure);
 			input_report_abs(input, ABS_TOOL_WIDTH, mk_x);
 			input_report_abs(input, ABS_MT_TOUCH_MAJOR, major);
 			input_report_abs(input, ABS_MT_TOUCH_MINOR, minor);
@@ -1692,6 +1709,7 @@ static int elan_input_dev_create(struct elan_tp_data *data)
 	data->fw_version = elan_get_fw_version(data);
 	data->sm_version = elan_get_sm_version(data);
 	data->iap_version = elan_get_iap_version(data);
+	data->pressure_adjustment = elan_get_pressure_adjustment(data);
 	data->max_x = elan_get_x_max(data);
 	data->max_y = elan_get_y_max(data);
 	data->width_x = data->max_x / elan_get_x_tracenum(data);
