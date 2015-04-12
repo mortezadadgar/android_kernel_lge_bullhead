@@ -729,6 +729,7 @@ struct iwl_umac_scan_iter_complete_notif {
 enum iwl_scan_subcmd_ids {
 	GSCAN_START_CMD = 0x0,
 	GSCAN_STOP_CMD = 0x1,
+	GSCAN_RESULTS_AVAILABLE_EVENT = 0xFF,
 };
 
 #endif

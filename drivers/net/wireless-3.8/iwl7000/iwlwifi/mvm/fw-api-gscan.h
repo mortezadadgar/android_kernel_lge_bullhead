@@ -159,4 +159,33 @@ struct iwl_gscan_start_cmd {
 	struct iwl_gscan_bucket_spec buckets[GSCAN_MAX_BUCKETS];
 } __packed; /* GSCAN_START_API_S_VER_1 */
 
+/**
+ * struct iwl_gscan_scan_result - gscan scan result
+ * @bssid: BSSID.
+ * @channel: channel number.
+ * @rssi: RSSI. In dB.
+ * @timestamp: time since boot when the result was recevied. in usecs.
+ * @ssid: SSID.
+ */
+struct iwl_gscan_scan_result {
+	u8 bssid[ETH_ALEN];
+	u8 channel;
+	u8 rssi;
+	__le32 timestamp;
+	u8 ssid[IEEE80211_MAX_SSID_LEN];
+} __packed; /* GSCAN_SCAN_RESULT_API_S_VER_1 */
+
+/**
+ * struct iwl_gscan_results_event - gscan results available event
+ * @event_type: scan results available event type as specified in &enum
+ *	iwl_mvm_vendor_results_event_type.
+ * @num_res: number of available scan results.
+ * @results: gscan results
+ */
+struct iwl_gscan_results_event {
+	__le32 event_type;
+	__le32 num_res;
+	struct iwl_gscan_scan_result results[];
+} __packed; /* GSCAN_SCAN_RESULTS_AVAILABLE_API_S_VER_1 */
+
 #endif

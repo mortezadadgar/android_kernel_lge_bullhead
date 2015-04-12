@@ -95,6 +95,10 @@
  *	specified in %IWL_MVM_VENDOR_ATTR_GSCAN_*
  * @IWL_MVM_VENDOR_CMD_GSCAN_START: set gscan parameters and start gscan
  * @IWL_MVM_VENDOR_CMD_GSCAN_STOP: stop a previously started gscan
+ * @IWL_MVM_VENDOR_CMD_GSCAN_RESULTS_EVENT: event that reports scan results
+ *	from gscan. This event is sent when the scan results buffer has reached
+ *	the report threshold, or when scanning a bucket with report mode
+ *	%IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE was completed.
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -116,6 +120,7 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_GSCAN_GET_CAPABILITIES,
 	IWL_MVM_VENDOR_CMD_GSCAN_START,
 	IWL_MVM_VENDOR_CMD_GSCAN_STOP,
+	IWL_MVM_VENDOR_CMD_GSCAN_RESULTS_EVENT,
 };
 
 /**
@@ -207,6 +212,45 @@ enum iwl_mvm_vendor_gscan_bucket_spec {
 };
 
 /**
+ * enum iwl_mvm_vendor_results_event_type - scan results available event type
+ * @IWL_MVM_VENDOR_RESULTS_NOTIF_BUFFER_FULL: scan results available was
+ *	reported because scan results buffer has reached the report threshold.
+ * @IWL_MVM_VENDOR_RESULTS_NOTIF_BUCKET_END: scan results available was reported
+ *	because scan of a bucket was completed.
+ * @NUM_IWL_VENDOR_RESULTS_NOTIF_EVENT_TYPE: number of defined gscan results
+ *	notification event types.
+ */
+enum iwl_mvm_vendor_results_event_type {
+	IWL_MVM_VENDOR_RESULTS_NOTIF_BUFFER_FULL,
+	IWL_MVM_VENDOR_RESULTS_NOTIF_BUCKET_END,
+	NUM_IWL_VENDOR_RESULTS_NOTIF_EVENT_TYPE,
+};
+
+/**
+ * enum iwl_mvm_vendor_gscan_result - gscan scan result
+ * @IWL_MVM_VENDOR_GSCAN_RESULT_INVALID: attribute number 0 is reserved.
+ * @IWL_MVM_VENDOR_GSCAN_RESULT_TIMESTAMP: time since boot (in usecs) when
+ *	the result was retrieved.
+ * @IWL_MVM_VENDOR_GSCAN_RESULT_SSID: SSID.
+ * @IWL_MVM_VENDOR_GSCAN_RESULT_BSSID: BSSID of the BSS (6 octets).
+ * @IWL_MVM_VENDOR_GSCAN_RESULT_CHANNEL: channel frequency in MHz.
+ * @IWL_MVM_VENDOR_GSCAN_RESULT_RSSI: signal strength in dB.
+ * @NUM_IWL_MVM_VENDOR_GSCAN_RESULT: number of scan result attributes.
+ * @MAX_IWL_MVM_VENDOR_GSCAN_RESULT: highest scan result attribute number.
+ */
+enum iwl_mvm_vendor_gscan_result {
+	IWL_MVM_VENDOR_GSCAN_RESULT_INVALID,
+	IWL_MVM_VENDOR_GSCAN_RESULT_TIMESTAMP,
+	IWL_MVM_VENDOR_GSCAN_RESULT_SSID,
+	IWL_MVM_VENDOR_GSCAN_RESULT_BSSID,
+	IWL_MVM_VENDOR_GSCAN_RESULT_CHANNEL,
+	IWL_MVM_VENDOR_GSCAN_RESULT_RSSI,
+	NUM_IWL_MVM_VENDOR_GSCAN_RESULT,
+	MAX_IWL_MVM_VENDOR_GSCAN_RESULT =
+		NUM_IWL_MVM_VENDOR_GSCAN_RESULT - 1,
+};
+
+/**
  * enum iwl_mvm_vendor_attr - attributes used in vendor commands
  * @__IWL_MVM_VENDOR_ATTR_INVALID: attribute 0 is invalid
  * @IWL_MVM_VENDOR_ATTR_LOW_LATENCY: low-latency flag attribute
@@ -255,6 +299,10 @@ enum iwl_mvm_vendor_gscan_bucket_spec {
  * @IWL_MVM_VENDOR_ATTR_GSCAN_BUCKET_SPECS: array of bucket specifications for
  *	this gscan start command. Each bucket spec is a nested attribute of
  *	&enum iwl_mvm_vendor_gscan_bucket_spec.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_RESULTS_EVENT_TYPE: gscan results event type as
+ *	specified in &enum iwl_mvm_vendor_results_event_type.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_RESULTS: array of gscan results. Each result is a
+ *	nested attribute of &enum iwl_mvm_vendor_gscan_result.
  *
  * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
  * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
@@ -290,6 +338,8 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_AP_PER_SCAN,
 	IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD,
 	IWL_MVM_VENDOR_ATTR_GSCAN_BUCKET_SPECS,
+	IWL_MVM_VENDOR_ATTR_GSCAN_RESULTS_EVENT_TYPE,
+	IWL_MVM_VENDOR_ATTR_GSCAN_RESULTS,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,
