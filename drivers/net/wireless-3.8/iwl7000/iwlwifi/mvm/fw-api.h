@@ -114,6 +114,8 @@ enum {
 	SCAN_ABORT_UMAC = 0xe,
 	SCAN_COMPLETE_UMAC = 0xf,
 
+	CONTINUOUS_REC_CHUNK_NOTIF = 0x11,
+
 	/* station table */
 	ADD_STA_KEY = 0x17,
 	ADD_STA = 0x18,
