@@ -106,6 +106,8 @@
  * @IWL_MVM_VENDOR_CMD_GSCAN_SET_SIGNIFICANT_CHANGE: set a list of APs to track
  *	significant changes in their RSSI. Sending this command with an empty
  *	list of AP's will cancel previous set_significant_change request.
+ * @IWL_MVM_VENDOR_CMD_GSCAN_HOTLIST_CHANGE_EVENT: event that indicates that an
+ *	AP from the BSSID hotlist was lost or found.
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -130,6 +132,7 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_GSCAN_RESULTS_EVENT,
 	IWL_MVM_VENDOR_CMD_GSCAN_SET_BSSID_HOTLIST,
 	IWL_MVM_VENDOR_CMD_GSCAN_SET_SIGNIFICANT_CHANGE,
+	IWL_MVM_VENDOR_CMD_GSCAN_HOTLIST_CHANGE_EVENT,
 };
 
 /**
@@ -284,6 +287,20 @@ enum iwl_mvm_vendor_ap_threshold_param {
 };
 
 /**
+ * enum iwl_mvm_vendor_hotlist_ap_status - whether an AP was found or lost
+ * @IWL_MVM_VENDOR_HOTLIST_AP_FOUND: beacon from this AP was received with RSSI
+ *	above the configured high threshold.
+ * @IWL_MVM_VENDOR_HOTLIST_AP_LOST: beacon from this AP was received with RSSI
+ *	below the configured low threshold.
+ * @NUM_IWL_MVM_VENDOR_HOTLIST_AP_STATUS: number of defined AP statuses.
+ */
+enum iwl_mvm_vendor_hotlist_ap_status {
+	IWL_MVM_VENDOR_HOTLIST_AP_FOUND,
+	IWL_MVM_VENDOR_HOTLIST_AP_LOST,
+	NUM_IWL_MVM_VENDOR_HOTLIST_AP_STATUS,
+};
+
+/**
  * enum iwl_mvm_vendor_attr - attributes used in vendor commands
  * @__IWL_MVM_VENDOR_ATTR_INVALID: attribute 0 is invalid
  * @IWL_MVM_VENDOR_ATTR_LOW_LATENCY: low-latency flag attribute
@@ -343,6 +360,8 @@ enum iwl_mvm_vendor_ap_threshold_param {
  * @IWL_MVM_VENDOR_ATTR_GSCAN_RSSI_SAMPLE_SIZE: number of samples for averaging
  *	RSSI
  * @IWL_MVM_VENDOR_ATTR_GSCAN_MIN_BREACHING: number of APs breaching threshold
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_HOTLIST_AP_STATUS: indicates if a reported AP was
+ *	lost or found as specified in &enum iwl_mvm_vendor_hotlist_ap_status.
  *
  * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
  * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
@@ -384,6 +403,7 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_GSCAN_AP_LIST,
 	IWL_MVM_VENDOR_ATTR_GSCAN_RSSI_SAMPLE_SIZE,
 	IWL_MVM_VENDOR_ATTR_GSCAN_MIN_BREACHING,
+	IWL_MVM_VENDOR_ATTR_GSCAN_HOTLIST_AP_STATUS,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,

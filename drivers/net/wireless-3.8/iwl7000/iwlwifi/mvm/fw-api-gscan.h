@@ -238,4 +238,17 @@ struct iwl_gscan_significant_change_cmd {
 	struct iwl_gscan_ap_threshold_params ap_list[MAX_SIG_CHANGE_APS];
 } __packed; /* GSCAN_SIGNIFICANT_CHANGE_PARAMS_S_VER_1 */
 
+/**
+ * struct iwl_gscan_hotlist_change_event - hotlist AP lost or found event
+ * @status: whether this AP was lost or found as specified in &enum
+ *	iwl_mvm_vendor_hotlist_ap_status.
+ * @num_res: number of scan results in results array.
+ * @results: scan results for the reported AP.
+ */
+struct iwl_gscan_hotlist_change_event {
+	__le32 status;
+	__le32 num_res;
+	struct iwl_gscan_scan_result results[];
+} __packed;
+
 #endif
