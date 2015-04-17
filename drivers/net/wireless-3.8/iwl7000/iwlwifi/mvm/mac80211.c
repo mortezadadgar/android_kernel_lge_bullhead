@@ -441,6 +441,11 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 	ieee80211_hw_set(hw, SUPPORT_FAST_XMIT);
 	ieee80211_hw_set(hw, SUPPORTS_CLONED_SKBS);
 
+	if (mvm->trans->max_skb_frags)
+		hw->netdev_features = NETIF_F_HIGHDMA | NETIF_F_SG;
+	/* allow these to be toggled by user */
+	hw->netdev_hw_features = hw->netdev_features;
+
 	hw->queues = mvm->first_agg_queue;
 	hw->offchannel_tx_hw_queue = IWL_MVM_OFFCHANNEL_QUEUE;
 	hw->radiotap_mcs_details |= IEEE80211_RADIOTAP_MCS_HAVE_FEC |
@@ -4138,6 +4143,15 @@ static void iwl_mvm_mac_event_callback(struct ieee80211_hw *hw,
 	}
 }
 
+static int iwl_mvm_mac_set_features(struct ieee80211_hw *hw,
+				    struct ieee80211_vif *vif,
+				    netdev_features_t features,
+				    netdev_features_t changed)
+{
+	/* nothing to do yet */
+	return 0;
+}
+
 const struct ieee80211_ops iwl_mvm_hw_ops = {
 	.tx = iwl_mvm_mac_tx,
 	.ampdu_action = iwl_mvm_mac_ampdu_action,
@@ -4211,4 +4225,5 @@ const struct ieee80211_ops iwl_mvm_hw_ops = {
 #endif
 	.get_survey = iwl_mvm_mac_get_survey,
 	.sta_statistics = iwl_mvm_mac_sta_statistics,
+	.set_features = iwl_mvm_mac_set_features,
 };
