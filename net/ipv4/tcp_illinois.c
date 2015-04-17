@@ -301,8 +301,7 @@ static u32 tcp_illinois_ssthresh(struct sock *sk)
 
 
 /* Extract info for Tcp socket info provided via netlink. */
-static void tcp_illinois_info(struct sock *sk, u32 ext,
-			      struct sk_buff *skb)
+static int tcp_illinois_info(struct sock *sk, u32 ext, struct sk_buff *skb)
 {
 	const struct illinois *ca = inet_csk_ca(sk);
 
@@ -319,8 +318,9 @@ static void tcp_illinois_info(struct sock *sk, u32 ext,
 			do_div(t, info.tcpv_rttcnt);
 			info.tcpv_rtt = t;
 		}
-		nla_put(skb, INET_DIAG_VEGASINFO, sizeof(info), &info);
+		return nla_put(skb, INET_DIAG_VEGASINFO, sizeof(info), &info);
 	}
+	return 0;
 }
 
 static struct tcp_congestion_ops tcp_illinois __read_mostly = {
