@@ -17,7 +17,7 @@ obj-$(CONFIG_LOGO)		  += logo/
 obj-y				  += backlight/
 
 obj-$(CONFIG_EXYNOS_VIDEO)     += exynos/
-obj-$(CONFIG_TEGRA_DC)         += tegra/
+obj-$(CONFIG_TEGRA_GRHOST)         += tegra/
 
 obj-$(CONFIG_FB_CFB_FILLRECT)  += cfbfillrect.o
 obj-$(CONFIG_FB_CFB_COPYAREA)  += cfbcopyarea.o
