@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2013 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2013 - 2015 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
  *
  * This program is free software; you can redistribute it and/or modify
@@ -31,7 +31,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2013 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2013 - 2015 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
  * All rights reserved.
  *
@@ -87,11 +87,14 @@ struct iwl_dbg_cfg {
 #define IWL_DBG_CFG_BINA(name, max)	struct iwl_dbg_cfg_bin name[max]; \
 					int n_ ## name;
 #define IWL_DBG_CFG_RANGE(type, name, min, max)	IWL_DBG_CFG(type, name)
+#define IWL_MOD_PARAM(type, name)	/* do nothing */
+
 #endif /* DBG_CFG_REINCLUDE */
 #if IS_ENABLED(CPTCFG_IWLXVT)
 	IWL_DBG_CFG(u32, XVT_DEFAULT_DBGM_MEM_POWER)
 	IWL_DBG_CFG(u32, XVT_DEFAULT_DBGM_LMAC_MASK)
 	IWL_DBG_CFG(u32, XVT_DEFAULT_DBGM_PRPH_MASK)
+	IWL_MOD_PARAM(bool, xvt_default_mode)
 #endif
 #if IS_ENABLED(CPTCFG_IWLMVM)
 	IWL_DBG_CFG(u32, MVM_DEFAULT_PS_TX_DATA_TIMEOUT)
@@ -228,14 +231,31 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(u32, d0i3_debug)
 	IWL_DBG_CFG_NODEF(u32, valid_ants)
 	IWL_DBG_CFG_NODEF(u32, secure_boot_cfg)
+	IWL_MOD_PARAM(bool, uapsd_disable)
+	IWL_MOD_PARAM(bool, d0i3_disable)
+	IWL_MOD_PARAM(bool, lar_disable)
+	IWL_MOD_PARAM(bool, fw_monitor)
+	IWL_MOD_PARAM(bool, restart_fw)
+	IWL_MOD_PARAM(bool, power_save)
+	IWL_MOD_PARAM(bool, bt_coex_active)
+	IWL_MOD_PARAM(int, ant_coupling)
+	IWL_MOD_PARAM(int, power_level)
+	IWL_MOD_PARAM(int, led_mode)
+	IWL_MOD_PARAM(int, amsdu_size_8K)
+	IWL_MOD_PARAM(int, sw_crypto)
+	IWL_MOD_PARAM(uint, disable_11n)
 #ifdef CONFIG_HAS_WAKELOCK
 	IWL_DBG_CFG(u32, WAKELOCK_TIMEOUT_MS)
 #endif /* CONFIG_HAS_WAKELOCK */
+#ifdef CPTCFG_IWLWIFI_DEBUG
+	IWL_MOD_PARAM(u32, debug_level)
+#endif /* CPTCFG_IWLWIFI_DEBUG */
 #undef IWL_DBG_CFG
 #undef IWL_DBG_CFG_NODEF
 #undef IWL_DBG_CFG_BIN
 #undef IWL_DBG_CFG_BINA
 #undef IWL_DBG_CFG_RANGE
+#undef IWL_MOD_PARAM
 #ifndef DBG_CFG_REINCLUDE
 };
 
