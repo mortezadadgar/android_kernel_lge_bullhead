@@ -870,7 +870,8 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 	feature_whitelist = NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM |
 			    NETIF_F_HW_CSUM | NETIF_F_SG | NETIF_F_HIGHDMA |
 			    NETIF_F_GSO_SOFTWARE;
-	if (WARN_ON(hw->netdev_features & ~feature_whitelist))
+	if (WARN_ON(hw->netdev_features & ~feature_whitelist ||
+		    hw->netdev_hw_features & ~feature_whitelist))
 		return -EINVAL;
 
 	if (hw->max_report_rates == 0)

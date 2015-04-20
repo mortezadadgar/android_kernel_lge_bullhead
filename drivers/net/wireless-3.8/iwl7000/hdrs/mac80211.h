@@ -2047,6 +2047,8 @@ struct ieee80211_tx_thrshld_md {
  * @netdev_features: netdev features to be set in each netdev created
  *	from this HW. Note that not all features are usable with mac80211,
  *	other features will be rejected during HW registration.
+ * @netdev_hw_features: features to advertise as netdev hw_features, which
+ *	impacts the ability of ethtool to modify them
  *
  * @uapsd_queues: This bitmap is included in (re)association frame to indicate
  *	for each access category if it is uAPSD trigger-enabled and delivery-
@@ -2089,7 +2091,7 @@ struct ieee80211_hw {
 	u8 offchannel_tx_hw_queue;
 	u8 radiotap_mcs_details;
 	u16 radiotap_vht_details;
-	netdev_features_t netdev_features;
+	netdev_features_t netdev_features, netdev_hw_features;
 	u8 uapsd_queues;
 	u8 uapsd_max_sp_len;
 	u8 n_cipher_schemes;

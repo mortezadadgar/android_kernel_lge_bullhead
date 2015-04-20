@@ -1851,7 +1851,8 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 				sdata->u.mgd.use_4addr = params->use_4addr;
 		}
 
-		ndev->features |= local->hw.netdev_features;
+		ndev->features = local->hw.netdev_features;
+		ndev->hw_features = local->hw.netdev_hw_features;
 
 		netdev_set_default_ethtool_ops(ndev, &ieee80211_ethtool_ops);
 
