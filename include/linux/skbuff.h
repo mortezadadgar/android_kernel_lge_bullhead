@@ -2511,6 +2511,11 @@ extern int	       skb_shift(struct sk_buff *tgt, struct sk_buff *skb,
 extern struct sk_buff *skb_segment(struct sk_buff *skb,
 				   netdev_features_t features);
 
+static inline int memcpy_from_msg(void *data, struct msghdr *msg, int len)
+{
+	return memcpy_fromiovec(data, msg->msg_iov, len);
+}
+
 static inline void *skb_header_pointer(const struct sk_buff *skb, int offset,
 				       int len, void *buffer)
 {
