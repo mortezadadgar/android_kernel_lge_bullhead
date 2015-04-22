@@ -948,6 +948,7 @@ struct mdss_mdp_pipe {
 	struct mdp_overlay_pp_params pp_cfg;
 	struct mdss_pipe_pp_res pp_res;
 	struct mdp_scale_data_v2 scaler;
+	struct mdp_scale_data scale;
 	u8 chroma_sample_h;
 	u8 chroma_sample_v;
 

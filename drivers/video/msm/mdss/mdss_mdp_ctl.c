@@ -727,7 +727,7 @@ int mdss_mdp_get_pipe_overlap_bw(struct mdss_mdp_pipe *pipe,
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	struct mdss_mdp_mixer *mixer = pipe->mixer_left;
 	struct mdss_rect src, dst;
-	u32 v_total = 0, h_total = 0, xres = 0, src_h = 0;
+	u32 v_total = 0 , rate = 0, h_total = 0, xres = 0, src_h = 0;
 	u32 fps = DEFAULT_FRAME_RATE;
 	*quota = 0;
 	*quota_nocr = 0;
@@ -794,6 +794,27 @@ int mdss_mdp_get_pipe_overlap_bw(struct mdss_mdp_pipe *pipe,
 			*quota = DIV_ROUND_UP_ULL(*quota * h_total, xres);
 
 		*quota_nocr = *quota;
+
+	/* apply fudge factor if hflip and high downscaling */
+	if (mdss_has_quirk(mdata, MDSS_QUIRK_DOWNSCALE_HFLIP_MDPCLK) &&
+		    (pipe->src_fmt->bpp == 4) && (pipe->flags & MDP_FLIP_LR)) {
+		u32 src_w = DECIMATED_DIMENSION(src.w, pipe->horz_deci);
+		u32 h_dwnscale = mult_frac(src_w, 1000, dst.w);
+		u32 h_overfetch = pipe->scale.left_ftch[0] +
+			pipe->scale.right_ftch[0];
+		pr_debug("pxl_ext:%d, h_overfetch:%d\n",
+			pipe->scale.enable_pxl_ext, h_overfetch);
+
+		if (h_dwnscale > (8 * 1000 / 3) && (!pipe->scale.enable_pxl_ext
+			|| (((src_w + h_overfetch) % 4) != 0))) {
+				u32 hflip_dwnscale_factor = mult_frac(src_w,
+					(3 * 1000), (dst.w * 8));
+				rate = mult_frac(rate, hflip_dwnscale_factor,
+					1000);
+				pr_debug("hflip clk factor:%d, rate:%d\n",
+					hflip_dwnscale_factor, rate);
+		}
+	}
 
 		if (test_bit(MDSS_QOS_OVERHEAD_FACTOR,
 				mdata->mdss_qos_map))
