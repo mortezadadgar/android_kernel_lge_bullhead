@@ -702,6 +702,48 @@ static int mdss_dsi_get_panel_cfg(char *panel_cfg,
 	return rc;
 }
 
+static int mdss_dsi_powerseq_init(struct device_node *of_node,
+	struct platform_device *pdev)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = platform_get_drvdata(pdev);
+	int temp = 0;
+
+	ctrl_pdata->dsvreg = regulator_get(&pdev->dev, "dsv");
+	temp = PTR_RET(ctrl_pdata->dsvreg);
+	if (temp) {
+		ctrl_pdata->dsvreg = NULL;
+		return 0;
+	}
+	ctrl_pdata->dsvreg_pre_on =
+		of_property_read_bool(of_node, "qcom,dsv-pre-on");
+	if (!ctrl_pdata->dsvreg_pre_on) {
+		ctrl_pdata->dsvreg_pre_on =
+			!of_property_read_bool(of_node, "qcom,dsv-post-on");
+	} else {
+		if (of_property_read_bool(of_node, "qcom,dsv-post-on")) {
+			pr_err("%s: failed to match dualvreg on\n", __func__);
+			return -EINVAL;
+		}
+	}
+
+	ctrl_pdata->dsvreg_pre_off =
+			!of_property_read_bool(of_node, "qcom,dsv-post-off");
+	if (ctrl_pdata->dsvreg_pre_off) {
+		ctrl_pdata->dsvreg_pre_off =
+			of_property_read_bool(of_node, "qcom,dsv-pre-off");
+	} else {
+		if (of_property_read_bool(of_node, "qcom,dsv-pre-off")) {
+			pr_err("%s: failed to match dsv off\n", __func__);
+			return -EINVAL;
+		}
+	}
+
+	pr_debug("%s: pre_on:%d pre_off:%d\n", __func__,
+		ctrl_pdata->dsvreg_pre_on, ctrl_pdata->dsvreg_pre_off);
+
+	return 0;
+}
+
 struct buf_data {
 	char *buf; /* cmd buf */
 	int blen; /* cmd buf length */
@@ -3997,6 +4039,8 @@ static int mdss_dsi_parse_ctrl_params(struct platform_device *ctrl_pdev,
 
 	ctrl_pdata->null_insert_enabled = of_property_read_bool(
 		ctrl_pdev->dev.of_node, "qcom,null-insertion-enabled");
+
+	mdss_dsi_powerseq_init(ctrl_pdev->dev.of_node, ctrl_pdev);
 
 	data = of_get_property(ctrl_pdev->dev.of_node,
 		"qcom,platform-strength-ctrl", &len);

@@ -557,6 +557,10 @@ struct mdss_dsi_ctrl_pdata {
 	bool update_phy_timing; /* flag to recalculate PHY timings */
 
 	bool phy_power_off;
+
+	bool dsvreg_pre_on;
+	bool dsvreg_pre_off;
+	struct regulator *dsvreg;
 };
 
 struct dsi_status_data {

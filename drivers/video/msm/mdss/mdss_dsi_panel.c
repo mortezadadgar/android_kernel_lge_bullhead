@@ -414,6 +414,11 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			pr_err("gpio request failed\n");
 			return rc;
 		}
+
+		if (ctrl_pdata->dsvreg && ctrl_pdata->dsvreg_pre_on)
+			if (regulator_enable(ctrl_pdata->dsvreg))
+				pr_err("%s: failed to pre-on dsv\n",
+							__func__);
 		if (!pinfo->cont_splash_enabled) {
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 				rc = gpio_direction_output(
@@ -454,6 +459,10 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 				}
 			}
 		}
+		if (ctrl_pdata->dsvreg && !ctrl_pdata->dsvreg_pre_on)
+			if (regulator_enable(ctrl_pdata->dsvreg))
+				pr_err("%s: failed to post-on dsv\n",
+							__func__);
 
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
 			bool out = false;
@@ -486,8 +495,16 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			usleep_range(100, 110);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
+		if (ctrl_pdata->dsvreg && ctrl_pdata->dsvreg_pre_off)
+			if (regulator_disable(ctrl_pdata->dsvreg))
+				pr_err("%s: failed to pre-off dsv\n",
+							__func__);
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		gpio_free(ctrl_pdata->rst_gpio);
+		if (ctrl_pdata->dsvreg && !ctrl_pdata->dsvreg_pre_off)
+			if (regulator_disable(ctrl_pdata->dsvreg))
+				pr_err("%s: failed to post-off dsv\n",
+							__func__);
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
 	}
