@@ -265,6 +265,9 @@ int tegra_bo_dumb_create(struct drm_file *file, struct drm_device *drm,
 	if (args->size < args->pitch * args->height)
 		args->size = args->pitch * args->height;
 
+	if (args->size == 0)
+		return -ENOMEM;
+
 	bo = tegra_bo_create_with_handle(file, drm, args->size, 0,
 					 &args->handle);
 	if (IS_ERR(bo))
