@@ -211,7 +211,6 @@ TRACE_EVENT(iwlwifi_dev_ucode_event,
 );
 #endif
 
-
 #endif /* __IWLWIFI_DEVICE_TRACE_IWLWIFI */
 
 #undef TRACE_INCLUDE_PATH
