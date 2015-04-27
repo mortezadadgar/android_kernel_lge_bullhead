@@ -80,18 +80,13 @@ struct iwl_dbg_cfg_bin {
 	unsigned int len;
 };
 
-#define DBG_CFG_bool	u32 /* for debugfs */
-#define DBG_CFG_u8	u8
-#define DBG_CFG_u16	u16
-#define DBG_CFG_u32	u32
 struct iwl_dbg_cfg {
-#define IWL_DBG_CFG(type, name)		DBG_CFG_##type name;
-#define IWL_DBG_CFG_NODEF(type, name)	DBG_CFG_##type name;
+#define IWL_DBG_CFG(type, name)		type name;
+#define IWL_DBG_CFG_NODEF(type, name)	type name;
 #define IWL_DBG_CFG_BIN(name)		struct iwl_dbg_cfg_bin name;
 #define IWL_DBG_CFG_BINA(name, max)	struct iwl_dbg_cfg_bin name[max]; \
 					int n_ ## name;
-#define IWL_DBG_CFG_RANGE(type, name, min, max)	\
-					DBG_CFG_##type name;
+#define IWL_DBG_CFG_RANGE(type, name, min, max)	IWL_DBG_CFG(type, name)
 #endif /* DBG_CFG_REINCLUDE */
 #if IS_ENABLED(CPTCFG_IWLXVT)
 	IWL_DBG_CFG(u32, XVT_DEFAULT_DBGM_MEM_POWER)
@@ -245,7 +240,6 @@ struct iwl_dbg_cfg {
 };
 
 extern struct iwl_dbg_cfg current_dbg_config;
-void iwl_dbg_cfg_init_dbgfs(struct dentry *root);
 void iwl_dbg_cfg_free(struct iwl_dbg_cfg *dbgcfg);
 void iwl_dbg_cfg_load_ini(struct device *dev, struct iwl_dbg_cfg *dbgcfg);
 #endif /* DBG_CFG_REINCLUDE */

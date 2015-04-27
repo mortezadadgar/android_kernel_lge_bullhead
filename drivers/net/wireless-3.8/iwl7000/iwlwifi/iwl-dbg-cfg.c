@@ -124,8 +124,8 @@ DBG_CFG_LOADER(u8)
 DBG_CFG_LOADER(u16)
 DBG_CFG_LOADER(u32)
 
-static void __maybe_unused /* no users yet */
-dbg_cfg_load_bool(const char *name, const char *val, u32 *out, int min, int max)
+static void
+dbg_cfg_load_bool(const char *name, const char *val, bool *out, int min, int max)
 {
 	u8 v;
 
@@ -138,7 +138,7 @@ dbg_cfg_load_bool(const char *name, const char *val, u32 *out, int min, int max)
 	}
 }
 
-static int __maybe_unused /* because nobody uses it yet */
+static int
 dbg_cfg_load_bin(const char *name, const char *val, struct iwl_dbg_cfg_bin *out)
 {
 	int len = strlen(val);
@@ -163,32 +163,6 @@ error:
 	printk(KERN_INFO "iwlwifi debug config: Invalid data for %s\n", name);
 	return -EINVAL;
 }
-
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
-void iwl_dbg_cfg_init_dbgfs(struct dentry *root)
-{
-	struct dentry *dbg_cfg_root = debugfs_create_dir("dbg_cfg", root);
-
-	/* not worried about errors as this is a debug tool */
-
-	if (!dbg_cfg_root)
-		return;
-
-#define IWL_DBG_CFG(type, name) \
-	debugfs_create_ ## type(#name, S_IRUSR | S_IWUSR, dbg_cfg_root, \
-				&current_dbg_config.name);
-#define IWL_DBG_CFG_NODEF(type, name) IWL_DBG_CFG(type, name)
-#define IWL_DBG_CFG_BIN(name) /* blobs can't be preconfigured in debugfs */
-#define IWL_DBG_CFG_BINA(name, max) /* ditto for blob arrays */
-#define IWL_DBG_CFG_RANGE(type, name, min, max) /* not supported yet */
-#include "iwl-dbg-cfg.h"
-#undef IWL_DBG_CFG
-#undef IWL_DBG_CFG_NODEF
-#undef IWL_DBG_CFG_BIN
-#undef IWL_DBG_CFG_BINA
-#undef IWL_DBG_CFG_RANGE
-}
-#endif /* CPTCFG_IWLWIFI_DEBUGFS */
 
 void iwl_dbg_cfg_free(struct iwl_dbg_cfg *dbgcfg)
 {

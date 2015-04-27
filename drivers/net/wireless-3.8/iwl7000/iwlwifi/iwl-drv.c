@@ -1866,11 +1866,6 @@ static int __init iwl_drv_init(void)
 		return -EFAULT;
 #endif
 
-#if defined(CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES) && \
-    defined(CPTCFG_IWLWIFI_DEBUGFS)
-	iwl_dbg_cfg_init_dbgfs(iwl_dbgfs_root);
-#endif
-
 	return iwl_register_bus_drivers();
 }
 module_init(iwl_drv_init);
