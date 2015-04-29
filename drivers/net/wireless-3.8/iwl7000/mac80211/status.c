@@ -653,6 +653,7 @@ tx_latency_msrmnt(struct ieee80211_tx_latency_bin_ranges *tx_latency,
 		tx_lat->bins[i]++;
 }
 
+#ifdef CPTCFG_NL80211_TESTMODE
 static void
 tx_latency_threshold(struct ieee80211_local *local, struct sk_buff *skb,
 		     struct ieee80211_tx_latency_bin_ranges *tx_latency,
@@ -678,11 +679,10 @@ tx_latency_threshold(struct ieee80211_local *local, struct sk_buff *skb,
 		md.tid = tid;
 		md.seq = (le16_to_cpu(hdr->seq_ctrl) &
 			  IEEE80211_SCTL_SEQ) >> 4;
-#ifdef CPTCFG_NL80211_TESTMODE
 		drv_retrieve_monitor_logs(local, &md);
-#endif
 	}
 }
+#endif
 
 static u32 ieee80211_calc_tx_latency(struct ieee80211_local *local,
 				     ktime_t skb_arv)
