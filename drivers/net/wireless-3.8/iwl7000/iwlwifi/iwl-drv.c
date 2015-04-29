@@ -1076,12 +1076,14 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 		case IWL_UCODE_TLV_FW_DBG_DEST: {
 			struct iwl_fw_dbg_dest_tlv *dest = (void *)tlv_data;
 
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 			if (drv->trans->dbg_cfg.dbm_destination_path) {
 				IWL_ERR(drv,
 					"Ignoring destination, ini file present\n");
 				break;
 			}
+#endif
 #endif
 
 			if (pieces->dbg_dest_tlv) {

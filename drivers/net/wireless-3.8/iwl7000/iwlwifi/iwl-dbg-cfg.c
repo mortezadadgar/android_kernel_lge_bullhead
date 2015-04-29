@@ -143,7 +143,7 @@ dbg_cfg_load_bool(const char *name, const char *val, bool *out, int min, int max
 	}
 }
 
-static int
+static int __maybe_unused
 dbg_cfg_load_bin(const char *name, const char *val, struct iwl_dbg_cfg_bin *out)
 {
 	int len = strlen(val);
