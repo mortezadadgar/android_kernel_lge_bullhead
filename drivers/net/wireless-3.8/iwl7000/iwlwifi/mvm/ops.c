@@ -1398,10 +1398,6 @@ static const struct iwl_op_mode_ops iwl_mvm_ops = {
 		.send_cmd = iwl_mvm_testmode_send_cmd,
 		.valid_hw_addr = iwl_mvm_testmode_valid_hw_addr,
 		.get_fw_ver = iwl_mvm_testmode_get_fw_ver,
-		.alloc_reply = iwl_mvm_testmode_alloc_reply,
-		.reply = iwl_mvm_testmode_reply,
-		.alloc_event = iwl_mvm_testmode_alloc_event,
-		.event = iwl_mvm_testmode_event,
 	},
 #endif
 	.enter_d0i3 = iwl_mvm_enter_d0i3,

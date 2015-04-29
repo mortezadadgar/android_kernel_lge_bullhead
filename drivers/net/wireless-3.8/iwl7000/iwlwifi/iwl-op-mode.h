@@ -111,20 +111,6 @@ struct iwl_tm_data;
  * @valid_hw_addr: handler that is used by the test object to request the
  *	op_mode to check if the given address is a valid address.
  * @get_fw_ver: handler used to get the FW version.
- * @alloc_reply: handler used by the test object to request the op_mode
- *	to allocate an skb for sending a reply to the user, and initialize
- *	the skb. It is assumed that the test object only fills the required
- *	attributes.
- * @reply: handler used by the test object to request the op_mode to reply
- *	to a request. The skb is an skb previously allocated by the the
- *	alloc_reply callback.
- * @alloc_event: handler used by the test object to request the op_mode
- *	to allocate an skb for sending an event, and initialize
- *	the skb. It is assumed that the test object only fills the required
- *	attributes.
- * @reply: handler used by the test object to request the op_mode to send
- *	an event. The skb is an skb previously allocated by the the
- *	alloc_event callback.
  *
  * The structure defines the callbacks that the op_mode should handle,
  * inorder to handle logic that is out of the scope of iwl_test. The
@@ -139,11 +125,6 @@ struct iwl_test_ops {
 			struct iwl_host_cmd *cmd);
 	bool (*valid_hw_addr)(u32 addr);
 	u32 (*get_fw_ver)(struct iwl_op_mode *op_mode);
-
-	struct sk_buff *(*alloc_reply)(struct iwl_op_mode *op_mode, int len);
-	int (*reply)(struct iwl_op_mode *op_mode, struct sk_buff *skb);
-	struct sk_buff* (*alloc_event)(struct iwl_op_mode *op_mode, int len);
-	void (*event)(struct iwl_op_mode *op_mode, struct sk_buff *skb);
 };
 
 /**
