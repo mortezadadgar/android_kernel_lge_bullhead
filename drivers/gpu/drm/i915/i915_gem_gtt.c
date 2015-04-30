@@ -645,8 +645,8 @@ void i915_gem_gtt_finish_object(struct drm_i915_gem_object *obj)
 
 static void i915_gtt_color_adjust(struct drm_mm_node *node,
 				  unsigned long color,
-				  unsigned long *start,
-				  unsigned long *end)
+				  u64 *start,
+				  u64 *end)
 {
 	if (node->color != color)
 		*start += 4096;
