@@ -201,6 +201,23 @@ out:
 }
 
 /*
+ * Scheduler load-tracking scale-invariance
+ *
+ * Provides the scheduler with a scale-invariance correction factor that
+ * compensates for frequency scaling (arch_scale_freq_capacity()). The scaling
+ * factor is updated in smp.c
+ */
+unsigned long arm_arch_scale_freq_capacity(struct sched_domain *sd, int cpu)
+{
+	unsigned long curr = atomic_long_read(&per_cpu(cpu_freq_capacity, cpu));
+
+	if (!curr)
+		return SCHED_CAPACITY_SCALE;
+
+	return curr;
+}
+
+/*
  * cpu topology table
  */
 struct cpu_topology cpu_topology[NR_CPUS];
