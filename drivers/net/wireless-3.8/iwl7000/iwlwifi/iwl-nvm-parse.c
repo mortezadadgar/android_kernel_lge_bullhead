@@ -394,11 +394,6 @@ static void iwl_init_vht_hw_capab(const struct iwl_cfg *cfg,
 			    IEEE80211_VHT_MCS_NOT_SUPPORTED << 12 |
 			    IEEE80211_VHT_MCS_NOT_SUPPORTED << 14);
 
-	if (data->sku_cap_mimo_disabled) {
-		num_rx_ants = 1;
-		num_tx_ants = 1;
-	}
-
 	if (num_rx_ants == 1 || cfg->rx_with_siso_diversity) {
 		vht_cap->cap |= IEEE80211_VHT_CAP_RX_ANTENNA_PATTERN;
 		/* this works because NOT_SUPPORTED == 3 */
