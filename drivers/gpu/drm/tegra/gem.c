@@ -247,6 +247,7 @@ void tegra_bo_free_object(struct drm_gem_object *gem)
 		tegra_bo_destroy(gem->dev, bo);
 	}
 
+	drm_gem_free_mmap_offset(&bo->gem);
 	drm_gem_object_release(gem);
 	kfree(bo);
 }
