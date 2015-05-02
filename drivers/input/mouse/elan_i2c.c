@@ -1578,7 +1578,8 @@ static void elan_report_absolute(struct elan_tp_data *data, u8 *packet)
 	int i, area_x, area_y, major, minor;
 	unsigned int scaled_pressure;
 	int btn_click;
-	u8  tp_info;
+	u8  tp_info, hover_info;
+	bool hover_event;
 	struct device *dev = &data->client->dev;
 
 	if (!data) {
@@ -1594,12 +1595,15 @@ static void elan_report_absolute(struct elan_tp_data *data, u8 *packet)
 	if (data->smbus) {
 		finger_data = &packet[ETP_SMBUS_FINGER_DATA_OFFSET];
 		tp_info = packet[1];
+		hover_info = packet[28];
 	} else {
 		finger_data = &packet[ETP_I2C_FINGER_DATA_OFFSET];
 		tp_info = packet[3];
+		hover_info = packet[30];
 	}
 
 	btn_click = (tp_info & 0x01);
+	hover_event = (hover_info & 0x40);
 	for (i = 0; i < ETP_MAX_FINGERS; i++) {
 		finger_on = (tp_info >> (3 + i)) & 0x01;
 
@@ -1648,8 +1652,9 @@ static void elan_report_absolute(struct elan_tp_data *data, u8 *packet)
 						   true);
 			input_report_abs(input, ABS_MT_POSITION_X, pos_x);
 			input_report_abs(input, ABS_MT_POSITION_Y, pos_y);
+			input_report_abs(input, ABS_MT_DISTANCE, hover_event);
 			input_report_abs(input, ABS_MT_PRESSURE,
-					 scaled_pressure);
+					 hover_event ? 0 : scaled_pressure);
 			input_report_abs(input, ABS_TOOL_WIDTH, mk_x);
 			input_report_abs(input, ABS_MT_TOUCH_MAJOR, major);
 			input_report_abs(input, ABS_MT_TOUCH_MINOR, minor);
@@ -1795,6 +1800,7 @@ static int elan_input_dev_create(struct elan_tp_data *data)
 			     ETP_FINGER_WIDTH * max_width, 0, 0);
 	input_set_abs_params(input, ABS_MT_TOUCH_MINOR, 0,
 			     ETP_FINGER_WIDTH * min_width, 0, 0);
+	input_set_abs_params(input, ABS_MT_DISTANCE, 0, 1, 0, 0);
 
 	input->inhibit = elan_inhibit;
 	input->uninhibit = elan_uninhibit;
