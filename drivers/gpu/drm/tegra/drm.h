@@ -263,6 +263,9 @@ static inline int tegra_output_check_mode(struct tegra_output *output,
 /* from bus.c */
 int drm_host1x_init(struct drm_driver *driver, struct host1x_device *device);
 void drm_host1x_exit(struct drm_driver *driver, struct host1x_device *device);
+int drm_host1x_register(struct host1x_client *client);
+int drm_host1x_unregister(struct host1x_client *client);
+int drm_host1x_device_init(struct drm_device *drm, struct host1x_device *device);
 
 /* from rgb.c */
 int tegra_dc_rgb_probe(struct tegra_dc *dc);

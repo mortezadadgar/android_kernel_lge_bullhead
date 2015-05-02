@@ -1591,7 +1591,7 @@ static int tegra_sor_probe(struct platform_device *pdev)
 
 	mutex_init(&sor->lock);
 
-	err = host1x_client_register(&sor->client);
+	err = drm_host1x_register(&sor->client);
 	if (err < 0) {
 		dev_err(&pdev->dev, "failed to register host1x client: %d\n",
 			err);
@@ -1608,7 +1608,7 @@ static int tegra_sor_remove(struct platform_device *pdev)
 	struct tegra_sor *sor = platform_get_drvdata(pdev);
 	int err;
 
-	err = host1x_client_unregister(&sor->client);
+	err = drm_host1x_unregister(&sor->client);
 	if (err < 0) {
 		dev_err(&pdev->dev, "failed to unregister host1x client: %d\n",
 			err);

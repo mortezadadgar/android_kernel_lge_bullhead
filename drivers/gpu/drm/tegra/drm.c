@@ -24,6 +24,10 @@ struct tegra_drm_file {
 	struct list_head contexts;
 };
 
+static struct platform_device *tegra_drm_pdev;
+
+static struct drm_driver tegra_drm_driver;
+
 static int tegra_drm_load(struct drm_device *drm, unsigned long flags)
 {
 	struct host1x_device *device = to_host1x_device(drm->dev);
@@ -59,7 +63,7 @@ static int tegra_drm_load(struct drm_device *drm, unsigned long flags)
 
 	drm_kms_helper_poll_init(drm);
 
-	err = host1x_device_init(device);
+	err = drm_host1x_device_init(drm, device);
 	if (err < 0)
 		goto fbdev;
 
@@ -83,7 +87,7 @@ static int tegra_drm_load(struct drm_device *drm, unsigned long flags)
 vblank:
 	drm_vblank_cleanup(drm);
 device:
-	host1x_device_exit(device);
+	drm_host1x_exit(&tegra_drm_driver, device);
 fbdev:
 	drm_kms_helper_poll_fini(drm);
 	tegra_drm_fb_free(drm);
@@ -103,16 +107,13 @@ static int tegra_drm_unload(struct drm_device *drm)
 {
 	struct host1x_device *device = to_host1x_device(drm->dev);
 	struct tegra_drm *tegra = drm->dev_private;
-	int err;
 
 	drm_kms_helper_poll_fini(drm);
 	tegra_drm_fb_exit(drm);
 	drm_vblank_cleanup(drm);
 	drm_mode_config_cleanup(drm);
 
-	err = host1x_device_exit(device);
-	if (err < 0)
-		return err;
+	drm_host1x_exit(&tegra_drm_driver, device);
 
 	if (tegra->domain) {
 		iommu_domain_free(tegra->domain);
@@ -150,165 +151,6 @@ static void tegra_drm_lastclose(struct drm_device *drm)
 	tegra_fbdev_restore_mode(tegra->fbdev);
 #endif
 }
-
-static struct host1x_bo *
-host1x_bo_lookup(struct drm_device *drm, struct drm_file *file, u32 handle)
-{
-	struct drm_gem_object *gem;
-	struct tegra_bo *bo;
-
-	gem = drm_gem_object_lookup(drm, file, handle);
-	if (!gem)
-		return NULL;
-
-	mutex_lock(&drm->struct_mutex);
-	drm_gem_object_unreference(gem);
-	mutex_unlock(&drm->struct_mutex);
-
-	bo = to_tegra_bo(gem);
-	return &bo->base;
-}
-
-static int host1x_reloc_copy_from_user(struct host1x_reloc *dest,
-				       struct drm_tegra_reloc __user *src,
-				       struct drm_device *drm,
-				       struct drm_file *file)
-{
-	u32 cmdbuf, target;
-	int err;
-
-	err = get_user(cmdbuf, &src->cmdbuf.handle);
-	if (err < 0)
-		return err;
-
-	err = get_user(dest->cmdbuf.offset, &src->cmdbuf.offset);
-	if (err < 0)
-		return err;
-
-	err = get_user(target, &src->target.handle);
-	if (err < 0)
-		return err;
-
-	err = get_user(dest->target.offset, &src->cmdbuf.offset);
-	if (err < 0)
-		return err;
-
-	err = get_user(dest->shift, &src->shift);
-	if (err < 0)
-		return err;
-
-	dest->cmdbuf.bo = host1x_bo_lookup(drm, file, cmdbuf);
-	if (!dest->cmdbuf.bo)
-		return -ENOENT;
-
-	dest->target.bo = host1x_bo_lookup(drm, file, target);
-	if (!dest->target.bo)
-		return -ENOENT;
-
-	return 0;
-}
-
-int tegra_drm_submit(struct tegra_drm_context *context,
-		     struct drm_tegra_submit *args, struct drm_device *drm,
-		     struct drm_file *file)
-{
-	unsigned int num_cmdbufs = args->num_cmdbufs;
-	unsigned int num_relocs = args->num_relocs;
-	unsigned int num_waitchks = args->num_waitchks;
-	struct drm_tegra_cmdbuf __user *cmdbufs =
-		(void __user *)(uintptr_t)args->cmdbufs;
-	struct drm_tegra_reloc __user *relocs =
-		(void __user *)(uintptr_t)args->relocs;
-	struct drm_tegra_waitchk __user *waitchks =
-		(void __user *)(uintptr_t)args->waitchks;
-	struct drm_tegra_syncpt syncpt;
-	struct host1x_job *job;
-	int err;
-
-	/* We don't yet support other than one syncpt_incr struct per submit */
-	if (args->num_syncpts != 1)
-		return -EINVAL;
-
-	job = host1x_job_alloc(context->channel, args->num_cmdbufs,
-			       args->num_relocs, args->num_waitchks);
-	if (!job)
-		return -ENOMEM;
-
-	job->num_relocs = args->num_relocs;
-	job->num_waitchk = args->num_waitchks;
-	job->client = (u32)args->context;
-	job->class = context->client->base.class;
-	job->serialize = true;
-
-	while (num_cmdbufs) {
-		struct drm_tegra_cmdbuf cmdbuf;
-		struct host1x_bo *bo;
-
-		if (copy_from_user(&cmdbuf, cmdbufs, sizeof(cmdbuf))) {
-			err = -EFAULT;
-			goto fail;
-		}
-
-		bo = host1x_bo_lookup(drm, file, cmdbuf.handle);
-		if (!bo) {
-			err = -ENOENT;
-			goto fail;
-		}
-
-		host1x_job_add_gather(job, bo, cmdbuf.words, cmdbuf.offset);
-		num_cmdbufs--;
-		cmdbufs++;
-	}
-
-	/* copy and resolve relocations from submit */
-	while (num_relocs--) {
-		err = host1x_reloc_copy_from_user(&job->relocarray[num_relocs],
-						  &relocs[num_relocs], drm,
-						  file);
-		if (err < 0)
-			goto fail;
-	}
-
-	if (copy_from_user(job->waitchk, waitchks,
-			   sizeof(*waitchks) * num_waitchks)) {
-		err = -EFAULT;
-		goto fail;
-	}
-
-	if (copy_from_user(&syncpt, (void __user *)(uintptr_t)args->syncpts,
-			   sizeof(syncpt))) {
-		err = -EFAULT;
-		goto fail;
-	}
-
-	job->is_addr_reg = context->client->ops->is_addr_reg;
-	job->syncpt_incrs = syncpt.incrs;
-	job->syncpt_id = syncpt.id;
-	job->timeout = 10000;
-
-	if (args->timeout && args->timeout < 10000)
-		job->timeout = args->timeout;
-
-	err = host1x_job_pin(job, context->client->base.dev);
-	if (err)
-		goto fail;
-
-	err = host1x_job_submit(job);
-	if (err)
-		goto fail_submit;
-
-	args->fence = job->syncpt_end;
-
-	host1x_job_put(job);
-	return 0;
-
-fail_submit:
-	host1x_job_unpin(job);
-fail:
-	host1x_job_put(job);
-	return err;
-}
-
 
 #ifdef CONFIG_DRM_TEGRA_STAGING
 static struct tegra_drm_context *tegra_drm_get_context(__u64 context)
@@ -850,18 +692,6 @@ int tegra_drm_unregister_client(struct tegra_drm *tegra,
 	return 0;
 }
 
-static int host1x_drm_probe(struct host1x_device *device)
-{
-	return drm_host1x_init(&tegra_drm_driver, device);
-}
-
-static int host1x_drm_remove(struct host1x_device *device)
-{
-	drm_host1x_exit(&tegra_drm_driver, device);
-
-	return 0;
-}
-
 static const struct of_device_id host1x_drm_subdevs[] = {
 	{ .compatible = "nvidia,tegra20-dc", },
 	{ .compatible = "nvidia,tegra20-hdmi", },
@@ -880,26 +710,38 @@ static const struct of_device_id host1x_drm_subdevs[] = {
 	{ /* sentinel */ }
 };
 
-static struct host1x_driver host1x_drm_driver = {
-	.name = "drm",
-	.probe = host1x_drm_probe,
-	.remove = host1x_drm_remove,
-	.subdevs = host1x_drm_subdevs,
+static int tegra_drm_platform_probe(struct platform_device *pdev)
+{
+	return drm_platform_init(&tegra_drm_driver, pdev);
+}
+
+static int tegra_drm_platform_remove(struct platform_device *pdev)
+{
+	drm_platform_exit(&tegra_drm_driver, pdev);
+	return 0;
+}
+
+static struct platform_driver tegra_drm_platform_driver = {
+	.probe = tegra_drm_platform_probe,
+	.remove = tegra_drm_platform_remove,
+	.driver = {
+		.owner = THIS_MODULE,
+		.name = "tegra-drm",
+	},
 };
 
 static int __init host1x_drm_init(void)
 {
 	int err;
 
-	err = host1x_driver_register(&host1x_drm_driver);
+	err = platform_driver_register(&tegra_dpaux_driver);
 	if (err < 0)
-		return err;
+		goto out;
 
 	err = platform_driver_register(&tegra_dc_driver);
 	if (err < 0)
-		goto unregister_host1x;
+		goto unregister_dpaux;
 
-	err = platform_driver_register(&tegra_dsi_driver);
 	if (err < 0)
 		goto unregister_dc;
 
@@ -911,48 +753,40 @@ static int __init host1x_drm_init(void)
 	if (err < 0)
 		goto unregister_sor;
 
-	err = platform_driver_register(&tegra_dpaux_driver);
+	err = platform_driver_register(&tegra_drm_platform_driver);
 	if (err < 0)
 		goto unregister_hdmi;
 
-	err = platform_driver_register(&tegra_gr2d_driver);
-	if (err < 0)
-		goto unregister_dpaux;
-
-	err = platform_driver_register(&tegra_gr3d_driver);
-	if (err < 0)
-		goto unregister_gr2d;
+	tegra_drm_pdev = platform_device_register_simple("tegra-drm", -1, NULL, 0);
+	if (IS_ERR(tegra_drm_pdev)) {
+		err = PTR_ERR(tegra_drm_pdev);
+		goto unregister_platform;
+	}
 
 	return 0;
 
-unregister_gr2d:
-	platform_driver_unregister(&tegra_gr2d_driver);
-unregister_dpaux:
-	platform_driver_unregister(&tegra_dpaux_driver);
+unregister_platform:
+	platform_driver_unregister(&tegra_drm_platform_driver);
 unregister_hdmi:
 	platform_driver_unregister(&tegra_hdmi_driver);
 unregister_sor:
 	platform_driver_unregister(&tegra_sor_driver);
 unregister_dsi:
-	platform_driver_unregister(&tegra_dsi_driver);
 unregister_dc:
 	platform_driver_unregister(&tegra_dc_driver);
-unregister_host1x:
-	host1x_driver_unregister(&host1x_drm_driver);
+unregister_dpaux:
+	platform_driver_unregister(&tegra_dpaux_driver);
+out:
 	return err;
 }
 module_init(host1x_drm_init);
 
 static void __exit host1x_drm_exit(void)
 {
-	platform_driver_unregister(&tegra_gr3d_driver);
-	platform_driver_unregister(&tegra_gr2d_driver);
-	platform_driver_unregister(&tegra_dpaux_driver);
 	platform_driver_unregister(&tegra_hdmi_driver);
 	platform_driver_unregister(&tegra_sor_driver);
-	platform_driver_unregister(&tegra_dsi_driver);
 	platform_driver_unregister(&tegra_dc_driver);
-	host1x_driver_unregister(&host1x_drm_driver);
+	platform_driver_unregister(&tegra_dpaux_driver);
 }
 module_exit(host1x_drm_exit);
 

@@ -8,65 +8,8 @@
 
 #include "drm.h"
 
-static int drm_host1x_set_busid(struct drm_device *dev,
-				struct drm_master *master)
-{
-	const char *device = dev_name(dev->dev);
-	const char *driver = dev->driver->name;
-	const char *bus = dev->dev->bus->name;
-	int length;
-
-	master->unique_len = strlen(bus) + 1 + strlen(device);
-	master->unique_size = master->unique_len;
-
-	master->unique = kmalloc(master->unique_len + 1, GFP_KERNEL);
-	if (!master->unique)
-		return -ENOMEM;
-
-	snprintf(master->unique, master->unique_len + 1, "%s:%s", bus, device);
-
-	length = strlen(driver) + 1 + master->unique_len;
-
-	dev->devname = kmalloc(length + 1, GFP_KERNEL);
-	if (!dev->devname)
-		return -ENOMEM;
-
-	snprintf(dev->devname, length + 1, "%s@%s", driver, master->unique);
-
-	return 0;
-}
-
-static struct drm_bus drm_host1x_bus = {
-	.bus_type = DRIVER_BUS_HOST1X,
-	.set_busid = drm_host1x_set_busid,
-};
-
-int drm_host1x_init(struct drm_driver *driver, struct host1x_device *device)
-{
-	struct drm_device *drm;
-	int ret;
-
-	INIT_LIST_HEAD(&driver->device_list);
-	driver->bus = &drm_host1x_bus;
-
-	drm = drm_dev_alloc(driver, &device->dev);
-	if (!drm)
-		return -ENOMEM;
-
-	ret = drm_dev_register(drm, 0);
-	if (ret)
-		goto err_free;
-
-	DRM_INFO("Initialized %s %d.%d.%d %s on minor %d\n", driver->name,
-		 driver->major, driver->minor, driver->patchlevel,
-		 driver->date, drm->primary->index);
-
-	return 0;
-
-err_free:
-	kfree(drm);
-	return ret;
-}
+static DEFINE_MUTEX(clients_lock);
+static LIST_HEAD(clients);
 
 void drm_host1x_exit(struct drm_driver *driver, struct host1x_device *device)
 {
@@ -74,3 +17,83 @@ void drm_host1x_exit(struct drm_driver *driver, struct host1x_device *device)
 
 	drm_put_dev(tegra->drm);
 }
+
+
+int drm_host1x_init(struct drm_driver *driver, struct host1x_device *device)
+{
+	mutex_init(&clients_lock);
+	INIT_LIST_HEAD(&device->clients);
+
+	return 0;
+}
+
+int drm_host1x_register(struct host1x_client *client)
+{
+	mutex_lock(&clients_lock);
+	list_add_tail(&client->list, &clients);
+	mutex_unlock(&clients_lock);
+	return 0;
+}
+
+int drm_host1x_unregister(struct host1x_client *client)
+{
+	struct host1x_client *c;
+
+	list_for_each_entry(c, &clients, list) {
+		if (c == client) {
+			list_del(&c->list);
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+int drm_host1x_device_init(struct drm_device *drm, struct host1x_device *device)
+{
+	struct host1x_client *client;
+	int err;
+
+	mutex_lock(&clients_lock);
+	list_for_each_entry(client, &clients, list) {
+		if (client->ops && client->ops->init) {
+			client->parent = drm->dev;
+			err = client->ops->init(client);
+			if (err < 0) {
+				dev_err(&device->dev,
+					"failed to initialize %s: %d\n",
+					dev_name(client->dev), err);
+				mutex_unlock(&clients_lock);
+				return err;
+			}
+		}
+	}
+
+	mutex_unlock(&clients_lock);
+	return 0;
+}
+
+int drm_host1x_device_exit(struct host1x_device *device)
+{
+	struct host1x_client *client;
+	int err;
+
+	mutex_lock(&clients_lock);
+	list_for_each_entry_reverse(client, &clients, list) {
+		if (client->ops && client->ops->exit) {
+			err = client->ops->exit(client);
+			if (err < 0) {
+				dev_err(&device->dev,
+					"failed to cleanup %s: %d\n",
+					dev_name(client->dev), err);
+				mutex_unlock(&clients_lock);
+				return err;
+			}
+		}
+	}
+
+	mutex_unlock(&clients_lock);
+	return 0;
+}
+
+

@@ -326,8 +326,11 @@ static int tegra_dpaux_probe(struct platform_device *pdev)
 	}
 
 	dpaux->vdd = devm_regulator_get(&pdev->dev, "vdd");
-	if (IS_ERR(dpaux->vdd))
+	if (IS_ERR(dpaux->vdd)) {
+		dev_err(&pdev->dev, "failed to get vdd regulator: %ld\n",
+			PTR_ERR(dpaux->vdd));
 		return PTR_ERR(dpaux->vdd);
+	}
 
 	err = devm_request_irq(dpaux->dev, dpaux->irq, tegra_dpaux_irq, 0,
 			       dev_name(dpaux->dev), dpaux);

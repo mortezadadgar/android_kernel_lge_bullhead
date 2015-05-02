@@ -1556,6 +1556,7 @@ static int tegra_dc_probe(struct platform_device *pdev)
 	if (err < 0)
 		return err;
 
+	tegra_dc_powergate_locked(dc);
 	tegra_dc_unpowergate_locked(dc);
 
 	dc->clk = devm_clk_get(&pdev->dev, NULL);
@@ -1601,7 +1602,7 @@ static int tegra_dc_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	err = host1x_client_register(&dc->client);
+	err = drm_host1x_register(&dc->client);
 	if (err < 0) {
 		dev_err(&pdev->dev, "failed to register host1x client: %d\n",
 			err);
@@ -1618,7 +1619,7 @@ static int tegra_dc_remove(struct platform_device *pdev)
 	struct tegra_dc *dc = platform_get_drvdata(pdev);
 	int err;
 
-	err = host1x_client_unregister(&dc->client);
+	err = drm_host1x_unregister(&dc->client);
 	if (err < 0) {
 		dev_err(&pdev->dev, "failed to unregister host1x client: %d\n",
 			err);
