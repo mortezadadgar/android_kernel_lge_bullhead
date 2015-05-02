@@ -31,6 +31,8 @@ obj-$(CONFIG_DRM_KMS_HELPER) += drm_kms_helper.o
 
 CFLAGS_drm_trace_points.o := -I$(src)
 
+obj-y			+= i2c/
+obj-y			+= panel/
 obj-$(CONFIG_DRM)	+= drm.o
 obj-$(CONFIG_DRM_MIPI_DSI) += drm_mipi_dsi.o
 obj-$(CONFIG_DRM_USB)   += drm_usb.o
@@ -58,5 +60,3 @@ obj-$(CONFIG_DRM_OMAP)	+= omapdrm/
 obj-$(CONFIG_DRM_TILCDC)	+= tilcdc/
 obj-$(CONFIG_DRM_QXL) += qxl/
 obj-$(CONFIG_DRM_TEGRA) += tegra/
-obj-y			+= i2c/
-obj-y			+= panel/
