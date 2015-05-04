@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * Copyright(c) 2003 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
  *
  * Portions of this file are derived from the ipw3945 project, as well
  * as portions of the ieee80211 subsystem header files.
@@ -1760,6 +1760,17 @@ int iwl_trans_pcie_send_hcmd(struct iwl_trans *trans, struct iwl_host_cmd *cmd)
 	return iwl_pcie_send_hcmd_sync(trans, cmd);
 }
 
+#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
+static void iwl_trans_pci_tx_lat_add_ts_write(struct sk_buff *skb)
+{
+	s64 temp = ktime_to_ms(ktime_get());
+	s64 ts_1 = skb->tstamp.tv64 >> 32;
+	s64 diff = temp - ts_1;
+
+	skb->tstamp.tv64 += diff << 16;
+}
+#endif
+
 int iwl_trans_pcie_tx(struct iwl_trans *trans, struct sk_buff *skb,
 		      struct iwl_device_cmd *dev_cmd, int txq_id)
 {
@@ -1898,6 +1909,9 @@ int iwl_trans_pcie_tx(struct iwl_trans *trans, struct sk_buff *skb,
 		else
 			iwl_stop_queue(trans, txq);
 	}
+#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
+	iwl_trans_pci_tx_lat_add_ts_write(skb);
+#endif
 	spin_unlock(&txq->lock);
 	return 0;
 out_err:
