@@ -2506,11 +2506,7 @@ static void iwl_mvm_mac_cancel_hw_scan(struct ieee80211_hw *hw,
 	 * cancel scan scan before ieee80211_scan_work() could run.
 	 * To handle that, simply return if the scan is not running.
 	*/
-	/* FIXME: for now, we ignore this race for UMAC scans, since
-	 * they don't set the scan_status.
-	 */
-	if ((mvm->scan_status & IWL_MVM_SCAN_REGULAR) ||
-	    (mvm->fw->ucode_capa.capa[0] & IWL_UCODE_TLV_CAPA_UMAC_SCAN))
+	if (mvm->scan_status & IWL_MVM_SCAN_REGULAR)
 		iwl_mvm_scan_stop(mvm, IWL_MVM_SCAN_REGULAR, true);
 
 	mutex_unlock(&mvm->mutex);
@@ -2881,11 +2877,7 @@ static int iwl_mvm_mac_sched_scan_stop(struct ieee80211_hw *hw,
 	 * could run.  To handle this, simply return if the scan is
 	 * not running.
 	*/
-	/* FIXME: for now, we ignore this race for UMAC scans, since
-	 * they don't set the scan_status.
-	 */
-	if (!(mvm->scan_status & IWL_MVM_SCAN_SCHED) &&
-	    !(mvm->fw->ucode_capa.capa[0] & IWL_UCODE_TLV_CAPA_UMAC_SCAN)) {
+	if (!(mvm->scan_status & IWL_MVM_SCAN_SCHED)) {
 		mutex_unlock(&mvm->mutex);
 		return 0;
 	}
