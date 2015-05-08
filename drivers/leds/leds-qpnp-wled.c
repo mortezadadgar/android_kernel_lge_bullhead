@@ -50,6 +50,7 @@
 #define QPNP_WLED_TEST1_REG(b)		(b + 0xE2)
 #define QPNP_WLED_TEST4_REG(b)		(b + 0xE5)
 #define QPNP_WLED_REF_7P7_TRIM_REG(b)	(b + 0xF2)
+#define QPNP_WLED_PSM_REG(b)		(b + 0x5A)
 
 #define QPNP_WLED_7P7_TRIM_MASK		0xF
 #define QPNP_WLED_EN_MASK		0x7F
@@ -151,6 +152,8 @@
 #define QPNP_WLED_FS_CURR_STEP_UA	2500
 #define QPNP_WLED_CABC_MASK		0x7F
 #define QPNP_WLED_CABC_SHIFT		7
+#define QPNP_WLED_PSM_MASK		0x7F
+#define QPNP_WLED_PSM_SHIFT		7
 #define QPNP_WLED_CURR_SINK_SHIFT	4
 #define QPNP_WLED_BRIGHT_LSB_MASK	0xFF
 #define QPNP_WLED_BRIGHT_MSB_SHIFT	8
@@ -321,6 +324,7 @@ struct qpnp_wled {
 	bool disp_type_amoled;
 	bool en_ext_pfet_sc_pro;
 	bool prev_state;
+	bool en_psm;
 };
 
 /* helper to read a pmic register */
@@ -1334,6 +1338,19 @@ static int qpnp_wled_config(struct qpnp_wled *wled)
 			return rc;
 	}
 
+	/* PSM */
+	rc = qpnp_wled_read_reg(wled, &reg,
+			QPNP_WLED_PSM_REG(wled->ctrl_base));
+	if (rc < 0)
+		return rc;
+
+	reg &= QPNP_WLED_PSM_MASK;
+	reg |= (wled->en_psm << QPNP_WLED_PSM_SHIFT);
+	rc = qpnp_wled_write_reg(wled, &reg,
+			QPNP_WLED_PSM_REG(wled->ctrl_base));
+	if (rc)
+		return rc;
+
 	/* Configure the MODULATION register */
 	if (wled->mod_freq_khz <= QPNP_WLED_MOD_FREQ_1200_KHZ) {
 		wled->mod_freq_khz = QPNP_WLED_MOD_FREQ_1200_KHZ;
@@ -1731,6 +1748,8 @@ static int qpnp_wled_parse_dt(struct qpnp_wled *wled)
 			"qcom,en-phase-stag");
 	wled->en_cabc = of_property_read_bool(spmi->dev.of_node,
 			"qcom,en-cabc");
+	wled->en_psm = of_property_read_bool(spmi->dev.of_node,
+			"qcom,en-psm");
 
 	prop = of_find_property(spmi->dev.of_node,
 			"qcom,led-strings-list", &temp_val);
