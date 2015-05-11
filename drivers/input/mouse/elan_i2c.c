@@ -130,7 +130,11 @@
 #define ETP_I2C_IAP_REG_H		0x06
 
 /* IAP F/W updater */
-#define ETP_FW_NAME		"elan_i2c.bin"
+#define ETP_FW_BASENAME		"elan_i2c"
+#define ETP_FW_EXTENSION	"bin"
+#define ETP_FALLBACK_FW_NAME	(ETP_FW_BASENAME "." ETP_FW_EXTENSION)
+#define ETP_PRODUCT_ID_FORMAT_STRING	"%d.0"
+#define ETP_MAX_FW_NAME_LEN	22
 #define ETP_IAP_VERSION_ADDR	0x0082
 #define ETP_IAP_START_ADDR	0x0083
 #define ETP_FW_IAP_PAGE_ERR	(1<<5)
@@ -596,12 +600,38 @@ static int elan_firmware(struct elan_tp_data *data, const char *fw_name)
 
 	dev_dbg(dev, "Start firmware update....\n");
 
-	ret = request_firmware(&fw, fw_name, dev);
-	if (ret) {
-		dev_err(dev, "cannot load firmware from %s, %d\n",
-			fw_name, ret);
-		goto done;
+	/* If no fw_name is supplied, try default fw filenames */
+	if (!fw_name) {
+		/* Look for a firmware with the product id appended. */
+		char *full_fw_name = kasprintf(GFP_KERNEL,
+			"%s_" ETP_PRODUCT_ID_FORMAT_STRING ".%s",
+			ETP_FW_BASENAME, data->product_id, ETP_FW_EXTENSION);
+		if (!full_fw_name) {
+			dev_err(dev, "failed fw filename memory allocation.");
+			return -ENOMEM;
+		}
+		ret = request_firmware(&fw, full_fw_name, dev);
+
+		/* If that failed, fallback for backward compatibility. */
+		if (ret)
+			ret = request_firmware(&fw, ETP_FALLBACK_FW_NAME, dev);
+
+		if (ret) {
+			dev_err(dev, "cannot load firmware '%s' or '%s': %d\n",
+				full_fw_name, ETP_FALLBACK_FW_NAME, ret);
+			kfree(full_fw_name);
+			return ret;
+		}
+		kfree(full_fw_name);
+	} else {
+		ret = request_firmware(&fw, fw_name, dev);
+		if (ret) {
+			dev_err(dev, "cannot load firmware from %s, %d\n",
+				fw_name, ret);
+			return ret;
+		}
 	}
+
 	/* check fw data match current iap version */
 	ret = elan_check_fw(data, fw);
 	if (ret) {
@@ -1314,7 +1344,8 @@ static ssize_t elan_sysfs_read_product_id(struct device *dev,
 {
 	struct elan_tp_data *data = dev_get_drvdata(dev);
 	data->product_id = elan_get_product_id(data);
-	return sprintf(buf, "%d.0\n", data->product_id);
+	return sprintf(buf, ETP_PRODUCT_ID_FORMAT_STRING "\n",
+		       data->product_id);
 }
 
 static ssize_t elan_sysfs_read_driver_ver(struct device *dev,
@@ -1366,7 +1397,7 @@ static ssize_t elan_sysfs_update_fw(struct device *dev,
 		return -EINVAL;
 
 	if (!strncmp(buf, "1", count) || !strncmp(buf, "1\n", count)) {
-		fw_name = ETP_FW_NAME;
+		fw_name = NULL;
 	} else {
 		/* check input file name buffer include '\n' or not */
 		for (i = 0; i < count; i++) {
