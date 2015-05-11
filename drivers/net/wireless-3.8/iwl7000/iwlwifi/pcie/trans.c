@@ -189,6 +189,9 @@ static void iwl_trans_pcie_write_shr(struct iwl_trans *trans, u32 reg, u32 val)
 
 static void iwl_pcie_set_pwr(struct iwl_trans *trans, bool vaux)
 {
+	if (!trans->cfg->apmg_not_supported)
+		return;
+
 	if (vaux && pci_pme_capable(to_pci_dev(trans->dev), PCI_D3cold))
 		iwl_set_bits_mask_prph(trans, APMG_PS_CTRL_REG,
 				       APMG_PS_CTRL_VAL_PWR_SRC_VAUX,
@@ -322,7 +325,7 @@ static int iwl_pcie_apm_init(struct iwl_trans *trans)
 	 * bits do not disable clocks.  This preserves any hardware
 	 * bits already set by default in "CLK_CTRL_REG" after reset.
 	 */
-	if (trans->cfg->device_family != IWL_DEVICE_FAMILY_8000) {
+	if (!trans->cfg->apmg_not_supported) {
 		iwl_write_prph(trans, APMG_CLK_EN_REG,
 			       APMG_CLK_VAL_DMA_CLK_RQT);
 		udelay(20);
@@ -522,8 +525,7 @@ static int iwl_pcie_nic_init(struct iwl_trans *trans)
 
 	spin_unlock(&trans_pcie->irq_lock);
 
-	if (trans->cfg->device_family != IWL_DEVICE_FAMILY_8000)
-		iwl_pcie_set_pwr(trans, false);
+	iwl_pcie_set_pwr(trans, false);
 
 	iwl_op_mode_nic_config(trans->op_mode);
 
@@ -1128,7 +1130,7 @@ static void iwl_trans_pcie_stop_device(struct iwl_trans *trans, bool low_power)
 #endif
 
 		/* Power-down device's busmaster DMA clocks */
-		if (trans->cfg->device_family != IWL_DEVICE_FAMILY_8000) {
+		if (!trans->cfg->apmg_not_supported) {
 			iwl_write_prph(trans, APMG_CLK_DIS_REG,
 				       APMG_CLK_VAL_DMA_CLK_RQT);
 			udelay(5);
@@ -1239,8 +1241,7 @@ static void iwl_trans_pcie_d3_suspend(struct iwl_trans *trans, bool test)
 	 */
 	iwl_trans_pcie_tx_reset(trans);
 
-	if (trans->cfg->device_family != IWL_DEVICE_FAMILY_8000)
-		iwl_pcie_set_pwr(trans, true);
+	iwl_pcie_set_pwr(trans, true);
 }
 
 static int iwl_trans_pcie_d3_resume(struct iwl_trans *trans,
@@ -1278,8 +1279,7 @@ static int iwl_trans_pcie_d3_resume(struct iwl_trans *trans,
 		return ret;
 	}
 
-	if (trans->cfg->device_family != IWL_DEVICE_FAMILY_8000)
-		iwl_pcie_set_pwr(trans, false);
+	iwl_pcie_set_pwr(trans, false);
 
 	iwl_trans_pcie_tx_reset(trans);
 
