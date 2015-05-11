@@ -859,12 +859,6 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 	if (!test_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status))
 		iwl_mvm_unref(mvm, IWL_MVM_REF_UCODE_DOWN);
 
-	/* set_mode must be 1 if this was ever initialized */
-	if (mvm->txp_cmd.set_mode &&
-	    iwl_mvm_send_cmd_pdu(mvm, REDUCE_TX_POWER_CMD, 0,
-				 sizeof(mvm->txp_cmd), &mvm->txp_cmd))
-		IWL_ERR(mvm, "failed to update TX power\n");
-
 	IWL_DEBUG_INFO(mvm, "RT uCode started.\n");
 	return 0;
  error:

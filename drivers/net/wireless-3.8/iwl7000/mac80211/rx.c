@@ -23,7 +23,9 @@
 #include <asm/unaligned.h>
 
 #include "ieee80211_i.h"
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
 #include "packet_filtering.h"
+#endif
 #include "driver-ops.h"
 #include "led.h"
 #include "mesh.h"
@@ -2065,6 +2067,7 @@ ieee80211_deliver_skb(struct ieee80211_rx_data *rx)
 	skb = rx->skb;
 	xmit_skb = NULL;
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
 	/*
 	 * Filter packets in case that configured to do so by user space,
 	 * and we are associated to an Hotspot AP and have an IP address.
@@ -2080,6 +2083,7 @@ ieee80211_deliver_skb(struct ieee80211_rx_data *rx)
 		dev_kfree_skb(skb);
 		return;
 	}
+#endif
 
 	if ((sdata->vif.type == NL80211_IFTYPE_AP ||
 	     sdata->vif.type == NL80211_IFTYPE_AP_VLAN) &&
