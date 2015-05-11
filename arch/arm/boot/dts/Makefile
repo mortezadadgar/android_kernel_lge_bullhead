@@ -201,7 +201,8 @@ dtb-$(CONFIG_ARCH_TEGRA_114_SOC) += tegra114-dalmore.dtb \
 dtb-$(CONFIG_ARCH_TEGRA_124_SOC) += tegra124-nyan-rev0.dtb \
 	tegra124-nyan-rev1.dtb \
 	tegra124-nyan-big-rev0_2.dtb \
-	tegra124-nyan-big.dtb \
+	tegra124-nyan-big-rev3_7.dtb \
+	tegra124-nyan-big-rev8_9.dtb \
 	tegra124-nyan-blaze.dtb \
 	tegra124-nyan-kitty.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += versatile-ab.dtb \

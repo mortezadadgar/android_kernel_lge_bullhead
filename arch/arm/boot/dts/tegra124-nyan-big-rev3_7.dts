@@ -1,0 +1,20 @@
+/dts-v1/;
+
+#include "tegra124-nyan-big.dtsi"
+
+/ {
+	model = "Google Nyan Big Rev 3-7";
+
+	compatible = "google,nyan-big-rev7", "google,nyan-big-rev6",
+			"google,nyan-big-rev5", "google,nyan-big-rev4",
+			"google,nyan-big-rev3", "google,nyan-big",
+			"google,nyan", "nvidia,tegra124";
+
+	sdhci@700b0600 {
+		max-frequency = <200000000>;
+	};
+
+	i2c@7000c400 {
+		clock-frequency = <400000>;
+	};
+};
