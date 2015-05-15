@@ -5,15 +5,10 @@
 #include "tegra124-nyan-kitty-emc.dtsi"
 
 / {
-	model = "Google Nyan Kitty";
+	model = "Google Nyan Kitty Rev 8";
 
-	compatible = "google,nyan-kitty-rev10", "google,nyan-kitty-rev9",
-			"google,nyan-kitty-rev8", "google,nyan-kitty-rev7",
-			"google,nyan-kitty-rev6", "google,nyan-kitty-rev5",
-			"google,nyan-kitty-rev4", "google,nyan-kitty-rev3",
-			"google,nyan-kitty-rev2", "google,nyan-kitty-rev1",
-			"google,nyan-kitty-rev0", "google,nyan",
-			"nvidia,tegra124";
+	compatible = "google,nyan-kitty-rev8",
+			"google,nyan", "nvidia,tegra124";
 
 	firmware {
 		chromeos {
@@ -285,5 +280,9 @@
 				};
 			};
 		};
+	};
+
+	cpu_edp {
+		regulator-ma = <16000>;
 	};
 };
