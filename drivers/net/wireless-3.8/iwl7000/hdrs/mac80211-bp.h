@@ -10,6 +10,42 @@
 #define BACKPORTS_GIT_TRACKED "chromium:" UTS_RELEASE
 #define BACKPORTS_BUILD_TSTAMP __DATE__ " " __TIME__
 
+#ifndef netdev_alloc_pcpu_stats
+#define netdev_alloc_pcpu_stats(type)				\
+({								\
+	typeof(type) __percpu *pcpu_stats = alloc_percpu(type); \
+	if (pcpu_stats)	{					\
+		int i;						\
+		for_each_possible_cpu(i) {			\
+			typeof(type) *stat;			\
+			stat = per_cpu_ptr(pcpu_stats, i);	\
+			u64_stats_init(&stat->syncp);		\
+		}						\
+	}							\
+	pcpu_stats;						\
+})
+#endif /* netdev_alloc_pcpu_stats */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,15,0)
+#include "u64_stats_sync.h"
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0)
+struct pcpu_sw_netstats {
+	u64     rx_packets;
+	u64     rx_bytes;
+	u64     tx_packets;
+	u64     tx_bytes;
+	struct u64_stats_sync   syncp;
+};
+
+#define netdev_tstats(dev)	((struct pcpu_sw_netstats *)dev->ml_priv)
+#define netdev_assign_tstats(dev, e)	dev->ml_priv = (e);
+#else
+#define netdev_tstats(dev)	dev->tstats
+#define netdev_assign_tstats(dev, e)	dev->tstats = (e);
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0) */
+
 static inline void netdev_attach_ops(struct net_device *dev,
 				     const struct net_device_ops *ops)
 {
