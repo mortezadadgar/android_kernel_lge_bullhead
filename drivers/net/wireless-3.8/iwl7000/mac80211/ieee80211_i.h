@@ -1040,7 +1040,6 @@ enum queue_stop_reason {
 
 #ifdef CPTCFG_MAC80211_LEDS
 struct tpt_led_trigger {
-	struct led_trigger trig;
 	char name[32];
 	const struct ieee80211_tpt_blink *blink_table;
 	unsigned int blink_table_len;
