@@ -1551,7 +1551,7 @@ int iwl_mvm_scan_size(struct iwl_mvm *mvm)
 void iwl_mvm_report_scan_aborted(struct iwl_mvm *mvm)
 {
 	if (mvm->fw->ucode_capa.capa[0] & IWL_UCODE_TLV_CAPA_UMAC_SCAN) {
-		u32 uid, i;
+		int uid, i;
 
 		uid = iwl_mvm_scan_uid_by_status(mvm, IWL_MVM_SCAN_REGULAR);
 		if (uid >= 0) {
