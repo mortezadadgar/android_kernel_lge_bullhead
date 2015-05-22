@@ -1459,7 +1459,6 @@ void iwl_trans_pcie_free(struct iwl_trans *trans)
 	iounmap(trans_pcie->hw_base);
 	pci_release_regions(trans_pcie->pci_dev);
 	pci_disable_device(trans_pcie->pci_dev);
-	kmem_cache_destroy(trans->dev_cmd_pool);
 
 	if (trans_pcie->napi.poll)
 		netif_napi_del(&trans_pcie->napi);
@@ -1471,7 +1470,7 @@ void iwl_trans_pcie_free(struct iwl_trans *trans)
 
 	iwl_pcie_free_fw_monitor(trans);
 
-	kfree(trans);
+	iwl_trans_free(trans);
 }
 
 static void iwl_trans_pcie_set_pmi(struct iwl_trans *trans, bool state)
@@ -2584,18 +2583,13 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	u16 pci_cmd;
 	int ret;
 
-	trans = kzalloc(sizeof(struct iwl_trans) +
-			sizeof(struct iwl_trans_pcie), GFP_KERNEL);
-	if (!trans) {
-		ret = -ENOMEM;
-		goto out;
-	}
+	trans = iwl_trans_alloc(sizeof(struct iwl_trans_pcie),
+				&pdev->dev, cfg, &trans_ops_pcie, 0);
+	if (!trans)
+		return ERR_PTR(-ENOMEM);
 
 	trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
-	trans->ops = &trans_ops_pcie;
-	trans->cfg = cfg;
-	trans_lockdep_init(trans);
 	trans_pcie->trans = trans;
 	spin_lock_init(&trans_pcie->irq_lock);
 	spin_lock_init(&trans_pcie->reg_lock);
@@ -2724,26 +2718,8 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	/* Initialize the wait queue for commands */
 	init_waitqueue_head(&trans_pcie->wait_command_queue);
 
-	snprintf(trans->dev_cmd_pool_name, sizeof(trans->dev_cmd_pool_name),
-		 "iwl_cmd_pool:%s", dev_name(trans->dev));
-
-	trans->dev_cmd_headroom = 0;
-	trans->dev_cmd_pool =
-		kmem_cache_create(trans->dev_cmd_pool_name,
-				  sizeof(struct iwl_device_cmd)
-				  + trans->dev_cmd_headroom,
-				  sizeof(void *),
-				  SLAB_HWCACHE_ALIGN,
-				  NULL);
-
-	if (!trans->dev_cmd_pool) {
-		ret = -ENOMEM;
+	if (iwl_pcie_alloc_ict(trans))
 		goto out_pci_disable_msi;
-	}
-
-	ret = iwl_pcie_alloc_ict(trans);
-	if (ret)
-		goto out_free_cmd_pool;
 
 	ret = request_threaded_irq(pdev->irq, iwl_pcie_isr,
 				   iwl_pcie_irq_handler,
@@ -2767,8 +2743,6 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 
 out_free_ict:
 	iwl_pcie_free_ict(trans);
-out_free_cmd_pool:
-	kmem_cache_destroy(trans->dev_cmd_pool);
 out_pci_disable_msi:
 	pci_disable_msi(pdev);
 out_pci_release_regions:
@@ -2776,7 +2750,6 @@ out_pci_release_regions:
 out_pci_disable_device:
 	pci_disable_device(pdev);
 out_no_pci:
-	kfree(trans);
-out:
+	iwl_trans_free(trans);
 	return ERR_PTR(ret);
 }
