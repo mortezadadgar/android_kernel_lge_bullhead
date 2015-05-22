@@ -97,6 +97,7 @@ MODULE_AUTHOR(DRV_COPYRIGHT " " DRV_AUTHOR);
 MODULE_LICENSE("GPL");
 
 static const struct iwl_op_mode_ops iwl_mvm_ops;
+static const struct iwl_op_mode_ops iwl_mvm_ops_mq;
 
 struct iwl_mvm_mod_params iwlmvm_mod_params = {
 	.power_scheme = IWL_POWER_SCHEME_BPS,
@@ -445,7 +446,6 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 		hw->max_tx_aggregation_subframes = cfg->max_tx_agg_size;
 
 	op_mode = hw->priv;
-	op_mode->ops = &iwl_mvm_ops;
 
 	mvm = IWL_OP_MODE_GET_MVM(op_mode);
 	mvm->dev = trans->dev;
@@ -453,6 +453,15 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	mvm->cfg = cfg;
 	mvm->fw = fw;
 	mvm->hw = hw;
+
+	if (iwl_mvm_has_new_rx_api(mvm)) {
+		op_mode->ops = &iwl_mvm_ops_mq;
+	} else {
+		op_mode->ops = &iwl_mvm_ops;
+
+		if (WARN_ON(trans->num_rx_queues > 1))
+			goto out_free;
+	}
 
 	mvm->restart_fw = iwlwifi_mod_params.restart_fw ? -1 : 0;
 
@@ -780,31 +789,11 @@ static inline void iwl_mvm_rx_check_trigger(struct iwl_mvm *mvm,
 	}
 }
 
-static void iwl_mvm_rx_dispatch(struct iwl_op_mode *op_mode,
-				struct napi_struct *napi,
-				struct iwl_rx_cmd_buffer *rxb)
+static void iwl_mvm_rx_common(struct iwl_mvm *mvm,
+			      struct iwl_rx_cmd_buffer *rxb,
+			      struct iwl_rx_packet *pkt)
 {
-	struct iwl_rx_packet *pkt = rxb_addr(rxb);
-	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
-	u8 i;
-
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
-	/*
-	 * RX data may be forwarded to userspace in case the user
-	 * requested to monitor the rx w/o affecting the regular flow.
-	 * In this case the iwl_test object will handle forwarding the rx
-	 * data to user space.
-	 */
-	iwl_tm_mvm_send_rx(mvm, rxb);
-#endif
-
-	if (likely(pkt->hdr.cmd == REPLY_RX_MPDU_CMD)) {
-		iwl_mvm_rx_rx_mpdu(mvm, napi, rxb);
-		return;
-	} else if (pkt->hdr.cmd == REPLY_RX_PHY_CMD) {
-		iwl_mvm_rx_rx_phy_cmd(mvm, rxb);
-		return;
-	}
+	int i;
 
 	iwl_mvm_rx_check_trigger(mvm, pkt);
 
@@ -842,6 +831,56 @@ static void iwl_mvm_rx_dispatch(struct iwl_op_mode *op_mode,
 		schedule_work(&mvm->async_handlers_wk);
 		break;
 	}
+}
+
+static void iwl_mvm_rx(struct iwl_op_mode *op_mode,
+		       struct napi_struct *napi,
+		       struct iwl_rx_cmd_buffer *rxb)
+{
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
+
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+	/*
+	 * RX data may be forwarded to userspace in case the user
+	 * requested to monitor the rx w/o affecting the regular flow.
+	 * In this case the iwl_test object will handle forwarding the rx
+	 * data to user space.
+	 */
+	iwl_tm_mvm_send_rx(mvm, rxb);
+#endif
+
+	if (likely(pkt->hdr.cmd == REPLY_RX_MPDU_CMD))
+		iwl_mvm_rx_rx_mpdu(mvm, napi, rxb);
+	else if (pkt->hdr.cmd == REPLY_RX_PHY_CMD)
+		iwl_mvm_rx_rx_phy_cmd(mvm, rxb);
+	else
+		iwl_mvm_rx_common(mvm, rxb, pkt);
+}
+
+static void iwl_mvm_rx_mq(struct iwl_op_mode *op_mode,
+			  struct napi_struct *napi,
+			  struct iwl_rx_cmd_buffer *rxb)
+{
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
+
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+	/*
+	 * RX data may be forwarded to userspace in case the user
+	 * requested to monitor the rx w/o affecting the regular flow.
+	 * In this case the iwl_test object will handle forwarding the rx
+	 * data to user space.
+	 */
+	iwl_tm_mvm_send_rx(mvm, rxb);
+#endif
+
+	if (likely(pkt->hdr.cmd == REPLY_RX_MPDU_CMD))
+		iwl_mvm_rx_rx_mpdu(mvm, napi, rxb);
+	else if (pkt->hdr.cmd == REPLY_RX_PHY_CMD)
+		iwl_mvm_rx_rx_phy_cmd(mvm, rxb);
+	else
+		iwl_mvm_rx_common(mvm, rxb, pkt);
 }
 
 static void iwl_mvm_stop_sw_queue(struct iwl_op_mode *op_mode, int queue)
@@ -1440,25 +1479,52 @@ int iwl_mvm_exit_d0i3(struct iwl_op_mode *op_mode)
 	return _iwl_mvm_exit_d0i3(mvm);
 }
 
-static const struct iwl_op_mode_ops iwl_mvm_ops = {
-	.start = iwl_op_mode_mvm_start,
-	.stop = iwl_op_mode_mvm_stop,
-	.rx = iwl_mvm_rx_dispatch,
-	.queue_full = iwl_mvm_stop_sw_queue,
-	.queue_not_full = iwl_mvm_wake_sw_queue,
-	.hw_rf_kill = iwl_mvm_set_hw_rfkill_state,
-	.free_skb = iwl_mvm_free_skb,
-	.nic_error = iwl_mvm_nic_error,
-	.cmd_queue_full = iwl_mvm_cmd_queue_full,
-	.nic_config = iwl_mvm_nic_config,
+#define IWL_MVM_COMMON_OPS					\
+	/* these could be differentiated */			\
+	.queue_full = iwl_mvm_stop_sw_queue,			\
+	.queue_not_full = iwl_mvm_wake_sw_queue,		\
+	.hw_rf_kill = iwl_mvm_set_hw_rfkill_state,		\
+	.free_skb = iwl_mvm_free_skb,				\
+	.nic_error = iwl_mvm_nic_error,				\
+	.cmd_queue_full = iwl_mvm_cmd_queue_full,		\
+	.nic_config = iwl_mvm_nic_config,			\
+	.enter_d0i3 = iwl_mvm_enter_d0i3,			\
+	.exit_d0i3 = iwl_mvm_exit_d0i3,				\
+	/* as we only register one, these MUST be common! */	\
+	.start = iwl_op_mode_mvm_start,				\
+	.stop = iwl_op_mode_mvm_stop
+
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
-	.test_ops = {
-		.cmd_execute = iwl_mvm_tm_cmd_execute,
-		.send_cmd = iwl_mvm_testmode_send_cmd,
-		.valid_hw_addr = iwl_mvm_testmode_valid_hw_addr,
-		.get_fw_ver = iwl_mvm_testmode_get_fw_ver,
-	},
+#define IWL_MVM_COMMON_TEST_OPS					\
+	.test_ops = {						\
+		.cmd_execute = iwl_mvm_tm_cmd_execute,		\
+		.send_cmd = iwl_mvm_testmode_send_cmd,		\
+		.valid_hw_addr = iwl_mvm_testmode_valid_hw_addr,\
+		.get_fw_ver = iwl_mvm_testmode_get_fw_ver,	\
+	}
+#else
+#define IWL_MVM_COMMON_TEST_OPS
 #endif
-	.enter_d0i3 = iwl_mvm_enter_d0i3,
-	.exit_d0i3 = iwl_mvm_exit_d0i3,
+
+static const struct iwl_op_mode_ops iwl_mvm_ops = {
+	IWL_MVM_COMMON_OPS,
+	IWL_MVM_COMMON_TEST_OPS,
+	.rx = iwl_mvm_rx,
+};
+
+static void iwl_mvm_rx_mq_rss(struct iwl_op_mode *op_mode,
+			      struct napi_struct *napi,
+			      struct iwl_rx_cmd_buffer *rxb,
+			      unsigned int queue)
+{
+	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
+
+	iwl_mvm_rx_rx_mpdu(mvm, napi, rxb);
+}
+
+static const struct iwl_op_mode_ops iwl_mvm_ops_mq = {
+	IWL_MVM_COMMON_OPS,
+	IWL_MVM_COMMON_TEST_OPS,
+	.rx = iwl_mvm_rx_mq,
+	.rx_rss = iwl_mvm_rx_mq_rss,
 };
