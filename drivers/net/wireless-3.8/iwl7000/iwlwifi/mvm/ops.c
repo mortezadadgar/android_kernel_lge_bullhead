@@ -236,7 +236,6 @@ struct iwl_rx_handlers {
  * called from a worker with mvm->mutex held.
  */
 static const struct iwl_rx_handlers iwl_mvm_rx_handlers[] = {
-	RX_HANDLER(REPLY_RX_MPDU_CMD, iwl_mvm_rx_rx_mpdu, false),
 	RX_HANDLER(REPLY_RX_PHY_CMD, iwl_mvm_rx_rx_phy_cmd, false),
 	RX_HANDLER(TX_CMD, iwl_mvm_rx_tx_cmd, false),
 	RX_HANDLER(BA_NOTIF, iwl_mvm_rx_ba_notif, false),
@@ -767,15 +766,6 @@ static int iwl_mvm_rx_dispatch(struct iwl_op_mode *op_mode,
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
 	u8 i;
 
-	iwl_mvm_rx_check_trigger(mvm, pkt);
-
-	/*
-	 * Do the notification wait before RX handlers so
-	 * even if the RX handler consumes the RXB we have
-	 * access to it in the notification wait entry.
-	 */
-	iwl_notification_wait_notify(&mvm->notif_wait, pkt);
-
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	/*
 	 * RX data may be forwarded to userspace in case the user
@@ -785,6 +775,18 @@ static int iwl_mvm_rx_dispatch(struct iwl_op_mode *op_mode,
 	 */
 	iwl_tm_mvm_send_rx(mvm, rxb);
 #endif
+
+	if (likely(pkt->hdr.cmd == REPLY_RX_MPDU_CMD))
+		return iwl_mvm_rx_rx_mpdu(mvm, rxb, cmd);
+
+	iwl_mvm_rx_check_trigger(mvm, pkt);
+
+	/*
+	 * Do the notification wait before RX handlers so
+	 * even if the RX handler consumes the RXB we have
+	 * access to it in the notification wait entry.
+	 */
+	iwl_notification_wait_notify(&mvm->notif_wait, pkt);
 
 	for (i = 0; i < ARRAY_SIZE(iwl_mvm_rx_handlers); i++) {
 		const struct iwl_rx_handlers *rx_h = &iwl_mvm_rx_handlers[i];
