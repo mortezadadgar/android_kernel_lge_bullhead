@@ -70,6 +70,80 @@
 #include "debugfs.h"
 #include "iwl-fw-error-dump.h"
 
+#ifdef CPTCFG_IWLWIFI_THERMAL_DEBUGFS
+static ssize_t iwl_dbgfs_tt_tx_backoff_write(struct iwl_mvm *mvm, char *buf,
+					     size_t count, loff_t *ppos)
+{
+	int i = 0;
+	int ret;
+	u32 temperature, backoff;
+	char *value_str;
+	char *seps = "\n ";
+	char *buf_ptr = buf;
+	struct iwl_tt_tx_backoff new_backoff_values[TT_TX_BACKOFF_SIZE];
+
+	mutex_lock(&mvm->mutex);
+	while ((value_str = strsep(&buf_ptr, seps))) {
+		if (sscanf(value_str, "%u=%u", &temperature, &backoff) != 2)
+			break;
+
+		if (temperature >=
+		    mvm->thermal_throttle.params.ct_kill_entry ||
+		    backoff < mvm->thermal_throttle.min_backoff) {
+			ret = -EINVAL;
+			goto out;
+		}
+
+		if (i == TT_TX_BACKOFF_SIZE) {
+			ret = -EINVAL;
+			goto out;
+		}
+
+		new_backoff_values[i].backoff = backoff;
+		new_backoff_values[i].temperature = temperature;
+		i++;
+	}
+
+	if (i != TT_TX_BACKOFF_SIZE) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	memcpy(mvm->thermal_throttle.params.tx_backoff, new_backoff_values,
+	       sizeof(mvm->thermal_throttle.params.tx_backoff));
+
+	ret = count;
+
+out:
+	mutex_unlock(&mvm->mutex);
+	return ret;
+}
+
+static ssize_t iwl_dbgfs_tt_tx_backoff_read(struct file *file,
+					    char __user *user_buf, size_t count,
+					    loff_t *ppos)
+{
+	struct iwl_mvm *mvm = file->private_data;
+	struct iwl_tt_tx_backoff *tx_backoff =
+	       mvm->thermal_throttle.params.tx_backoff;
+	/* we need 10 chars per line: 3 chars for the temperature + 1
+	 * for the equal sign + 5 for the backoff value + end of line.
+	*/
+	char buf[TT_TX_BACKOFF_SIZE * 10 + 1];
+	int i, pos = 0, bufsz = sizeof(buf);
+
+	mutex_lock(&mvm->mutex);
+	for (i = 0; i < TT_TX_BACKOFF_SIZE; i++) {
+		pos += scnprintf(buf + pos, bufsz - pos, "%d=%d\n",
+				 tx_backoff[i].temperature,
+				 tx_backoff[i].backoff);
+	}
+	mutex_unlock(&mvm->mutex);
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, pos);
+}
+#endif
+
 static ssize_t iwl_dbgfs_tx_flush_write(struct iwl_mvm *mvm, char *buf,
 					size_t count, loff_t *ppos)
 {
@@ -1506,6 +1580,9 @@ iwl_dbgfs_uapsd_noagg_bssids_read(struct file *file, char __user *user_buf,
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(prph_reg, 64);
 
 /* Device wide debugfs entries */
+#ifdef CPTCFG_IWLWIFI_THERMAL_DEBUGFS
+MVM_DEBUGFS_READ_WRITE_FILE_OPS(tt_tx_backoff, 64);
+#endif
 MVM_DEBUGFS_WRITE_FILE_OPS(tx_flush, 16);
 MVM_DEBUGFS_WRITE_FILE_OPS(sta_drain, 8);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(sram, 64);
@@ -1549,6 +1626,9 @@ int iwl_mvm_dbgfs_register(struct iwl_mvm *mvm, struct dentry *dbgfs_dir)
 
 	mvm->debugfs_dir = dbgfs_dir;
 
+#ifdef CPTCFG_IWLWIFI_THERMAL_DEBUGFS
+	MVM_DEBUGFS_ADD_FILE(tt_tx_backoff, dbgfs_dir, S_IRUSR);
+#endif
 	MVM_DEBUGFS_ADD_FILE(tx_flush, mvm->debugfs_dir, S_IWUSR);
 	MVM_DEBUGFS_ADD_FILE(sta_drain, mvm->debugfs_dir, S_IWUSR);
 	MVM_DEBUGFS_ADD_FILE(sram, mvm->debugfs_dir, S_IWUSR | S_IRUSR);
