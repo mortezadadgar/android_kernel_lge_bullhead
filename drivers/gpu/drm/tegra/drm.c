@@ -152,7 +152,6 @@ static void tegra_drm_lastclose(struct drm_device *drm)
 #endif
 }
 
-#ifdef CONFIG_DRM_TEGRA_STAGING
 static struct tegra_drm_context *tegra_drm_get_context(__u64 context)
 {
 	return (struct tegra_drm_context *)(uintptr_t)context;
@@ -204,6 +203,7 @@ static int tegra_gem_mmap(struct drm_device *drm, void *data,
 	return 0;
 }
 
+#ifdef CONFIG_DRM_TEGRA_STAGING
 static int tegra_syncpt_read(struct drm_device *drm, void *data,
 			     struct drm_file *file)
 {
@@ -247,6 +247,7 @@ static int tegra_syncpt_wait(struct drm_device *drm, void *data,
 	return host1x_syncpt_wait(sp, args->thresh, args->timeout,
 				  &args->value);
 }
+#endif
 
 static int tegra_open_channel(struct drm_device *drm, void *data,
 			      struct drm_file *file)
@@ -296,6 +297,7 @@ static int tegra_close_channel(struct drm_device *drm, void *data,
 	return 0;
 }
 
+#ifdef CONFIG_DRM_TEGRA_STAGING
 static int tegra_get_syncpt(struct drm_device *drm, void *data,
 			    struct drm_file *file)
 {
@@ -317,6 +319,7 @@ static int tegra_get_syncpt(struct drm_device *drm, void *data,
 
 	return 0;
 }
+#endif
 
 static int tegra_submit(struct drm_device *drm, void *data,
 			struct drm_file *file)
@@ -333,6 +336,7 @@ static int tegra_submit(struct drm_device *drm, void *data,
 	return context->client->ops->submit(context, args, drm, file);
 }
 
+#ifdef CONFIG_DRM_TEGRA_STAGING
 static int tegra_get_syncpt_base(struct drm_device *drm, void *data,
 				 struct drm_file *file)
 {
@@ -360,6 +364,7 @@ static int tegra_get_syncpt_base(struct drm_device *drm, void *data,
 
 	return 0;
 }
+#endif
 
 static int tegra_gem_set_tiling(struct drm_device *drm, void *data,
 				struct drm_file *file)
@@ -500,25 +505,24 @@ static int tegra_gem_get_flags(struct drm_device *drm, void *data,
 
 	return 0;
 }
-#endif
 
 static const struct drm_ioctl_desc tegra_drm_ioctls[] = {
-#ifdef CONFIG_DRM_TEGRA_STAGING
 	DRM_IOCTL_DEF_DRV(TEGRA_GEM_CREATE, tegra_gem_create, DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TEGRA_GEM_MMAP, tegra_gem_mmap, DRM_UNLOCKED|DRM_RENDER_ALLOW),
+#ifdef CONFIG_DRM_TEGRA_STAGING
 	DRM_IOCTL_DEF_DRV(TEGRA_SYNCPT_READ, tegra_syncpt_read, DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TEGRA_SYNCPT_INCR, tegra_syncpt_incr, DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TEGRA_SYNCPT_WAIT, tegra_syncpt_wait, DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(TEGRA_GET_SYNCPT, tegra_get_syncpt, DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(TEGRA_GET_SYNCPT_BASE, tegra_get_syncpt_base, DRM_UNLOCKED|DRM_RENDER_ALLOW),
+#endif
 	DRM_IOCTL_DEF_DRV(TEGRA_OPEN_CHANNEL, tegra_open_channel, DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TEGRA_CLOSE_CHANNEL, tegra_close_channel, DRM_UNLOCKED|DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(TEGRA_GET_SYNCPT, tegra_get_syncpt, DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TEGRA_SUBMIT, tegra_submit, DRM_UNLOCKED|DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(TEGRA_GET_SYNCPT_BASE, tegra_get_syncpt_base, DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TEGRA_GEM_SET_TILING, tegra_gem_set_tiling, DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TEGRA_GEM_GET_TILING, tegra_gem_get_tiling, DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TEGRA_GEM_SET_FLAGS, tegra_gem_set_flags, DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(TEGRA_GEM_GET_FLAGS, tegra_gem_get_flags, DRM_UNLOCKED|DRM_RENDER_ALLOW),
-#endif
 };
 
 static const struct file_operations tegra_drm_fops = {
