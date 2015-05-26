@@ -41,6 +41,7 @@
 
 #define DRIVER_NAME		"elan_i2c"
 #define ELAN_DRIVER_VERSION	"1.5.7"
+#define ELAN_VENDOR_ID		0x04f3
 #define ETP_PRESSURE_OFFSET	25
 #define ETP_MAX_PRESSURE	255
 #define ETP_FWIDTH_REDUCE	90
@@ -1729,7 +1730,6 @@ static int elan_input_dev_create(struct elan_tp_data *data)
 	if (!input)
 		return -ENOMEM;
 	input->name = "Elan Touchpad";
-	input->id.bustype = BUS_I2C;
 	input->dev.parent = &data->client->dev;
 
 	__set_bit(EV_ABS, input->evbit);
@@ -1749,6 +1749,10 @@ static int elan_input_dev_create(struct elan_tp_data *data)
 	y_res = elan_get_y_resolution(data);
 	max_width = max(data->width_x, data->width_y);
 	min_width = min(data->width_x, data->width_y);
+
+	input->id.bustype = BUS_I2C;
+	input->id.vendor = ELAN_VENDOR_ID;
+	input->id.product = data->product_id;
 
 	dev_dbg(&client->dev,
 		"Elan Touchpad Information:\n"
