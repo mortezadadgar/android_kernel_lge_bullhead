@@ -28,6 +28,7 @@
 
 #include <linux/spinlock.h>
 #include <linux/preempt.h>
+#include <linux/compiler.h>
 #include <asm/processor.h>
 
 /*
@@ -141,6 +142,10 @@ static inline int read_seqcount_retry(const seqcount_t *s, unsigned start)
 	return __read_seqcount_retry(s, start);
 }
 
+static inline int raw_read_seqcount_latch(seqcount_t *s)
+{
+	return lockless_dereference(s->sequence);
+}
 
 /*
  * raw_write_seqcount_latch - redirect readers to even/odd copy
