@@ -2255,23 +2255,32 @@ force_ro_fail:
 	return ret;
 }
 
-#define CID_MANFID_SANDISK	0x2
+#define CID_MANFID_SANDISK_OLD	0x2
 #define CID_MANFID_TOSHIBA	0x11
 #define CID_MANFID_MICRON	0x13
 #define CID_MANFID_SAMSUNG	0x15
+#define CID_MANFID_SANDISK_NEW	0x45
 
 static const struct mmc_fixup blk_fixups[] =
 {
-	MMC_FIXUP("SEM02G", CID_MANFID_SANDISK, 0x100, add_quirk,
+	MMC_FIXUP("SEM02G", CID_MANFID_SANDISK_OLD, 0x100, add_quirk,
 		  MMC_QUIRK_INAND_CMD38),
-	MMC_FIXUP("SEM04G", CID_MANFID_SANDISK, 0x100, add_quirk,
+	MMC_FIXUP("SEM04G", CID_MANFID_SANDISK_OLD, 0x100, add_quirk,
 		  MMC_QUIRK_INAND_CMD38),
-	MMC_FIXUP("SEM08G", CID_MANFID_SANDISK, 0x100, add_quirk,
+	MMC_FIXUP("SEM08G", CID_MANFID_SANDISK_OLD, 0x100, add_quirk,
 		  MMC_QUIRK_INAND_CMD38),
-	MMC_FIXUP("SEM16G", CID_MANFID_SANDISK, 0x100, add_quirk,
+	MMC_FIXUP("SEM16G", CID_MANFID_SANDISK_OLD, 0x100, add_quirk,
 		  MMC_QUIRK_INAND_CMD38),
-	MMC_FIXUP("SEM32G", CID_MANFID_SANDISK, 0x100, add_quirk,
+	MMC_FIXUP("SEM32G", CID_MANFID_SANDISK_OLD, 0x100, add_quirk,
 		  MMC_QUIRK_INAND_CMD38),
+
+	/*
+	 * This SanDisk part occasionally gets into a state where setting
+	 * power off notification causes the drive to stop responding to
+	 * commands.
+	 */
+	MMC_FIXUP("SEM16G", CID_MANFID_SANDISK_NEW, 0x100, add_quirk,
+		  MMC_QUIRK_BROKEN_PON),
 
 	/*
 	 * Some MMC cards experience performance degradation with CMD23
