@@ -173,4 +173,9 @@ backport_alloc_netdev(int sizeof_priv, const char *name,
 #define alloc_netdev backport_alloc_netdev
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,17,0) */
 
+#ifndef list_first_entry_or_null
+#define list_first_entry_or_null(ptr, type, member) \
+	(!list_empty(ptr) ? list_first_entry(ptr, type, member) : NULL)
+#endif
+
 #endif /* __IWL_CHROME */
