@@ -269,7 +269,7 @@ static void iwl_xvt_nic_error(struct iwl_op_mode *op_mode)
 	xvt->fw_error = true;
 	wake_up_interruptible(&xvt->mod_tx_wq);
 
-	if (xvt->fw->ucode_capa.api[0] & IWL_UCODE_TLV_API_NEW_VERSION) {
+	if (fw_has_api(&xvt->fw->ucode_capa, IWL_UCODE_TLV_API_NEW_VERSION)) {
 		iwl_xvt_get_nic_error_log_v2(xvt, &table_v2);
 		iwl_xvt_dump_nic_error_log_v2(xvt, &table_v2);
 		p_table = kmemdup(&table_v2, sizeof(table_v2), GFP_ATOMIC);
