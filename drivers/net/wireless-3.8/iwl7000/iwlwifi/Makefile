@@ -10,7 +10,7 @@ iwlwifi-objs		+= iwl-trans.o
 
 # Bus
 iwlwifi-$(CPTCFG_IWLWIFI_PCIE)	+= pcie/drv.o pcie/rx.o pcie/tx.o pcie/trans.o
-iwlwifi-$(CPTCFG_IWLWIFI_PCIE)-$(CPTCFG_IWLMVM) += iwl-7000.o iwl-8000.o
+iwlwifi-$(CPTCFG_IWLWIFI_PCIE)-$(CPTCFG_IWLMVM) += iwl-7000.o iwl-8000.o iwl-9000.o
 iwlwifi-$(CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES) += iwl-dbg-cfg.o
 iwlwifi-$(CPTCFG_IWLWIFI_MINI_PM_RUNTIME) += trans_slave/mini_rpm.o
 
