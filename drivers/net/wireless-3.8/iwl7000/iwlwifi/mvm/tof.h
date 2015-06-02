@@ -65,6 +65,20 @@
 
 #include "fw-api-tof.h"
 
+#ifdef CPTCFG_IWLMVM_TOF_TSF_WA
+#include <linux/rhashtable.h>
+#include "iwl-trans.h"
+
+struct iwl_mvm_tof_tsf_entry {
+	struct rhash_head hash_node;
+	u8 bssid[ETH_ALEN] __aligned(2);
+	u8 delta_sign;
+	u32 delta;
+};
+
+void iwl_mvm_tof_update_tsf(struct iwl_mvm *mvm, struct iwl_rx_packet *pkt);
+#endif
+
 struct iwl_mvm_tof_data {
 	struct iwl_tof_config_cmd tof_cfg;
 	struct iwl_tof_range_req_cmd range_req;
@@ -73,6 +87,11 @@ struct iwl_mvm_tof_data {
 	struct iwl_tof_range_rsp_ntfy range_resp;
 	u8 last_abort_id;
 	u16 active_range_request;
+#ifdef CPTCFG_IWLMVM_TOF_TSF_WA
+	struct rhashtable tsf_hash;
+	/* use this flag to minimize changes in mvm code needed for this WA */
+	bool tsf_hash_valid;
+#endif
 };
 
 void iwl_mvm_tof_init(struct iwl_mvm *mvm);

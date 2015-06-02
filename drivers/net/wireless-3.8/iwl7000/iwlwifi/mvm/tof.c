@@ -63,6 +63,23 @@
 #include "mvm.h"
 #include "fw-api-tof.h"
 
+#ifdef CPTCFG_IWLMVM_TOF_TSF_WA
+#include <linux/etherdevice.h>
+
+static u32 tof_tsf_addr_hash(const void *key, u32 length, u32 seed)
+{
+	return jhash(key, ETH_ALEN, seed);
+}
+
+static const struct rhashtable_params tsf_rht_params = {
+	.automatic_shrinking = true,
+	.head_offset = offsetof(struct iwl_mvm_tof_tsf_entry, hash_node),
+	.key_offset = offsetof(struct iwl_mvm_tof_tsf_entry, bssid),
+	.key_len = ETH_ALEN,
+	.hashfn = tof_tsf_addr_hash,
+};
+#endif
+
 #define IWL_MVM_TOF_RANGE_REQ_MAX_ID 256
 
 void iwl_mvm_tof_init(struct iwl_mvm *mvm)
@@ -103,7 +120,90 @@ void iwl_mvm_tof_init(struct iwl_mvm *mvm)
 		cpu_to_le32(TOF_RANGE_REQ_EXT_CMD);
 
 	mvm->tof_data.active_range_request = IWL_MVM_TOF_RANGE_REQ_MAX_ID;
+
+#ifdef CPTCFG_IWLMVM_TOF_TSF_WA
+	{
+		if (rhashtable_init(&tof_data->tsf_hash, &tsf_rht_params))
+			IWL_ERR(mvm, "TSF hashtable init failed\n");
+		else
+			tof_data->tsf_hash_valid = true;
+	}
+#endif
 }
+
+#ifdef CPTCFG_IWLMVM_TOF_TSF_WA
+void iwl_mvm_tof_update_tsf(struct iwl_mvm *mvm, struct iwl_rx_packet *pkt)
+{
+	u32 delta, ts;
+	u8 delta_sign;
+	struct iwl_mvm_tof_tsf_entry *tsf_entry;
+	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)(pkt->data +
+					sizeof(struct iwl_rx_mpdu_res_start));
+	struct ieee80211_mgmt *mgmt = (struct ieee80211_mgmt *)hdr;
+
+	if (!mvm->tof_data.tsf_hash_valid)
+		return;
+
+	ts = (u32)le64_to_cpu(mgmt->u.beacon.timestamp);
+	if (ts > le32_to_cpu(mvm->last_phy_info.system_timestamp)) {
+		delta = ts - le32_to_cpu(mvm->last_phy_info.system_timestamp);
+		delta_sign = 0;
+	} else {
+		delta = le32_to_cpu(mvm->last_phy_info.system_timestamp) - ts;
+		delta_sign = 1;
+	}
+
+	/* try to find this bss in the hash table */
+	tsf_entry = rhashtable_lookup_fast(&mvm->tof_data.tsf_hash,
+					   hdr->addr3, tsf_rht_params);
+	if (tsf_entry) {
+		tsf_entry->delta = delta;
+		tsf_entry->delta_sign = delta_sign;
+		return;
+	}
+
+	/* the bss is not found in the hash table */
+	tsf_entry = kmalloc(sizeof(*tsf_entry), GFP_ATOMIC);
+	if (!tsf_entry)
+		return;
+
+	tsf_entry->delta = delta;
+	tsf_entry->delta_sign = delta_sign;
+	ether_addr_copy(tsf_entry->bssid, hdr->addr3);
+
+	rhashtable_insert_fast(&mvm->tof_data.tsf_hash, &tsf_entry->hash_node,
+			       tsf_rht_params);
+}
+
+static void iwl_mvm_tof_range_req_fill_tsf(struct iwl_mvm *mvm)
+{
+	int i;
+	struct iwl_tof_range_req_cmd *cmd = &mvm->tof_data.range_req;
+	struct iwl_mvm_tof_tsf_entry *tsf_entry;
+
+	if (!mvm->tof_data.tsf_hash_valid)
+		return;
+
+	for (i = 0; i < cmd->num_of_ap; i++) {
+		tsf_entry = rhashtable_lookup_fast(&mvm->tof_data.tsf_hash,
+						   cmd->ap[i].bssid,
+						   tsf_rht_params);
+		if (tsf_entry) {
+			cmd->ap[i].tsf_delta = cpu_to_le32(tsf_entry->delta);
+			cmd->ap[i].tsf_delta_direction = tsf_entry->delta_sign;
+		} else {
+			IWL_INFO(mvm, "Cannot find BSSID %pM\n",
+				 cmd->ap[i].bssid);
+			cmd->ap[i].tsf_delta = 0;
+		}
+	}
+}
+
+static void iwl_mvm_tsf_hash_free_elem(void *ptr, void *arg)
+{
+	kfree(ptr);
+}
+#endif
 
 void iwl_mvm_tof_clean(struct iwl_mvm *mvm)
 {
@@ -111,6 +211,12 @@ void iwl_mvm_tof_clean(struct iwl_mvm *mvm)
 
 	if (!fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT))
 		return;
+
+#ifdef CPTCFG_IWLMVM_TOF_TSF_WA
+	if (tof_data->tsf_hash_valid)
+		rhashtable_free_and_destroy(&tof_data->tsf_hash,
+					    iwl_mvm_tsf_hash_free_elem, NULL);
+#endif
 
 	memset(tof_data, 0, sizeof(*tof_data));
 	mvm->tof_data.active_range_request = IWL_MVM_TOF_RANGE_REQ_MAX_ID;
@@ -222,6 +328,9 @@ int iwl_mvm_tof_range_request_cmd(struct iwl_mvm *mvm,
 		return -EIO;
 	}
 
+#ifdef CPTCFG_IWLMVM_TOF_TSF_WA
+	iwl_mvm_tof_range_req_fill_tsf(mvm);
+#endif
 	mvm->tof_data.active_range_request = mvm->tof_data.range_req.request_id;
 
 	cmd.data[0] = &mvm->tof_data.range_req;
