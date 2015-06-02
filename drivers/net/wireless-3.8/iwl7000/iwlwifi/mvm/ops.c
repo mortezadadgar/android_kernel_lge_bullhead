@@ -273,6 +273,7 @@ static const struct iwl_rx_handlers iwl_mvm_rx_handlers[] = {
 	RX_HANDLER(TDLS_CHANNEL_SWITCH_NOTIFICATION, iwl_mvm_rx_tdls_notif,
 		   true),
 	RX_HANDLER(MFUART_LOAD_NOTIFICATION, iwl_mvm_rx_mfuart_notif, false),
+	RX_HANDLER(TOF_NOTIFICATION, iwl_mvm_tof_resp_handler, true),
 
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	RX_HANDLER(DEBUG_LOG_MSG, iwl_mvm_rx_fw_logs, false),
@@ -609,6 +610,8 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	/* rpm starts with a taken ref. only set the appropriate bit here. */
 	mvm->refs[IWL_MVM_REF_UCODE_DOWN] = 1;
 
+	iwl_mvm_tof_init(mvm);
+
 	return op_mode;
 
  out_unregister:
@@ -670,6 +673,8 @@ static void iwl_op_mode_mvm_stop(struct iwl_op_mode *op_mode)
 #ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
 	iwl_mvm_tdls_peer_cache_clear(mvm, NULL);
 #endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
+
+	iwl_mvm_tof_clean(mvm);
 
 	ieee80211_free_hw(mvm->hw);
 }

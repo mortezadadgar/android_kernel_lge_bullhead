@@ -75,6 +75,7 @@
 #include "fw-api-coex.h"
 #include "fw-api-scan.h"
 #include "fw-api-stats.h"
+#include "fw-api-tof.h"
 
 /* Tx queue numbers */
 enum {
@@ -166,6 +167,10 @@ enum {
 	/* PHY_DB_CMD = 0x6c, */
 
 	CONFIG_2G_COEX_CMD = 0x71,
+
+	/* ToF - 802.11mc FTM */
+	TOF_CMD = 0x10,
+	TOF_NOTIFICATION = 0x11,
 
 	/* Power - legacy power table command */
 	POWER_TABLE_CMD = 0x77,
