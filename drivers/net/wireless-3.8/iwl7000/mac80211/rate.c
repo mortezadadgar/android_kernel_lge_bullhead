@@ -685,7 +685,7 @@ void rate_control_get_rate(struct ieee80211_sub_if_data *sdata,
 		info->control.rates[i].count = 0;
 	}
 
-	if (sdata->local->hw.flags & IEEE80211_HW_HAS_RATE_CONTROL)
+	if (ieee80211_hw_check(&sdata->local->hw, HAS_RATE_CONTROL))
 		return;
 
 	if (ista) {
@@ -696,7 +696,7 @@ void rate_control_get_rate(struct ieee80211_sub_if_data *sdata,
 		ref->ops->get_rate(ref->priv, NULL, NULL, txrc);
 	}
 
-	if (sdata->local->hw.flags & IEEE80211_HW_SUPPORTS_RC_TABLE)
+	if (ieee80211_hw_check(&sdata->local->hw, SUPPORTS_RC_TABLE))
 		return;
 
 	ieee80211_get_tx_rates(&sdata->vif, ista, txrc->skb,
@@ -738,7 +738,7 @@ int ieee80211_init_rate_ctrl_alg(struct ieee80211_local *local,
 	if (local->open_count)
 		return -EBUSY;
 
-	if (local->hw.flags & IEEE80211_HW_HAS_RATE_CONTROL) {
+	if (ieee80211_hw_check(&local->hw, HAS_RATE_CONTROL)) {
 		if (WARN_ON(!local->ops->set_rts_threshold))
 			return -EINVAL;
 		return 0;

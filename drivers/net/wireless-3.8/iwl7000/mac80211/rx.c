@@ -55,7 +55,7 @@ static struct sk_buff *remove_monitor_info(struct ieee80211_local *local,
 					   struct sk_buff *skb,
 					   unsigned int rtap_vendor_space)
 {
-	if (local->hw.flags & IEEE80211_HW_RX_INCLUDES_FCS) {
+	if (ieee80211_hw_check(&local->hw, RX_INCLUDES_FCS)) {
 		if (likely(skb->len > FCS_LEN))
 			__pskb_trim(skb, skb->len - FCS_LEN);
 		else {
@@ -113,7 +113,7 @@ ieee80211_rx_radiotap_hdrlen(struct ieee80211_local *local,
 		len = ALIGN(len, 8);
 		len += 8;
 	}
-	if (local->hw.flags & IEEE80211_HW_SIGNAL_DBM)
+	if (ieee80211_hw_check(&local->hw, SIGNAL_DBM))
 		len += 1;
 
 	/* antenna field, if we don't have per-chain info */
@@ -188,7 +188,7 @@ ieee80211_add_rx_radiotap_header(struct ieee80211_local *local,
 	}
 
 	mpdulen = skb->len;
-	if (!(has_fcs && (local->hw.flags & IEEE80211_HW_RX_INCLUDES_FCS)))
+	if (!(has_fcs && ieee80211_hw_check(&local->hw, RX_INCLUDES_FCS)))
 		mpdulen += FCS_LEN;
 
 	rthdr = (struct ieee80211_radiotap_header *)skb_push(skb, rtap_len);
@@ -242,7 +242,7 @@ ieee80211_add_rx_radiotap_header(struct ieee80211_local *local,
 	}
 
 	/* IEEE80211_RADIOTAP_FLAGS */
-	if (has_fcs && (local->hw.flags & IEEE80211_HW_RX_INCLUDES_FCS))
+	if (has_fcs && ieee80211_hw_check(&local->hw, RX_INCLUDES_FCS))
 		*pos |= IEEE80211_RADIOTAP_F_FCS;
 	if (status->flag & (RX_FLAG_FAILED_FCS_CRC | RX_FLAG_FAILED_PLCP_CRC))
 		*pos |= IEEE80211_RADIOTAP_F_BADFCS;
@@ -292,7 +292,7 @@ ieee80211_add_rx_radiotap_header(struct ieee80211_local *local,
 	pos += 2;
 
 	/* IEEE80211_RADIOTAP_DBM_ANTSIGNAL */
-	if (local->hw.flags & IEEE80211_HW_SIGNAL_DBM &&
+	if (ieee80211_hw_check(&local->hw, SIGNAL_DBM) &&
 	    !(status->flag & RX_FLAG_NO_SIGNAL_VAL)) {
 		*pos = status->signal;
 		rthdr->it_present |=
@@ -461,7 +461,7 @@ ieee80211_rx_monitor(struct ieee80211_local *local, struct sk_buff *origskb,
 	 * the SKB because it has a bad FCS/PLCP checksum.
 	 */
 
-	if (local->hw.flags & IEEE80211_HW_RX_INCLUDES_FCS)
+	if (ieee80211_hw_check(&local->hw, RX_INCLUDES_FCS))
 		present_fcs_len = FCS_LEN;
 
 	/* ensure hdr->frame_control and vendor radiotap data are in skb head */
@@ -1200,7 +1200,7 @@ static void sta_ps_start(struct sta_info *sta)
 
 	atomic_inc(&ps->num_sta_ps);
 	set_sta_flag(sta, WLAN_STA_PS_STA);
-	if (!(local->hw.flags & IEEE80211_HW_AP_LINK_PS))
+	if (!ieee80211_hw_check(&local->hw, AP_LINK_PS))
 		drv_sta_notify(local, sdata, STA_NOTIFY_SLEEP, &sta->sta);
 	ps_dbg(sdata, "STA %pM aid %d enters power save mode\n",
 	       sta->sta.addr, sta->sta.aid);
@@ -1248,7 +1248,7 @@ int ieee80211_sta_ps_transition(struct ieee80211_sta *sta, bool start)
 	struct sta_info *sta_inf = container_of(sta, struct sta_info, sta);
 	bool in_ps;
 
-	WARN_ON(!(sta_inf->local->hw.flags & IEEE80211_HW_AP_LINK_PS));
+	WARN_ON(!ieee80211_hw_check(&sta_inf->local->hw, AP_LINK_PS));
 
 	/* Don't let the same PS state be set twice */
 	in_ps = test_sta_flag(sta_inf, WLAN_STA_PS_STA);
@@ -1284,7 +1284,7 @@ ieee80211_rx_h_uapsd_and_pspoll(struct ieee80211_rx_data *rx)
 	 * uAPSD and PS-Poll frames (the latter shouldn't even come up from
 	 * it to mac80211 since they're handled.)
 	 */
-	if (sdata->local->hw.flags & IEEE80211_HW_AP_LINK_PS)
+	if (ieee80211_hw_check(&sdata->local->hw, AP_LINK_PS))
 		return RX_CONTINUE;
 
 	/*
@@ -1418,7 +1418,7 @@ ieee80211_rx_h_sta_process(struct ieee80211_rx_data *rx)
 	 * Change STA power saving mode only at the end of a frame
 	 * exchange sequence.
 	 */
-	if (!(sta->local->hw.flags & IEEE80211_HW_AP_LINK_PS) &&
+	if (!ieee80211_hw_check(&sta->local->hw, AP_LINK_PS) &&
 	    !ieee80211_has_morefrags(hdr->frame_control) &&
 	    !(status->rx_flags & IEEE80211_RX_DEFERRED_RELEASE) &&
 	    (rx->sdata->vif.type == NL80211_IFTYPE_AP ||
@@ -2389,6 +2389,7 @@ ieee80211_rx_h_data(struct ieee80211_rx_data *rx)
 	if (!ieee80211_frame_allowed(rx, fc))
 		return RX_DROP_MONITOR;
 
+#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	/* directly handle TDLS channel switch requests/responses */
 	if (unlikely(((struct ethhdr *)rx->skb->data)->h_proto ==
 						cpu_to_be16(ETH_P_TDLS))) {
@@ -2408,6 +2409,7 @@ ieee80211_rx_h_data(struct ieee80211_rx_data *rx)
 			return RX_QUEUED;
 		}
 	}
+#endif
 
 	if (rx->sdata->vif.type == NL80211_IFTYPE_AP_VLAN &&
 	    unlikely(port_control) && sdata->bss) {
@@ -2564,7 +2566,7 @@ ieee80211_rx_h_mgmt_check(struct ieee80211_rx_data *rx)
 	    !(rx->flags & IEEE80211_RX_BEACON_REPORTED)) {
 		int sig = 0;
 
-		if (rx->local->hw.flags & IEEE80211_HW_SIGNAL_DBM)
+		if (ieee80211_hw_check(&rx->local->hw, SIGNAL_DBM))
 			sig = status->signal;
 
 		cfg80211_report_obss_beacon(rx->local->hw.wiphy,
@@ -2895,7 +2897,7 @@ ieee80211_rx_h_userspace_mgmt(struct ieee80211_rx_data *rx)
 	 * it transmitted were processed or returned.
 	 */
 
-	if (rx->local->hw.flags & IEEE80211_HW_SIGNAL_DBM)
+	if (ieee80211_hw_check(&rx->local->hw, SIGNAL_DBM))
 		sig = status->signal;
 
 	if (cfg80211_rx_mgmt(&rx->sdata->wdev, status->freq, sig,
@@ -2960,7 +2962,7 @@ ieee80211_rx_h_action_return(struct ieee80211_rx_data *rx)
 			info->flags = IEEE80211_TX_CTL_TX_OFFCHAN |
 				      IEEE80211_TX_INTFL_OFFCHAN_TX_OK |
 				      IEEE80211_TX_CTL_NO_CCK_RATE;
-			if (local->hw.flags & IEEE80211_HW_QUEUE_CONTROL)
+			if (ieee80211_hw_check(&local->hw, QUEUE_CONTROL))
 				info->hw_queue =
 					local->hw.offchannel_tx_hw_queue;
 		}
