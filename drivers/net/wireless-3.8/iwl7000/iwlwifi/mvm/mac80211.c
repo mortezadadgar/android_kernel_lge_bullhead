@@ -469,6 +469,12 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 		hw->wiphy->n_cipher_suites++;
 	}
 
+	/* Basic support of FTM is limited to driver/FW, so this flag should be
+	 * set (depending on capbilities specified in TLV).
+	 */
+	if (fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT))
+		ieee80211_hw_set(hw, SUPPORTS_FTM_INITIATOR);
+
 	ieee80211_hw_set(hw, SINGLE_SCAN_ON_ALL_BANDS);
 	hw->wiphy->features |=
 		NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR |
