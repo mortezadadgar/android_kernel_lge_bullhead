@@ -1902,6 +1902,11 @@ struct ieee80211_txq {
  * @IEEE80211_HW_TDLS_WIDER_BW: The device/driver supports wider bandwidth
  *	than then BSS bandwidth for a TDLS link on the base channel.
  *
+ * @IEEE80211_HW_SUPPORTS_FTM_INITIATOR:
+ *	Hardware supports 802.11 Fine Timing Measurement Initiator.
+ *	This flag should be set only if the support can be provided without
+ *	involvement of the stack; otherwise leave it to stack to decide.
+ *
  * @NUM_IEEE80211_HW_FLAGS: number of hardware flags, used for sizing arrays
  */
 enum ieee80211_hw_flags {
@@ -1935,6 +1940,7 @@ enum ieee80211_hw_flags {
 	IEEE80211_HW_SUPPORTS_CLONED_SKBS,
 	IEEE80211_HW_SINGLE_SCAN_ON_ALL_BANDS,
 	IEEE80211_HW_TDLS_WIDER_BW,
+	IEEE80211_HW_SUPPORTS_FTM_INITIATOR,
 
 	/* keep last, obviously */
 	NUM_IEEE80211_HW_FLAGS
