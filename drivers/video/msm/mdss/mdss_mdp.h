@@ -34,6 +34,9 @@
 
 #define MDSS_MDP_DEFAULT_INTR_MASK 0
 
+#define SVS_PLUS_MIN_HW_110 171430000
+#define SVS_PLUS_MAX_HW_110 266670000
+
 #define PHASE_STEP_SHIFT	21
 #define PHASE_STEP_UNIT_SCALE   ((int) (1 << PHASE_STEP_SHIFT))
 #define PHASE_RESIDUAL		15
@@ -1603,6 +1606,14 @@ static inline u32 mdss_mdp_get_rotator_dst_format(u32 in_format, u32 in_rot90,
 	default:
 		return in_format;
 	}
+}
+
+static inline bool __is_mdp_clk_svs_plus_range(struct mdss_data_type *mdata,
+		u32 rate)
+{
+	return (mdss_has_quirk(mdata, MDSS_QUIRK_SVS_PLUS_VOTING)) &&
+		(rate > mdata->svs_plus_min) &&
+		(rate <= mdata->svs_plus_max);
 }
 
 irqreturn_t mdss_mdp_isr(int irq, void *ptr);
