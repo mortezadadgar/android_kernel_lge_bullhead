@@ -14,6 +14,7 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/atomic.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/log2.h>
@@ -447,6 +448,10 @@ int rhashtable_insert_slow(struct rhashtable *ht, const void *key,
 	if (key && rhashtable_lookup_fast(ht, key, ht->p))
 		goto exit;
 
+	err = -E2BIG;
+	if (unlikely(rht_grow_above_max(ht, tbl)))
+		goto exit;
+
 	err = -EAGAIN;
 	if (rhashtable_check_elasticity(ht, tbl, hash) ||
 	    rht_grow_above_100(ht, tbl))
@@ -580,7 +585,6 @@ void *rhashtable_walk_next(struct rhashtable_iter *iter)
 	struct bucket_table *tbl = iter->walker->tbl;
 	struct rhashtable *ht = iter->ht;
 	struct rhash_head *p = iter->p;
-	void *obj = NULL;
 
 	if (p) {
 		p = rht_dereference_bucket_rcu(p->next, tbl, iter->slot);
@@ -600,8 +604,7 @@ next:
 		if (!rht_is_a_nulls(p)) {
 			iter->skip++;
 			iter->p = p;
-			obj = rht_obj(ht, p);
-			goto out;
+			return rht_obj(ht, p);
 		}
 
 		iter->skip = 0;
@@ -619,9 +622,7 @@ next:
 
 	iter->p = NULL;
 
-out:
-
-	return obj;
+	return NULL;
 }
 EXPORT_SYMBOL_GPL(rhashtable_walk_next);
 
@@ -738,6 +739,12 @@ int rhashtable_init(struct rhashtable *ht,
 
 	if (params->max_size)
 		ht->p.max_size = rounddown_pow_of_two(params->max_size);
+
+	if (params->insecure_max_entries)
+		ht->p.insecure_max_entries =
+			rounddown_pow_of_two(params->insecure_max_entries);
+	else
+		ht->p.insecure_max_entries = ht->p.max_size * 2;
 
 	ht->p.min_size = max(ht->p.min_size, HASH_MIN_SIZE);
 
