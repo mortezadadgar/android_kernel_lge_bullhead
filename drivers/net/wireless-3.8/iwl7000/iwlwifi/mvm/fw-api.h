@@ -175,12 +175,6 @@ enum {
 	/* Thermal Throttling*/
 	REPLY_THERMAL_MNG_BACKOFF = 0x7e,
 
-	/* Scanning */
-	SCAN_REQUEST_CMD = 0x80,
-	SCAN_ABORT_CMD = 0x81,
-	SCAN_START_NOTIFICATION = 0x82,
-	SCAN_COMPLETE_NOTIFICATION = 0x84,
-
 	/* Set/Get DC2DC frequency tune */
 	DC2DC_CONFIG_CMD = 0x83,
 
