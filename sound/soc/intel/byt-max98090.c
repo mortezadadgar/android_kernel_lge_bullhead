@@ -31,6 +31,7 @@
 #include "sst-baytrail-ipc.h"
 
 #define BYT_PLAT_CLK_3_HZ      25000000
+#define BYT_MAX_I2C_DEVICES	8
 
 struct byt_mc_private {
 	struct snd_soc_jack hp_jack;
@@ -41,6 +42,9 @@ static const struct snd_soc_dapm_widget byt_dapm_widgets[] = {
 	SND_SOC_DAPM_HP("Headphone", NULL),
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
 	SND_SOC_DAPM_MIC("Int Mic", NULL),
+};
+
+static const struct snd_soc_dapm_widget byt_dapm_spk_widget[] = {
 	SND_SOC_DAPM_SPK("Ext Spk", NULL),
 };
 
@@ -51,6 +55,9 @@ static const struct snd_soc_dapm_route byt_audio_map[] = {
 	{"DMICL", NULL, "Int Mic"},
 	{"Headphone", NULL, "HPL"},
 	{"Headphone", NULL, "HPR"},
+};
+
+static const struct snd_soc_dapm_route byt_audio_spk_map[] = {
 	{"Ext Spk", NULL, "SPKL"},
 	{"Ext Spk", NULL, "SPKR"},
 };
@@ -59,6 +66,9 @@ static const struct snd_kcontrol_new byt_mc_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Headphone"),
 	SOC_DAPM_PIN_SWITCH("Headset Mic"),
 	SOC_DAPM_PIN_SWITCH("Int Mic"),
+};
+
+static const struct snd_kcontrol_new byt_spk_control[] = {
 	SOC_DAPM_PIN_SWITCH("Ext Spk"),
 };
 
@@ -109,6 +119,29 @@ static struct snd_soc_jack_gpio mic_jack_gpio = {
 	.invert			= 1,
 };
 
+/* retrieve baytrail i2c codec devices, search speaker path */
+static int byt_acpi_get_spk_status(void)
+{
+	acpi_status status;
+	acpi_handle handle = NULL;
+	unsigned long long spk_status = 1;
+	char acpi_path[25];
+	const char *sys_bus = "\\\\_SB";
+	const char *spk_name = "CODC.SPKR";
+	int i;
+
+	for (i = 0; i < BYT_MAX_I2C_DEVICES; i++) {
+		const char i2c_num[5] = { 'I', '2', 'C', ('0' + i), '\0' };
+		sprintf(acpi_path, "%s.%s.%s", sys_bus, i2c_num, spk_name);
+
+		status = acpi_evaluate_integer(handle, acpi_path,
+					NULL, &spk_status);
+		if (ACPI_SUCCESS(status))
+			break;
+	}
+	pr_info("get baytrail acpi spk_status: %lld\n", spk_status);
+	return spk_status;
+}
 /* enable the codec SHDN after LRCLK and BCLK have been activated by DSP FW */
 static void byt_max98090_start(struct sst_dsp *dsp, void *data)
 {
@@ -153,9 +186,37 @@ static int byt_init(struct snd_soc_pcm_runtime *runtime)
 		return ret;
 	}
 
+	/* if device is no speaker on the board, skip add speaker widget,
+	 * control and route. Otherwise, do it.
+	 */
+	if (byt_acpi_get_spk_status()) {
+		ret = snd_soc_add_card_controls(card, byt_spk_control,
+					ARRAY_SIZE(byt_spk_control));
+		if (ret) {
+			pr_err("unable to add Spk control\n");
+			return ret;
+		}
+
+		ret = snd_soc_dapm_new_controls(&card->dapm,
+					byt_dapm_spk_widget,
+					ARRAY_SIZE(byt_dapm_spk_widget));
+		if (ret) {
+			pr_err("unable to add Spk widget\n");
+			return ret;
+		}
+
+		ret = snd_soc_dapm_add_routes(&card->dapm, byt_audio_spk_map,
+					ARRAY_SIZE(byt_audio_spk_map));
+		if (ret) {
+			pr_err("unable to add Spk route\n");
+			return ret;
+		}
+
+		snd_soc_dapm_enable_pin(dapm, "Ext Spk");
+	}
+
 	snd_soc_dapm_enable_pin(dapm, "Headset Mic");
 	snd_soc_dapm_enable_pin(dapm, "Headphone");
-	snd_soc_dapm_enable_pin(dapm, "Ext Spk");
 	snd_soc_dapm_enable_pin(dapm, "Int Mic");
 
 	snd_soc_dapm_sync(dapm);
