@@ -49,9 +49,9 @@ static bool broken_uapsd_workarounds(struct ieee802_11_elems *elems)
 {
 	int i;
 
-	/* if it doesn't have ht_capa it can't be a SISO iphone */
+	/* iPhone 4/4s with this problem doesn't have ht_capa */
 	if (!elems->ht_cap_elem)
-		return false;
+		return true;
 
 	for (i = 1; i < 4; i++) {
 		if (elems->ht_cap_elem->mcs.rx_mask[i])
