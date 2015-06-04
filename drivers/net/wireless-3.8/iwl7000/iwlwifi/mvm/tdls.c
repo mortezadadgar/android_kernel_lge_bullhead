@@ -471,14 +471,13 @@ iwl_mvm_tdls_config_channel_switch(struct iwl_mvm *mvm,
 	cmd.frame.switch_time_offset = cpu_to_le32(ch_sw_tm_ie + 2);
 
 	info = IEEE80211_SKB_CB(skb);
-	hdr = (void *)skb->data;
 	if (info->control.hw_key)
-		iwl_mvm_set_tx_cmd_crypto(mvm, info, &cmd.frame.tx_cmd, skb,
-					  ieee80211_hdrlen(hdr->frame_control));
+		iwl_mvm_set_tx_cmd_crypto(mvm, info, &cmd.frame.tx_cmd, skb);
 
 	iwl_mvm_set_tx_cmd(mvm, skb, &cmd.frame.tx_cmd, info,
 			   mvmsta->sta_id);
 
+	hdr = (void *)skb->data;
 	iwl_mvm_set_tx_cmd_rate(mvm, &cmd.frame.tx_cmd, info, sta,
 				hdr->frame_control);
 	rcu_read_unlock();

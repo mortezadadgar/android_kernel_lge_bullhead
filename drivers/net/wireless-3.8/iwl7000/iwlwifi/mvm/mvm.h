@@ -1083,8 +1083,7 @@ void iwl_mvm_set_tx_cmd(struct iwl_mvm *mvm, struct sk_buff *skb,
 void iwl_mvm_set_tx_cmd_crypto(struct iwl_mvm *mvm,
 			       struct ieee80211_tx_info *info,
 			       struct iwl_tx_cmd *tx_cmd,
-			       struct sk_buff *skb_frag,
-			       int hdrlen);
+			       struct sk_buff *skb_frag);
 void iwl_mvm_set_tx_cmd_rate(struct iwl_mvm *mvm, struct iwl_tx_cmd *tx_cmd,
 			    struct ieee80211_tx_info *info,
 			    struct ieee80211_sta *sta, __le16 fc);
