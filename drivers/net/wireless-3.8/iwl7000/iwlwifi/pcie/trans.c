@@ -2718,7 +2718,8 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	/* Initialize the wait queue for commands */
 	init_waitqueue_head(&trans_pcie->wait_command_queue);
 
-	if (iwl_pcie_alloc_ict(trans))
+	ret = iwl_pcie_alloc_ict(trans);
+	if (ret)
 		goto out_pci_disable_msi;
 
 	ret = request_threaded_irq(pdev->irq, iwl_pcie_isr,
