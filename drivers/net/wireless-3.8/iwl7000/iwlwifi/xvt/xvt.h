@@ -273,7 +273,7 @@ struct iwl_xvt {
 /* Host Commands */
 int __must_check iwl_xvt_send_cmd(struct iwl_xvt *xvt,
 				  struct iwl_host_cmd *cmd);
-int __must_check iwl_xvt_send_cmd_pdu(struct iwl_xvt *xvt, u8 id,
+int __must_check iwl_xvt_send_cmd_pdu(struct iwl_xvt *xvt, u32 id,
 				      u32 flags, u16 len, const void *data);
 
 /* Utils */

@@ -125,6 +125,32 @@
 #define INDEX_TO_SEQ(i)	((i) & 0xff)
 #define SEQ_RX_FRAME	cpu_to_le16(0x8000)
 
+/*
+ * those functions retrieve specific information from
+ * the id field in the iwl_host_cmd struct which contains
+ * the command id, the group id and the version of the command
+ * and vice versa
+*/
+static inline u8 iwl_cmd_opcode(u32 cmdid)
+{
+	return cmdid & 0xFF;
+}
+
+static inline u8 iwl_cmd_groupid(u32 cmdid)
+{
+	return ((cmdid & 0xFF00) >> 8);
+}
+
+static inline u8 iwl_cmd_version(u32 cmdid)
+{
+	return ((cmdid & 0xFF0000) >> 16);
+}
+
+static inline u32 iwl_cmd_id(u8 opcode, u8 groupid, u8 version)
+{
+	return opcode + (groupid << 8) + (version << 16);
+}
+
 /**
  * struct iwl_cmd_header
  *
@@ -133,7 +159,7 @@
  */
 struct iwl_cmd_header {
 	u8 cmd;		/* Command ID:  REPLY_RXON, etc. */
-	u8 reserved;
+	u8 group_id;
 	/*
 	 * The driver sets up the sequence number to values of its choosing.
 	 * uCode does not use this value, but passes it back to the driver
@@ -155,6 +181,23 @@ struct iwl_cmd_header {
 	 *  15		unsolicited RX or uCode-originated notification
 	 */
 	__le16 sequence;
+} __packed;
+
+/**
+ * struct iwl_cmd_header_wide
+ *
+ * This header format appears in the beginning of each command sent from the
+ * driver, and each response/notification received from uCode.
+ * this is the wide version that contains more information about the command
+ * like length, version and command type
+ */
+struct iwl_cmd_header_wide {
+	u8 cmd;
+	u8 group_id;
+	__le16 sequence;
+	__le16 length;
+	u8 reserved;
+	u8 version;
 } __packed;
 
 #define FH_RSCSR_FRAME_SIZE_MSK		0x00003FFF	/* bits 0-13 */
@@ -225,8 +268,18 @@ enum CMD_MODE {
  * aren't fully copied and use other TFD space.
  */
 struct iwl_device_cmd {
-	struct iwl_cmd_header hdr;	/* uCode API */
-	u8 payload[DEF_CMD_PAYLOAD_SIZE];
+	union {
+		struct {
+			struct iwl_cmd_header hdr;	/* uCode API */
+			u8 payload[DEF_CMD_PAYLOAD_SIZE];
+		};
+		struct {
+			struct iwl_cmd_header_wide hdr_wide;
+			u8 payload_wide[DEF_CMD_PAYLOAD_SIZE -
+					sizeof(struct iwl_cmd_header_wide) +
+					sizeof(struct iwl_cmd_header)];
+		};
+	};
 } __packed;
 
 #define TFD_MAX_PAYLOAD_SIZE (sizeof(struct iwl_device_cmd))
@@ -267,7 +320,8 @@ enum iwl_hcmd_dataflag {
  * @flags: can be CMD_*
  * @len: array of the lengths of the chunks in data
  * @dataflags: IWL_HCMD_DFL_*
- * @id: id of the host command
+ * @id: command id of the host command, for wide commands encoding the
+ *	version and group as well
  */
 struct iwl_host_cmd {
 	const void *data[IWL_MAX_CMD_TBS_PER_TFD];
@@ -276,9 +330,9 @@ struct iwl_host_cmd {
 	u32 _rx_page_order;
 
 	u32 flags;
+	u32 id;
 	u16 len[IWL_MAX_CMD_TBS_PER_TFD];
 	u8 dataflags[IWL_MAX_CMD_TBS_PER_TFD];
-	u8 id;
 };
 
 static inline void iwl_free_resp(struct iwl_host_cmd *cmd)
@@ -381,6 +435,7 @@ enum iwl_trans_status {
  * @bc_table_dword: set to true if the BC table expects the byte count to be
  *	in DWORD (as opposed to bytes)
  * @scd_set_active: should the transport configure the SCD for HCMD queue
+ * @wide_cmd_header: firmware supports wide host command header
  * @command_names: array of command names, must be 256 entries
  *	(one for each command); for debugging only
  * @sdio_adma_addr: the default address to set for the ADMA in SDIO mode until
@@ -398,6 +453,7 @@ struct iwl_trans_config {
 	bool rx_buf_size_8k;
 	bool bc_table_dword;
 	bool scd_set_active;
+	bool wide_cmd_header;
 	const char *const *command_names;
 
 	u32 sdio_adma_addr;
