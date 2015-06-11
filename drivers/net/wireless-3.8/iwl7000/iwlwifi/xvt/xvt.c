@@ -227,6 +227,7 @@ static void iwl_xvt_rx_tx_cmd_handler(struct iwl_xvt *xvt,
 }
 
 static void iwl_xvt_rx_dispatch(struct iwl_op_mode *op_mode,
+				struct napi_struct *napi,
 				struct iwl_rx_cmd_buffer *rxb)
 {
 	struct iwl_xvt *xvt = IWL_OP_MODE_GET_XVT(op_mode);
