@@ -622,8 +622,10 @@ struct iwl_mvm_tdls_peer_counter {
 
 	struct mac_address mac __aligned(2);
 	struct ieee80211_vif *vif;
-	u32 rx_bytes;
 	u32 tx_bytes;
+	struct {
+		u32 bytes;
+	} ____cacheline_aligned_in_smp rx[];
 };
 #endif
 
@@ -1588,7 +1590,7 @@ void iwl_mvm_tdls_ch_switch_work(struct work_struct *work);
 
 #ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
 void iwl_mvm_tdls_peer_cache_pkt(struct iwl_mvm *mvm, struct ieee80211_hdr *hdr,
-				 u32 len, bool tx);
+				 u32 len, int rxq);
 void iwl_mvm_tdls_peer_cache_clear(struct iwl_mvm *mvm,
 				   struct ieee80211_vif *vif);
 struct iwl_mvm_tdls_peer_counter *

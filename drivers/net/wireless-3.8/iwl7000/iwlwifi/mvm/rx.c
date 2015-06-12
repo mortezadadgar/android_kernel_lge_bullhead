@@ -461,7 +461,7 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 	 * cases an existing station.
 	 */
 	if (sta)
-		iwl_mvm_tdls_peer_cache_pkt(mvm, hdr, len, false);
+		iwl_mvm_tdls_peer_cache_pkt(mvm, hdr, len, 0);
 #endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
 
 	rcu_read_unlock();

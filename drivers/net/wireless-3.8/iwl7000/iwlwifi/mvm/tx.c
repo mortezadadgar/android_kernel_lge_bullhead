@@ -759,7 +759,7 @@ static void iwl_mvm_rx_tx_cmd_single(struct iwl_mvm *mvm,
 #ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
 		if (info->flags & IEEE80211_TX_STAT_ACK)
 			iwl_mvm_tdls_peer_cache_pkt(mvm, (void *)skb->data,
-						    skb->len, true);
+						    skb->len, -1);
 #endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
 
 		ieee80211_tx_status(mvm->hw, skb);
@@ -1091,7 +1091,7 @@ void iwl_mvm_rx_ba_notif(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb)
 		info->flags |= IEEE80211_TX_STAT_ACK;
 
 #ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
-		iwl_mvm_tdls_peer_cache_pkt(mvm, hdr, skb->len, true);
+		iwl_mvm_tdls_peer_cache_pkt(mvm, hdr, skb->len, -1);
 #endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
 
 		/* this is the first skb we deliver in this batch */

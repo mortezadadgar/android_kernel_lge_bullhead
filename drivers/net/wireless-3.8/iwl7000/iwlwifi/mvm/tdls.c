@@ -733,7 +733,7 @@ retry:
 
 #ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
 void iwl_mvm_tdls_peer_cache_pkt(struct iwl_mvm *mvm, struct ieee80211_hdr *hdr,
-				 u32 len, bool tx)
+				 u32 len, int rxq)
 {
 	struct iwl_mvm_tdls_peer_counter *cnt;
 	u8 *addr;
@@ -752,16 +752,16 @@ void iwl_mvm_tdls_peer_cache_pkt(struct iwl_mvm *mvm, struct ieee80211_hdr *hdr,
 	if (len < sizeof(*hdr) || !ieee80211_is_data(hdr->frame_control))
 		return;
 
-	addr = tx ? ieee80211_get_DA(hdr) : ieee80211_get_SA(hdr);
+	addr = rxq < 0 ? ieee80211_get_DA(hdr) : ieee80211_get_SA(hdr);
 
 	/* we rely on the Rx and Tx path mutual atomicity for the counters */
 	rcu_read_lock();
 	list_for_each_entry_rcu(cnt, &mvm->tdls_peer_cache_list, list)
 		if (ether_addr_equal(cnt->mac.addr, addr)) {
-			if (tx)
+			if (rxq < 0)
 				cnt->tx_bytes += len;
 			else
-				cnt->rx_bytes += len;
+				cnt->rx[rxq].bytes += len;
 
 			break;
 		}
