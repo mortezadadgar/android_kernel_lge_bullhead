@@ -4,7 +4,7 @@
  * Copyright (c) 2013 ELAN Microelectronics Corp.
  *
  * Author: 林政維 (Duson Lin) <dusonlin@emc.com.tw>
- * Version: 1.5.7
+ * Version: 1.5.8
  *
  * Based on cyapa driver:
  * copyright (c) 2011-2012 Cypress Semiconductor, Inc.
@@ -40,7 +40,7 @@
 #include <linux/of.h>
 
 #define DRIVER_NAME		"elan_i2c"
-#define ELAN_DRIVER_VERSION	"1.5.7"
+#define ELAN_DRIVER_VERSION	"1.5.8"
 #define ELAN_VENDOR_ID		0x04f3
 #define ETP_PRESSURE_OFFSET	25
 #define ETP_MAX_PRESSURE	255
@@ -141,9 +141,7 @@
 #define ETP_FW_IAP_PAGE_ERR	(1<<5)
 #define ETP_FW_IAP_INTERFACE_ERR (1<<4)
 #define ETP_FW_PAGE_SIZE	64
-#define ETP_FW_VAILDPAGE_COUNT	768
 #define ETP_FW_SIGNATURE_SIZE	6
-#define ETP_FW_SIGNATURE_ADDRESS	0xBFFA
 
 enum tp_mode {
 	UNKNOWN_MODE,
@@ -170,6 +168,9 @@ struct elan_tp_data {
 	u16			sm_version;
 	u16			iap_version;
 	u16			iap_start_addr;
+	u8			ic_type;
+	u16			fw_vaildpage_count;
+	u16			fw_signature_address;
 	bool			smbus;
 	bool			wait_signal_from_updatefw;
 	bool			irq_wake;
@@ -302,7 +303,7 @@ static int elan_check_fw(struct elan_tp_data *data,
 	struct device *dev = &data->client->dev;
 	u8 val[3];
 	static const u8 signature[] = {0xAA, 0x55, 0xCC, 0x33, 0xFF, 0xFF};
-	const u8 *fw_signature = &fw->data[ETP_FW_SIGNATURE_ADDRESS];
+	const u8 *fw_signature = &fw->data[data->fw_signature_address];
 
 	/* Firmware file must match signature data */
 	if (memcmp(fw_signature, signature, sizeof(signature)) != 0) {
@@ -647,7 +648,7 @@ static int elan_firmware(struct elan_tp_data *data, const char *fw_name)
 	sw_checksum = 0;
 	fw_checksum = 0;
 	boot_page_count = (data->iap_start_addr * 2) / ETP_FW_PAGE_SIZE;
-	for (i = boot_page_count; i < ETP_FW_VAILDPAGE_COUNT; i++) {
+	for (i = boot_page_count; i < data->fw_vaildpage_count; i++) {
 		u16 checksum = 0;
 		const u8 *page = &fw->data[i * ETP_FW_PAGE_SIZE];
 
@@ -939,6 +940,27 @@ static int elan_i2c_initialize(struct i2c_client *client)
  * General functions
  ******************************************************************
  */
+static int elan_get_fwinfo(u8 ic_type, u16 *vaildpage_count,
+			   u16 *signature_address)
+{
+	switch (ic_type) {
+	case 0x09:
+		*vaildpage_count = 768;
+		break;
+	case 0x0D:
+		*vaildpage_count = 896;
+		break;
+	default:
+		/* unknown ic type clear value */
+		*vaildpage_count = 0;
+		*signature_address = 0;
+		return -ENXIO;
+	}
+	*signature_address = (*vaildpage_count * ETP_FW_PAGE_SIZE)
+			     - ETP_FW_SIGNATURE_SIZE;
+	return 0;
+}
+
 /*
  * (value from firmware) * 10 + 790 = dpi
  * we also have to convert dpi to dots/mm (*10/254 to avoid floating point)
@@ -1064,7 +1086,6 @@ static int elan_get_fw_version(struct elan_tp_data *data)
 
 static int elan_get_sm_version(struct elan_tp_data *data)
 {
-	int ret;
 	u8 val[3];
 	if (data->smbus)
 		i2c_smbus_read_block_data(data->client,
@@ -1072,8 +1093,9 @@ static int elan_get_sm_version(struct elan_tp_data *data)
 	else
 		elan_i2c_read_cmd(data->client,
 				  ETP_I2C_SM_VERSION_CMD, val);
-	ret = val[0];
-	return ret;
+	data->sm_version = val[0];
+	data->ic_type = val[1];
+	return 0;
 }
 
 static int elan_get_product_id(struct elan_tp_data *data)
@@ -1370,7 +1392,7 @@ static ssize_t elan_sysfs_read_sm_ver(struct device *dev,
 				      char *buf)
 {
 	struct elan_tp_data *data = dev_get_drvdata(dev);
-	data->sm_version = elan_get_sm_version(data);
+	elan_get_sm_version(data);
 	return sprintf(buf, "%d.0\n", data->sm_version);
 }
 
@@ -1743,7 +1765,7 @@ static int elan_input_dev_create(struct elan_tp_data *data)
 
 	data->product_id = elan_get_product_id(data);
 	data->fw_version = elan_get_fw_version(data);
-	data->sm_version = elan_get_sm_version(data);
+	elan_get_sm_version(data);
 	data->iap_version = elan_get_iap_version(data);
 	data->pressure_adjustment = elan_get_pressure_adjustment(data);
 	data->max_x = elan_get_x_max(data);
@@ -1754,6 +1776,12 @@ static int elan_input_dev_create(struct elan_tp_data *data)
 	y_res = elan_get_y_resolution(data);
 	max_width = max(data->width_x, data->width_y);
 	min_width = min(data->width_x, data->width_y);
+	ret = elan_get_fwinfo(data->ic_type, &data->fw_vaildpage_count,
+			      &data->fw_signature_address);
+	if (ret) {
+		dev_err(&client->dev, "unknown ic type, %d\n", data->ic_type);
+		goto err_free_device;
+	}
 
 	input->id.bustype = BUS_I2C;
 	input->id.vendor = ELAN_VENDOR_ID;
@@ -1767,14 +1795,16 @@ static int elan_input_dev_create(struct elan_tp_data *data)
 		"    IAP Version:  0x%04x\n"
 		"    Max ABS X,Y:   %d,%d\n"
 		"    Width X,Y:   %d,%d\n"
-		"    Resolution X,Y:   %d,%d (dots/mm)\n",
+		"    Resolution X,Y:   %d,%d (dots/mm)\n"
+		"    ic type:  %d\n",
 		data->product_id,
 		data->fw_version,
 		data->sm_version,
 		data->iap_version,
 		data->max_x, data->max_y,
 		data->width_x, data->width_y,
-		x_res, y_res);
+		x_res, y_res,
+		data->ic_type);
 
 	input_set_abs_params(input, ABS_X, 0, data->max_x, 0, 0);
 	input_set_abs_params(input, ABS_Y, 0, data->max_y, 0, 0);
