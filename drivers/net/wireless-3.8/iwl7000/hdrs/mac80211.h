@@ -423,7 +423,7 @@ struct ieee80211_ba_event {
  * @rssi: relevant if &type is %RSSI_EVENT
  * @mlme: relevant if &type is %AUTH_EVENT
  * @ba: relevant if &type is %BAR_RX_EVENT or %BA_FRAME_TIMEOUT
- * @u:    union holding the above two fields
+ * @u:union holding the fields above
  */
 struct ieee80211_event {
 	enum ieee80211_event_type type;
@@ -1893,11 +1893,13 @@ struct ieee80211_txq {
  * @IEEE80211_HW_SUPPORTS_CLONED_SKBS: The driver will never modify the payload
  *	or tailroom of TX skbs without copying them first.
  *
- * @IEEE80211_SINGLE_HW_SCAN_ON_ALL_BANDS: The HW supports scanning on all bands
+ * @IEEE80211_HW_SINGLE_SCAN_ON_ALL_BANDS: The HW supports scanning on all bands
  *	in one command, mac80211 doesn't have to run separate scans per band.
  *
  * @IEEE80211_HW_TDLS_WIDER_BW: The device/driver supports wider bandwidth
  *	than then BSS bandwidth for a TDLS link on the base channel.
+ *
+ * @NUM_IEEE80211_HW_FLAGS: number of hardware flags, used for sizing arrays
  */
 enum ieee80211_hw_flags {
 	IEEE80211_HW_HAS_RATE_CONTROL,
@@ -2634,8 +2636,7 @@ void ieee80211_free_txskb(struct ieee80211_hw *hw, struct sk_buff *skb);
  *
  * @FIF_OTHER_BSS: pass frames destined to other BSSes
  *
- * @FIF_PSPOLL: pass PS Poll frames, if PROMISC_IN_BSS is not set then only
- * 	those addressed to this station.
+ * @FIF_PSPOLL: pass PS Poll frames
  *
  * @FIF_PROBE_REQ: pass probe request frames
  */
