@@ -1041,6 +1041,8 @@ static int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 
 	/* Someone called stop_device, don't try to start_fw */
 	if (trans_pcie->is_down) {
+		IWL_WARN(trans,
+			 "Can't start_fw since the HW hasn't been started\n");
 		ret = EIO;
 		goto out;
 	}
