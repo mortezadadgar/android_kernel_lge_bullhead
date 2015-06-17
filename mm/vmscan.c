@@ -2839,8 +2839,12 @@ static void age_active_anon(struct zone *zone, struct scan_control *sc)
 static bool zone_balanced(struct zone *zone, int order,
 			  unsigned long balance_gap, int classzone_idx)
 {
+	int alloc_flags = 0;
+
+	if (zone_idx(zone) == ZONE_MOVABLE)
+		alloc_flags |= ALLOC_CMA;
 	if (!zone_watermark_ok_safe(zone, order, high_wmark_pages(zone) +
-				    balance_gap, classzone_idx, 0))
+				    balance_gap, classzone_idx, alloc_flags))
 		return false;
 
 	if (IS_ENABLED(CONFIG_COMPACTION) && order &&
@@ -3120,6 +3124,7 @@ static unsigned long balance_pgdat(pg_data_t *pgdat, int order,
 
 		for (i = 0; i <= end_zone; i++) {
 			struct zone *zone = pgdat->node_zones + i;
+			int alloc_flags = 0;
 
 			if (!populated_zone(zone))
 				continue;
@@ -3131,10 +3136,12 @@ static unsigned long balance_pgdat(pg_data_t *pgdat, int order,
 			 * not call compaction as it is expected that the
 			 * necessary pages are already available.
 			 */
+			if (i == ZONE_MOVABLE)
+				alloc_flags |= ALLOC_CMA;
 			if (pgdat_needs_compaction &&
 					zone_watermark_ok(zone, order,
 						low_wmark_pages(zone),
-						*classzone_idx, 0))
+						*classzone_idx, alloc_flags))
 				pgdat_needs_compaction = false;
 		}
 
