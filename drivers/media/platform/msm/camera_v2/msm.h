@@ -108,6 +108,7 @@ struct msm_session {
 	struct msm_queue_head stream_q;
 	struct mutex lock;
 	rwlock_t stream_rwlock;
+	struct mutex lock_q;
 };
 
 void msm_pm_qos_update_request(int val);
