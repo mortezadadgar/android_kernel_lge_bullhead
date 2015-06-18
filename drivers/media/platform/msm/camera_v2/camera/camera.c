@@ -217,9 +217,9 @@ static int camera_v4l2_reqbufs(struct file *filep, void *fh,
 	session = msm_session_find(session_id);
 	if (WARN_ON(!session))
 		return -EIO;
-	mutex_lock(&session->lock);
+	mutex_lock(&session->lock_q);
 	ret = vb2_reqbufs(&sp->vb2_q, req);
-	mutex_unlock(&session->lock);
+	mutex_unlock(&session->lock_q);
 	return ret;
 }
 
@@ -240,9 +240,9 @@ static int camera_v4l2_qbuf(struct file *filep, void *fh,
 	session = msm_session_find(session_id);
 	if (WARN_ON(!session))
 		return -EIO;
-	mutex_lock(&session->lock);
+	mutex_lock(&session->lock_q);
 	ret = vb2_qbuf(&sp->vb2_q, pb);
-	mutex_unlock(&session->lock);
+	mutex_unlock(&session->lock_q);
 	return ret;
 }
 
@@ -257,9 +257,9 @@ static int camera_v4l2_dqbuf(struct file *filep, void *fh,
 	session = msm_session_find(session_id);
 	if (WARN_ON(!session))
 		return -EIO;
-	mutex_lock(&session->lock);
+	mutex_lock(&session->lock_q);
 	ret = vb2_dqbuf(&sp->vb2_q, pb, filep->f_flags & O_NONBLOCK);
-	mutex_unlock(&session->lock);
+	mutex_unlock(&session->lock_q);
 	return ret;
 }
 
