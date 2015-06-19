@@ -30,6 +30,7 @@ extern int nf_queue(struct sk_buff *skb,
 		    struct net_device *outdev,
 		    int (*okfn)(struct sk_buff *),
 		    unsigned int queuenum);
+void nf_queue_nf_hook_drop(struct nf_hook_ops *ops);
 extern int __init netfilter_queue_init(void);
 
 /* nf_log.c */
