@@ -5016,6 +5016,8 @@ boosted_task_utilization(struct task_struct *task)
 	if (!task_rq(task)->rd->overutilized)
 		margin = schedtune_task_margin(task);
 
+	trace_sched_boost_task(task, utilization, margin);
+
 	utilization += margin;
 
 	return utilization;
