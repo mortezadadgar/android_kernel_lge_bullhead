@@ -6,6 +6,8 @@
 #include <linux/rcupdate.h>
 #include <linux/slab.h>
 
+#include <trace/events/sched.h>
+
 #include "sched.h"
 #include "tune.h"
 
@@ -471,6 +473,12 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 
 	/* Update CPU boost */
 	schedtune_boostgroup_update(st->idx, st->boost);
+
+	trace_sched_tune_config(st->boost,
+			threshold_gains[st->perf_boost_idx].nrg_gain,
+			threshold_gains[st->perf_boost_idx].cap_gain,
+			threshold_gains[st->perf_constrain_idx].nrg_gain,
+			threshold_gains[st->perf_constrain_idx].cap_gain);
 
 out:
 	return err;
