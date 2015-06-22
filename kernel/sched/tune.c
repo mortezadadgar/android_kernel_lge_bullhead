@@ -1,6 +1,7 @@
 #include <linux/cgroup.h>
 #include <linux/err.h>
 #include <linux/kernel.h>
+#include <linux/percpu.h>
 #include <linux/printk.h>
 #include <linux/slab.h>
 
@@ -254,6 +255,92 @@ static struct schedtune *allocated_group[BOOSTGROUPS_COUNT] = {
 	NULL,
 };
 
+/* SchedTune boost groups
+ * Each CPU in the system could be affected by multiple boost groups, for
+ * example when a CPU has two RUNNABLE tasks beloging to two different boost
+ * groups and thus likely with different boost values.
+ * This data structure keep track of all the boost groups which could impact
+ * on a CPU.
+ * Since on each system we expect only a limited number of boost
+ * groups, here we use a simple array to keep track of the metrics required to
+ * compute the maximum per-CPU boosting value.
+ */
+struct boost_groups {
+	/* Maximum boost value for all RUNNABLE tasks on a CPU */
+	unsigned boost_max;
+	struct {
+		/* The boost for tasks on that boost group */
+		unsigned boost;
+		/* Count of RUNNABLE tasks on that boost group */
+		unsigned tasks;
+	} group[BOOSTGROUPS_COUNT];
+};
+
+/* Boost groups affecting each CPU in the system */
+DEFINE_PER_CPU(struct boost_groups, cpu_boost_groups);
+
+static void
+schedtune_cpu_update(int cpu)
+{
+	struct boost_groups *bg;
+	unsigned boost_max;
+	int idx;
+
+	bg = &per_cpu(cpu_boost_groups, cpu);
+
+	/* The root boost group is always active */
+	boost_max = bg->group[0].boost;
+	for (idx = 1; idx < BOOSTGROUPS_COUNT; ++idx) {
+		/*
+		 * A boost group affects a CPU only if it has
+		 * RUNNABLE tasks on that CPU
+		 */
+		if (bg->group[idx].tasks == 0)
+			continue;
+		boost_max = max(boost_max, bg->group[idx].boost);
+	}
+
+	bg->boost_max = boost_max;
+}
+
+static int
+schedtune_boostgroup_update(int idx, int boost)
+{
+	struct boost_groups *bg;
+	int cur_boost_max;
+	int old_boost;
+	int cpu;
+
+	/* Update per CPU boost groups */
+	for_each_possible_cpu(cpu) {
+		bg = &per_cpu(cpu_boost_groups, cpu);
+
+		/*
+		 * Keep track of current boost values to compute the per CPU
+		 * maximum only when it has been affected by the new value of
+		 * the updated boost group
+		 */
+		cur_boost_max = bg->boost_max;
+		old_boost = bg->group[idx].boost;
+
+		/* Update the boost value of this boost group */
+		bg->group[idx].boost = boost;
+
+		/* Check if this update increase current max */
+		if (boost > cur_boost_max && bg->group[idx].tasks) {
+			bg->boost_max = boost;
+			continue;
+		}
+
+		/* Check if this update has decreased current max */
+		if (cur_boost_max == old_boost && old_boost > boost) {
+			schedtune_cpu_update(cpu);
+		}
+	}
+
+	return 0;
+}
+
 static u64
 boost_read(struct cgroup_subsys_state *css, struct cftype *cft)
 {
@@ -288,6 +375,9 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	st->perf_constrain_idx  = 100 - boost;
 	st->perf_constrain_idx /= 10;
 
+	/* Update CPU boost */
+	schedtune_boostgroup_update(st->idx, st->boost);
+
 out:
 	return err;
 }
@@ -305,9 +395,17 @@ static int
 schedtune_boostgroup_init(struct schedtune *st)
 {
 	struct boost_groups *bg;
+	int cpu;
 
 	/* Keep track of allocated boost group */
 	allocated_group[st->idx] = st;
+
+	/* Initialize the per CPU boost groups */
+	for_each_possible_cpu(cpu) {
+		bg = &per_cpu(cpu_boost_groups, cpu);
+		bg->group[st->idx].boost = 0;
+		bg->group[st->idx].tasks = 0;
+	}
 
 	return 0;
 }
@@ -376,6 +474,9 @@ out:
 static void
 schedtune_boostgroup_release(struct schedtune *st)
 {
+	/* Reset this group boost */
+	schedtune_boostgroup_update(st->idx, 0);
+
 	/* Keep track of allocated boost group */
 	allocated_group[st->idx] = NULL;
 }
