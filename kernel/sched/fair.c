@@ -4839,6 +4839,11 @@ static int energy_diff(struct energy_env *eenv)
 	eenv->energy_payoff = 0;
 
 	result = energy_diff_evaluate(eenv);
+	trace_sched_energy_diff(eenv->task,
+			eenv->src_cpu, eenv->dst_cpu, eenv->usage_delta,
+			eenv->nrg.before, eenv->nrg.after, eenv->nrg.diff,
+			eenv->cap.before, eenv->cap.after, eenv->cap.delta,
+			eenv->nrg.delta, eenv->energy_payoff);
 
 	return result;
 }
