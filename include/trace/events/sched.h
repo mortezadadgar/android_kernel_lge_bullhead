@@ -823,6 +823,34 @@ TRACE_EVENT(sched_tune_tasks_update,
 		__entry->boost, __entry->max_boost)
 );
 
+/*
+ * Tracepoint for schedtune_tasks_update
+ */
+TRACE_EVENT(sched_tune_filter,
+
+	TP_PROTO(int nrg_delta, int cap_delta, int nrg_payoff, int region),
+
+	TP_ARGS(nrg_delta, cap_delta, nrg_payoff, region),
+
+	TP_STRUCT__entry(
+		__field( int,	nrg_delta	)
+		__field( int,	cap_delta	)
+		__field( int,	nrg_payoff	)
+		__field( int,	region		)
+	),
+
+	TP_fast_assign(
+		__entry->nrg_delta	= nrg_delta;
+		__entry->cap_delta	= cap_delta;
+		__entry->nrg_payoff	= nrg_payoff;
+		__entry->region		= region;
+	),
+
+	TP_printk("nrg_delta=%d cap_delta=%d nrg_payoff=%d region=%d",
+		__entry->nrg_delta, __entry->cap_delta,
+		__entry->nrg_payoff, __entry->region)
+);
+
 #endif /* _TRACE_SCHED_H */
 
 /* This part must be outside protection */
