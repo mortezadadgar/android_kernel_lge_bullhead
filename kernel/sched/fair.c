@@ -4499,6 +4499,16 @@ struct energy_env {
 	int			src_cpu;
 	int			dst_cpu;
 	int			energy;
+	struct {
+		int before;
+		int after;
+		int diff;
+	} nrg;
+	struct {
+		int before;
+		int after;
+		int delta;
+	} cap;
 };
 
 /*
@@ -4663,6 +4673,22 @@ static unsigned int sched_group_energy(struct energy_env *eenv)
 					eenv->sg_cap = sg;
 
 				cap_idx = find_new_capacity(eenv, sg->sge);
+
+				if (sg->group_weight == 1) {
+					/* Remove capacity of src CPU (before task move) */
+					if (eenv->usage_delta == 0 &&
+						cpumask_test_cpu(eenv->src_cpu, sched_group_cpus(sg))) {
+						eenv->cap.before = sg->sge->cap_states[cap_idx].cap;
+						eenv->cap.delta -= eenv->cap.before;
+					}
+					/* Add capacity of dst CPU  (after task move) */
+					if (eenv->usage_delta != 0 &&
+						cpumask_test_cpu(eenv->dst_cpu, sched_group_cpus(sg))) {
+						eenv->cap.after = sg->sge->cap_states[cap_idx].cap;
+						eenv->cap.delta += eenv->cap.after;
+					}
+				}
+
 				idle_idx = group_idle_state(sg);
 				group_util = group_norm_usage(eenv, sg);
 				sg_busy_energy = (group_util * sg->sge->cap_states[cap_idx].power)
@@ -4706,6 +4732,8 @@ static int energy_diff(struct energy_env *eenv)
 		.usage_delta	= 0,
 		.src_cpu	= eenv->src_cpu,
 		.dst_cpu	= eenv->dst_cpu,
+		.nrg = { 0, 0, 0 },
+		.cap = { 0, 0, 0 },
 	};
 
 	if (eenv->src_cpu == eenv->dst_cpu)
@@ -4723,6 +4751,11 @@ static int energy_diff(struct energy_env *eenv)
 							sched_group_cpus(sg))) {
 			eenv_before.sg_top = eenv->sg_top = sg;
 			energy_before += sched_group_energy(&eenv_before);
+
+			/* Keep track of SRC cpu (before) capacity */
+			eenv->cap.before = eenv_before.cap.before;
+			eenv->cap.delta = eenv_before.cap.delta;
+
 			energy_after += sched_group_energy(eenv);
 
 			/* src_cpu and dst_cpu may belong to the same group */
@@ -4737,7 +4770,11 @@ static int energy_diff(struct energy_env *eenv)
 		}
 	} while (sg = sg->next, sg != sd->groups);
 
-	return energy_after-energy_before;
+	eenv->nrg.before = energy_before;
+	eenv->nrg.after = energy_after;
+	eenv->nrg.diff = eenv->nrg.after - eenv->nrg.before;
+
+	return eenv->nrg.diff;
 }
 
 static int wake_wide(struct task_struct *p)
