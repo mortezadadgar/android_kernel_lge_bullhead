@@ -34,6 +34,7 @@
 #include <trace/events/sched.h>
 
 #include "sched.h"
+#include "tune.h"
 
 /*
  * Targeted preemption latency for CPU-bound tasks:
@@ -4499,10 +4500,12 @@ struct energy_env {
 	int			src_cpu;
 	int			dst_cpu;
 	int			energy;
+	int			energy_payoff;
 	struct {
 		int before;
 		int after;
 		int diff;
+		int delta;
 	} nrg;
 	struct {
 		int before;
@@ -4715,6 +4718,39 @@ next_cpu:
 	return total_energy;
 }
 
+#ifdef CONFIG_SCHED_TUNE
+static int energy_diff_evaluate(struct energy_env *eenv)
+{
+	unsigned int boost;
+	int nrg_delta;
+
+	/* Return energy diff when boost margin is 0 */
+	boost = get_sysctl_sched_cfs_boost();
+	if (boost == 0)
+		return eenv->nrg.diff;
+
+	/* Compute normalized energy diff */
+	nrg_delta = schedtune_normalize_energy(eenv->nrg.diff);
+	eenv->nrg.delta = nrg_delta;
+
+	eenv->energy_payoff = schedtune_accept_deltas(
+			eenv->nrg.delta,
+			eenv->cap.delta);
+
+	/*
+	 * When SchedTune is enabled, the energy_diff() function will return
+	 * the computed energy payoff value. Since the energy_diff() return
+	 * value is expected to be negative by its callers, this evaluation
+	 * function return a negative value each time the evaluation return a
+	 * positive energy payoff, which is the condition for the acceptance of
+	 * a scheduling decision
+	 */
+	return -eenv->energy_payoff;
+}
+#else /* CONFIG_SCHED_TUNE */
+#define energy_diff_evaluate(eenv) eenv->nrg.diff
+#endif
+
 /*
  * energy_diff(): Estimate the energy impact of changing the utilization
  * distribution. eenv specifies the change: utilisation amount, source, and
@@ -4727,12 +4763,13 @@ static int energy_diff(struct energy_env *eenv)
 	struct sched_domain *sd;
 	struct sched_group *sg;
 	int sd_cpu = -1, energy_before = 0, energy_after = 0;
+	int result;
 
 	struct energy_env eenv_before = {
 		.usage_delta	= 0,
 		.src_cpu	= eenv->src_cpu,
 		.dst_cpu	= eenv->dst_cpu,
-		.nrg = { 0, 0, 0 },
+		.nrg = { 0, 0, 0, 0 },
 		.cap = { 0, 0, 0 },
 	};
 
@@ -4773,8 +4810,11 @@ static int energy_diff(struct energy_env *eenv)
 	eenv->nrg.before = energy_before;
 	eenv->nrg.after = energy_after;
 	eenv->nrg.diff = eenv->nrg.after - eenv->nrg.before;
+	eenv->energy_payoff = 0;
 
-	return eenv->nrg.diff;
+	result = energy_diff_evaluate(eenv);
+
+	return result;
 }
 
 static int wake_wide(struct task_struct *p)
