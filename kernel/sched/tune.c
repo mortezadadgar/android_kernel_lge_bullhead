@@ -1,7 +1,40 @@
+#include <linux/kernel.h>
+
 #include "sched.h"
 #include "tune.h"
 
 unsigned int sysctl_sched_cfs_boost __read_mostly = 0;
+
+/* Performance Boost region (B) threshold params */
+static int perf_boost_idx;
+
+/* Performance Constraint region (C) threshold params */
+static int perf_constrain_idx;
+
+/**
+ * Performance-Energy (P-E) Space thresholds constants
+ */
+struct threshold_params {
+	int nrg_gain;
+	int cap_gain;
+};
+
+/*
+ * System specific P-E space thresholds constants
+ */
+static struct threshold_params
+threshold_gains[] = {
+	{ 0, 4 }, /* >=  0% */
+	{ 1, 4 }, /* >= 10% */
+	{ 2, 4 }, /* >= 20% */
+	{ 3, 4 }, /* >= 30% */
+	{ 4, 4 }, /* >= 40% */
+	{ 4, 3 }, /* >= 50% */
+	{ 4, 2 }, /* >= 60% */
+	{ 4, 1 }, /* >= 70% */
+	{ 4, 0 }, /* >= 80% */
+	{ 4, 0 }  /* >= 90% */
+};
 
 /*
  * System energy normalization constants
@@ -81,6 +114,57 @@ schedtune_normalize_energy(int energy_diff)
 	return normalized_nrg;
 }
 
+static int
+__schedtune_accept_deltas(int nrg_delta, int cap_delta,
+		int perf_boost_idx, int perf_constrain_idx) {
+	int energy_payoff;
+
+	/* Performance Boost (B) region */
+	if (nrg_delta > 0 && cap_delta > 0) {
+		/*
+		 * energy_payoff criteria:
+		 *    cap_delta / nrg_delta > cap_gain / nrg_gain
+		 * which is:
+		 *    nrg_delta * cap_gain < cap_delta * nrg_gain
+		 */
+		energy_payoff  = cap_delta * threshold_gains[perf_boost_idx].nrg_gain;
+		energy_payoff -= nrg_delta * threshold_gains[perf_boost_idx].cap_gain;
+		return energy_payoff;
+	}
+
+	/* Performance Constraint (C) region */
+	if (nrg_delta < 0 && cap_delta < 0) {
+		/*
+		 * energy_payoff criteria:
+		 *    cap_delta / nrg_delta < cap_gain / nrg_gain
+		 * which is:
+		 *    nrg_delta * cap_gain > cap_delta * nrg_gain
+		 */
+		energy_payoff  = nrg_delta * threshold_gains[perf_constrain_idx].cap_gain;
+		energy_payoff -= cap_delta * threshold_gains[perf_constrain_idx].nrg_gain;
+		return energy_payoff;
+	}
+
+	/* Default: reject schedule candidate */
+	return -INT_MAX;
+}
+
+int
+schedtune_accept_deltas(int nrg_delta, int cap_delta) {
+
+	/* Optimal (O) region */
+	if (nrg_delta < 0 && cap_delta > 0)
+		return INT_MAX;
+
+	/* Suboptimal (S) region */
+	if (nrg_delta > 0 && cap_delta < 0)
+		return -INT_MAX;
+
+	return __schedtune_accept_deltas(nrg_delta, cap_delta,
+			perf_boost_idx, perf_constrain_idx);
+
+}
+
 int
 sysctl_sched_cfs_boost_handler(struct ctl_table *table, int write,
 		void __user *buffer, size_t *lenp,
@@ -90,5 +174,14 @@ sysctl_sched_cfs_boost_handler(struct ctl_table *table, int write,
 	if (ret || !write)
 		return ret;
 
+	/* Performance Boost (B) region threshold params */
+	perf_boost_idx  = sysctl_sched_cfs_boost;
+	perf_boost_idx /= 10;
+
+	/* Performance Constraint (C) region threshold params */
+	perf_constrain_idx  = 100 - sysctl_sched_cfs_boost;
+	perf_constrain_idx /= 10;
+
 	return 0;
 }
+
