@@ -4733,9 +4733,16 @@ static int energy_diff_evaluate(struct energy_env *eenv)
 	nrg_delta = schedtune_normalize_energy(eenv->nrg.diff);
 	eenv->nrg.delta = nrg_delta;
 
+#ifdef CONFIG_CGROUP_SCHEDTUNE
+	eenv->energy_payoff = schedtune_accept_deltas(
+			eenv->nrg.delta,
+			eenv->cap.delta,
+			eenv->task);
+#else
 	eenv->energy_payoff = schedtune_accept_deltas(
 			eenv->nrg.delta,
 			eenv->cap.delta);
+#endif
 
 	/*
 	 * When SchedTune is enabled, the energy_diff() function will return
