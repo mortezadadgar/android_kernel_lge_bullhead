@@ -79,8 +79,8 @@ static inline int iwl_xvt_user_send_notif(struct iwl_xvt *xvt, u32 cmd,
 	return iwl_tm_gnl_send_msg(xvt->trans, cmd, false, data, size, flags);
 }
 
-int iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
-			       struct iwl_rx_cmd_buffer *rxb);
+void iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
+				struct iwl_rx_cmd_buffer *rxb);
 
 int iwl_xvt_user_cmd_execute(struct iwl_op_mode *op_mode, u32 cmd,
 			     struct iwl_tm_data *data_in,

@@ -94,8 +94,8 @@
 #define XVT_SCU_SNUM3	(XVT_SCU_SNUM2 + 0x4)
 
 
-int iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
-			       struct iwl_rx_cmd_buffer *rxb)
+void iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
+				struct iwl_rx_cmd_buffer *rxb)
 {
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	void *data = pkt->data;
@@ -103,12 +103,11 @@ int iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
 
 	switch (pkt->hdr.cmd) {
 	case GET_SET_PHY_DB_CMD:
-		return iwl_xvt_user_send_notif(xvt,
-					       IWL_TM_USER_CMD_NOTIF_PHY_DB,
-					       data, size, GFP_ATOMIC);
+		iwl_xvt_user_send_notif(xvt, IWL_TM_USER_CMD_NOTIF_PHY_DB,
+					data, size, GFP_ATOMIC);
 		break;
 	case DTS_MEASUREMENT_NOTIFICATION:
-		return iwl_xvt_user_send_notif(xvt,
+		iwl_xvt_user_send_notif(xvt,
 					IWL_TM_USER_CMD_NOTIF_DTS_MEASUREMENTS,
 					data, size, GFP_ATOMIC);
 		break;
@@ -116,34 +115,32 @@ int iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
 		if (!xvt->rx_hdr_enabled)
 			break;
 
-		return iwl_xvt_user_send_notif(xvt,
-					       IWL_TM_USER_CMD_NOTIF_RX_HDR,
-					       data, size, GFP_ATOMIC);
+		iwl_xvt_user_send_notif(xvt, IWL_TM_USER_CMD_NOTIF_RX_HDR,
+					data, size, GFP_ATOMIC);
+		break;
 	case APMG_PD_SV_CMD:
 		if (!xvt->apmg_pd_en)
 			break;
 
-		return iwl_xvt_user_send_notif(xvt,
-						IWL_TM_USER_CMD_NOTIF_APMG_PD,
-						   data, size, GFP_ATOMIC);
-	case REPLY_RX_MPDU_CMD:
-		return iwl_xvt_user_send_notif(xvt,
-					IWL_TM_USER_CMD_NOTIF_UCODE_RX_PKT,
+		iwl_xvt_user_send_notif(xvt, IWL_TM_USER_CMD_NOTIF_APMG_PD,
 					data, size, GFP_ATOMIC);
-
+		break;
+	case REPLY_RX_MPDU_CMD:
+		iwl_xvt_user_send_notif(xvt, IWL_TM_USER_CMD_NOTIF_UCODE_RX_PKT,
+					data, size, GFP_ATOMIC);
+		break;
 	case NVM_COMMIT_COMPLETE_NOTIFICATION:
-		return iwl_xvt_user_send_notif(xvt,
+		iwl_xvt_user_send_notif(xvt,
 					IWL_TM_USER_CMD_NOTIF_COMMIT_STATISTICS,
 					data, size, GFP_ATOMIC);
-
+		break;
 	case REPLY_HD_PARAMS_CMD:
-		return iwl_xvt_user_send_notif(xvt,
-				IWL_TM_USER_CMD_NOTIF_BFE,
-				data, size, GFP_ATOMIC);
-
+		iwl_xvt_user_send_notif(xvt, IWL_TM_USER_CMD_NOTIF_BFE,
+					data, size, GFP_ATOMIC);
+		break;
 	case DEBUG_LOG_MSG:
-		return iwl_dnt_dispatch_collect_ucode_message(xvt->trans, rxb);
-
+		iwl_dnt_dispatch_collect_ucode_message(xvt->trans, rxb);
+		break;
 	case REPLY_RX_PHY_CMD:
 		IWL_DEBUG_INFO(xvt,
 			       "REPLY_RX_PHY_CMD received but not handled\n");
@@ -151,8 +148,6 @@ int iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
 		IWL_DEBUG_INFO(xvt, "xVT mode RX command 0x%x not handled\n",
 			       pkt->hdr.cmd);
 	}
-
-	return 0;
 }
 
 static void iwl_xvt_led_enable(struct iwl_xvt *xvt)

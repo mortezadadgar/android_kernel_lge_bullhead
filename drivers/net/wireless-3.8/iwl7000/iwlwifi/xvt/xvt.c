@@ -238,7 +238,8 @@ static int iwl_xvt_rx_dispatch(struct iwl_op_mode *op_mode,
 	if (pkt->hdr.cmd == TX_CMD)
 		iwl_xvt_rx_tx_cmd_handler(xvt, pkt);
 
-	return iwl_xvt_send_user_rx_notif(xvt, rxb);
+	iwl_xvt_send_user_rx_notif(xvt, rxb);
+	return 0;
 }
 
 static void iwl_xvt_nic_config(struct iwl_op_mode *op_mode)
