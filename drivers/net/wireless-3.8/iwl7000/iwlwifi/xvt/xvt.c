@@ -226,9 +226,8 @@ static void iwl_xvt_rx_tx_cmd_handler(struct iwl_xvt *xvt,
 		wake_up_interruptible(&xvt->mod_tx_done_wq);
 }
 
-static int iwl_xvt_rx_dispatch(struct iwl_op_mode *op_mode,
-			       struct iwl_rx_cmd_buffer *rxb,
-			       struct iwl_device_cmd *cmd)
+static void iwl_xvt_rx_dispatch(struct iwl_op_mode *op_mode,
+				struct iwl_rx_cmd_buffer *rxb)
 {
 	struct iwl_xvt *xvt = IWL_OP_MODE_GET_XVT(op_mode);
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
@@ -239,7 +238,6 @@ static int iwl_xvt_rx_dispatch(struct iwl_op_mode *op_mode,
 		iwl_xvt_rx_tx_cmd_handler(xvt, pkt);
 
 	iwl_xvt_send_user_rx_notif(xvt, rxb);
-	return 0;
 }
 
 static void iwl_xvt_nic_config(struct iwl_op_mode *op_mode)
