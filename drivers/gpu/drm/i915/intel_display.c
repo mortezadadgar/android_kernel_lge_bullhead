@@ -1374,6 +1374,10 @@ static void intel_reset_dpio(struct drm_device *dev)
 	if (!IS_VALLEYVIEW(dev))
 		return;
 
+	/* Reset common lane in PHY */
+	vlv_set_power_well(dev_priv, 0xc0f);
+	vlv_set_power_well(dev_priv, 0xf);
+
 	/*
 	 * From VLV2A0_DP_eDP_DPIO_driver_vbios_notes_10.docx -
 	 *  6.	De-assert cmn_reset/side_reset. Same as VLV X0.
