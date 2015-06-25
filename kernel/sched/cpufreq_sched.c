@@ -151,7 +151,7 @@ void cpufreq_sched_set_cap(int cpu, unsigned long capacity)
 	unsigned long capacity_max = 0;
 
 	/* update per-cpu capacity request */
-	__this_cpu_write(pcpu_capacity, capacity);
+	per_cpu(pcpu_capacity, cpu) = capacity;
 
 	policy = cpufreq_cpu_get(cpu);
 	if (IS_ERR_OR_NULL(policy)) {
