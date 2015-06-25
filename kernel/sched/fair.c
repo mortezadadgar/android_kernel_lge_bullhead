@@ -4051,6 +4051,7 @@ static inline void hrtick_update(struct rq *rq)
 #endif
 
 static bool cpu_overutilized(int cpu);
+struct static_key __sched_energy_freq __read_mostly = STATIC_KEY_INIT_FALSE;
 
 /*
  * The enqueue_task method is called before nr_running is

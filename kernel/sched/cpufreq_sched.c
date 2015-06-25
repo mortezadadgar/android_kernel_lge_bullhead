@@ -203,6 +203,18 @@ out:
 	return;
 }
 
+static inline void set_sched_energy_freq(void)
+{
+	if (!sched_energy_freq())
+		static_key_slow_inc(&__sched_energy_freq);
+}
+
+static inline void clear_sched_energy_freq(void)
+{
+	if (sched_energy_freq())
+		static_key_slow_dec(&__sched_energy_freq);
+}
+
 static int cpufreq_sched_start(struct cpufreq_policy *policy)
 {
 	struct gov_data *gd;
@@ -243,6 +255,7 @@ static int cpufreq_sched_start(struct cpufreq_policy *policy)
 
 	policy->governor_data = gd;
 	gd->policy = policy;
+	set_sched_energy_freq();
 	return 0;
 
 err:
@@ -254,6 +267,7 @@ static int cpufreq_sched_stop(struct cpufreq_policy *policy)
 {
 	struct gov_data *gd = policy->governor_data;
 
+	clear_sched_energy_freq();
 	if (cpufreq_driver_might_sleep()) {
 		kthread_stop(gd->task);
 	}
