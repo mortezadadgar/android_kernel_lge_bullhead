@@ -103,6 +103,9 @@
  *	changes in their RSSI and report scan results history when RSSI goes
  *	above/below threshold. Sending this command with an empty list of AP's
  *	will cancel previous set_bssid_hotlist request.
+ * @IWL_MVM_VENDOR_CMD_GSCAN_SET_SIGNIFICANT_CHANGE: set a list of APs to track
+ *	significant changes in their RSSI. Sending this command with an empty
+ *	list of AP's will cancel previous set_significant_change request.
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -126,6 +129,7 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_GSCAN_STOP,
 	IWL_MVM_VENDOR_CMD_GSCAN_RESULTS_EVENT,
 	IWL_MVM_VENDOR_CMD_GSCAN_SET_BSSID_HOTLIST,
+	IWL_MVM_VENDOR_CMD_GSCAN_SET_SIGNIFICANT_CHANGE,
 };
 
 /**
@@ -336,6 +340,9 @@ enum iwl_mvm_vendor_ap_threshold_param {
  *	ap loss.
  * @IWL_MVM_VENDOR_ATTR_GSCAN_AP_LIST: an array of nested attributes of
  *	&enum iwl_mvm_vendor_ap_threshold_param.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_RSSI_SAMPLE_SIZE: number of samples for averaging
+ *	RSSI
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MIN_BREACHING: number of APs breaching threshold
  *
  * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
  * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
@@ -375,6 +382,8 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_GSCAN_RESULTS,
 	IWL_MVM_VENDOR_ATTR_GSCAN_LOST_AP_SAMPLE_SIZE,
 	IWL_MVM_VENDOR_ATTR_GSCAN_AP_LIST,
+	IWL_MVM_VENDOR_ATTR_GSCAN_RSSI_SAMPLE_SIZE,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MIN_BREACHING,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,

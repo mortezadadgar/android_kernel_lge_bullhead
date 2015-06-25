@@ -220,4 +220,22 @@ struct iwl_gscan_bssid_hotlist_cmd {
 	struct iwl_gscan_ap_threshold_params ap_list[MAX_HOTLIST_APS];
 } __packed; /* WIFI_BSSID_HOLTLIST_PARAMS_S_VER_1 */
 
+#define MAX_SIG_CHANGE_APS 8
+
+/**
+ * struct iwl_gscan_significant_change_cmd - set significant change command
+ * @rssi_sample_size: number of samples for averaging RSSI.
+ * @lost_ap_sample_size: number of samples to confirm ap lost.
+ * @min_breaching: number of AP's breaching threshold.
+ * @num_ap: number of APs in ap_list.
+ * @ap_list: APs to track and their parameters.
+ */
+struct iwl_gscan_significant_change_cmd {
+	u8 rssi_sample_size;
+	u8 lost_ap_sample_size;
+	u8 min_breaching;
+	u8 num_ap;
+	struct iwl_gscan_ap_threshold_params ap_list[MAX_SIG_CHANGE_APS];
+} __packed; /* GSCAN_SIGNIFICANT_CHANGE_PARAMS_S_VER_1 */
+
 #endif
