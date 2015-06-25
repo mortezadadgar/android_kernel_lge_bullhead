@@ -1401,6 +1401,8 @@ unsigned long arch_scale_cpu_capacity(struct sched_domain *sd, int cpu)
 }
 #endif
 
+unsigned long capacity_orig_of(int cpu);
+
 extern struct static_key __sched_energy_freq;
 static inline bool sched_energy_freq(void)
 {
