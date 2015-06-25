@@ -7321,6 +7321,20 @@ more_balance:
 		 * ld_moved     - cumulative load moved across iterations
 		 */
 		cur_ld_moved = detach_tasks(&env);
+		/*
+		 * We want to potentially update env.src_cpu's OPP.
+		 *
+		 * Add a margin (same ~20% used for the tipping point)
+		 * to our request to provide some head room for the remaining
+		 * tasks.
+		 */
+		if (sched_energy_freq() && cur_ld_moved) {
+			unsigned long req_cap = get_cpu_usage(env.src_cpu);
+
+			req_cap = req_cap * capacity_margin
+					>> SCHED_CAPACITY_SHIFT;
+			cpufreq_sched_set_cap(env.src_cpu, req_cap);
+		}
 
 		/*
 		 * We've detached some tasks from busiest_rq. Every
@@ -7335,6 +7349,21 @@ more_balance:
 		if (cur_ld_moved) {
 			attach_tasks(&env);
 			ld_moved += cur_ld_moved;
+			/*
+			 * We want to potentially update env.dst_cpu's OPP.
+			 *
+			 * Add a margin (same ~20% used for the tipping point)
+			 * to our request to provide some head room if p's
+			 * utilization further increases.
+			 */
+			if (sched_energy_freq()) {
+				unsigned long req_cap =
+					get_cpu_usage(env.dst_cpu);
+
+				req_cap = req_cap * capacity_margin
+						>> SCHED_CAPACITY_SHIFT;
+				cpufreq_sched_set_cap(env.dst_cpu, req_cap);
+			}
 		}
 
 		local_irq_restore(flags);
@@ -7694,8 +7723,24 @@ static int active_load_balance_cpu_stop(void *data)
 		schedstat_inc(sd, alb_count);
 
 		p = detach_one_task(&env);
-		if (p)
+		if (p) {
 			schedstat_inc(sd, alb_pushed);
+			/*
+			 * We want to potentially update env.src_cpu's OPP.
+			 *
+			 * Add a margin (same ~20% used for the tipping point)
+			 * to our request to provide some head room for the
+			 * remaining task.
+			 */
+			if (sched_energy_freq()) {
+				unsigned long req_cap =
+					get_cpu_usage(env.src_cpu);
+
+				req_cap = req_cap * capacity_margin
+						>> SCHED_CAPACITY_SHIFT;
+				cpufreq_sched_set_cap(env.src_cpu, req_cap);
+			}
+		}
 		else
 			schedstat_inc(sd, alb_failed);
 	}
@@ -7704,8 +7749,23 @@ out_unlock:
 	busiest_rq->active_balance = 0;
 	raw_spin_unlock(&busiest_rq->lock);
 
-	if (p)
+	if (p) {
 		attach_one_task(target_rq, p);
+		/*
+		 * We want to potentially update target_cpu's OPP.
+		 *
+		 * Add a margin (same ~20% used for the tipping point)
+		 * to our request to provide some head room if p's utilization
+		 * further increases.
+		 */
+		if (sched_energy_freq()) {
+			unsigned long req_cap = get_cpu_usage(target_cpu);
+
+			req_cap = req_cap * capacity_margin
+					>> SCHED_CAPACITY_SHIFT;
+			cpufreq_sched_set_cap(target_cpu, req_cap);
+		}
+	}
 
 	local_irq_enable();
 
