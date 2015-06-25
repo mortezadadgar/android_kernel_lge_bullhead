@@ -8166,6 +8166,25 @@ static void task_tick_fair(struct rq *rq, struct task_struct *curr, int queued)
 
 	if (!rq->rd->overutilized && cpu_overutilized(task_cpu(curr)))
 		rq->rd->overutilized = true;
+
+	/*
+	 * To make free room for a task that is building up its "real"
+	 * utilization and to harm its performance the least, request a
+	 * jump to max OPP as soon as get_cpu_usage() crosses the UP
+	 * threshold. The UP threshold is built relative to the current
+	 * capacity (OPP), by using same margin used to tell if a cpu
+	 * is overutilized (capacity_margin).
+	 */
+	if (sched_energy_freq()) {
+		int cpu = cpu_of(rq);
+		unsigned long capacity_orig = capacity_orig_of(cpu);
+		unsigned long capacity_curr = capacity_curr_of(cpu);
+
+		if (capacity_curr < capacity_orig &&
+		    (capacity_curr * SCHED_LOAD_SCALE) <
+		    (get_cpu_usage(cpu) * capacity_margin))
+			cpufreq_sched_set_cap(cpu, capacity_orig);
+	}
 }
 
 /*
