@@ -4066,7 +4066,8 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 {
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
-	int task_new = !(flags & ENQUEUE_WAKEUP);
+	int task_new = flags & ENQUEUE_WAKEUP_NEW;
+	int task_wakeup = flags & ENQUEUE_WAKEUP;
 
 	for_each_sched_entity(se) {
 		if (se->on_rq)
@@ -4110,14 +4111,11 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 		 * load balancing, but in these cases it seems wise to trigger
 		 * as single request after load balancing is done.
 		 *
-		 * XXX: how about fork()? Do we need a special flag/something
-		 *      to tell if we are here after a fork() (wakeup_task_new)?
-		 *
 		 * Also, we add a margin (same ~20% used for the tipping point)
 		 * to our request to provide some head room if p's utilization
 		 * further increases.
 		 */
-		if (sched_energy_freq() && !task_new) {
+		if (sched_energy_freq() && (task_new || task_wakeup)) {
 			unsigned long req_cap = get_cpu_usage(cpu_of(rq));
 
 			req_cap = req_cap * capacity_margin
