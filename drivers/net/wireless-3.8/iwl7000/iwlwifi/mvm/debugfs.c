@@ -1619,6 +1619,9 @@ MVM_DEBUGFS_READ_WRITE_FILE_OPS(netdetect, 384);
 
 int iwl_mvm_dbgfs_register(struct iwl_mvm *mvm, struct dentry *dbgfs_dir)
 {
+#ifdef CPTCFG_IWLWIFI_THERMAL_DEBUGFS
+	struct iwl_tt_params *tt_params = &mvm->thermal_throttle.params;
+#endif
 	struct dentry *bcast_dir __maybe_unused;
 	char buf[100];
 
@@ -1712,6 +1715,36 @@ int iwl_mvm_dbgfs_register(struct iwl_mvm *mvm, struct dentry *dbgfs_dir)
 				  mvm->debugfs_dir, &mvm->nvm_prod_blob))
 		goto err;
 
+#ifdef CPTCFG_IWLWIFI_THERMAL_DEBUGFS
+	if (!debugfs_create_u32("ct_kill_exit", S_IRUSR | S_IWUSR,
+				mvm->debugfs_dir,
+				&tt_params->ct_kill_exit))
+		goto err;
+	if (!debugfs_create_u32("ct_kill_entry", S_IRUSR | S_IWUSR,
+				mvm->debugfs_dir,
+				&tt_params->ct_kill_entry))
+		goto err;
+	if (!debugfs_create_u32("ct_kill_duration", S_IRUSR | S_IWUSR,
+				mvm->debugfs_dir,
+				&tt_params->ct_kill_duration))
+		goto err;
+	if (!debugfs_create_u32("dynamic_smps_entry", S_IRUSR | S_IWUSR,
+				mvm->debugfs_dir,
+				&tt_params->dynamic_smps_entry))
+		goto err;
+	if (!debugfs_create_u32("dynamic_smps_exit", S_IRUSR | S_IWUSR,
+				mvm->debugfs_dir,
+				&tt_params->dynamic_smps_exit))
+		goto err;
+	if (!debugfs_create_u32("tx_protection_entry", S_IRUSR | S_IWUSR,
+				mvm->debugfs_dir,
+				&tt_params->tx_protection_entry))
+		goto err;
+	if (!debugfs_create_u32("tx_protection_exit", S_IRUSR | S_IWUSR,
+				mvm->debugfs_dir,
+				&tt_params->tx_protection_exit))
+		goto err;
+#endif
 	/*
 	 * Create a symlink with mac80211. It will be removed when mac80211
 	 * exists (before the opmode exists which removes the target.)
