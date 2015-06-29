@@ -251,4 +251,30 @@ struct iwl_gscan_hotlist_change_event {
 	struct iwl_gscan_scan_result results[];
 } __packed;
 
+#define MAX_RSSI_SAMPLE_SIZE 8
+
+/**
+ * struct iwl_gscan_significant_change_result - gscan significant change result
+ * @channel: channel number of the reported AP.
+ * @num_rssi: number of RSSI samples in rssi_history array.
+ * @bssid: AP BSSID.
+ * @rssi_history: RSSI history for this AP. in dB.
+ */
+struct iwl_gscan_significant_change_result {
+	u8 channel;
+	u8 num_rssi;
+	u8 bssid[ETH_ALEN];
+	u8 rssi_history[MAX_RSSI_SAMPLE_SIZE];
+} __packed; /* GSCAN_SIGNIFICANT_CHANGE_RESULT_S_VER_1 */
+
+/**
+ * struct iwl_gscan_significant_change_event - gscan singificant change event
+ * @num_aps: number of APs in results array.
+ * @results: an array of APs and their RSSI history.
+ */
+struct iwl_gscan_significant_change_event {
+	__le32 num_aps;
+	struct iwl_gscan_significant_change_result results[];
+} __packed; /* GSCAN_SIGNIFICANT_CHANGED_LIST_API_S_VER_1 */
+
 #endif

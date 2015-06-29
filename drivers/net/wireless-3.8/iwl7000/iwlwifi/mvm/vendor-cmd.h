@@ -108,6 +108,9 @@
  *	list of AP's will cancel previous set_significant_change request.
  * @IWL_MVM_VENDOR_CMD_GSCAN_HOTLIST_CHANGE_EVENT: event that indicates that an
  *	AP from the BSSID hotlist was lost or found.
+ * @IWL_MVM_VENDOR_CMD_GSCAN_SIGNIFICANT_CHANGE_EVENT: event that indicates a
+ *	significant change in the RSSI level of beacons received from a certain
+ *	AP.
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -133,6 +136,7 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_GSCAN_SET_BSSID_HOTLIST,
 	IWL_MVM_VENDOR_CMD_GSCAN_SET_SIGNIFICANT_CHANGE,
 	IWL_MVM_VENDOR_CMD_GSCAN_HOTLIST_CHANGE_EVENT,
+	IWL_MVM_VENDOR_CMD_GSCAN_SIGNIFICANT_CHANGE_EVENT,
 };
 
 /**
@@ -301,6 +305,29 @@ enum iwl_mvm_vendor_hotlist_ap_status {
 };
 
 /**
+ * enum iwl_mvm_vendor_significant_change_result - significant change result
+ * @IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_INVALID: attribute number 0 is reserved
+ * @IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_CHANNEL: channel number of the reported
+ *	AP.
+ * @IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_BSSID: BSSID.
+ * @IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_RSSI_HISTORY: array of RSSI samples for
+ *	the reported AP. in dB.
+ * @NUM_IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_RESULT: number of significant change
+ *	attriutes.
+ * @MAX_IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_RESULT: highest significant change
+ *	result attribute number.
+ */
+enum iwl_mvm_vendor_significant_change_result {
+	IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_INVALID,
+	IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_CHANNEL,
+	IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_BSSID,
+	IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_RSSI_HISTORY,
+	NUM_IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_RESULT,
+	MAX_IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_RESULT =
+		NUM_IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_RESULT - 1,
+};
+
+/**
  * enum iwl_mvm_vendor_attr - attributes used in vendor commands
  * @__IWL_MVM_VENDOR_ATTR_INVALID: attribute 0 is invalid
  * @IWL_MVM_VENDOR_ATTR_LOW_LATENCY: low-latency flag attribute
@@ -362,6 +389,9 @@ enum iwl_mvm_vendor_hotlist_ap_status {
  * @IWL_MVM_VENDOR_ATTR_GSCAN_MIN_BREACHING: number of APs breaching threshold
  * @IWL_MVM_VENDOR_ATTR_GSCAN_HOTLIST_AP_STATUS: indicates if a reported AP was
  *	lost or found as specified in &enum iwl_mvm_vendor_hotlist_ap_status.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_SIG_CHANGE_RESULTS: array of significant
+ *	change results. Each result is a nested attribute of &enum
+ *	iwl_mvm_vendor_significant_change_result.
  *
  * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
  * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
@@ -404,6 +434,7 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_GSCAN_RSSI_SAMPLE_SIZE,
 	IWL_MVM_VENDOR_ATTR_GSCAN_MIN_BREACHING,
 	IWL_MVM_VENDOR_ATTR_GSCAN_HOTLIST_AP_STATUS,
+	IWL_MVM_VENDOR_ATTR_GSCAN_SIG_CHANGE_RESULTS,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,
