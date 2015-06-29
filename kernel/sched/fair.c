@@ -4196,9 +4196,13 @@ static void dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 		if (sched_energy_freq() && task_sleep) {
 			unsigned long req_cap = get_cpu_usage(cpu_of(rq));
 
-			req_cap = req_cap * capacity_margin
-					>> SCHED_CAPACITY_SHIFT;
-			cpufreq_sched_set_cap(cpu_of(rq), req_cap);
+			if (rq->cfs.nr_running) {
+				req_cap = req_cap * capacity_margin
+						>> SCHED_CAPACITY_SHIFT;
+				cpufreq_sched_set_cap(cpu_of(rq), req_cap);
+			} else {
+				cpufreq_sched_reset_cap(cpu_of(rq));
+			}
 		}
 	}
 	hrtick_update(rq);

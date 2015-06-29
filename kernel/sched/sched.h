@@ -1412,8 +1412,11 @@ static inline bool sched_energy_freq(void)
 
 #ifdef CONFIG_CPU_FREQ_GOV_SCHED
 void cpufreq_sched_set_cap(int cpu, unsigned long util);
+void cpufreq_sched_reset_cap(int cpu);
 #else
 static inline void cpufreq_sched_set_cap(int cpu, unsigned long util)
+{ }
+static inline void cpufreq_sched_reset_cap(int cpu)
 { }
 #endif
 

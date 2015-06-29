@@ -203,6 +203,18 @@ out:
 	return;
 }
 
+/**
+ * cpufreq_sched_reset_capacity - interface to scheduler for resetting capacity
+ *                                requests
+ * @cpu: cpu whose capacity request has to be reset
+ *
+ * This _wont trigger_ any capacity update.
+ */
+void cpufreq_sched_reset_cap(int cpu)
+{
+	per_cpu(pcpu_capacity, cpu) = 0;
+}
+
 static inline void set_sched_energy_freq(void)
 {
 	if (!sched_energy_freq())
