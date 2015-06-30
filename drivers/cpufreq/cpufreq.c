@@ -102,6 +102,12 @@ bool have_governor_per_policy(void)
 }
 EXPORT_SYMBOL_GPL(have_governor_per_policy);
 
+bool cpufreq_driver_might_sleep(void)
+{
+	return !(cpufreq_driver->flags & CPUFREQ_DRIVER_WILL_NOT_SLEEP);
+}
+EXPORT_SYMBOL_GPL(cpufreq_driver_might_sleep);
+
 struct kobject *get_governor_parent_kobj(struct cpufreq_policy *policy)
 {
 	if (have_governor_per_policy())
