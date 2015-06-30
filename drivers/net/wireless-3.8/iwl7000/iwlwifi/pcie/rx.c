@@ -429,8 +429,9 @@ static void iwl_pcie_rx_allocator(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_rb_allocator *rba = &trans_pcie->rba;
+	int pending = atomic_read(&rba->req_pending);
 
-	while (atomic_read(&rba->req_pending)) {
+	while (pending) {
 		int i;
 		struct list_head local_empty;
 		struct list_head local_allocated;
@@ -488,8 +489,13 @@ static void iwl_pcie_rx_allocator(struct iwl_trans *trans)
 		list_splice_tail(&local_empty, &rba->rbd_empty);
 		spin_unlock(&rba->lock);
 
-		atomic_dec(&rba->req_pending);
+		pending = atomic_dec_return(&rba->req_pending);
 		atomic_inc(&rba->req_ready);
+
+		if (pending > 16)
+			IWL_DEBUG_RX(trans,
+				     "Pending allocation requests = %d\n",
+				     pending);
 	}
 }
 
@@ -507,13 +513,16 @@ static int iwl_pcie_rx_allocator_get(struct iwl_trans *trans,
 	struct iwl_rb_allocator *rba = &trans_pcie->rba;
 	int i;
 
-	if (atomic_dec_return(&rba->req_ready) < 0) {
-		atomic_inc(&rba->req_ready);
-		IWL_DEBUG_RX(trans,
-			     "Allocation request not ready, pending requests = %d\n",
-			     atomic_read(&rba->req_pending));
+	/*
+	 * atomic_dec_if_positive returns req_ready - 1 for any scenario.
+	 * If req_ready is 0 atomic_dec_if_positive will return -1 and this
+	 * function will return -ENOMEM, as there are no ready requests.
+	 * atomic_dec_if_positive will perofrm the *actual* decrement only if
+	 * req_ready > 0, i.e. - there are ready requests and the function
+	 * hands one request to the caller.
+	 */
+	if (atomic_dec_if_positive(&rba->req_ready) < 0)
 		return -ENOMEM;
-	}
 
 	spin_lock(&rba->lock);
 	for (i = 0; i < RX_CLAIM_REQ_ALLOC; i++) {
