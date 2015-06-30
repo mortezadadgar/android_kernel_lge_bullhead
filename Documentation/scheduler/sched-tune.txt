@@ -1,0 +1,619 @@
+             Central, scheduler-driven, power-performance control
+                               (EXPERIMENTAL)
+
+Abstract
+========
+
+The topic of a single simple power-performance tunable, that is wholly
+scheduler centric, and has well defined and predictable properties has come up
+on several occasions in the past [4,5].
+With techniques such as energy cost model driven task placement and scheduler
+driven DVFS, we now have a good framework for implementing such a tunable.
+This document describes the overall ideas behind its design and implementation.
+
+
+Table of Contents
+=================
+
+1. Motivations
+
+2. Introduction
+   - Signals Boosting Strategy
+   - Energy-Performance Space
+
+3. Design details
+   - CPU selection using boosted task utilization
+   - Energy payoff evaluation
+   - OPP selection using boosted CPU usage
+
+4. Per task group boosting
+   - Setup and usage
+
+5. Question and Answers
+   - What about "auto" mode?
+   - What about boosting on a congested system?
+   - How CPUs are boosted when we have tasks with multiple boost values?
+
+6. References
+
+
+1. Motivations
+==============
+
+Energy aware scheduling (EAS) [1,2] adds a new objective - energy efficiency -
+to the scheduler current performance oriented objectives.
+As a foundation component, EAS uses a simple energy cost model (EM) to drive
+task placement decisions.  Another component is sched-DVFS [3], a new
+event-driven cpufreq governor, that allows the scheduler to select the optimal
+DVFS operating point (OPP) for running a task allocated to a CPU.
+
+The combination of EAS and sched-DVFS enable running workloads using a
+combination of the most energy efficient OPPs and CPUs. This actually minimizes
+the energy consumption.
+However, sometimes it may be desired to intentionally boost the performance of
+a workload even if that could imply a reasonable increase in energy
+consumption. For example, in order to reduce the response time of a task, we
+may want to run the task at a higher OPP than the one that is actually required
+by it's CPU bandwidth demand.
+
+This last requirement is especially important if we consider that one of the
+main goals of the sched-DVFS component is to replace all currently available
+CPUFreq policies. Since sched-DVFS is event based, as opposed to the sampling
+driven governors we currently have, it is already more responsive at selecting
+the optimal OPP to run tasks allocated to a CPU. However, just tracking the
+actual task load demand may not be enough from a performance standpoint.
+For example, it is not possible to get behaviors similar to those provided by
+the "performance" and "interactive" CPUFreq governors.
+
+This document describes an implementation of a tunable, stacked on top of the
+EAS EM and sched-DVFS which extends their functionality to support task
+performance boosting.
+By "performance boosting" we mean the reduction of the time required to
+complete a task activation, i.e. the time elapsed from a task wakeup to its
+next deactivation (e.g. because it goes back to sleep or it terminates).
+For example, if we consider a simple periodic task which executes the same
+workload for 5[s] every 20[s] while running at a certain OPP, a boosted
+execution of that task must complete each of its activations in less than 5[s].
+
+A previous attempt [5] to introduce such a boosting feature has not been
+successful mainly because of the complexity of the proposed solution.
+The approach described in this document exposes a single simple interface to
+user-space.  This single tunable knob allows the tuning of system wide
+scheduler behaviours ranging from energy efficiency at one end through to
+incremental performance boosting at the other end.
+The tunable affects all tasks. A more advanced extension of the concept is also
+provided which uses CGroups to boost the performance of only selected tasks
+while using the energy efficient default for all others.
+
+The rest of this document introduces in more details the proposed solution
+which has been named SchedTune.
+
+
+2. Introduction
+===============
+
+SchedTune exposes a simple user-space interface with a single power-performance
+tunable:
+
+  /proc/sys/kernel/sched_cfs_boost
+
+This permits expressing a boost value as an integer in the range [0..100].
+
+A value of 0 (default) configures the Energy-Aware Scheduler (EAS) for maximum
+energy efficiency. This means that EM will try always to do its best to schedule
+tasks on the most energy-efficient CPU while sched-DVFS runs them at the minimum
+OPP required to satisfy the workload demand.
+A value of 100 configures EAS for maximum performance with the scheduler doing
+it's best to put tasks on CPUs with the maximum capacity. This translates to
+the maximum OPP on that CPU and, for heterogeneous systems like ARM big.LITTLE,
+the CPU type with the highest capacity.
+
+The range between 0 and 100 can be set to satisfy other scenarios suitably. For
+example to satisfy interactive response considering the energy expense
+trade-off or depending on other system events (battery level etc).
+
+A CGroup based extension is also provided, which permits further user-space
+defined task classification to tune the scheduler for different goals depending
+on the specific nature of the task, e.g. background vs interactive vs
+low-priority.
+
+The overall design of the SchedTune module is built on top of the EAS
+by introducing two main bias:
+
+1. bias the Scheduling Group (SG) and CPU selection
+   Each time a task wakes up, EAS has the opportunity to allocate the task in
+   the most appropriate SG/CPU. This decision is influenced by the global boost
+   value, or the boost value for the task CGroup when in use.
+
+2. bias the Operating Performance Point (OPP) selection
+   Each time a task is allocated on a CPU, sched-DVFS has the opportunity to
+   tune the operating frequency of that CPU to better match the workload
+   demand. The selection of the actual OPP being activated is influenced by the
+   global boost value, or the boost value for the task CGroup when in use.
+
+This simple biasing approach leverages existing frameworks, which means minimal
+modifications to the scheduler, and yet it allows to achieve a range of
+different behaviours all from a single simple tunable knob.
+The only new concepts introduced are those of signal boosting
+and the energy-performance space which are detailed in the following sections.
+
+
+2.1. Signals Boosting Strategy
+==============================
+
+The whole EAS machinery works based on the value of a few load tracking signals
+which basically track the CPU bandwidth requirements for tasks and the capacity
+of CPUs. The basic idea behind the SchedTune knob is to artificially inflate
+some of these load tracking signals to make a task or RQ appears more demanding
+that it actually is.
+
+Which signal have to be inflated depends on the specific "consumer".  However,
+independently from the specific (signal, consumer) pair, it is important to
+define a simple and possibly consistent strategy for the concept of boosting a
+signal.
+
+A boosting strategy defines how the "abstract" user-space defined
+sched_cfs_boost value is translated into an internal "margin" value to be added
+to a signal to get its inflated value:
+
+  margin         := boosting_strategy(sched_cfs_boost, signal)
+  boosted_signal := signal + margin
+
+Different boosting strategies have been identified and analyzed before choosing
+the one found to be the most effective.
+
+Signal Proportional Compensation (SPC)
+--------------------------------------
+
+In this boosting strategy the sched_cfs_boost value is used to compute a
+margin which is proportional to the complement of the original signal.
+When a signal has a maximum possible value, its complement is defined as
+the delta from the actual value and its possible maximum.
+Since the tunable implementation uses signals which have SCHED_LOAD_SCALE as
+the maximum possible value, the margin becomes:
+
+	margin := sched_cfs_boost * (SCHED_LOAD_SCALE - signal)
+
+Using this boosting strategy:
+- a 100% sched_cfs_boost means that the signal is scaled to the maximum value
+- each value in the range of sched_cfs_boost effectively inflates the signal in
+  question by a quantity which is proportional to the maximum value.
+
+For example, by applying the SPC boosting strategy to the selection of the OPP
+to run a task it is possible to achieve these behaviors:
+
+-   0% boosting: run the task at the minimum OPP required by its workload
+- 100% boosting: run the task at the maximum OPP available for the CPU
+-  50% boosting: run at the half-way OPP between minimum and maximum
+
+Which means that at 50% boosting a task will be scheduled to run at half of the
+maximum theoretically achievable performance on the specific target platform.
+
+A graphical representation of an SPC boosted signal is represented in the
+following figure where:
+ a) "-" represents the original signal
+ b) "b" represents a  50% boosted signal
+ c) "p" represents a 100% boosted signal
+
+
+   ^
+   |  SCHED_LOAD_SCALE
+   +-----------------------------------------------------------------+
+   |pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp
+   |
+   |                                             boosted_signal
+   |                                          bbbbbbbbbbbbbbbbbbbbbbbb
+   |
+   |                                             signal
+   |                  bbbbbbbbbbbbbbbbbbbbbbbb+----------------------+
+   |                                          |
+   |bbbbbbbbbbbbbbbbbb                        |
+   |                                          |
+   |                                          |
+   |                                          |
+   |                  +-----------------------+
+   |                  |
+   |                  |
+   |                  |
+   |------------------+
+   |
+   |
+   +----------------------------------------------------------------------->
+
+This plot represent a "ramp" signal. For each step of the original signal the
+boosted signal corresponding to a 50% boost is midway from the original signal
+and the upper bound. An 100% boost generates instead a boosted signal which is
+always saturated to the upper bound.
+
+
+2.2 Energy-Performance Space
+============================
+
+Boosting a task to get EAS to schedule it on a more capable CPU and/or running
+it at a higher OPP implies a higher energy expense to do a certain amount of
+work. Conversely, by scheduling a task in an energy efficient way we could
+affect its performance such that it takes longer to complete each of its
+activations.
+
+Thus, using the sched_cfs_boost knob requires identifying an effective strategy
+to evaluate two different conditions:
+  a) how much more energy is worth spending
+     for a certain performance increase
+  b) how much performance reduction is possible
+     to save a certain amount of energy
+
+
+To support this kind of evaluation at run-time, the implementation of SchedTune
+uses a representation of a scheduling candidate as a point in the
+Performance-Energy Space (P-E space).
+
+A Scheduling Candidate (SC) is a possible scheduling decision to switch a
+task from the current CPU and OPP to another CPU and/or OPP.
+Such switching involves a certain variation both on the expected
+energy consumption and task performance.
+
+Thus, each scheduling candidate can be represented in the P-E space where:
+  a) the energy variation (dE) is represented on the X axis
+  b) the performance variation is represented on the Y axis
+
+A graphical representation of the P-E space is depicted in the following figure.
+
+                             dP ^
+                                |
+                                |   Performance Boost
+                                |       Region (B)
+          Optimal Region (O)    |                      bbb
+                                |                   bbb
+                                |    +sd1        bbb
+                                |             bbb
+                                |          bbb
+                                |       bbb
+                                |    bbb
+                                | bbb                           dE
+   -------------------------------------------------------------->
+                            cccc|
+                        cccc    |
+                    cccc        |
+                cccc            |
+            cccc     +sd2       | Suboptimal Region (S)
+        cccc                    |
+    cccc                        |
+                                |
+        Performance Constraint  |
+               Region (C)       |
+                                |
+                                |
+
+
+Four main regions can be identified in this space:
+
+ 1) Optimal region (O)
+    The space of scheduling decisions which correspond to a decreased energy
+    consumption with  better performance, all these decisions must always be
+    selected.
+
+ 2) Suboptimal region (S)
+    The space of scheduling decisions which correspond to an increased energy
+    consumption for worse performance, all these decisions must always be
+    discarded.
+
+ 3) Performance Boost region (B)
+    The space of scheduling decisions which corresponds to an increased energy
+    consumption for better performance.
+    These decisions could be selected only if the increase in energy
+    consumption is "reasonable" with respect to the performance gain.
+
+ 4) Performance Constraint region (C)
+    The space of scheduling decisions which corresponds to a decreased energy
+    consumption for worst performance.
+    These decisions could be selected only if the decrease in energy
+    consumption is reasonable with respect to the performance loss.
+
+
+The acceptability criteria defined for the B and C regions are based on the
+evaluation of how reasonable is the energy variation compared to the
+performance variation.
+
+From a mathematical/geometrical standpoint, the degree of "reasonableness" of a
+scheduling candidate is defined by its location on the P-E space with respect
+In the previous figure, two different thresholds are represented by the two
+line in the P-E space:
+
+  a) the "boosting" threshold, represented by the "b" line
+  b) the "constraining" threshold, represented by the "c" line
+
+Boosting threshold
+------------------
+The boosting threshold is the acceptability criterion for a scheduling
+candidate belonging to the B region. A scheduling candidate which increases the
+energy consumption can only be accepted if it provides a corresponding minimum
+performance increment.
+The boosting threshold defines this minimum required increment of performance
+for each possible energy increase. Thus, the slope of the line representing the
+boosting threshold indicates the minimum expected performance boost that can
+amortize the corresponding energy increase.
+
+For example, the point named sd1 in the figure represents a scheduling
+candidate which could be accepted given the specific configuration of the
+boosting threshold.
+
+Constraining threshold
+----------------------
+The constraining threshold is the acceptability criterion for a scheduling
+candidate belonging to the C region. A scheduling candidate which decreases the
+energy consumption can only be accepted if it does not involve an excessive
+decrement in the expected performance.
+The constraining threshold defines the maximum acceptable degradation of
+performance for each possible decrease in energy expense. Thus, the slope of
+the line representing the constraining threshold indicates the minimum energy
+saving expected for the corresponding decrease in performance.
+
+For example, the point named sd2 in the figure represents a scheduling
+candidate which could not be accepted given the specific configuration of the
+constraining threshold.
+
+
+3. Design details
+=================
+
+Based on the concepts of signal boosting and the P-E space described
+previously, the implementation of the SchedTune tunable extends EAS with three
+simple modifications.
+
+It is worth calling out that the implementation does not introduce any new load
+signals. Instead, it provides an API to tune existing signals. This tuning is
+done on demand and only in scheduler code paths where it is sensible to do so.
+The new API calls are defined to return either the default signal or a boosted
+one, depending on the value of sched_cfs_boost. This is a clean an non invasive
+modification of the existing existing EAS code paths, specifically the EM and
+sched-DVFS.
+
+The following diagram depicts the integration of the SchedTune with EAS:
+
+
+                                        sched_cfs_boost
+                                     +----------------+
+                                     |
+                 +-------------------v-----------------+
+                 |               SchedTune             |
+                 +---------------+-------+-------------+
+                                 |       |
+     (SG/CPU selection biasing)  |       |  (OPP selection biasing)
+                                 |       |
+     boosted_task_utilization()  |       |  get_boosted_cpu_usage()
+                                 |       |
+                 +---------------v-+   +-v-------------+
+                 |   EnergyModel   |   |   sched-DVFS   |
+                 +-----------------+   +---------------+
+
+
+
+1) CPU selection using boosted task utilization
+-----------------------------------------------
+
+The signal representing a task's utilization is boosted according to the
+previously described SPC boosting strategy. This allows representing a task to
+the scheduler as being more CPU demanding than it actually is.
+
+Thus, with the SchedTune tunable enabled we have two main functions to get the
+utilization of a task:
+
+  task_utilization()
+  boosted_task_utilization()
+
+The new boosted_task_utilization() is similar to the first but returns a
+boosted utilization signal which is a function of the sched_cfs_boost value.
+
+This function is used in the EAS code paths where it is required to decide in
+which CPU a task could be allocated.
+For example, this allows the selection of the most capable CPU on the system
+when a task is boosted 100%.
+
+Thus, the new boosted_task_utilization() function is used to bias the selection
+of a possible scheduling candidate.
+
+
+2) Energy payoff evaluation
+---------------------------
+
+As previously described, by considering a boosted task utilization we could end
+up with a scheduling candidate which increases the energy consumption to
+hopefully get more performance for a task.
+
+A new function:
+
+  schedtune_accept_deltas(energy_delta, performance_delta)
+
+has been added by the SchedTune implementation which allows to evaluate the
+scheduling candidate in the P-E Space.
+
+The P-E space requires the definition of boosting and constraining thresholds.
+In order to keep the user-space interface simple, the SchedTune implementation
+binds the single sched_cfs_boost value to the definition of these thresholds.
+
+Specifically:
+ a) the two thresholds have the same slope
+ b) a 0% sched_cfs_boost value corresponds to vertical line in the P-E space,
+    centered at the origin, and a consequent threshold which accepts only those
+    scheduling candidate that correspond to a decrease of the expected energy
+    consumption
+ c) a 100% sched_cfs_boost value corresponds to an horizontal line in the P-E
+    space, centered in the origin, and a consequent threshold which accepts all
+    the scheduling candidate that corresponds to an increase of expected
+    performance
+ d) a sched_cfs_boost value in between 0% and 100% translates to a line whose
+    slope is inversely proportional to the boost value
+
+This definition of the thresholds in the P-E space has the following
+interesting properties:
+ 1) a 0% boost value provides power saving behaviors
+ 2) a 100% boost value provides power performance behaviors
+ 3) support a smooth transition from power saving to performance boosting.
+
+
+3) OPP selection using boosted CPU usage
+----------------------------------------
+
+The signal representing a CPU's usage is boosted according to the previously
+described SPC boosting strategy. This allows to represent a CPU (i.e. CFS RQ)
+to sched-DVFS as being more used than it actually is.
+
+Thus, with the sched_cfs_boost enabled we have the following main functions to
+get the current usage of a CPU:
+
+  get_cpu_usage()
+  get_boosted_cpu_usage()
+
+The new get_boosted_cpu_usage() is similar to the first but returns a boosted
+usage signal which is function of the sched_cfs_boost value.
+
+This function is used in the EAS code paths where sched-DVFS needs to decide
+the OPP to run a CPU at.
+For example, this allows selecting the highest OPP for a CPU which has
+the boost value set to 100%.
+
+Thus, the new get_boosted_cpu_usage() function is used to bias the selection of
+the CPUs operational frequency.
+
+
+4. Per task group boosting
+==========================
+
+The availability of a single knob which is used to boost all tasks in the
+system is certainly a simple solution but it quite likely doesn't fit many
+usage scenarios, especially in the mobile device space.
+
+For example, on battery powered devices there usually are many background
+services which are long running and need energy efficient scheduling. On the
+other hand, some applications are more performance sensitive and require an
+interactive response and/or maximum performance, regardless of the energy cost.
+To better service such scenarios, the SchedTune implementation has an extension
+that provides a more fine grained boosting interface.
+
+A new CGroup controller, namely "schedtune", could be enabled which allows to
+defined and configure task groups with different boosting values.
+Tasks that require special power-performance can be put into separate CGroups.
+The value of the boost associated with the tasks in this group can be specified
+using a single knob exposed by the CGroup controller:
+
+   schedtune.boost
+
+This knob allows the definition of a boost value that is to be used for
+SPC boosting of all tasks attached to this group.
+
+The current schedtune controller implementation is really simple and has these
+main characteristics:
+
+  1) it is only possible to create 1 level depth hierarchies
+     The root control groups define the system-wide boost value to be applied
+     by default to all tasks. Its direct subgroups are named "boost groups" and
+     they define the boost value for specific set of tasks.
+     Further nested subgroups are not allowed since they do not have a sensible
+     meaning from a user-space standpoint.
+
+  2) it is possible to define only a limited number of "boost groups"
+     This number is defined at compile time and by default configured to 16.
+     This is a design decision motivated by two main reasons:
+     a) in a real system we do not expect usage scenarios with more then few
+	boost groups. For example, a reasonable collection of groups could be
+        just "background", "interactive" and "performance".
+     b) it simplifies the implementation considerably, especially for the code
+	which has to compute the per CPU boosting once there are multiple
+        RUNNABLE tasks with different boost values.
+
+Such a simple design should allow servicing the main usage scenarios identified
+so far. It provides a simple interface which can be used to manage the
+power-performance of all tasks or only selected tasks.
+Moreover, this interface can be easily integrated by user-space run-times (e.g.
+Android, ChromeOS) to implement a QoS solution for task boosting based on tasks
+classification, which has been a long standing requirement.
+
+Setup and usage
+---------------
+
+0. Use a kernel with CGROUP_SCHEDTUNE support enabled
+
+1. Check that the "schedtune" CGroup controller is available:
+
+   root@linaro-nano:~# cat /proc/cgroups
+   #subsys_name	hierarchy	num_cgroups	enabled
+   cpuset  	0		1		1
+   cpu     	0		1		1
+   schedtune	0		1		1
+
+2. Mount a tmpfs to create the CGroups mount point (Optional)
+
+   root@linaro-nano:~# sudo mount -t tmpfs cgroups /sys/fs/cgroup
+
+3. Mount the "schedtune" controller
+
+   root@linaro-nano:~# mkdir /sys/fs/cgroup/stune
+   root@linaro-nano:~# sudo mount -t cgroup -o schedtune stune /sys/fs/cgroup/stune
+
+4. Setup the system-wide boost value (Optional)
+   If not configured the root control group has a 0% boost value, which
+   basically disable boosting for all tasks in the system thus running in
+   energy-efficient mode.
+
+   root@linaro-nano:~# echo $SYSBOOST > /sys/fs/cgroup/stune/schedtune.boost
+
+5. Create task groups and configure their specific boost value (Optional)
+   For example here we create a "performance" boost group configure to boost
+   all its tasks to 100%
+
+   root@linaro-nano:~# mkdir /sys/fs/cgroup/stune/performance
+   root@linaro-nano:~# echo 100 > /sys/fs/cgroup/stune/performance/schedtune.boost
+
+6. Move tasks into the boost group
+   For example, the following moves the tasks with PID $TASKPID (and all its
+   threads) into the "performance" boost group.
+
+   root@linaro-nano:~# echo "TASKPID > /sys/fs/cgroup/stune/performance/cgroup.procs
+
+This simple configuration allows only the threads of the $TASKPID task to run,
+when needed, at the highest OPP in the most capable CPU of the system.
+
+
+5. Question and Answers
+=======================
+
+What about "auto" mode?
+-----------------------
+
+The "auto" mode as described in [5] is still possible to be implemented by
+using the SchedTune implementation provided a suitable integration with a
+user-space run-time which tune the simple boost knob exposed by either the
+system-wide or cgroup based interface.
+
+What about boosting on a congested system?
+------------------------------------------
+
+The current implementation of the sched_cfs_boost tunable has the most impact
+only while EAS runs under the so called 'tipping point' [5] and the system has
+spare capacity.
+This seems to make sense since when the tipping point is reached the system is
+likely already running at the maximum OPP and CFS allocates tasks to try and
+maximize their performance.
+Put differently, the kind of power-performance boosting makes sense only when
+the system has spare capacity and there are tasks that can be boosted.
+
+How are multiple groups of tasks with different boost values managed?
+---------------------------------------------------------------------
+
+The current ScheTune implementation keeps track of the boosted RUNNABLE tasks
+on a CPU. Once sched-DVFS selects the OPP to run a CPU at, the CPU usage is
+boosted with a value which is the maximum of the boost values of the currently
+RUNNABLE tasks in its RQ.
+This allows sched-DVFS to boost a CPU only while there are boosted tasks ready
+to run and switch back to the energy efficient mode as soon as the last boosted
+task is dequeued.
+
+
+6. References
+=============
+[1] http://lkml.org/lkml/2015/5/12/728
+[2] http://lkml.org/lkml/2015/5/12/757
+[3] http://lkml.org/lkml/2015/6/26/620
+[4] http://lwn.net/Articles/552889
+[5] http://lkml.org/lkml/2012/5/18/91
+[6] http://lkml.org/lkml/2015/5/12/749
