@@ -34,43 +34,43 @@ static ssize_t sta_tx_latency_threshold_read(struct file *file,
 					size_t count, loff_t *ppos)
 {
 	struct ieee80211_local *local = file->private_data;
-	struct ieee80211_tx_latency_bin_ranges  *tx_latency;
+	struct ieee80211_tx_latency_threshold  *tx_thrshld;
 	char buf[2 * IEEE80211_NUM_TIDS * 20 + 128];
 	int bufsz = sizeof(buf);
 	int pos = 0;
 	u32 i;
 
 	rcu_read_lock();
-	tx_latency = rcu_dereference(local->tx_latency);
+	tx_thrshld = rcu_dereference(local->tx_threshold);
 
-	/* Tx latency is not enabled or no thresholds were configured */
-	if (!tx_latency || (!tx_latency->thresholds_bss &&
-			    !tx_latency->thresholds_p2p)) {
+	/* Tx threshold is not enabled or no thresholds were configured */
+	if (!tx_thrshld || (!tx_thrshld->thresholds_bss &&
+			    !tx_thrshld->thresholds_p2p)) {
 		pos += scnprintf(buf + pos, bufsz - pos, "%s\n",
 				TX_TIMING_STATS_DISABLED);
 		goto unlock;
 	}
 
 	pos += scnprintf(buf + pos, bufsz - pos, "mode: %s\n",
-			 tx_latency->monitor_record_mode ?
+			 tx_thrshld->monitor_record_mode ?
 			 "Continuous Recording" : "Internal Buffer");
 	pos += scnprintf(buf + pos, bufsz - pos, "window: %d\n",
-			 tx_latency->monitor_collec_wind);
+			 tx_thrshld->monitor_collec_wind);
 
-	if (tx_latency->thresholds_bss) {
+	if (tx_thrshld->thresholds_bss) {
 		pos += scnprintf(buf + pos, bufsz - pos, "BSS thresholds:\n");
 		for (i = 0; i < IEEE80211_NUM_TIDS; i++) {
 			pos += scnprintf(buf + pos, bufsz - pos, "TID %u: %u\n",
-					 i, tx_latency->thresholds_bss[i]);
+					 i, tx_thrshld->thresholds_bss[i]);
 		}
 	}
 
-	if (tx_latency->thresholds_p2p) {
+	if (tx_thrshld->thresholds_p2p) {
 		pos += scnprintf(buf + pos, bufsz - pos, "P2P thresholds:\n");
 		for (i = 0; i < IEEE80211_NUM_TIDS; i++) {
 			pos += scnprintf(buf + pos, bufsz - pos,
 					 "TID %u: %u\n",
-					 i, tx_latency->thresholds_p2p[i]);
+					 i, tx_thrshld->thresholds_p2p[i]);
 		}
 	}
 unlock:
@@ -96,7 +96,7 @@ static ssize_t sta_tx_latency_threshold_write(struct file *file,
 					      size_t count, loff_t *ppos)
 {
 	struct ieee80211_local *local = file->private_data;
-	struct ieee80211_tx_latency_bin_ranges  *tx_latency;
+	struct ieee80211_tx_latency_threshold  *tx_thrshld;
 	u32 alloc_size;
 	int mode;
 	int window_size;
@@ -124,23 +124,30 @@ static ssize_t sta_tx_latency_threshold_write(struct file *file,
 	if (local->num_sta)
 		goto unlock;
 
-	tx_latency =
-		rcu_dereference_protected(local->tx_latency,
+	tx_thrshld =
+		rcu_dereference_protected(local->tx_threshold,
 					  lockdep_is_held(&local->sta_mtx));
-	/* Tx latency disabled */
-	if (!tx_latency)
-		goto unlock;
+	if (tx_thrshld)
+		goto config_thrshld;
 
+	tx_thrshld = kzalloc(sizeof(struct ieee80211_tx_latency_threshold),
+			     GFP_ATOMIC);
+	if (!tx_thrshld) {
+		ret = -ENOMEM;
+		goto unlock;
+	}
+
+config_thrshld:
 	/* Check if we need to disable the thresholds */
 	if (iface == IEEE80211_TX_LATENCY_BSS &&
 	    thrshld == IEEE80211_IF_DISABLE_THSHLD) {
-		kfree(tx_latency->thresholds_bss);
-		tx_latency->thresholds_bss = NULL;
+		kfree(tx_thrshld->thresholds_bss);
+		tx_thrshld->thresholds_bss = NULL;
 		goto assign;
 	} else if (iface == IEEE80211_TX_LATENCY_P2P &&
 	    thrshld == IEEE80211_IF_DISABLE_THSHLD) {
-		kfree(tx_latency->thresholds_p2p);
-		tx_latency->thresholds_p2p = NULL;
+		kfree(tx_thrshld->thresholds_p2p);
+		tx_thrshld->thresholds_p2p = NULL;
 		goto assign;
 	}
 
@@ -154,33 +161,33 @@ static ssize_t sta_tx_latency_threshold_write(struct file *file,
 	alloc_size = sizeof(u32) * IEEE80211_NUM_TIDS;
 	/* Check iface paramters is valid */
 	if (iface == IEEE80211_TX_LATENCY_BSS) {
-		if (!tx_latency->thresholds_bss) {
-			tx_latency->thresholds_bss = kzalloc(alloc_size,
+		if (!tx_thrshld->thresholds_bss) {
+			tx_thrshld->thresholds_bss = kzalloc(alloc_size,
 							     GFP_ATOMIC);
-			if (!tx_latency->thresholds_bss) {
+			if (!tx_thrshld->thresholds_bss) {
 				ret = -ENOMEM;
 				goto unlock;
 			}
 		}
-		tx_latency->thresholds_bss[tid] = thrshld;
+		tx_thrshld->thresholds_bss[tid] = thrshld;
 	} else if (iface == IEEE80211_TX_LATENCY_P2P) {
-		if (!tx_latency->thresholds_p2p) {
-			tx_latency->thresholds_p2p = kzalloc(alloc_size,
+		if (!tx_thrshld->thresholds_p2p) {
+			tx_thrshld->thresholds_p2p = kzalloc(alloc_size,
 							     GFP_ATOMIC);
-			if (!tx_latency->thresholds_p2p) {
+			if (!tx_thrshld->thresholds_p2p) {
 				ret = -ENOMEM;
 				goto unlock;
 			}
 		}
-		tx_latency->thresholds_p2p[tid] = thrshld;
+		tx_thrshld->thresholds_p2p[tid] = thrshld;
 	} else { /* not a valid interface */
 		ret = -EINVAL;
 		goto unlock;
 	}
-	tx_latency->monitor_collec_wind  = window_size;
-	tx_latency->monitor_record_mode = mode;
+	tx_thrshld->monitor_collec_wind  = window_size;
+	tx_thrshld->monitor_record_mode = mode;
 assign:
-	rcu_assign_pointer(local->tx_latency, tx_latency);
+	rcu_assign_pointer(local->tx_threshold, tx_thrshld);
 unlock:
 	mutex_unlock(&local->sta_mtx);
 
@@ -400,8 +407,6 @@ static ssize_t sta_tx_latency_stat_write(struct file *file,
 	if (!strcmp(buf, TX_TIMING_STATS_DISABLED)) {
 		if (!tx_latency)
 			goto unlock;
-		kfree(tx_latency->thresholds_p2p);
-		kfree(tx_latency->thresholds_bss);
 		RCU_INIT_POINTER(local->tx_latency, NULL);
 		synchronize_rcu();
 		kfree(tx_latency);
@@ -930,10 +935,8 @@ void debugfs_hw_add(struct ieee80211_local *local)
 
 #ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
 	DEBUGFS_DEVSTATS_ADD(tx_latency);
-	DEBUGFS_DEVSTATS_ADD(tx_latency_points);
-#ifdef CPTCFG_NL80211_TESTMODE
 	DEBUGFS_DEVSTATS_ADD(tx_latency_threshold);
-#endif
+	DEBUGFS_DEVSTATS_ADD(tx_latency_points);
 	DEBUGFS_DEVSTATS_ADD(tx_consecutive_loss);
 #endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
 }

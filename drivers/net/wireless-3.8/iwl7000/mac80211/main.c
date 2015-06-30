@@ -1235,15 +1235,16 @@ void ieee80211_free_hw(struct ieee80211_hw *hw)
 
 #ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
 	{
-		struct ieee80211_tx_latency_bin_ranges *tx_latency;
+		struct ieee80211_tx_latency_threshold *tx_thrshld;
 
+		kfree(rcu_access_pointer(local->tx_latency));
 		kfree(rcu_access_pointer(local->tx_consec));
-		tx_latency = rcu_access_pointer(local->tx_latency);
-		if (tx_latency) {
-			kfree(tx_latency->thresholds_bss);
-			kfree(tx_latency->thresholds_p2p);
+		tx_thrshld = rcu_access_pointer(local->tx_threshold);
+		if (tx_thrshld) {
+			kfree(tx_thrshld->thresholds_bss);
+			kfree(tx_thrshld->thresholds_p2p);
 		}
-		kfree(tx_latency);
+		kfree(tx_thrshld);
 	}
 #endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
 

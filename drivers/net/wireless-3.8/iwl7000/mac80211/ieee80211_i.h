@@ -1114,22 +1114,41 @@ enum ieee80211_tx_lat_msr_point {
  * If ranges is NULL then Tx latency statistics bins are disabled for all
  * stations.
  *
- * @thresholds_bss: list of thresholds for each tid in a bss interface
- * @thresholds_p2p: list of thresholds for each tid in a p2p interface
- * @monitor_record_mode: recording mode.
- *	(0) Internal  buffer - recording using the ucodes internal buffer
- *	(1) Continues recording - recording using MIPI
- * @monitor_collec_wind: collection window for monitor logs
  * @n_ranges: number of ranges that are taken in account
  * @ranges: the ranges that the user requested or NULL if disabled.
  */
 struct ieee80211_tx_latency_bin_ranges {
+	int n_ranges;
+	u32 ranges[];
+};
+
+/*
+ * struct ieee80211_tx_latency_points - Tx latency statistics measurment points
+ *
+ * Measuring Tx latency statistics. Needs a definition of the measurment points,
+ * which is defined in this struct.
+ *
+ * @points: start & end points from where to measure the latency.
+ */
+struct ieee80211_tx_latency_points {
+	enum ieee80211_tx_lat_msr_point points[2];
+};
+
+/*
+ * struct ieee80211_tx_latency_threshold - Tx latency threshold
+ *
+ * A user can configure the Tx latency threshold that would trigger collecting
+ * debug data via the wrt mechanism.
+ *
+ * @thresholds_bss: list of thresholds for each tid in a bss interface
+ * @thresholds_p2p: list of thresholds for each tid in a p2p interface
+ * @monitor_collec_wind: collection window for monitor logs
+ */
+struct ieee80211_tx_latency_threshold {
 	u32 *thresholds_bss;
 	u32 *thresholds_p2p;
 	u8 monitor_record_mode;
 	u16 monitor_collec_wind;
-	int n_ranges;
-	u32 ranges[];
 };
 #endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
 
@@ -1309,6 +1328,7 @@ struct ieee80211_local {
 	struct ieee80211_tx_latency_bin_ranges __rcu *tx_latency;
 	/* start & end points from where to measure the latency. */
 	enum ieee80211_tx_lat_msr_point tx_msrmnt_points[2];
+	struct ieee80211_tx_latency_threshold __rcu *tx_threshold;
 #endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
 
 	struct sk_buff_head pending[IEEE80211_MAX_QUEUES];

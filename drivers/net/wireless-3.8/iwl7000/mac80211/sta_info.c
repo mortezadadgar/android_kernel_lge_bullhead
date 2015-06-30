@@ -323,6 +323,7 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 	struct timespec uptime;
 #ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
 	struct ieee80211_tx_latency_bin_ranges *tx_latency;
+	struct ieee80211_tx_latency_threshold *tx_threshold;
 	struct ieee80211_tx_consec_loss_ranges *tx_consec;
 	size_t size;
 #endif
@@ -381,6 +382,7 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 #ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
 	rcu_read_lock();
 	tx_latency = rcu_dereference(local->tx_latency);
+	tx_threshold = rcu_dereference(local->tx_threshold);
 	/* init stations Tx latency statistics && TID bins */
 	if (tx_latency) {
 		sta->tx_lat = kzalloc(IEEE80211_NUM_TIDS *
@@ -405,11 +407,12 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 				}
 			}
 		}
-
+	}
+	if (tx_threshold) {
 		if (!sdata->vif.p2p)
-			sta->tx_lat_thrshld = tx_latency->thresholds_bss;
+			sta->tx_lat_thrshld = tx_threshold->thresholds_bss;
 		else
-			sta->tx_lat_thrshld = tx_latency->thresholds_p2p;
+			sta->tx_lat_thrshld = tx_threshold->thresholds_p2p;
 	}
 	tx_consec = rcu_dereference(local->tx_consec);
 	/* init stations Tx consecutive loss statistics */
