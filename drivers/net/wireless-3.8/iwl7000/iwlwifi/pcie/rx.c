@@ -986,10 +986,15 @@ restart:
 			struct iwl_rb_allocator *rba = &trans_pcie->rba;
 			struct iwl_rx_mem_buffer *out[RX_CLAIM_REQ_ALLOC];
 
-			/* Add the remaining 6 empty RBDs for allocator use */
-			spin_lock(&rba->lock);
-			list_splice_tail_init(&rxq->rx_used, &rba->rbd_empty);
-			spin_unlock(&rba->lock);
+			if (rxq->used_count % RX_CLAIM_REQ_ALLOC == 0) {
+				/* Add the remaining 6 empty RBDs
+				* for allocator use
+				 */
+				spin_lock(&rba->lock);
+				list_splice_tail_init(&rxq->rx_used,
+						      &rba->rbd_empty);
+				spin_unlock(&rba->lock);
+			}
 
 			/* If not ready - continue, will try to reclaim later.
 			* No need to reschedule work - allocator exits only on
