@@ -1138,14 +1138,8 @@ static int iwl_xvt_get_mac_addr_info(struct iwl_xvt *xvt,
 	} else {
 		/* MAC address in family 8000 */
 		if (xvt->is_nvm_mac_override) {
-			if (is_valid_ether_addr(xvt->nvm_mac_addr)) {
-				memcpy(mac_addr_info->mac_addr,
-				       xvt->nvm_mac_addr,
-				       sizeof(mac_addr_info->mac_addr));
-			} else {
-				IWL_ERR(xvt, "override mac addr is invalid\n");
-				goto eth_error;
-			}
+			memcpy(mac_addr_info->mac_addr, xvt->nvm_mac_addr,
+			       sizeof(mac_addr_info->mac_addr));
 		} else {
 			/* read the mac address from WFMP registers */
 			mac_addr0 = iwl_trans_read_prph(xvt->trans,
@@ -1163,13 +1157,8 @@ static int iwl_xvt_get_mac_addr_info(struct iwl_xvt *xvt,
 			temp_mac_addr[4] = hw_addr[1];
 			temp_mac_addr[5] = hw_addr[0];
 
-			if (is_valid_ether_addr(temp_mac_addr)) {
-				memcpy(mac_addr_info->mac_addr, temp_mac_addr,
-				       sizeof(mac_addr_info->mac_addr));
-			} else {
-				IWL_ERR(xvt, "registers mac addr is invalid\n");
-				goto eth_error;
-			}
+			memcpy(mac_addr_info->mac_addr, temp_mac_addr,
+			       sizeof(mac_addr_info->mac_addr));
 		}
 	}
 
@@ -1177,10 +1166,6 @@ static int iwl_xvt_get_mac_addr_info(struct iwl_xvt *xvt,
 	data_out->len = sizeof(*mac_addr_info);
 
 	return 0;
-
-eth_error:
-	kfree(mac_addr_info);
-	return -EINVAL;
 }
 
 int iwl_xvt_user_cmd_execute(struct iwl_op_mode *op_mode, u32 cmd,

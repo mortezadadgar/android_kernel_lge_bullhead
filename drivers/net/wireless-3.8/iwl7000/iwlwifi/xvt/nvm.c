@@ -140,17 +140,6 @@ static int iwl_nvm_write_section(struct iwl_xvt *xvt, u16 section,
 
 #define MAX_NVM_FILE_LEN	16384
 
-static void iwl_xvt_set_nvm_mac_addr(u8 *xvt_mac_addr, const u8 *nvm_addr)
-{
-	/* The byte order is little endian 16 bit, meaning 214365 */
-	xvt_mac_addr[0] = nvm_addr[1];
-	xvt_mac_addr[1] = nvm_addr[0];
-	xvt_mac_addr[2] = nvm_addr[3];
-	xvt_mac_addr[3] = nvm_addr[2];
-	xvt_mac_addr[4] = nvm_addr[5];
-	xvt_mac_addr[5] = nvm_addr[4];
-}
-
 /*
  * HOW TO CREATE THE NVM FILE FORMAT:
  * ------------------------------
@@ -285,13 +274,25 @@ static int iwl_xvt_load_external_nvm(struct iwl_xvt *xvt)
 		if (section_id == xvt->cfg->nvm_hw_section_num) {
 			hw_addr = (const u8 *)((const __le16 *)file_sec->data +
 						HW_ADDR);
-			iwl_xvt_set_nvm_mac_addr(xvt->nvm_hw_addr, hw_addr);
+
+			/* The byte order is little endian 16 bit, meaning 214365 */
+			xvt->nvm_hw_addr[0] = hw_addr[1];
+			xvt->nvm_hw_addr[1] = hw_addr[0];
+			xvt->nvm_hw_addr[2] = hw_addr[3];
+			xvt->nvm_hw_addr[3] = hw_addr[2];
+			xvt->nvm_hw_addr[4] = hw_addr[5];
+			xvt->nvm_hw_addr[5] = hw_addr[4];
 		}
 		if (section_id == NVM_SECTION_TYPE_MAC_OVERRIDE) {
 			xvt->is_nvm_mac_override = true;
 			hw_addr = (const u8 *)((const __le16 *)file_sec->data +
 				   MAC_ADDRESS_OVERRIDE_FAMILY_8000);
-			iwl_xvt_set_nvm_mac_addr(xvt->nvm_mac_addr, hw_addr);
+
+			/*
+			 * Store the MAC address from MAO section.
+			 * No byte swapping is required in MAO section.
+			 */
+			memcpy(xvt->nvm_hw_addr, hw_addr, ETH_ALEN);
 		}
 
 		ret = iwl_nvm_write_section(xvt, section_id, file_sec->data,
