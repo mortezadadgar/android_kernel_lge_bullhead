@@ -1578,8 +1578,9 @@ static int iwl_mvm_set_tx_power_old(struct iwl_mvm *mvm,
 				    &reduce_txpwr_cmd);
 }
 
-static int iwl_mvm_set_tx_power(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
-				s16 tx_power)
+static int __maybe_unused
+iwl_mvm_set_tx_power(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
+		     s16 tx_power)
 {
 	struct iwl_dev_tx_power_cmd cmd = {
 		.set_mode = 0,
