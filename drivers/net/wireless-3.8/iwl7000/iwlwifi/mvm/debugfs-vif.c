@@ -1408,7 +1408,7 @@ void iwl_mvm_vif_dbgfs_register(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 					 S_IRUSR | S_IWUSR);
 
 	if (fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT) &&
-	    !vif->p2p) {
+	    !vif->p2p && (vif->type != NL80211_IFTYPE_P2P_DEVICE)) {
 		if (IWL_MVM_TOF_IS_RESPONDER && vif->type == NL80211_IFTYPE_AP)
 			MVM_DEBUGFS_ADD_FILE_VIF(tof_responder_params,
 						 mvmvif->dbgfs_dir,
