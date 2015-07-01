@@ -102,8 +102,9 @@ struct iwl_dbg_cfg current_dbg_config = {
 static const char dbg_cfg_magic[] = "[IWL DEBUG CONFIG DATA]";
 
 #define DBG_CFG_LOADER(_type)							\
-static void dbg_cfg_load_ ## _type(const char *name, const char *val,		\
-				   _type *out, _type min, _type max)		\
+static void __maybe_unused							\
+dbg_cfg_load_ ## _type(const char *name, const char *val,			\
+		       _type *out, _type min, _type max)			\
 {										\
 	_type r;								\
 										\
@@ -129,7 +130,7 @@ DBG_CFG_LOADER(u32)
 DBG_CFG_LOADER(int)
 DBG_CFG_LOADER(uint)
 
-static void
+static void __maybe_unused
 dbg_cfg_load_bool(const char *name, const char *val, bool *out, int min, int max)
 {
 	u8 v;
