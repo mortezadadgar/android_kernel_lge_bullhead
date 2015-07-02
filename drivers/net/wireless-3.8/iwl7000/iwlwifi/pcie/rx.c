@@ -281,12 +281,13 @@ static void iwl_pcie_rxq_restock(struct iwl_trans *trans)
  * iwl_pcie_rx_alloc_page - allocates and returns a page.
  *
  */
-static struct page *iwl_pcie_rx_alloc_page(struct iwl_trans *trans)
+static struct page *iwl_pcie_rx_alloc_page(struct iwl_trans *trans,
+					   gfp_t priority)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_rxq *rxq = &trans_pcie->rxq;
 	struct page *page;
-	gfp_t gfp_mask = GFP_KERNEL;
+	gfp_t gfp_mask = priority;
 
 	if (rxq->free_count > RX_LOW_WATERMARK)
 		gfp_mask |= __GFP_NOWARN;
@@ -324,7 +325,7 @@ static struct page *iwl_pcie_rx_alloc_page(struct iwl_trans *trans)
  * iwl_pcie_rxq_restock. The latter function will update the HW to use the newly
  * allocated buffers.
  */
-static void iwl_pcie_rxq_alloc_rbs(struct iwl_trans *trans)
+static void iwl_pcie_rxq_alloc_rbs(struct iwl_trans *trans, gfp_t priority)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_rxq *rxq = &trans_pcie->rxq;
@@ -340,7 +341,7 @@ static void iwl_pcie_rxq_alloc_rbs(struct iwl_trans *trans)
 		spin_unlock(&rxq->lock);
 
 		/* Alloc a new receive buffer */
-		page = iwl_pcie_rx_alloc_page(trans);
+		page = iwl_pcie_rx_alloc_page(trans, priority);
 		if (!page)
 			return;
 
@@ -414,7 +415,7 @@ static void iwl_pcie_rxq_free_rbs(struct iwl_trans *trans)
  */
 static void iwl_pcie_rx_replenish(struct iwl_trans *trans)
 {
-	iwl_pcie_rxq_alloc_rbs(trans);
+	iwl_pcie_rxq_alloc_rbs(trans, GFP_KERNEL);
 
 	iwl_pcie_rxq_restock(trans);
 }
@@ -460,7 +461,7 @@ static void iwl_pcie_rx_allocator(struct iwl_trans *trans)
 			BUG_ON(rxb->page);
 
 			/* Alloc a new receive buffer */
-			page = iwl_pcie_rx_alloc_page(trans);
+			page = iwl_pcie_rx_alloc_page(trans, GFP_KERNEL);
 			if (!page)
 				continue;
 			rxb->page = page;
@@ -794,17 +795,20 @@ void iwl_pcie_rx_free(struct iwl_trans *trans)
  */
 static void iwl_pcie_rx_reuse_rbd(struct iwl_trans *trans,
 				  struct iwl_rx_mem_buffer *rxb,
-				  struct iwl_rxq *rxq)
+				  struct iwl_rxq *rxq, bool emergency)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_rb_allocator *rba = &trans_pcie->rba;
 
-	/* Count the used RBDs */
-	rxq->used_count++;
-
 	/* Move the RBD to the used list, will be moved to allocator in batches
 	 * before claiming or posting a request*/
 	list_add_tail(&rxb->list, &rxq->rx_used);
+
+	if (unlikely(emergency))
+		return;
+
+	/* Count the allocator owned RBDs */
+	rxq->used_count++;
 
 	/* If we have RX_POST_REQ_ALLOC new released rx buffers -
 	 * issue a request for allocator. Modulo RX_CLAIM_REQ_ALLOC is
@@ -824,7 +828,8 @@ static void iwl_pcie_rx_reuse_rbd(struct iwl_trans *trans,
 }
 
 static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
-				struct iwl_rx_mem_buffer *rxb)
+				struct iwl_rx_mem_buffer *rxb,
+				bool emergency)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_rxq *rxq = &trans_pcie->rxq;
@@ -939,13 +944,13 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 			 */
 			__free_pages(rxb->page, trans_pcie->rx_page_order);
 			rxb->page = NULL;
-			iwl_pcie_rx_reuse_rbd(trans, rxb, rxq);
+			iwl_pcie_rx_reuse_rbd(trans, rxb, rxq, emergency);
 		} else {
 			list_add_tail(&rxb->list, &rxq->rx_free);
 			rxq->free_count++;
 		}
 	} else
-		iwl_pcie_rx_reuse_rbd(trans, rxb, rxq);
+		iwl_pcie_rx_reuse_rbd(trans, rxb, rxq, emergency);
 }
 
 /*
@@ -955,7 +960,8 @@ static void iwl_pcie_rx_handle(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_rxq *rxq = &trans_pcie->rxq;
-	u32 r, i, j;
+	u32 r, i, j, count = 0;
+	bool emergency = false;
 
 restart:
 	spin_lock(&rxq->lock);
@@ -971,12 +977,15 @@ restart:
 	while (i != r) {
 		struct iwl_rx_mem_buffer *rxb;
 
+		if (unlikely(rxq->used_count == RX_QUEUE_SIZE / 2))
+			emergency = true;
+
 		rxb = rxq->queue[i];
 		rxq->queue[i] = NULL;
 
 		IWL_DEBUG_RX(trans, "rxbuf: HW = %d, SW = %d (%p)\n",
 			     r, i, rxb);
-		iwl_pcie_rx_handle_rb(trans, rxb);
+		iwl_pcie_rx_handle_rb(trans, rxb, emergency);
 
 		i = (i + 1) & RX_QUEUE_MASK;
 
@@ -986,7 +995,8 @@ restart:
 			struct iwl_rb_allocator *rba = &trans_pcie->rba;
 			struct iwl_rx_mem_buffer *out[RX_CLAIM_REQ_ALLOC];
 
-			if (rxq->used_count % RX_CLAIM_REQ_ALLOC == 0) {
+			if (rxq->used_count % RX_CLAIM_REQ_ALLOC == 0 &&
+			    !emergency) {
 				/* Add the remaining 6 empty RBDs
 				* for allocator use
 				 */
@@ -1011,9 +1021,22 @@ restart:
 				}
 			}
 		}
-		/* handle restock for two cases:
+		if (emergency) {
+			count++;
+			if (count == 8) {
+				count = 0;
+				if (rxq->used_count < RX_QUEUE_SIZE / 3)
+					emergency = false;
+				spin_unlock(&rxq->lock);
+				iwl_pcie_rxq_alloc_rbs(trans, GFP_ATOMIC);
+				spin_lock(&rxq->lock);
+			}
+		}
+		/* handle restock for three cases, can be all of them at once:
 		* - we just pulled buffers from the allocator
-		* - we have 8+ unstolen pages accumulated */
+		* - we have 8+ unstolen pages accumulated
+		* - we are in emergency and allocated buffers
+		 */
 		if (rxq->free_count >=  RX_CLAIM_REQ_ALLOC) {
 			rxq->read = i;
 			spin_unlock(&rxq->lock);
@@ -1025,6 +1048,21 @@ restart:
 	/* Backtrack one entry */
 	rxq->read = i;
 	spin_unlock(&rxq->lock);
+
+	/*
+	 * handle a case where in emergency there are some unallocated RBDs.
+	 * those RBDs are in the used list, but are not tracked by the queue's
+	 * used_count which counts allocator owned RBDs.
+	 * unallocated emergency RBDs must be allocated on exit, otherwise
+	 * when called again the function may not be in emergency mode and
+	 * they will be handed to the allocator with no tracking in the RBD
+	 * allocator counters, which will lead to them never being claimed back
+	 * by the queue.
+	 * by allocating them here, they are now in the queue free list, and
+	 * will be restocked by the next call of iwl_pcie_rxq_restock.
+	 */
+	if (unlikely(emergency && count))
+		iwl_pcie_rxq_alloc_rbs(trans, GFP_ATOMIC);
 
 	if (trans_pcie->napi.poll)
 		napi_gro_flush(&trans_pcie->napi, false);
