@@ -516,6 +516,8 @@ static int tegra_dpaux_probe(struct platform_device *pdev)
 		return err;
 	}
 
+	disable_irq(dpaux->irq);
+
 	dpaux->aux.transfer = tegra_dpaux_transfer;
 	dpaux->aux.dev = &pdev->dev;
 
@@ -604,8 +606,10 @@ int tegra_dpaux_attach(struct tegra_dpaux *dpaux, struct tegra_output *output)
 		enum drm_connector_status status;
 
 		status = tegra_dpaux_detect(dpaux);
-		if (status == connector_status_connected)
+		if (status == connector_status_connected) {
+			enable_irq(dpaux->irq);
 			return 0;
+		}
 
 		usleep_range(1000, 2000);
 	}
@@ -616,6 +620,8 @@ int tegra_dpaux_attach(struct tegra_dpaux *dpaux, struct tegra_output *output)
 int tegra_dpaux_detach(struct tegra_dpaux *dpaux)
 {
 	unsigned long timeout;
+
+	disable_irq(dpaux->irq);
 
 	tegra_output_panel_unprepare(dpaux->output);
 	timeout = jiffies + msecs_to_jiffies(250);
