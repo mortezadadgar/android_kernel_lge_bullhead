@@ -184,16 +184,28 @@
 # define DP_TRAIN_VOLTAGE_SWING_MASK	    0x3
 # define DP_TRAIN_VOLTAGE_SWING_SHIFT	    0
 # define DP_TRAIN_MAX_SWING_REACHED	    (1 << 2)
+
 # define DP_TRAIN_VOLTAGE_SWING_400	    (0 << 0)
 # define DP_TRAIN_VOLTAGE_SWING_600	    (1 << 0)
 # define DP_TRAIN_VOLTAGE_SWING_800	    (2 << 0)
 # define DP_TRAIN_VOLTAGE_SWING_1200	    (3 << 0)
+
+# define DP_TRAIN_VOLTAGE_SWING_LEVEL_0 (0 << 0)
+# define DP_TRAIN_VOLTAGE_SWING_LEVEL_1 (1 << 0)
+# define DP_TRAIN_VOLTAGE_SWING_LEVEL_2 (2 << 0)
+# define DP_TRAIN_VOLTAGE_SWING_LEVEL_3 (3 << 0)
+# define DP_TRAIN_VOLTAGE_SWING_LEVEL(x) ((x) << 0)
 
 # define DP_TRAIN_PRE_EMPHASIS_MASK	    (3 << 3)
 # define DP_TRAIN_PRE_EMPHASIS_0	    (0 << 3)
 # define DP_TRAIN_PRE_EMPHASIS_3_5	    (1 << 3)
 # define DP_TRAIN_PRE_EMPHASIS_6	    (2 << 3)
 # define DP_TRAIN_PRE_EMPHASIS_9_5	    (3 << 3)
+# define DP_TRAIN_PRE_EMPH_LEVEL_0		(0 << 3)
+# define DP_TRAIN_PRE_EMPH_LEVEL_1		(1 << 3)
+# define DP_TRAIN_PRE_EMPH_LEVEL_2		(2 << 3)
+# define DP_TRAIN_PRE_EMPH_LEVEL_3		(3 << 3)
+# define DP_TRAIN_PRE_EMPHASIS_LEVEL(x)		((x) << 3)
 
 # define DP_TRAIN_PRE_EMPHASIS_SHIFT	    3
 # define DP_TRAIN_MAX_PRE_EMPHASIS_REACHED  (1 << 5)
@@ -209,6 +221,18 @@
 /* bitmask as for DP_I2C_SPEED_CAP */
 
 #define DP_EDP_CONFIGURATION_SET            0x10a   /* XXX 1.2? */
+
+# define DP_ALTERNATE_SCRAMBLER_RESET_ENABLE (1 << 0)
+# define DP_FRAMING_CHANGE_ENABLE	    (1 << 1)
+# define DP_PANEL_SELF_TEST_ENABLE	    (1 << 7)
+
+#define DP_TRAINING_LANE0_1_SET2	    0x10f
+#define DP_TRAINING_LANE2_3_SET2	    0x110
+# define DP_LANE02_POST_CURSOR2_SET_MASK    (3 << 0)
+# define DP_LANE02_MAX_POST_CURSOR2_REACHED (1 << 2)
+# define DP_LANE13_POST_CURSOR2_SET_MASK    (3 << 4)
+# define DP_LANE13_MAX_POST_CURSOR2_REACHED (1 << 6)
+# define DP_LANE_POST_CURSOR(i, x)	    (((x) & 0x3) << (((i) & 1) << 2))
 
 #define DP_MSTM_CTRL			    0x111   /* 1.2 */
 # define DP_MST_EN			    (1 << 0)
@@ -263,6 +287,16 @@
 # define DP_ADJUST_VOLTAGE_SWING_LANE1_SHIFT 4
 # define DP_ADJUST_PRE_EMPHASIS_LANE1_MASK   0xc0
 # define DP_ADJUST_PRE_EMPHASIS_LANE1_SHIFT  6
+
+#define DP_ADJUST_REQUEST_POST_CURSOR2	    0x20c
+# define DP_ADJUST_POST_CURSOR2_LANE0_MASK  0x03
+# define DP_ADJUST_POST_CURSOR2_LANE0_SHIFT 0
+# define DP_ADJUST_POST_CURSOR2_LANE1_MASK  0x0c
+# define DP_ADJUST_POST_CURSOR2_LANE1_SHIFT 2
+# define DP_ADJUST_POST_CURSOR2_LANE2_MASK  0x30
+# define DP_ADJUST_POST_CURSOR2_LANE2_SHIFT 4
+# define DP_ADJUST_POST_CURSOR2_LANE3_MASK  0xc0
+# define DP_ADJUST_POST_CURSOR2_LANE3_SHIFT 6
 
 #define DP_TEST_REQUEST			    0x218
 # define DP_TEST_LINK_TRAINING		    (1 << 0)
@@ -489,16 +523,65 @@ static inline ssize_t drm_dp_dpcd_writeb(struct drm_dp_aux *aux,
 int drm_dp_dpcd_read_link_status(struct drm_dp_aux *aux,
 				 u8 status[DP_LINK_STATUS_SIZE]);
 
+/**
+ * struct drm_dp_link_train_set - link training settings
+ * @voltage_swing: per-lane voltage swing
+ * @pre_emphasis: per-lane pre-emphasis
+ * @post_cursor: per-lane post-cursor
+ */
+struct drm_dp_link_train_set {
+	unsigned int voltage_swing[4];
+	unsigned int pre_emphasis[4];
+	unsigned int post_cursor[4];
+};
+
+/**
+ * struct drm_dp_link_train - link training state information
+ * @request: currently requested settings
+ * @adjust: adjustments requested by sink
+ * @pattern: currently requested training pattern
+ * @clock_recovered: flag to track if clock recovery has completed
+ * @channel_equalized: flag to track if channel equalization has completed
+ */
+struct drm_dp_link_train {
+	struct drm_dp_link_train_set request;
+	struct drm_dp_link_train_set adjust;
+
+	unsigned int pattern;
+
+	bool clock_recovered;
+	bool channel_equalized;
+};
+
+void drm_dp_link_train_init(struct drm_dp_link_train *train);
+
+struct drm_dp_link;
+
+struct drm_dp_link_ops {
+	int (*apply_training)(struct drm_dp_link *link);
+	int (*configure)(struct drm_dp_link *link);
+};
+
 /*
  * DisplayPort link
  */
 #define DP_LINK_CAP_ENHANCED_FRAMING (1 << 0)
+#define DP_LINK_CAP_FAST_TRAINING (1 << 1)
+#define DP_LINK_CAP_ANSI_8B10B (1 << 2)
+#define DP_LINK_CAP_TPS3 (1 << 3)
+#define DP_LINK_CAP_ALTERNATE_SCRAMBLER_RESET (1 << 4)
 
 struct drm_dp_link {
 	unsigned char revision;
 	unsigned int rate;
 	unsigned int num_lanes;
 	unsigned long capabilities;
+	unsigned long aux_rd_interval;
+
+	const struct drm_dp_link_ops *ops;
+	struct drm_dp_aux *aux;
+
+	struct drm_dp_link_train train;
 };
 
 int drm_dp_link_probe(struct drm_dp_aux *aux, struct drm_dp_link *link);
@@ -507,5 +590,6 @@ int drm_dp_link_configure(struct drm_dp_aux *aux, struct drm_dp_link *link);
 
 int drm_dp_aux_register_i2c_bus(struct drm_dp_aux *aux);
 void drm_dp_aux_unregister_i2c_bus(struct drm_dp_aux *aux);
+int drm_dp_link_train(struct drm_dp_link *link);
 
 #endif /* _DRM_DP_HELPER_H_ */
