@@ -3,6 +3,7 @@
 #include <linux/kernel.h>
 #include <linux/percpu.h>
 #include <linux/printk.h>
+#include <linux/rcupdate.h>
 #include <linux/slab.h>
 
 #include "sched.h"
@@ -341,6 +342,79 @@ schedtune_boostgroup_update(int idx, int boost)
 	return 0;
 }
 
+static inline void
+schedtune_tasks_update(struct task_struct *p, int cpu, int idx, int task_count)
+{
+	struct boost_groups *bg;
+	int tasks;
+
+	bg = &per_cpu(cpu_boost_groups, cpu);
+
+	/* Update boosted tasks count while avoiding to make it negative */
+	if (task_count < 0 && bg->group[idx].tasks <= -task_count)
+		bg->group[idx].tasks = 0;
+	else
+		bg->group[idx].tasks += task_count;
+
+	/* Boost group activation or deactivation on that RQ */
+	tasks = bg->group[idx].tasks;
+	if (tasks == 1 || tasks == 0)
+		schedtune_cpu_update(cpu);
+}
+
+/*
+ * NOTE: This function must be called while holding the lock on the CPU RQ
+ */
+void schedtune_enqueue_task(struct task_struct *p, int cpu)
+{
+	struct schedtune *st;
+	int idx;
+
+	/*
+	 * When a task is marked PF_EXITING by do_exit() it's going to be
+	 * dequeued and enqueued multiple times in the exit path.
+	 * Thus we avoid any further update, since we do not want to change
+	 * CPU boosting while the task is exiting.
+	 */
+	if (p->flags & PF_EXITING)
+		return;
+
+	/* Get task boost group */
+	rcu_read_lock();
+	st = task_schedtune(p);
+	idx = st->idx;
+	rcu_read_unlock();
+
+	schedtune_tasks_update(p, cpu, idx, 1);
+}
+
+/*
+ * NOTE: This function must be called while holding the lock on the CPU RQ
+ */
+void schedtune_dequeue_task(struct task_struct *p, int cpu)
+{
+	struct schedtune *st;
+	int idx;
+
+	/*
+	 * When a task is marked PF_EXITING by do_exit() it's going to be
+	 * dequeued and enqueued multiple times in the exit path.
+	 * Thus we avoid any further update, since we do not want to change
+	 * CPU boosting while the task is exiting.
+	 * The last dequeue will be done by cgroup exit() callback.
+	 */
+	if (p->flags & PF_EXITING)
+		return;
+
+	/* Get task boost group */
+	rcu_read_lock();
+	st = task_schedtune(p);
+	idx = st->idx;
+	rcu_read_unlock();
+
+	schedtune_tasks_update(p, cpu, idx, -1);
+}
+
 static u64
 boost_read(struct cgroup_subsys_state *css, struct cftype *cft)
 {
@@ -489,9 +563,21 @@ schedtune_css_free(struct cgroup_subsys_state *css)
 	kfree(st);
 }
 
+static void
+schedtune_exit(struct cgroup_subsys_state *css,
+		struct cgroup_subsys_state *old_css,
+		struct task_struct *tsk)
+{
+	struct schedtune *old_st = css_st(old_css);
+	int cpu = task_cpu(tsk);
+
+	schedtune_tasks_update(tsk, cpu, old_st->idx, -1);
+}
+
 struct cgroup_subsys schedtune_cgrp_subsys = {
 	.css_alloc	= schedtune_css_alloc,
 	.css_free	= schedtune_css_free,
+	.exit		= schedtune_exit,
 	.legacy_cftypes	= files,
 	.early_init	= 1,
 };
