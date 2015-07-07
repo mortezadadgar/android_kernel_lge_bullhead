@@ -218,6 +218,13 @@ void mdss_mdp_release_splash_pipe(struct msm_fb_data_type *mfd)
 	if (sinfo->pipe_ndx[1] != INVALID_PIPE_INDEX)
 		mdss_mdp_overlay_release(mfd, sinfo->pipe_ndx[1]);
 	sinfo->splash_pipe_allocated = false;
+
+	/*
+	 * Once the splash pipe is released, reset the splash flag which
+	 * is being stored in var.reserved[3].
+	 */
+	mfd->fbi->var.reserved[3] = mfd->panel_info->cont_splash_enabled |
+					mfd->splash_info.splash_pipe_allocated;
 }
 
 /*
@@ -309,6 +316,13 @@ int mdss_mdp_splash_cleanup(struct msm_fb_data_type *mfd,
 	}
 
 	mdss_mdp_ctl_splash_finish(ctl, mdp5_data->handoff);
+
+	/*
+	 * Once the splash cleanup is done, reset the splash flag which
+	 * is being stored in var.reserved[3].
+	 */
+	mfd->fbi->var.reserved[3] = mfd->panel_info->cont_splash_enabled |
+					mfd->splash_info.splash_pipe_allocated;
 
 	/* If DSI-1 interface is enabled by LK & split dsi is not enabled,
 	 * free cont_splash_mem for dsi during the cleanup for DSI-1.
