@@ -1912,6 +1912,9 @@ struct ieee80211_txq {
  *	This flag should be set only if the support can be provided without
  *	involvement of the stack; otherwise leave it to stack to decide.
  *
+ * @IEEE80211_HW_SUPPORTS_AMSDU_IN_AMPDU:
+ *	Hardware supports A-MSDU within A-MPDU.
+ *
  * @NUM_IEEE80211_HW_FLAGS: number of hardware flags, used for sizing arrays
  */
 enum ieee80211_hw_flags {
@@ -1946,6 +1949,7 @@ enum ieee80211_hw_flags {
 	IEEE80211_HW_SINGLE_SCAN_ON_ALL_BANDS,
 	IEEE80211_HW_TDLS_WIDER_BW,
 	IEEE80211_HW_SUPPORTS_FTM_INITIATOR,
+	IEEE80211_HW_SUPPORTS_AMSDU_IN_AMPDU,
 
 	/* keep last, obviously */
 	NUM_IEEE80211_HW_FLAGS
