@@ -4081,7 +4081,6 @@ static int process_backlog(struct napi_struct *napi, int quota)
 {
 	int work = 0;
 	struct softnet_data *sd = container_of(napi, struct softnet_data, backlog);
-	static int state_changed;
 
 	/* Check if we have pending ipi, its better to send them now,
 	 * not waiting net_rx_action() end.
@@ -4104,15 +4103,7 @@ static int process_backlog(struct napi_struct *napi, int quota)
 			local_irq_disable();
 			input_queue_head_incr(sd);
 			if (++work >= quota) {
-				if (state_changed) {
-					local_irq_enable();
-					napi_gro_flush(napi, false);
-					local_irq_disable();
-					state_changed = 0;
-				}
-				local_irq_enable();
-				sd->current_napi = NULL;
-				return work;
+				goto state_changed;
 			}
 		}
 
@@ -4127,17 +4118,18 @@ static int process_backlog(struct napi_struct *napi, int quota)
 			 * and we dont need an smp_mb() memory barrier.
 			 */
 			napi->state = 0;
-			state_changed = 1;
 			rps_unlock(sd);
 
-			break;
+			goto state_changed;
 		}
 
 		skb_queue_splice_tail_init(&sd->input_pkt_queue,
 					   &sd->process_queue);
 		rps_unlock(sd);
 	}
+state_changed:
 	local_irq_enable();
+	napi_gro_flush(napi, false);
 	sd->current_napi = NULL;
 
 	return work;
