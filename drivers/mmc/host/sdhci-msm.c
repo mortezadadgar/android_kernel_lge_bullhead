@@ -1550,8 +1550,16 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 			dev_err(dev, "Invalid clock table\n");
 			goto out;
 		}
+		if (ice_clk_table_len != 2) {
+			dev_err(dev, "Need max and min frequencies in the table\n");
+			goto out;
+		}
 		pdata->sup_ice_clk_table = ice_clk_table;
 		pdata->sup_ice_clk_cnt = ice_clk_table_len;
+		pdata->ice_clk_max = pdata->sup_ice_clk_table[0];
+		pdata->ice_clk_min = pdata->sup_ice_clk_table[1];
+		dev_dbg(dev, "supported ICE clock rates (Hz): max: %u min: %u\n",
+				pdata->ice_clk_max, pdata->ice_clk_min);
 	}
 
 	pdata->vreg_data = devm_kzalloc(dev, sizeof(struct
@@ -3056,6 +3064,32 @@ void sdhci_msm_reset_enter(struct sdhci_host *host, u8 mask)
 		writel_relaxed(1, host->ioaddr + CORE_VENDOR_SPEC_ICE_CTRL);
 }
 
+int sdhci_msm_notify_load(struct sdhci_host *host, enum mmc_load state)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+	int ret = 0;
+	u32 clk_rate = 0;
+
+	if (!IS_ERR(msm_host->ice_clk)) {
+		clk_rate = (state == MMC_LOAD_LOW) ?
+			msm_host->pdata->ice_clk_min :
+			msm_host->pdata->ice_clk_max;
+		if (msm_host->ice_clk_rate == clk_rate)
+			return 0;
+		pr_debug("%s: changing ICE clk rate to %u\n",
+				mmc_hostname(host->mmc), clk_rate);
+		ret = clk_set_rate(msm_host->ice_clk, clk_rate);
+		if (ret) {
+			pr_err("%s: ICE_CLK rate set failed (%d) for %u\n",
+				mmc_hostname(host->mmc), ret, clk_rate);
+			return ret;
+		}
+		msm_host->ice_clk_rate = clk_rate;
+	}
+	return 0;
+}
+
 static struct sdhci_ops sdhci_msm_ops = {
 	.crypto_engine_cfg = sdhci_msm_ice_cfg,
 	.crypto_engine_reset = sdhci_msm_ice_reset,
@@ -3073,6 +3107,7 @@ static struct sdhci_ops sdhci_msm_ops = {
 	.config_auto_tuning_cmd = sdhci_msm_config_auto_tuning_cmd,
 	.enable_controller_clock = sdhci_msm_enable_controller_clock,
 	.reset_workaround = sdhci_msm_reset_workaround,
+	.notify_load = sdhci_msm_notify_load,
 };
 
 static int sdhci_msm_cfg_mpm_pin_wakeup(struct sdhci_host *host, unsigned mode)
@@ -3289,11 +3324,11 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		if (!IS_ERR(msm_host->ice_clk)) {
 			/* ICE core has only one clock frequency for now */
 			ret = clk_set_rate(msm_host->ice_clk,
-					msm_host->pdata->sup_ice_clk_table[0]);
+					msm_host->pdata->ice_clk_max);
 			if (ret) {
 				dev_err(&pdev->dev, "ICE_CLK rate set failed (%d) for %u\n",
 					ret,
-					msm_host->pdata->sup_ice_clk_table[0]);
+					msm_host->pdata->ice_clk_max);
 				goto pclk_disable;
 			}
 			ret = clk_prepare_enable(msm_host->ice_clk);
@@ -3301,7 +3336,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 				goto pclk_disable;
 
 			msm_host->ice_clk_rate =
-				msm_host->pdata->sup_clk_table[0];
+				msm_host->pdata->ice_clk_max;
 		}
 	}
 

@@ -325,6 +325,7 @@ struct sdhci_ops {
 					  u32 type);
 	int	(*enable_controller_clock)(struct sdhci_host *host);
 	void	(*reset_workaround)(struct sdhci_host *host, u32 enable);
+	int	(*notify_load)(struct sdhci_host *host, enum mmc_load state);
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS
