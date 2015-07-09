@@ -318,8 +318,8 @@ void tcp_slow_start(struct tcp_sock *tp)
 		snd_cwnd = 1U;
 	}
 
-	if (sysctl_tcp_max_ssthresh > 0 && tp->snd_cwnd > sysctl_tcp_max_ssthresh)
-		cnt = sysctl_tcp_max_ssthresh >> 1;	/* limited slow start */
+	if (sysctl_tcp_max_ssthresh > 0)
+		cnt = min(snd_cwnd, (u32)sysctl_tcp_max_ssthresh); /* limited slow start */
 	else
 		cnt = snd_cwnd;				/* exponential increase */
 
