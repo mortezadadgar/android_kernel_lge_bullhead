@@ -150,7 +150,7 @@ static void tcp_veno_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
 
 		veno->diff = (tp->snd_cwnd << V_PARAM_SHIFT) - target_cwnd;
 
-		if (tp->snd_cwnd <= tp->snd_ssthresh) {
+		if (tcp_in_slow_start(tp)) {
 			/* Slow start.  */
 			tcp_slow_start(tp);
 		} else {
