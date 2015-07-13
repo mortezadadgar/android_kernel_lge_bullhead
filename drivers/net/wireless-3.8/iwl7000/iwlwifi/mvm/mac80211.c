@@ -70,6 +70,7 @@
 #include <linux/ip.h>
 #include <linux/if_arp.h>
 #include <linux/devcoredump.h>
+#include <linux/time.h>
 #include <net/mac80211.h>
 #include <net/ieee80211_radiotap.h>
 #include <net/tcp.h>
@@ -87,6 +88,7 @@
 #include "iwl-fw-error-dump.h"
 #include "iwl-prph.h"
 #include "iwl-csr.h"
+#include "fw-api.h"
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 #include "iwl-dnt-cfg.h"
 #include "iwl-dnt-dispatch.h"

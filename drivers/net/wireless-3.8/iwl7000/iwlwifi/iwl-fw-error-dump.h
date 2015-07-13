@@ -255,6 +255,8 @@ iwl_fw_error_next_data(struct iwl_fw_error_dump_data *data)
  * @FW_DBG_TRIGGER_TIME_EVENT: trigger log collection upon time events related
  *	events.
  * @FW_DBG_TRIGGER_BA: trigger log collection upon BlockAck related events.
+ * @FW_DBG_TX_LATENCY: trigger log collection when the tx latency goes above a
+ *	threshold.
  */
 enum iwl_fw_dbg_trigger {
 	FW_DBG_TRIGGER_INVALID = 0,
@@ -269,6 +271,7 @@ enum iwl_fw_dbg_trigger {
 	FW_DBG_TRIGGER_TXQ_TIMERS,
 	FW_DBG_TRIGGER_TIME_EVENT,
 	FW_DBG_TRIGGER_BA,
+	FW_DBG_TRIGGER_TX_LATENCY,
 
 	/* must be last */
 	FW_DBG_TRIGGER_MAX,
