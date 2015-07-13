@@ -725,7 +725,7 @@ static void iwl_xvt_stop_op_mode(struct iwl_xvt *xvt)
 static int iwl_xvt_continue_init(struct iwl_xvt *xvt)
 {
 	struct iwl_notification_wait calib_wait;
-	static const u8 init_complete[] = {
+	static const u16 init_complete[] = {
 		INIT_COMPLETE_NOTIF,
 		CALIB_RES_NOTIF_PHY_DB
 	};
