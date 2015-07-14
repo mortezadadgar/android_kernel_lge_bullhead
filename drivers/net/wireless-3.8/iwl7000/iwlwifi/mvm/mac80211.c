@@ -441,8 +441,10 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 	ieee80211_hw_set(hw, SUPPORT_FAST_XMIT);
 	ieee80211_hw_set(hw, SUPPORTS_CLONED_SKBS);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
 	if (mvm->trans->max_skb_frags)
 		hw->netdev_features = NETIF_F_HIGHDMA | NETIF_F_SG;
+#endif
 	/* allow these to be toggled by user */
 	hw->netdev_hw_features = hw->netdev_features;
 
