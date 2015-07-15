@@ -1078,14 +1078,6 @@ struct ieee80211_tx_consec_loss_ranges {
 };
 
 /*
- * enum ieee80211_tx_latency_iface - ifaces that can have a latency threshold
- */
-enum ieee80211_tx_latency_iface {
-	IEEE80211_TX_LATENCY_BSS,
-	IEEE80211_TX_LATENCY_P2P
-};
-
-/*
  * enum ieee80211_tx_lat_msr_point - points where to measure the latency
  *
  * There are 4 points where we are capturing the timestamp:

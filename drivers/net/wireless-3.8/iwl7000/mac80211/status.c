@@ -771,6 +771,82 @@ static void ieee80211_collect_tx_timing_stats(struct ieee80211_local *local,
 	tx_latency_threshold(local, skb, tx_thrshld, sta, tid, msrmnt);
 #endif
 }
+
+static int ieee80211_tx_lat_set_thrshld(u32 **thrshlds, u32 bitmask,
+					u32 thrshld)
+{
+	u32 alloc_size_thrshld = sizeof(u32) * IEEE80211_NUM_TIDS;
+	u32 i;
+
+	if (!*thrshlds) {
+		*thrshlds = kzalloc(alloc_size_thrshld, GFP_ATOMIC);
+		if (!*thrshlds)
+			return -ENOMEM;
+	}
+
+	/* Set thrshld for each tid */
+	for (i = 0; i < IEEE80211_NUM_TIDS; i++)
+		if (bitmask & BIT(i))
+			(*thrshlds)[i] = thrshld;
+
+	return 0;
+}
+
+/*
+ * Configure the Tx latency threshold
+ */
+void ieee80211_tx_lat_thrshld_cfg(struct ieee80211_hw *hw,
+				  u32 thrshld, u16 tid_bitmap,
+				  u16 window, u16 mode, u32 iface)
+{
+	struct ieee80211_local *local = hw_to_local(hw);
+	struct ieee80211_tx_latency_threshold *tx_thrshld;
+	u32 alloc_size_struct;
+
+	/* cannot change config once we have stations */
+	if (local->num_sta)
+		return;
+
+	tx_thrshld = rcu_dereference(local->tx_threshold);
+
+	/* Tx threshold already enabled */
+	if (tx_thrshld)
+		return;
+
+	alloc_size_struct = sizeof(struct ieee80211_tx_latency_threshold);
+
+	tx_thrshld = kzalloc(alloc_size_struct, GFP_ATOMIC);
+
+	if (!tx_thrshld)
+		return;
+
+	/* Not a valid interface */
+	if (!(iface & BIT(IEEE80211_TX_LATENCY_BSS)) &&
+	    !(iface & BIT(IEEE80211_TX_LATENCY_P2P)))
+		return;
+
+	/* Check iface parameters is valid */
+	if (iface & BIT(IEEE80211_TX_LATENCY_BSS)) {
+		if (ieee80211_tx_lat_set_thrshld(&tx_thrshld->thresholds_bss,
+						 tid_bitmap, thrshld))
+			return;
+	}
+	if (iface & BIT(IEEE80211_TX_LATENCY_P2P)) {
+		if (ieee80211_tx_lat_set_thrshld(&tx_thrshld->thresholds_p2p,
+						 tid_bitmap, thrshld))
+			return;
+	}
+
+	tx_thrshld->monitor_collec_wind  = window;
+	tx_thrshld->monitor_record_mode = mode;
+
+	/* Tx latency points of measurment allocation */
+	local->tx_msrmnt_points[0] = IEEE80211_TX_LAT_ENTER;
+	local->tx_msrmnt_points[1] = IEEE80211_TX_LAT_DEL;
+
+	rcu_assign_pointer(local->tx_threshold, tx_thrshld);
+}
+EXPORT_SYMBOL(ieee80211_tx_lat_thrshld_cfg);
 #endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
 
 /*
