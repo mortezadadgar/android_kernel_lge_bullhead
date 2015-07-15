@@ -384,6 +384,8 @@ enum {
 #define SB_CFG_OVERRIDE_ENABLE		0x8000
 #define SB_CFG_BASE_OVERRIDE		0xA20000
 #define SB_MODIFY_CFG_FLAG		0xA03088
+#define SB_CPU_1_STATUS			0xA01E30
+#define SB_CPU_2_STATUS			0xA01E34
 
 /* FW chicken bits */
 #define LMPM_CHICK			0xA01FF8
