@@ -342,6 +342,7 @@ enum ieee80211_bss_change {
  * @BA_FRAME_TIMEOUT: Frames were released from the reordering buffer because
  *	they timed out. This won't be called for each frame released, but only
  *	once each time the timeout triggers.
+ * @TX_LATENCY_EVENT: A Tx packet latency crossed the configured threshold
  */
 enum ieee80211_event_type {
 	RSSI_EVENT,
@@ -424,6 +425,7 @@ struct ieee80211_ba_event {
  * @rssi: relevant if &type is %RSSI_EVENT
  * @mlme: relevant if &type is %AUTH_EVENT
  * @ba: relevant if &type is %BAR_RX_EVENT or %BA_FRAME_TIMEOUT
+ * @tx_lat: relevant if &type is %TX_LATENCY_EVENT
  * @u:union holding the fields above
  */
 struct ieee80211_event {
