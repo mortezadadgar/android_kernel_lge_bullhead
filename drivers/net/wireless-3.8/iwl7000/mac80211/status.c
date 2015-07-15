@@ -659,7 +659,6 @@ tx_latency_threshold(struct ieee80211_local *local, struct sk_buff *skb,
 		     struct sta_info *sta, int tid, u32 msrmnt)
 {
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
-	struct ieee80211_tx_thrshld_md md;
 
 	/*
 	 * Make sure that tx_threshold is enabled
@@ -670,15 +669,20 @@ tx_latency_threshold(struct ieee80211_local *local, struct sk_buff *skb,
 		return;
 
 	if (sta->tx_lat_thrshld[tid] < msrmnt) {
-		md.mode = tx_thrshld->monitor_record_mode;
-		md.monitor_collec_wind = tx_thrshld->monitor_collec_wind;
-		md.pkt_start = ktime_to_ms(skb->tstamp);
-		md.pkt_end = ktime_to_ms(skb->tstamp) + msrmnt;
-		md.msrmnt = msrmnt;
-		md.tid = tid;
-		md.seq = (le16_to_cpu(hdr->seq_ctrl) &
-			  IEEE80211_SCTL_SEQ) >> 4;
-		drv_retrieve_monitor_logs(local, &md);
+		struct ieee80211_event event = {
+			.type = TX_LATENCY_EVENT,
+			.u.tx_lat.mode = tx_thrshld->monitor_record_mode,
+			.u.tx_lat.monitor_collec_wind =
+				tx_thrshld->monitor_collec_wind,
+			.u.tx_lat.pkt_start = ktime_to_ms(skb->tstamp),
+			.u.tx_lat.pkt_end = ktime_to_ms(skb->tstamp) + msrmnt,
+			.u.tx_lat.msrmnt = msrmnt,
+			.u.tx_lat.tid = tid,
+			.u.tx_lat.seq = (le16_to_cpu(hdr->seq_ctrl) &
+					 IEEE80211_SCTL_SEQ) >> 4,
+
+		};
+		drv_event_callback(local, sta->sdata, &event);
 	}
 }
 #endif
