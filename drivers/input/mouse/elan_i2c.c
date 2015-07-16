@@ -4,7 +4,7 @@
  * Copyright (c) 2013 ELAN Microelectronics Corp.
  *
  * Author: 林政維 (Duson Lin) <dusonlin@emc.com.tw>
- * Version: 1.5.8
+ * Version: 1.5.9
  *
  * Based on cyapa driver:
  * copyright (c) 2011-2012 Cypress Semiconductor, Inc.
@@ -40,7 +40,7 @@
 #include <linux/of.h>
 
 #define DRIVER_NAME		"elan_i2c"
-#define ELAN_DRIVER_VERSION	"1.5.8"
+#define ELAN_DRIVER_VERSION	"1.5.9"
 #define ELAN_VENDOR_ID		0x04f3
 #define ETP_PRESSURE_OFFSET	25
 #define ETP_MAX_PRESSURE	255
@@ -1674,9 +1674,8 @@ static void elan_report_absolute(struct elan_tp_data *data, u8 *packet)
 						   true);
 			input_report_abs(input, ABS_MT_POSITION_X, pos_x);
 			input_report_abs(input, ABS_MT_POSITION_Y, pos_y);
-			input_report_abs(input, ABS_MT_DISTANCE, hover_event);
 			input_report_abs(input, ABS_MT_PRESSURE,
-					 hover_event ? 0 : scaled_pressure);
+					 scaled_pressure);
 			input_report_abs(input, ABS_TOOL_WIDTH, mk_x);
 			input_report_abs(input, ABS_MT_TOUCH_MAJOR, major);
 			input_report_abs(input, ABS_MT_TOUCH_MINOR, minor);
@@ -1689,6 +1688,7 @@ static void elan_report_absolute(struct elan_tp_data *data, u8 *packet)
 	}
 
 	input_report_key(input, BTN_LEFT, (btn_click == 1));
+	input_report_abs(input, ABS_DISTANCE, hover_event != 0);
 	input_mt_report_pointer_emulation(input, true);
 	input_sync(input);
 }
@@ -1812,6 +1812,7 @@ static int elan_input_dev_create(struct elan_tp_data *data)
 	input_abs_set_res(input, ABS_Y, y_res);
 	input_set_abs_params(input, ABS_PRESSURE, 0, ETP_MAX_PRESSURE, 0, 0);
 	input_set_abs_params(input, ABS_TOOL_WIDTH, 0, ETP_FINGER_WIDTH, 0, 0);
+	input_set_abs_params(input, ABS_DISTANCE, 0, 1, 0, 0);
 
 	/* handle pointer emulation and unused slots in core */
 	ret = input_mt_init_slots(input, ETP_MAX_FINGERS,
@@ -1830,7 +1831,6 @@ static int elan_input_dev_create(struct elan_tp_data *data)
 			     ETP_FINGER_WIDTH * max_width, 0, 0);
 	input_set_abs_params(input, ABS_MT_TOUCH_MINOR, 0,
 			     ETP_FINGER_WIDTH * min_width, 0, 0);
-	input_set_abs_params(input, ABS_MT_DISTANCE, 0, 1, 0, 0);
 
 	input->inhibit = elan_inhibit;
 	input->uninhibit = elan_uninhibit;
