@@ -22,6 +22,7 @@
 #include <linux/gpio.h>
 #include <linux/acpi_gpio.h>
 #include <linux/slab.h>
+#include <sound/control.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
@@ -172,6 +173,7 @@ static int byt_init(struct snd_soc_pcm_runtime *runtime)
 	struct sst_pdata *pdata = dev_get_platdata(platform->dev);
 	struct snd_soc_jack *hp_jack = &drv->hp_jack;
 	struct snd_soc_jack *mic_jack = &drv->mic_jack;
+	struct snd_kcontrol *spk_phantom_jack;
 
 	pr_debug("Enter:%s", __func__);
 	sst_byt_register_notifier(platform->dev, pdata,
@@ -186,8 +188,18 @@ static int byt_init(struct snd_soc_pcm_runtime *runtime)
 		return ret;
 	}
 
-	/* if device is no speaker on the board, skip add speaker widget,
-	 * control and route. Otherwise, do it.
+	/* Create a jack "Speaker Phantom Jack" so user space can tell if there
+	 * is a speaker on the board. The default state is unplugged. */
+	spk_phantom_jack = snd_kctl_jack_new("Speaker Phantom", 0, codec);
+
+	ret = snd_ctl_add(card->snd_card, spk_phantom_jack);
+	if (ret)
+		return ret;
+
+	/* If there is no speaker on the board, skip adding speaker widget,
+	 * control and routes.
+	 * Otherwise, add speaker widget, control and routes, and set Speaker
+	 * Phantom Jack state to plugged.
 	 */
 	if (byt_acpi_get_spk_status()) {
 		ret = snd_soc_add_card_controls(card, byt_spk_control,
@@ -213,6 +225,7 @@ static int byt_init(struct snd_soc_pcm_runtime *runtime)
 		}
 
 		snd_soc_dapm_enable_pin(dapm, "Ext Spk");
+		snd_kctl_jack_report(card->snd_card, spk_phantom_jack, 1);
 	}
 
 	snd_soc_dapm_enable_pin(dapm, "Headset Mic");
