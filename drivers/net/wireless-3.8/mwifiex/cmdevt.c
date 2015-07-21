@@ -201,6 +201,7 @@ static int mwifiex_dnld_cmd_to_fw(struct mwifiex_private *priv,
 		"cmd: DNLD_CMD: %#x, act %#x, len %d, seqno %#x\n", cmd_code,
 		le16_to_cpu(*(__le16 *) ((u8 *) host_cmd + S_DS_GEN)), cmd_size,
 		le16_to_cpu(host_cmd->seq_num));
+	mwifiex_dbg_dump(adapter, CMD_D, "cmd buffer:", host_cmd, cmd_size);
 
 	if (adapter->iface_type == MWIFIEX_USB) {
 		tmp = cpu_to_le32(MWIFIEX_USB_TYPE_CMD);
@@ -286,6 +287,8 @@ static int mwifiex_dnld_sleep_confirm_cmd(struct mwifiex_adapter *adapter)
 		le16_to_cpu(sleep_cfm_buf->action),
 		le16_to_cpu(sleep_cfm_buf->size),
 		le16_to_cpu(sleep_cfm_buf->seq_num));
+	mwifiex_dbg_dump(adapter, CMD_D, "SLEEP_CFM buffer: ", sleep_cfm_buf,
+			 le16_to_cpu(sleep_cfm_buf->size));
 
 	if (adapter->iface_type == MWIFIEX_USB) {
 		sleep_cfm_tmp =
@@ -365,8 +368,9 @@ int mwifiex_alloc_cmd_buffer(struct mwifiex_adapter *adapter)
 	for (i = 0; i < MWIFIEX_NUM_OF_CMD_BUFFER; i++) {
 		cmd_array[i].skb = dev_alloc_skb(MWIFIEX_SIZE_OF_CMD_BUFFER);
 		if (!cmd_array[i].skb) {
-			dev_err(adapter->dev, "ALLOC_CMD_BUF: out of memory\n");
-			return -1;
+			dev_err(adapter->dev,
+				"unable to allocate command buffer\n");
+			return -ENOMEM;
 		}
 	}
 
@@ -459,9 +463,13 @@ int mwifiex_process_event(struct mwifiex_adapter *adapter)
 		memset(rx_info, 0, sizeof(*rx_info));
 		rx_info->bss_num = priv->bss_num;
 		rx_info->bss_type = priv->bss_type;
+
+		mwifiex_dbg_dump(adapter, EVT_D, "Event Buf:",
+				 skb->data, skb->len);
 	}
 
 	dev_dbg(adapter->dev, "EVENT: cause: %#x\n", eventcause);
+
 	if (eventcause == EVENT_PS_SLEEP || eventcause == EVENT_PS_AWAKE) {
 		/* Handle PS_SLEEP/AWAKE events on STA */
 		priv = mwifiex_get_priv(adapter, MWIFIEX_BSS_ROLE_STA);
