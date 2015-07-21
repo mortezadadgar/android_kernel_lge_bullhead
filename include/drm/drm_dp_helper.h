@@ -27,6 +27,8 @@
 #include <linux/i2c.h>
 #include <linux/delay.h>
 
+#include <drm/drm_crtc.h>
+
 /*
  * Unless otherwise noted, all values are from the DP 1.1a spec.  Note that
  * DP and DPCD versions are independent.  Differences from 1.0 are not noted,
@@ -589,6 +591,9 @@ struct drm_dp_link {
 int drm_dp_link_probe(struct drm_dp_aux *aux, struct drm_dp_link *link);
 int drm_dp_link_power_up(struct drm_dp_aux *aux, struct drm_dp_link *link);
 int drm_dp_link_configure(struct drm_dp_aux *aux, struct drm_dp_link *link);
+int drm_dp_link_choose(struct drm_dp_link *link,
+		       const struct drm_display_mode *mode,
+		       const struct drm_display_info *info);
 
 int drm_dp_aux_register_i2c_bus(struct drm_dp_aux *aux);
 void drm_dp_aux_unregister_i2c_bus(struct drm_dp_aux *aux);
