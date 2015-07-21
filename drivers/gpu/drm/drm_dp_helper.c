@@ -482,10 +482,13 @@ static void drm_dp_link_reset(struct drm_dp_link *link)
 		return;
 
 	link->revision = 0;
-	link->rate = 0;
-	link->num_lanes = 0;
+	link->max_lanes = 0;
+	link->max_rate = 0;
 	link->capabilities = 0;
 	link->aux_rd_interval = 0;
+
+	link->num_lanes = 0;
+	link->rate = 0;
 }
 
 /**
@@ -511,11 +514,15 @@ int drm_dp_link_probe(struct drm_dp_aux *aux, struct drm_dp_link *link)
 		return err;
 
 	link->revision = values[0];
-	link->rate = drm_dp_bw_code_to_link_rate(values[1]);
-	link->num_lanes = values[2] & DP_MAX_LANE_COUNT_MASK;
+	link->max_rate = drm_dp_bw_code_to_link_rate(values[1]);
+	link->max_lanes = values[2] & DP_MAX_LANE_COUNT_MASK;
 
 	if (values[2] & DP_ENHANCED_FRAME_CAP)
 		link->capabilities |= DP_LINK_CAP_ENHANCED_FRAMING;
+
+	/* use highest available configuration by default */
+	link->num_lanes = link->max_lanes;
+	link->rate = link->max_rate;
 
 	return 0;
 }

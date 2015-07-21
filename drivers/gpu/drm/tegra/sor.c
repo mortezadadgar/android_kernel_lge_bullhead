@@ -407,8 +407,8 @@ static int tegra_sor_calc_config(struct tegra_sor *sor,
 	if (!link_rate || !link->num_lanes || !pclk || !config->bits_per_pixel)
 		return -EINVAL;
 
-	output = link_rate * 8 * link->num_lanes;
 	input = pclk * config->bits_per_pixel;
+	output = link_rate * 8 * link->num_lanes;
 
 	if (input >= output)
 		return -ERANGE;
