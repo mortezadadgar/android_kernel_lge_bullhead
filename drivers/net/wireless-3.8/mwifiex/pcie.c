@@ -1797,6 +1797,7 @@ static int mwifiex_pcie_event_complete(struct mwifiex_adapter *adapter,
 
 	if (!card->evt_buf_list[rdptr]) {
 		skb_push(skb, INTF_HEADER_LEN);
+		skb_put(skb, MAX_EVENT_SIZE - skb->len);
 		if (mwifiex_map_pci_memory(adapter, skb,
 					   MAX_EVENT_SIZE,
 					   PCI_DMA_FROMDEVICE))
