@@ -43,6 +43,8 @@
 #include "pcie.h"
 
 extern const char driver_version[];
+extern bool mfg_mode;
+extern char mfg_firmware[32];
 
 enum {
 	MWIFIEX_ASYNC_CMD,
@@ -848,6 +850,7 @@ struct mwifiex_adapter {
 	bool scan_chan_gap_enabled;
 	struct sk_buff_head rx_data_q;
 	struct semaphore *card_sem;
+	bool mfg_mode;
 };
 
 void mwifiex_process_tx_queue(struct mwifiex_adapter *adapter);
@@ -1302,6 +1305,12 @@ void *mwifiex_alloc_dma_align_buf(int rx_len, gfp_t flags);
 void mwifiex_queue_main_work(struct mwifiex_adapter *adapter);
 int mwifiex_process_host_command(struct mwifiex_private *priv,
 				 struct iwreq *wrq);
+
+int mwifiex_sysfs_register(struct mwifiex_private *priv);
+void mwifiex_sysfs_unregister(struct mwifiex_private *priv);
+
+int mwifiex_sysfs_register(struct mwifiex_private *priv);
+void mwifiex_sysfs_unregister(struct mwifiex_private *priv);
 
 int mwifiex_sysfs_register(struct mwifiex_private *priv);
 void mwifiex_sysfs_unregister(struct mwifiex_private *priv);
