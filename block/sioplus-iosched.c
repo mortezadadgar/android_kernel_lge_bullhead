@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2012 Miguel Boton <mboton@gmail.com>
  *           (C) 2013, 2014 Boy Petersen <boypetersen@gmail.com>
- *
+ *           (C) 2015 Matthew Alex <matthewalex@outlook.com> (Linux 3.10 compatibility)
  *
  * This algorithm does not do any kind of sorting, as it is aimed for
  * aleatory access devices, but it does some basic merging. We try to
@@ -250,15 +250,26 @@ sio_latter_request(struct request_queue *q, struct request *rq)
 	return list_entry(rq->queuelist.next, struct request, queuelist);
 }
 
-static void *
-sio_init_queue(struct request_queue *q)
+static int sio_init_queue(struct request_queue *q, struct elevator_type *e)
 {
 	struct sio_data *sd;
+	struct elevator_queue *eq;
+
+	eq = elevator_alloc(q, e);
+	if (eq == NULL)
+		return -ENOMEM;
 
 	/* Allocate structure */
 	sd = kmalloc_node(sizeof(*sd), GFP_KERNEL, q->node);
-	if (!sd)
-		return NULL;
+	if (sd == NULL) {
+		kobject_put(&eq->kobj);
+		return -ENOMEM;
+	}
+	eq->elevator_data = sd;
+
+	spin_lock_irq(q->queue_lock);
+	q->elevator = eq;
+	spin_unlock_irq(q->queue_lock);
 
 	/* Initialize fifo lists */
 	INIT_LIST_HEAD(&sd->fifo_list[SYNC][READ]);
@@ -273,9 +284,8 @@ sio_init_queue(struct request_queue *q)
 	sd->fifo_expire[ASYNC][READ] = async_read_expire;
 	sd->fifo_expire[ASYNC][WRITE] = async_write_expire;
 	sd->fifo_batch = fifo_batch;
-	sd->writes_starved = writes_starved;
 
-	return sd;
+	return 0;
 }
 
 static void
