@@ -40,5 +40,8 @@ EXPORT_TRACEPOINT_SYMBOL(iwlwifi_dev_ucode_event);
 EXPORT_TRACEPOINT_SYMBOL(iwlwifi_dev_ucode_error);
 EXPORT_TRACEPOINT_SYMBOL(iwlwifi_dev_ucode_cont_event);
 EXPORT_TRACEPOINT_SYMBOL(iwlwifi_dev_ucode_wrap_event);
+#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
 EXPORT_TRACEPOINT_SYMBOL(iwlwifi_dev_tx_latency_thrshld);
-#endif
+#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
+
+#endif /* __CHECKER__ */
