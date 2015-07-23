@@ -245,7 +245,7 @@ iwl_mvm_scan_type iwl_mvm_get_scan_type(struct iwl_mvm *mvm,
 	    fw_has_api(&mvm->fw->ucode_capa, IWL_UCODE_TLV_API_FRAGMENTED_SCAN))
 		return IWL_SCAN_TYPE_FRAGMENTED;
 
-	if (load == IWL_MVM_TRAFFIC_MEDIUM || low_latency)
+	if (load >= IWL_MVM_TRAFFIC_MEDIUM || low_latency)
 		return IWL_SCAN_TYPE_MILD;
 
 	return IWL_SCAN_TYPE_WILD;
