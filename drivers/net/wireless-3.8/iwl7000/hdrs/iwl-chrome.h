@@ -8,6 +8,9 @@
 #include <linux/idr.h>
 #include <linux/vmalloc.h>
 #include <net/genetlink.h>
+#include <linux/crypto.h>
+#include <linux/moduleparam.h>
+#include <crypto/algapi.h>
 
 /* get the CPTCFG_* preprocessor symbols */
 #include <hdrs/config.h>
@@ -172,6 +175,97 @@ backport_alloc_netdev(int sizeof_priv, const char *name,
 }
 #define alloc_netdev backport_alloc_netdev
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,17,0) */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0)
+#include <crypto/scatterwalk.h>
+#include <crypto/aead.h>
+
+static inline struct scatterlist *scatterwalk_ffwd(struct scatterlist dst[2],
+					    struct scatterlist *src,
+					    unsigned int len)
+{
+	for (;;) {
+		if (!len)
+			return src;
+
+		if (src->length > len)
+			break;
+
+		len -= src->length;
+		src = sg_next(src);
+	}
+
+	sg_init_table(dst, 2);
+	sg_set_page(dst, sg_page(src), src->length - len, src->offset + len);
+	scatterwalk_crypto_chain(dst, sg_next(src), 0, 2);
+
+	return dst;
+}
+
+
+
+struct aead_old_request {
+	struct scatterlist srcbuf[2];
+	struct scatterlist dstbuf[2];
+	struct aead_request subreq;
+};
+
+static inline unsigned int iwl7000_crypto_aead_reqsize(struct crypto_aead *tfm)
+{
+	return crypto_aead_crt(tfm)->reqsize + sizeof(struct aead_old_request);
+}
+#define crypto_aead_reqsize iwl7000_crypto_aead_reqsize
+
+static inline struct aead_request *
+crypto_backport_convert(struct aead_request *req)
+{
+	struct aead_old_request *nreq = aead_request_ctx(req);
+	struct crypto_aead *aead = crypto_aead_reqtfm(req);
+	struct scatterlist *src, *dst;
+
+	src = scatterwalk_ffwd(nreq->srcbuf, req->src, req->assoclen);
+	dst = req->src == req->dst ?
+	      src : scatterwalk_ffwd(nreq->dstbuf, req->dst, req->assoclen);
+
+	aead_request_set_tfm(&nreq->subreq, aead);
+	aead_request_set_callback(&nreq->subreq, aead_request_flags(req),
+				  req->base.complete, req->base.data);
+	aead_request_set_crypt(&nreq->subreq, src, dst, req->cryptlen,
+			       req->iv);
+	aead_request_set_assoc(&nreq->subreq, req->src, req->assoclen);
+
+	return &nreq->subreq;
+}
+
+static inline void aead_request_set_ad(struct aead_request *req,
+				       unsigned int assoclen)
+{
+	req->assoclen = assoclen;
+}
+
+static inline int iwl7000_crypto_aead_encrypt(struct aead_request *req)
+{
+	return crypto_aead_encrypt(crypto_backport_convert(req));
+}
+#define crypto_aead_encrypt iwl7000_crypto_aead_encrypt
+
+static inline int iwl7000_crypto_aead_decrypt(struct aead_request *req)
+{
+	return crypto_aead_decrypt(crypto_backport_convert(req));
+}
+#define crypto_aead_decrypt iwl7000_crypto_aead_decrypt
+
+static inline void kernel_param_lock(struct module *mod)
+{
+	__kernel_param_lock();
+}
+
+static inline void kernel_param_unlock(struct module *mod)
+{
+	__kernel_param_unlock();
+}
+
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0) */
 
 #ifndef list_first_entry_or_null
 #define list_first_entry_or_null(ptr, type, member) \
