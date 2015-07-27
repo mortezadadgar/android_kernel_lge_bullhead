@@ -1235,8 +1235,6 @@ static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans, bool low_power)
 	if (hw_rfkill != was_hw_rfkill)
 		iwl_trans_pcie_rf_kill(trans, hw_rfkill);
 
-	synchronize_irq(trans_pcie->pci_dev->irq);
-
 #ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
 	{
 		struct iwl_trans_platform_ops *ops = trans_pcie->platform_ops;
