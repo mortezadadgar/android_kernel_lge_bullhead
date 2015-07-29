@@ -1159,6 +1159,31 @@ cfg80211_inform_bss_frame_data(struct wiphy *wiphy,
 }
 #endif /* CFG80211_VERSION < KERNEL_VERSION(4,4,0) */
 
+#if CFG80211_VERSION < KERNEL_VERSION(4,5,0)
+struct cfg80211_ftm_target {
+	u64 cookie;
+	struct cfg80211_chan_def chan_def;
+	u8 bssid[ETH_ALEN];
+	bool one_sided;
+	bool asap;
+	bool lci;
+	bool civic;
+	u16 num_of_bursts;
+	u16 burst_period;
+	u8 samples_per_burst;
+	u8 retries;
+};
+
+struct cfg80211_ftm_request {
+	bool report_tsf;
+	u8 timeout;
+	u8 macaddr_template[ETH_ALEN];
+	u8 macaddr_mask[ETH_ALEN];
+	u8 num_of_targets;
+	struct cfg80211_ftm_target *targets;
+};
+#endif /* CFG80211_VERSION < KERNEL_VERSION(4,5,0) */
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0)
 static inline long ktime_get_seconds(void)
 {

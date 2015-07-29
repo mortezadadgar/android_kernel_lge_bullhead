@@ -125,7 +125,6 @@ static const char *hw_flag_names[NUM_IEEE80211_HW_FLAGS + 1] = {
 	FLAG(TDLS_WIDER_BW),
 	FLAG(SUPPORTS_AMSDU_IN_AMPDU),
 	FLAG(BEACON_TX_STATUS),
-	FLAG(SUPPORTS_FTM_INITIATOR),
 	FLAG(NEEDS_UNIQUE_STA_ADDR),
 
 	/* keep last for the build bug below */
