@@ -183,6 +183,7 @@ struct mwifiex_ds_tx_ba_stream_tbl {
 #define DBG_CMD_NUM	5
 
 struct mwifiex_debug_info {
+	unsigned int debug_mask;
 	u32 int_counter;
 	u32 packets_out[MAX_NUM_TID];
 	u32 tx_buf_size;

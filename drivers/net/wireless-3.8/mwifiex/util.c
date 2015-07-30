@@ -88,6 +88,7 @@ int mwifiex_get_debug_info(struct mwifiex_private *priv,
 	struct mwifiex_adapter *adapter = priv->adapter;
 
 	if (info) {
+		info->debug_mask = adapter->debug_mask;
 		memcpy(info->packets_out,
 		       priv->wmm.packets_out,
 		       sizeof(priv->wmm.packets_out));
