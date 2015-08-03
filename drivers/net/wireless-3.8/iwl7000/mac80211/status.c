@@ -826,19 +826,25 @@ void ieee80211_tx_lat_thrshld_cfg(struct ieee80211_hw *hw,
 
 	/* Not a valid interface */
 	if (!(iface & BIT(IEEE80211_TX_LATENCY_BSS)) &&
-	    !(iface & BIT(IEEE80211_TX_LATENCY_P2P)))
+	    !(iface & BIT(IEEE80211_TX_LATENCY_P2P))) {
+		kfree(tx_thrshld);
 		return;
+	}
 
 	/* Check iface parameters is valid */
 	if (iface & BIT(IEEE80211_TX_LATENCY_BSS)) {
 		if (ieee80211_tx_lat_set_thrshld(&tx_thrshld->thresholds_bss,
-						 tid_bitmap, thrshld))
+						 tid_bitmap, thrshld)) {
+			kfree(tx_thrshld);
 			return;
+		}
 	}
 	if (iface & BIT(IEEE80211_TX_LATENCY_P2P)) {
 		if (ieee80211_tx_lat_set_thrshld(&tx_thrshld->thresholds_p2p,
-						 tid_bitmap, thrshld))
+						 tid_bitmap, thrshld)) {
+			kfree(tx_thrshld);
 			return;
+		}
 	}
 
 	tx_thrshld->monitor_collec_wind  = window;
