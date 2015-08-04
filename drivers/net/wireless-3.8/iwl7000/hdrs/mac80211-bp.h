@@ -1332,6 +1332,12 @@ cfg80211_measurement_response(struct wiphy *wiphy,
 			      gfp_t gfp)
 {
 }
+
+static inline bool ieee80211_viftype_nan(unsigned int iftype)
+{
+	return false;
+}
+
 #endif /* CFG80211_VERSION < KERNEL_VERSION(4,5,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0)
