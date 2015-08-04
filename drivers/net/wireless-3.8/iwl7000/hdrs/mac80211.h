@@ -3360,6 +3360,9 @@ enum ieee80211_reconfig_type {
  * @abort_ftm: Abort a Fine Timing Measurement request. The given cookie must
  *	match that of the active FTM request.
  * @start_ftm_responder: Start FTM responder and configure its parameters.
+ *
+ * @start_nan: join an existing nan cluster, or create a new one.
+ * @stop_nan: leave the nan cluster.
  */
 struct ieee80211_ops {
 	void (*tx)(struct ieee80211_hw *hw,
@@ -3605,6 +3608,12 @@ struct ieee80211_ops {
 	int (*start_ftm_responder)(struct ieee80211_hw *hw,
 				   struct ieee80211_vif *vif,
 				   struct cfg80211_ftm_responder_params *params);
+
+	int (*start_nan)(struct ieee80211_hw *hw,
+			 struct ieee80211_vif *vif,
+			 struct cfg80211_nan_conf *conf);
+	int (*stop_nan)(struct ieee80211_hw *hw,
+			struct ieee80211_vif *vif);
 };
 
 /**
