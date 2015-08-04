@@ -7583,8 +7583,8 @@ static int idle_balance(struct rq *this_rq)
 	 */
 	this_rq->idle_stamp = rq_clock(this_rq);
 
-	if (this_rq->avg_idle < sysctl_sched_migration_cost ||
-	    (!energy_aware() && !this_rq->rd->overload) ||
+	if ((!energy_aware() && (this_rq->avg_idle < sysctl_sched_migration_cost
+				 || !this_rq->rd->overload)) ||
 	    (energy_aware() && !this_rq->rd->overutilized)) {
 		rcu_read_lock();
 		sd = rcu_dereference_check_sched_domain(this_rq->sd);
