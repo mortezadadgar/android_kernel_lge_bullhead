@@ -154,7 +154,7 @@ void iwl_mvm_set_tx_cmd(struct iwl_mvm *mvm, struct sk_buff *skb,
 	if (ieee80211_is_mgmt(fc)) {
 		if (ieee80211_is_assoc_req(fc) || ieee80211_is_reassoc_req(fc))
 			tx_cmd->pm_frame_timeout = cpu_to_le16(PM_FRAME_ASSOC);
-		else if (ieee80211_is_action (fc))
+		else if (ieee80211_is_action(fc))
 			tx_cmd->pm_frame_timeout = cpu_to_le16(PM_FRAME_NONE);
 		else
 			tx_cmd->pm_frame_timeout = cpu_to_le16(PM_FRAME_MGMT);
