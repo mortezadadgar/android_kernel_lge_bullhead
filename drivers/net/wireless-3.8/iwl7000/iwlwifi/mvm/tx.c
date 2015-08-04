@@ -282,11 +282,12 @@ static void iwl_mvm_set_tx_cmd_crypto(struct iwl_mvm *mvm,
 
 	switch (keyconf->cipher) {
 	case WLAN_CIPHER_SUITE_CCMP:
+	case WLAN_CIPHER_SUITE_CCMP_256:
 		iwl_mvm_set_tx_cmd_ccmp(info, tx_cmd);
 		pn = atomic64_inc_return(&keyconf->tx_pn);
 		crypto_hdr[0] = pn;
 		crypto_hdr[2] = 0;
-		crypto_hdr[3] = 0x20 | keyconf->keyidx;
+		crypto_hdr[3] = 0x20 | (keyconf->keyidx << 6);
 		crypto_hdr[1] = pn >> 8;
 		crypto_hdr[4] = pn >> 16;
 		crypto_hdr[5] = pn >> 24;
