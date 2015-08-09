@@ -245,9 +245,9 @@ struct iwl_dbg_cfg {
 	IWL_MOD_PARAM(int, amsdu_size_8K)
 	IWL_MOD_PARAM(int, sw_crypto)
 	IWL_MOD_PARAM(uint, disable_11n)
-#ifdef CONFIG_HAS_WAKELOCK
+#ifdef CPTCFG_IWLMVM_WAKELOCK
 	IWL_DBG_CFG(u32, WAKELOCK_TIMEOUT_MS)
-#endif /* CONFIG_HAS_WAKELOCK */
+#endif /* CPTCFG_IWLMVM_WAKELOCK */
 #ifdef CPTCFG_IWLWIFI_DEBUG
 	IWL_MOD_PARAM(u32, debug_level)
 #endif /* CPTCFG_IWLWIFI_DEBUG */

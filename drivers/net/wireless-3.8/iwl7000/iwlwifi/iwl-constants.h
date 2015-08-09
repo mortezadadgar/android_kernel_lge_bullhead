@@ -86,15 +86,15 @@ enum {
 };
 
 #ifndef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-#ifdef CONFIG_HAS_WAKELOCK
+#ifdef CPTCFG_IWLMVM_WAKELOCK
 /* wakelock timeout to use when all the references were released */
 #define IWL_WAKELOCK_TIMEOUT_MS		1500
-#endif /* CONFIG_HAS_WAKELOCK */
+#endif /* CPTCFG_IWLMVM_WAKELOCK */
 #else /* CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES */
 #define IWL_D0I3_DEBUG			(trans->dbg_cfg.d0i3_debug)
-#ifdef CONFIG_HAS_WAKELOCK
+#ifdef CPTCFG_IWLMVM_WAKELOCK
 #define IWL_WAKELOCK_TIMEOUT_MS		(trans->dbg_cfg.WAKELOCK_TIMEOUT_MS)
-#endif /* CONFIG_HAS_WAKELOCK */
+#endif /* CPTCFG_IWLMVM_WAKELOCK */
 #endif /* CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES */
 
 #endif /* __IWL_CONSTANTS_H */

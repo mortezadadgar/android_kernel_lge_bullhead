@@ -1094,7 +1094,7 @@ static int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 		goto out;
 	}
 
-#ifdef CONFIG_HAS_WAKELOCK
+#ifdef CPTCFG_IWLMVM_WAKELOCK
 	/* The ref wakelock is locked on init */
 	if (trans->dbg_cfg.wakelock_mode != IWL_WAKELOCK_MODE_OFF) {
 		struct iwl_trans_pcie *trans_pcie =
@@ -1166,7 +1166,7 @@ static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans, bool low_power)
 		IWL_DEBUG_INFO(trans, "DEVICE_ENABLED bit was set and is now cleared\n");
 		iwl_pcie_tx_stop(trans);
 		iwl_pcie_rx_stop(trans);
-#ifdef CONFIG_HAS_WAKELOCK
+#ifdef CPTCFG_IWLMVM_WAKELOCK
 		/* release wake_lock while device is stopped */
 		if (trans->dbg_cfg.wakelock_mode != IWL_WAKELOCK_MODE_OFF)
 			wake_unlock(&trans_pcie->ref_wake_lock);
@@ -1561,7 +1561,7 @@ void iwl_trans_pcie_free(struct iwl_trans *trans)
 	if (trans_pcie->napi.poll)
 		netif_napi_del(&trans_pcie->napi);
 
-#ifdef CONFIG_HAS_WAKELOCK
+#ifdef CPTCFG_IWLMVM_WAKELOCK
 	wake_lock_destroy(&trans_pcie->ref_wake_lock);
 	wake_lock_destroy(&trans_pcie->timed_wake_lock);
 #endif
@@ -1872,7 +1872,7 @@ void iwl_trans_pcie_ref(struct iwl_trans *trans)
 	spin_lock_irqsave(&trans_pcie->ref_lock, flags);
 	IWL_DEBUG_RPM(trans, "ref_counter: %d\n", trans_pcie->ref_count);
 	trans_pcie->ref_count++;
-#ifdef CONFIG_HAS_WAKELOCK
+#ifdef CPTCFG_IWLMVM_WAKELOCK
 	/* take ref wakelock on first reference */
 	if (trans_pcie->ref_count == 1 &&
 	    trans->dbg_cfg.wakelock_mode == IWL_WAKELOCK_MODE_IDLE)
@@ -1897,7 +1897,7 @@ void iwl_trans_pcie_unref(struct iwl_trans *trans)
 	}
 	trans_pcie->ref_count--;
 
-#ifdef CONFIG_HAS_WAKELOCK
+#ifdef CPTCFG_IWLMVM_WAKELOCK
 	/*
 	 * release ref wake lock and take timed wake lock when
 	 * last reference is released.
@@ -2834,7 +2834,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	trans_pcie->inta_mask = CSR_INI_SET_MASK;
 
 	trans->d0i3_mode = IWL_D0I3_MODE_ON_SUSPEND;
-#ifdef CONFIG_HAS_WAKELOCK
+#ifdef CPTCFG_IWLMVM_WAKELOCK
 	wake_lock_init(&trans_pcie->ref_wake_lock, WAKE_LOCK_SUSPEND,
 		       "iwlwifi_pcie_ref_wakelock");
 	wake_lock_init(&trans_pcie->timed_wake_lock, WAKE_LOCK_SUSPEND,
