@@ -74,6 +74,7 @@ enum iwl_mvm_tof_sub_grp_ids {
 	TOF_RESPONDER_CONFIG_CMD = 0x5,
 	TOF_NW_INITIATED_RES_SEND_CMD = 0x6,
 	TOF_NEIGHBOR_REPORT_REQ_CMD = 0x7,
+	TOF_RESPONDER_DYN_CONFIG_CMD = 0x8,
 	TOF_NEIGHBOR_REPORT_RSP_NOTIF = 0xFC,
 	TOF_NW_INITIATED_REQ_RCVD_NOTIF = 0xFD,
 	TOF_RANGE_RESPONSE_NOTIF = 0xFE,
@@ -154,6 +155,22 @@ struct iwl_tof_responder_config_cmd {
 	__le16 tsf_timer_offset_msecs;
 	__le16 toa_offset;
 	u8 bssid[ETH_ALEN];
+} __packed;
+
+/**
+ * struct iwl_tof_responder_dyn_config_cmd - Dynamic responder settings
+ * @lci_len: The length of the 1st (LCI) part in the @lci_civic buffer
+ * @civic_len: The length of the 2nd (CIVIC) part in the @lci_civic buffer
+ * @lci_civic: The LCI/CIVIC buffer. LCI data (if exists) comes first, then, if
+ *	needed, 0-padding such that the next part is dword-aligned, then CIVIC
+ *	data (if exists) follows, and then 0-padding again to complete a
+ *	4-multiple long buffer.
+ */
+struct iwl_tof_responder_dyn_config_cmd {
+	__le32 sub_grp_cmd_id;
+	__le32 lci_len;
+	__le32 civic_len;
+	u8 lci_civic[];
 } __packed;
 
 /**

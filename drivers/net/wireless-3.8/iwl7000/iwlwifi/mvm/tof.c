@@ -98,6 +98,8 @@ void iwl_mvm_tof_init(struct iwl_mvm *mvm)
 		tof_data->responder_cfg.sub_grp_cmd_id =
 			cpu_to_le32(TOF_RESPONDER_CONFIG_CMD);
 		tof_data->responder_cfg.sta_id = IWL_MVM_STATION_COUNT;
+		tof_data->responder_dyn_cfg.sub_grp_cmd_id =
+			cpu_to_le32(TOF_RESPONDER_DYN_CONFIG_CMD);
 	}
 #endif
 
@@ -318,6 +320,32 @@ int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
 	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CMD,
 						    IWL_ALWAYS_LONG_GROUP, 0),
 				    0, sizeof(*cmd), cmd);
+}
+
+int iwl_mvm_tof_responder_dyn_cfg_cmd(struct iwl_mvm *mvm,
+				      struct ieee80211_vif *vif)
+{
+	struct iwl_tof_responder_dyn_config_cmd *cmd =
+		&mvm->tof_data.responder_dyn_cfg;
+	u32 actual_lci_len =
+		ALIGN(le32_to_cpu(cmd->lci_len), 4);
+	u32 actual_civic_len =
+		ALIGN(le32_to_cpu(cmd->civic_len), 4);
+
+	lockdep_assert_held(&mvm->mutex);
+
+	if (!fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT))
+		return -EINVAL;
+
+	if (vif->p2p || vif->type != NL80211_IFTYPE_AP) {
+		IWL_ERR(mvm, "Cannot start responder, not in AP mode\n");
+		return -EIO;
+	}
+
+	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CMD,
+						    IWL_ALWAYS_LONG_GROUP, 0),
+				    0, sizeof(*cmd) + actual_lci_len +
+				    actual_civic_len, cmd);
 }
 #endif
 
