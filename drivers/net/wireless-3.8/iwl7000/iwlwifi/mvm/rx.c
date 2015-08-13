@@ -273,8 +273,7 @@ static void iwl_mvm_rx_handle_tcm(struct iwl_mvm *mvm,
 	/* count the airtime only once for each ampdu */
 	if (mdata->rx.last_ampdu_ref != mvm->ampdu_ref) {
 		mdata->rx.last_ampdu_ref = mvm->ampdu_ref;
-		mdata->rx.airtime[ac] +=
-			le16_to_cpu(phy_info->frame_time);
+		mdata->rx.airtime += le16_to_cpu(phy_info->frame_time);
 	}
 	mvmvif = iwl_mvm_vif_from_mac80211(mvmsta->vif);
 

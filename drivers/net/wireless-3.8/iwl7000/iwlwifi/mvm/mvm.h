@@ -560,7 +560,7 @@ struct iwl_mvm_tcm_mac {
 	} tx;
 	struct {
 		u32 pkts[IEEE80211_NUM_ACS];
-		u32 airtime[IEEE80211_NUM_ACS];
+		u32 airtime;
 		u32 last_ampdu_ref;
 	} rx;
 	struct {
