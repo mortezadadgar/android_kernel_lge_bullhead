@@ -1133,6 +1133,54 @@ static void iwl_trans_pcie_fw_alive(struct iwl_trans *trans, u32 scd_addr)
 	iwl_pcie_tx_start(trans, scd_addr);
 }
 
+#ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
+static int iwl_trans_pcie_power_device_on(struct iwl_trans_pcie *trans_pcie)
+{
+	struct iwl_trans_platform_ops *ops = trans_pcie->platform_ops;
+	int err;
+
+	if (!trans_pcie->saved_state)
+		return 0;
+
+	/* If the state is saved it's because we disabled the
+	 * regulator, so we must be able to enable it back
+	 */
+	if (WARN_ON_ONCE(!ops || !ops->enable_regulator))
+		return -EIO;
+
+	ops->enable_regulator();
+	pci_set_power_state(trans_pcie->pci_dev, PCI_D0);
+	err = pci_enable_device(trans_pcie->pci_dev);
+	if (err)
+		return err;
+	pci_load_and_free_saved_state(trans_pcie->pci_dev,
+				      &trans_pcie->saved_state);
+	pci_restore_state(trans_pcie->pci_dev);
+
+	return 0;
+}
+
+static int iwl_trans_pcie_power_device_off(struct iwl_trans_pcie *trans_pcie)
+{
+	struct iwl_trans_platform_ops *ops = trans_pcie->platform_ops;
+
+	if (!ops || !ops->disable_regulator)
+		return -EOPNOTSUPP;
+
+	if (WARN_ON(trans_pcie->saved_state))
+		return 0;
+
+	pci_save_state(trans_pcie->pci_dev);
+	trans_pcie->saved_state =
+		pci_store_saved_state(trans_pcie->pci_dev);
+	pci_disable_device(trans_pcie->pci_dev);
+	pci_set_power_state(trans_pcie->pci_dev, PCI_D3hot);
+	ops->disable_regulator();
+
+	return 0;
+}
+#endif /* CPTCFG_IWLWIFI_PLATFORM_DATA */
+
 static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans, bool low_power)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
@@ -1236,17 +1284,9 @@ static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans, bool low_power)
 		iwl_trans_pcie_rf_kill(trans, hw_rfkill);
 
 #ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
-	{
-		struct iwl_trans_platform_ops *ops = trans_pcie->platform_ops;
-
-		if (low_power && ops && ops->disable_regulator) {
-			pci_save_state(trans_pcie->pci_dev);
-			pci_disable_device(trans_pcie->pci_dev);
-			pci_set_power_state(trans_pcie->pci_dev, PCI_D3hot);
-			ops->disable_regulator();
-			/* card is off, no need to re-take ownership */
-			return;
-		}
+	if (low_power && !iwl_trans_pcie_power_device_off(trans_pcie)) {
+		/* card is off, no need to re-take ownership */
+		return;
 	}
 #endif /* CPTCFG_IWLWIFI_PLATFORM_DATA */
 	/* re-take ownership to prevent other users from stealing the deivce */
@@ -1382,17 +1422,12 @@ static int _iwl_trans_pcie_start_hw(struct iwl_trans *trans, bool low_power)
 	lockdep_assert_held(&trans_pcie->mutex);
 
 #ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
-	{
-		struct iwl_trans_platform_ops *ops = trans_pcie->platform_ops;
-		int err;
-
-		if (low_power && ops && ops->enable_regulator) {
-			ops->enable_regulator();
-			pci_set_power_state(trans_pcie->pci_dev, PCI_D0);
-			err = pci_enable_device(trans_pcie->pci_dev);
-			if (err)
-				return err;
-			pci_restore_state(trans_pcie->pci_dev);
+	if (low_power) {
+		err = iwl_trans_pcie_power_device_on(trans_pcie);
+		if (err) {
+			IWL_ERR(trans,
+				"Error while turning the device on: %d\n", err);
+			return err;
 		}
 	}
 #endif /* CPTCFG_IWLWIFI_PLATFORM_DATA */
@@ -1545,6 +1580,12 @@ void iwl_trans_pcie_free(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
+#ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
+	/* Make sure the device is on before calling pci functions again.
+	 * This also ensures that the saved_state structure is freed.
+	 */
+	iwl_trans_pcie_power_device_on(trans_pcie);
+#endif
 	synchronize_irq(trans_pcie->pci_dev->irq);
 
 	iwl_pcie_tx_free(trans);

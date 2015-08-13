@@ -351,6 +351,7 @@ struct iwl_trans_pcie {
 
 #ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
 	struct iwl_trans_platform_ops *platform_ops;
+	struct pci_saved_state *saved_state;
 #endif
 
 	dma_addr_t fw_mon_phys;
