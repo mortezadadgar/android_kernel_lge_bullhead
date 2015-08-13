@@ -44,7 +44,11 @@ static inline bool ieee80211_is_shared_gtk(struct sk_buff *skb)
 		fl4.daddr = ipv4->daddr;
 		fl4.saddr = ipv4->saddr;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)
 		if (!fib_lookup(dev_net(skb->dev), &fl4, &res))
+#else
+		if (!fib_lookup(dev_net(skb->dev), &fl4, &res, 0))
+#endif
 			if (res.type == RTN_MULTICAST ||
 			    res.type == RTN_BROADCAST)
 				return true;
