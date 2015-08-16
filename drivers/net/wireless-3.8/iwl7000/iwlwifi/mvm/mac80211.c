@@ -1937,7 +1937,8 @@ static void iwl_mvm_mc_iface_iterator(void *_data, u8 *mac,
 		IWL_ERR(mvm, "mcast filter cmd error. ret=%d\n", ret);
 }
 
-static void iwl_mvm_recalc_multicast(struct iwl_mvm *mvm)
+static
+void iwl_mvm_recalc_multicast(struct iwl_mvm *mvm)
 {
 	struct iwl_mvm_mc_iter_data iter_data = {
 		.mvm = mvm,
