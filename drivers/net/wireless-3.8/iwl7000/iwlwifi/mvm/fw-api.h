@@ -1107,6 +1107,11 @@ struct iwl_hs20_roc_res {
 #define IWL_OFDM_RSSI_ALLBAND_B_MSK 0xff000000
 #define IWL_OFDM_RSSI_ALLBAND_B_POS 24
 
+enum iwl_mac_context_info {
+	MAC_CONTEXT_INFO_NONE,
+	MAC_CONTEXT_INFO_GSCAN,
+};
+
 /**
  * struct iwl_rx_phy_info - phy info
  * (REPLY_RX_PHY_CMD = 0xc0)
@@ -1125,6 +1130,8 @@ struct iwl_hs20_roc_res {
  * @frame_time: frame's time on the air, based on byte count and frame rate
  *	calculation
  * @mac_active_msk: what MACs were active when the frame was received
+ * @mac_context_info: additional info on the context in which the frame was
+ *	received as defined in &enum iwl_mac_context_info
  *
  * Before each Rx, the device sends this data. It contains PHY information
  * about the reception of the packet.
@@ -1142,7 +1149,8 @@ struct iwl_rx_phy_info {
 	__le32 non_cfg_phy[IWL_RX_INFO_PHY_CNT];
 	__le32 rate_n_flags;
 	__le32 byte_count;
-	__le16 mac_active_msk;
+	u8 mac_active_msk;
+	u8 mac_context_info;
 	__le16 frame_time;
 } __packed;
 

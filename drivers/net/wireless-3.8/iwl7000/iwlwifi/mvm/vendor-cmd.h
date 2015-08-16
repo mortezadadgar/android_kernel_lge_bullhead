@@ -112,6 +112,10 @@
  *	significant change in the RSSI level of beacons received from a certain
  *	AP.
  * @IWL_MVM_VENDOR_CMD_RXFILTER: Set/clear rx filter.
+ * @IWL_MVM_VENDOR_CMD_GSCAN_BEACON_EVENT: event that reports a
+ *	beacon/probe response was received, and contains information from the
+ *	beacon/probe response. This event is sent for buckets with report mode
+ *	set to %IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE_RESULTS.
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -139,6 +143,7 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_GSCAN_HOTLIST_CHANGE_EVENT,
 	IWL_MVM_VENDOR_CMD_GSCAN_SIGNIFICANT_CHANGE_EVENT,
 	IWL_MVM_VENDOR_CMD_RXFILTER,
+	IWL_MVM_VENDOR_CMD_GSCAN_BEACON_EVENT,
 };
 
 /**
@@ -253,6 +258,8 @@ enum iwl_mvm_vendor_results_event_type {
  * @IWL_MVM_VENDOR_GSCAN_RESULT_BSSID: BSSID of the BSS (6 octets).
  * @IWL_MVM_VENDOR_GSCAN_RESULT_CHANNEL: channel frequency in MHz.
  * @IWL_MVM_VENDOR_GSCAN_RESULT_RSSI: signal strength in dB.
+ * @IWL_MVM_VENDOR_GSCAN_RESULT_FRAME: the whole beacon/probe response
+ *	frame data including the header.
  * @NUM_IWL_MVM_VENDOR_GSCAN_RESULT: number of scan result attributes.
  * @MAX_IWL_MVM_VENDOR_GSCAN_RESULT: highest scan result attribute number.
  */
@@ -263,6 +270,7 @@ enum iwl_mvm_vendor_gscan_result {
 	IWL_MVM_VENDOR_GSCAN_RESULT_BSSID,
 	IWL_MVM_VENDOR_GSCAN_RESULT_CHANNEL,
 	IWL_MVM_VENDOR_GSCAN_RESULT_RSSI,
+	IWL_MVM_VENDOR_GSCAN_RESULT_FRAME,
 	NUM_IWL_MVM_VENDOR_GSCAN_RESULT,
 	MAX_IWL_MVM_VENDOR_GSCAN_RESULT =
 		NUM_IWL_MVM_VENDOR_GSCAN_RESULT - 1,
