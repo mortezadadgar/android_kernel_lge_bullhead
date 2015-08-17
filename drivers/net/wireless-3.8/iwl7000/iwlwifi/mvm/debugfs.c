@@ -1434,6 +1434,19 @@ out:
 	return count;
 }
 
+static ssize_t
+iwl_dbgfs_send_echo_cmd_write(struct iwl_mvm *mvm, char *buf,
+			      size_t count, loff_t *ppos)
+{
+	int ret;
+
+	mutex_lock(&mvm->mutex);
+	ret = iwl_mvm_send_cmd_pdu(mvm, ECHO_CMD, 0, 0, NULL);
+	mutex_unlock(&mvm->mutex);
+
+	return ret ?: count;
+}
+
 #ifdef CPTCFG_IWLMVM_TCM
 static ssize_t
 iwl_dbgfs_uapsd_noagg_bssids_read(struct file *file, char __user *user_buf,
@@ -1465,6 +1478,7 @@ MVM_DEBUGFS_READ_WRITE_FILE_OPS(tt_tx_backoff, 64);
 #endif
 MVM_DEBUGFS_WRITE_FILE_OPS(tx_flush, 16);
 MVM_DEBUGFS_WRITE_FILE_OPS(sta_drain, 8);
+MVM_DEBUGFS_WRITE_FILE_OPS(send_echo_cmd, 8);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(sram, 64);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(set_nic_temperature, 64);
 MVM_DEBUGFS_READ_FILE_OPS(nic_temp);
@@ -1534,6 +1548,7 @@ int iwl_mvm_dbgfs_register(struct iwl_mvm *mvm, struct dentry *dbgfs_dir)
 	MVM_DEBUGFS_ADD_FILE(d0i3_refs, mvm->debugfs_dir, S_IRUSR | S_IWUSR);
 	MVM_DEBUGFS_ADD_FILE(fw_dbg_conf, mvm->debugfs_dir, S_IRUSR | S_IWUSR);
 	MVM_DEBUGFS_ADD_FILE(fw_dbg_collect, mvm->debugfs_dir, S_IWUSR);
+	MVM_DEBUGFS_ADD_FILE(send_echo_cmd, mvm->debugfs_dir, S_IWUSR);
 	if (!debugfs_create_bool("enable_scan_iteration_notif",
 				 S_IRUSR | S_IWUSR,
 				 mvm->debugfs_dir,
