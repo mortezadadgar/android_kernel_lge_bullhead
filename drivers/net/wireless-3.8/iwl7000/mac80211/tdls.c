@@ -1304,7 +1304,7 @@ iee80211_tdls_recalc_ht_protection(struct ieee80211_sub_if_data *sdata,
 	if (!(ifmgd->flags & IEEE80211_STA_DISABLE_HT))
 		return;
 
-	tdls_ht = sta->sta.ht_cap.ht_supported ||
+	tdls_ht = (sta && sta->sta.ht_cap.ht_supported) ||
 		  iee80211_tdls_have_ht_peers(sdata);
 
 	opmode = sdata->vif.bss_conf.ht_operation_mode;
