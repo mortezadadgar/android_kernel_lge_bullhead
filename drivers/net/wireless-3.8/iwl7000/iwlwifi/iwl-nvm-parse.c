@@ -719,6 +719,18 @@ static u32 iwl_nvm_get_regdom_bw_flags(const u8 *nvm_chan,
 	if (nvm_flags & NVM_CHANNEL_RADAR)
 		flags |= NL80211_RRF_DFS;
 
+	if (nvm_flags & NVM_CHANNEL_INDOOR_ONLY)
+		flags |= NL80211_RRF_NO_OUTDOOR;
+
+#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
+	/* Set the GO concurrent flag only in case that NO_IR is set.
+	 * Otherwise it is meaningless
+	 */
+	if ((nvm_flags & NVM_CHANNEL_GO_CONCURRENT) &&
+	    (flags & NL80211_RRF_NO_IR))
+		flags |= NL80211_RRF_GO_CONCURRENT;
+#endif
+
 	return flags;
 }
 
