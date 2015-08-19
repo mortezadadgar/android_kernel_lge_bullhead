@@ -99,7 +99,7 @@ module_exit(iwl_xvt_exit);
 
 #define CMD(x) [x] = #x
 
-static const char *const iwl_xvt_cmd_strings[REPLY_MAX] = {
+static const char *const iwl_xvt_cmd_strings[REPLY_MAX + 1] = {
 	CMD(XVT_ALIVE),
 	CMD(INIT_COMPLETE_NOTIF),
 	CMD(TX_CMD),
