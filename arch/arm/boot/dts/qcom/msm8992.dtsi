@@ -1360,16 +1360,16 @@
 			qcom,cdc-reset-gpio = <&msm_gpio 68 0>;
 
 			cdc-vdd-buck-supply = <&pm8994_s5>;
-			qcom,cdc-vdd-buck-voltage = <2150000 2150000>;
+			qcom,cdc-vdd-buck-voltage = <1800000 2150000>;
 			qcom,cdc-vdd-buck-current = <650000>;
 
 			cdc-vdd-tx-h-supply = <&pm8994_s4>;
 			qcom,cdc-vdd-tx-h-voltage = <1800000 1800000>;
-			qcom,cdc-vdd-tx-h-current = <25000>;
+			qcom,cdc-vdd-tx-h-current = <45000>;
 
 			cdc-vdd-rx-h-supply = <&pm8994_s4>;
 			qcom,cdc-vdd-rx-h-voltage = <1800000 1800000>;
-			qcom,cdc-vdd-rx-h-current = <25000>;
+			qcom,cdc-vdd-rx-h-current = <45000>;
 
 			cdc-vddpx-1-supply = <&pm8994_s4>;
 			qcom,cdc-vddpx-1-voltage = <1800000 1800000>;
