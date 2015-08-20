@@ -111,6 +111,7 @@
  * @IWL_MVM_VENDOR_CMD_GSCAN_SIGNIFICANT_CHANGE_EVENT: event that indicates a
  *	significant change in the RSSI level of beacons received from a certain
  *	AP.
+ * @IWL_MVM_VENDOR_CMD_RXFILTER: Set/clear rx filter.
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -137,6 +138,7 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_GSCAN_SET_SIGNIFICANT_CHANGE,
 	IWL_MVM_VENDOR_CMD_GSCAN_HOTLIST_CHANGE_EVENT,
 	IWL_MVM_VENDOR_CMD_GSCAN_SIGNIFICANT_CHANGE_EVENT,
+	IWL_MVM_VENDOR_CMD_RXFILTER,
 };
 
 /**
@@ -324,7 +326,34 @@ enum iwl_mvm_vendor_significant_change_result {
 	IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_RSSI_HISTORY,
 	NUM_IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_RESULT,
 	MAX_IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_RESULT =
-		NUM_IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_RESULT - 1,
+	NUM_IWL_MVM_VENDOR_SIGNIFICANT_CHANGE_RESULT - 1,
+};
+
+/**
+ * enum iwl_mvm_vendor_rxfilter_flags - the type of request rxfilter
+ *
+ * @IWL_MVM_VENDOR_RXFILTER_UNICAST: control unicast Rx filter
+ * @IWL_MVM_VENDOR_RXFILTER_BCAST: control broadcast Rx filter
+ * @IWL_MVM_VENDOR_RXFILTER_MCAST4: control IPv4 multicast Rx filter
+ * @IWL_MVM_VENDOR_RXFILTER_MCAST6: control IPv4 multicast Rx filter
+ *
+ */
+enum iwl_mvm_vendor_rxfilter_flags {
+	IWL_MVM_VENDOR_RXFILTER_UNICAST = BIT(0),
+	IWL_MVM_VENDOR_RXFILTER_BCAST = BIT(1),
+	IWL_MVM_VENDOR_RXFILTER_MCAST4 = BIT(2),
+	IWL_MVM_VENDOR_RXFILTER_MCAST6 = BIT(3),
+};
+
+/**
+ * enum iwl_mvm_vendor_rxfilter_op - the operation associated with a filter
+ *
+ * @IWL_MVM_VENDOR_RXFILTER_OP_PASS: pass frames matching the filter
+ * @IWL_MVM_VENDOR_RXFILTER_OP_DROP: drop frames matching the filter
+ */
+enum iwl_mvm_vendor_rxfilter_op {
+	IWL_MVM_VENDOR_RXFILTER_OP_PASS,
+	IWL_MVM_VENDOR_RXFILTER_OP_DROP,
 };
 
 /**
@@ -395,6 +424,10 @@ enum iwl_mvm_vendor_significant_change_result {
  *
  * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
  * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
+ * @IWL_MVM_VENDOR_ATTR_RXFILTER: u32 attribute.
+ *      See %iwl_mvm_vendor_rxfilter_flags.
+ * @IWL_MVM_VENDOR_ATTR_RXFILTER_OP: u32 attribute.
+ *      See %iwl_mvm_vendor_rxfilter_op.
  */
 enum iwl_mvm_vendor_attr {
 	__IWL_MVM_VENDOR_ATTR_INVALID,
@@ -435,6 +468,8 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_GSCAN_MIN_BREACHING,
 	IWL_MVM_VENDOR_ATTR_GSCAN_HOTLIST_AP_STATUS,
 	IWL_MVM_VENDOR_ATTR_GSCAN_SIG_CHANGE_RESULTS,
+	IWL_MVM_VENDOR_ATTR_RXFILTER,
+	IWL_MVM_VENDOR_ATTR_RXFILTER_OP,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,
