@@ -1433,7 +1433,7 @@ ieee80211_rx_h_sta_process(struct ieee80211_rx_data *rx)
 	sta->rx_bytes += rx->skb->len;
 	if (!(status->flag & RX_FLAG_NO_SIGNAL_VAL)) {
 		sta->last_signal = status->signal;
-		ewma_add(&sta->avg_signal, -status->signal);
+		ewma_signal_add(&sta->avg_signal, -status->signal);
 	}
 
 	if (status->chains) {
@@ -1445,7 +1445,7 @@ ieee80211_rx_h_sta_process(struct ieee80211_rx_data *rx)
 				continue;
 
 			sta->chain_signal_last[i] = signal;
-			ewma_add(&sta->chain_signal_avg[i], -signal);
+			ewma_signal_add(&sta->chain_signal_avg[i], -signal);
 		}
 	}
 
@@ -2421,7 +2421,6 @@ ieee80211_rx_h_data(struct ieee80211_rx_data *rx)
 	if (!ieee80211_frame_allowed(rx, fc))
 		return RX_DROP_MONITOR;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	/* directly handle TDLS channel switch requests/responses */
 	if (unlikely(((struct ethhdr *)rx->skb->data)->h_proto ==
 						cpu_to_be16(ETH_P_TDLS))) {
@@ -2441,7 +2440,6 @@ ieee80211_rx_h_data(struct ieee80211_rx_data *rx)
 			return RX_QUEUED;
 		}
 	}
-#endif
 
 	if (rx->sdata->vif.type == NL80211_IFTYPE_AP_VLAN &&
 	    unlikely(port_control) && sdata->bss) {
@@ -3341,7 +3339,7 @@ static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
 	case NL80211_IFTYPE_OCB:
 		if (!bssid)
 			return false;
-		if (ieee80211_is_beacon(hdr->frame_control))
+		if (!ieee80211_is_data_present(hdr->frame_control))
 			return false;
 		if (!is_broadcast_ether_addr(bssid))
 			return false;

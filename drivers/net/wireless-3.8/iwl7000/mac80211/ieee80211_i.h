@@ -90,13 +90,13 @@ struct ieee80211_local;
 	 NETIF_F_GSO_SOFTWARE)
 
 struct ieee80211_fragment_entry {
-	unsigned long first_frag_time;
-	unsigned int seq;
-	unsigned int rx_queue;
-	unsigned int last_frag;
-	unsigned int extra_len;
 	struct sk_buff_head skb_list;
-	int ccmp; /* Whether fragments were encrypted with CCMP */
+	unsigned long first_frag_time;
+	u16 seq;
+	u16 extra_len;
+	u16 last_frag;
+	u8 rx_queue;
+	bool ccmp; /* Whether fragments were encrypted with CCMP */
 	u8 last_pn[6]; /* PN of the last fragment if CCMP was used */
 };
 
@@ -911,6 +911,9 @@ struct ieee80211_sub_if_data {
 
 	bool rc_has_mcs_mask[IEEE80211_NUM_BANDS];
 	u8  rc_rateidx_mcs_mask[IEEE80211_NUM_BANDS][IEEE80211_HT_MCS_MASK_LEN];
+
+	bool rc_has_vht_mcs_mask[IEEE80211_NUM_BANDS];
+	u16 rc_rateidx_vht_mcs_mask[IEEE80211_NUM_BANDS][NL80211_VHT_NSS_MAX];
 
 	union {
 		struct ieee80211_if_ap ap;
@@ -1846,6 +1849,8 @@ void ieee80211_vht_handle_opmode(struct ieee80211_sub_if_data *sdata,
 				 enum ieee80211_band band, bool nss_only);
 void ieee80211_apply_vhtcap_overrides(struct ieee80211_sub_if_data *sdata,
 				      struct ieee80211_sta_vht_cap *vht_cap);
+void ieee80211_get_vht_mask_from_cap(__le16 vht_cap,
+				     u16 vht_mask[NL80211_VHT_NSS_MAX]);
 
 /* Spectrum management */
 void ieee80211_process_measurement_req(struct ieee80211_sub_if_data *sdata,
