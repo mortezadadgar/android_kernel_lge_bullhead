@@ -4,7 +4,7 @@
  * Copyright (c) 2013 ELAN Microelectronics Corp.
  *
  * Author: 林政維 (Duson Lin) <dusonlin@emc.com.tw>
- * Version: 1.5.9
+ * Version: 1.6.0
  *
  * Based on cyapa driver:
  * copyright (c) 2011-2012 Cypress Semiconductor, Inc.
@@ -40,7 +40,7 @@
 #include <linux/of.h>
 
 #define DRIVER_NAME		"elan_i2c"
-#define ELAN_DRIVER_VERSION	"1.5.9"
+#define ELAN_DRIVER_VERSION	"1.6.0"
 #define ELAN_VENDOR_ID		0x04f3
 #define ETP_PRESSURE_OFFSET	25
 #define ETP_MAX_PRESSURE	255
@@ -1095,6 +1095,10 @@ static int elan_get_sm_version(struct elan_tp_data *data)
 				  ETP_I2C_SM_VERSION_CMD, val);
 	data->sm_version = val[0];
 	data->ic_type = val[1];
+
+	/* exception type, need reset from iap_version */
+	if (data->ic_type == 0xFF)
+		data->ic_type = data->iap_version;
 	return 0;
 }
 
@@ -1765,8 +1769,8 @@ static int elan_input_dev_create(struct elan_tp_data *data)
 
 	data->product_id = elan_get_product_id(data);
 	data->fw_version = elan_get_fw_version(data);
-	elan_get_sm_version(data);
 	data->iap_version = elan_get_iap_version(data);
+	elan_get_sm_version(data);
 	data->pressure_adjustment = elan_get_pressure_adjustment(data);
 	data->max_x = elan_get_x_max(data);
 	data->max_y = elan_get_y_max(data);
