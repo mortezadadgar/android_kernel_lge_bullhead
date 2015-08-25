@@ -306,7 +306,7 @@ static void iwl_mvm_rx_handle_tcm(struct iwl_mvm *mvm,
 				RATE_MCS_CHAN_WIDTH_POS);
 
 	mdata->uapsd_nonagg_detect.rx_bytes += len;
-	ewma_add(&mdata->uapsd_nonagg_detect.rate, thr);
+	ewma_rate_add(&mdata->uapsd_nonagg_detect.rate, thr);
 }
 #endif
 

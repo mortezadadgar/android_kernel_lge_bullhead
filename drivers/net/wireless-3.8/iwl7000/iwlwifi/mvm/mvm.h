@@ -556,6 +556,9 @@ enum iwl_mvm_tdls_cs_state {
 };
 
 #ifdef CPTCFG_IWLMVM_TCM
+
+DECLARE_EWMA(rate, 16, 16)
+
 struct iwl_mvm_tcm_mac {
 	struct {
 		u32 pkts[IEEE80211_NUM_ACS];
@@ -569,7 +572,7 @@ struct iwl_mvm_tcm_mac {
 	struct {
 		/* track AP's transfer in client mode */
 		u64 rx_bytes;
-		struct ewma rate;
+		struct ewma_rate rate;
 		bool detected;
 	} uapsd_nonagg_detect;
 	bool opened_rx_ba_sessions;

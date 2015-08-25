@@ -2706,7 +2706,7 @@ static void iwl_mvm_check_uapsd(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		struct iwl_mvm_tcm_mac *mdata;
 
 		mdata = &mvm->tcm.data[iwl_mvm_vif_from_mac80211(vif)->id];
-		ewma_init(&mdata->uapsd_nonagg_detect.rate, 16, 16);
+		ewma_rate_init(&mdata->uapsd_nonagg_detect.rate);
 		mdata->opened_rx_ba_sessions = false;
 	}
 #endif

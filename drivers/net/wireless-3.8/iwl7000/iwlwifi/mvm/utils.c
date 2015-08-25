@@ -1135,7 +1135,7 @@ static void iwl_mvm_check_uapsd_agg_expected_tpt(struct iwl_mvm *mvm,
 	u64 tpt;
 	unsigned long rate;
 
-	rate = ewma_read(&mvm->tcm.data[mac].uapsd_nonagg_detect.rate);
+	rate = ewma_rate_read(&mvm->tcm.data[mac].uapsd_nonagg_detect.rate);
 
 	if (!rate || mvm->tcm.data[mac].opened_rx_ba_sessions ||
 	    mvm->tcm.data[mac].uapsd_nonagg_detect.detected)
