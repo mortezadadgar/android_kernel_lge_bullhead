@@ -571,6 +571,7 @@ struct mwifiex_private {
 	unsigned long csa_expire_time;
 	struct station_parameters *sta_params;
 	struct sk_buff_head tdls_txq;
+	struct mwifiex_user_scan_chan hidden_chan[MWIFIEX_USER_SCAN_CHAN_MAX];
 };
 
 
@@ -851,6 +852,7 @@ struct mwifiex_adapter {
 	struct sk_buff_head rx_data_q;
 	struct semaphore *card_sem;
 	bool mfg_mode;
+	u8 active_scan_triggered;
 };
 
 void mwifiex_process_tx_queue(struct mwifiex_adapter *adapter);

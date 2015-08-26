@@ -298,7 +298,7 @@ static void mwifiex_init_adapter(struct mwifiex_adapter *adapter)
 	adapter->mfg_mode = mfg_mode;
 	adapter->key_api_major_ver = 0;
 	adapter->key_api_minor_ver = 0;
-
+	adapter->active_scan_triggered = false;
 	setup_timer(&adapter->wakeup_timer, wakeup_timer_fn,
 		    (unsigned long)adapter);
 }
