@@ -755,7 +755,6 @@ struct iwl_mvm {
 	spinlock_t drv_stats_lock;
 	u16 dbgfs_rx_phyinfo;
 #endif
-
 	struct iwl_mvm_phy_ctxt phy_ctxts[NUM_PHY_CTX];
 
 	struct list_head time_event_list;
