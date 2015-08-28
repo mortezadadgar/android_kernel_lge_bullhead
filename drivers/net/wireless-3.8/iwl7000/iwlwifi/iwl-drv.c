@@ -1589,10 +1589,6 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 		sizeof(struct iwl_fw_dbg_trigger_time_event);
 	trigger_tlv_sz[FW_DBG_TRIGGER_BA] =
 		sizeof(struct iwl_fw_dbg_trigger_ba);
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-	trigger_tlv_sz[FW_DBG_TRIGGER_TX_LATENCY] =
-		sizeof(struct iwl_fw_dbg_trigger_tx_latency);
-#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
 
 	for (i = 0; i < ARRAY_SIZE(drv->fw.dbg_trigger_tlv); i++) {
 		if (pieces->dbg_trigger_tlv[i]) {

@@ -643,14 +643,6 @@ struct iwl_mvm {
 
 	struct work_struct roc_done_wk;
 
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-	struct work_struct tx_latency_wk;
-	struct ieee80211_tx_latency_event last_tx_lat_event;
-	struct ieee80211_tx_latency_event round_max_tx_lat;
-	s64 start_round_ts;
-	u32 max_tx_latency;
-#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
-
 	unsigned long status;
 
 	/*
@@ -1180,9 +1172,6 @@ int iwl_mvm_load_d3_fw(struct iwl_mvm *mvm);
 int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm);
 bool iwl_mvm_bcast_filter_build_cmd(struct iwl_mvm *mvm,
 				    struct iwl_bcast_filter_cmd *cmd);
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-void iwl_mvm_tx_latency_wk(struct work_struct *wk);
-#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
 
 /*
  * FW notifications / CMD responses handlers

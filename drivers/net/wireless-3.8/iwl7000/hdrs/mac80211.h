@@ -349,9 +349,6 @@ enum ieee80211_event_type {
 	MLME_EVENT,
 	BAR_RX_EVENT,
 	BA_FRAME_TIMEOUT,
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-	TX_LATENCY_EVENT,
-#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
 };
 
 /**
@@ -422,47 +419,6 @@ struct ieee80211_ba_event {
 	u16 ssn;
 };
 
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-/*
- * enum ieee80211_tx_latency_iface - ifaces that can have a latency threshold
- */
-enum ieee80211_tx_latency_iface {
-	IEEE80211_TX_LATENCY_BSS,
-	IEEE80211_TX_LATENCY_P2P,
-};
-
-/*
- * enum ieee80211_tx_latency_rec_mode - usniffer logs recording mode
- *  @IEEE80211_TX_LATENCY_INT_BUF: internal buffer to save usniffer logs
- *  @IEEE80211_TX_LATENCY_EXT_BUF: external buffer to save usniffer logs
- */
-enum ieee80211_tx_latency_rec_mode {
-	IEEE80211_TX_LATENCY_INT_BUF,
-	IEEE80211_TX_LATENCY_EXT_BUF
-};
-
-/*
- * struct ieee80211_tx_latency_event - data attached to an tx latency event
- *
- * @mode: recording mode (Internal buffer or continues recording)
- * @monitor_collec_wind: the size of the window to collect the logs
- * @seq: packet sequence
- * @pkt_start: start time of triggering pkt
- * @pkt_end: end time of triggering pkt
- * @msrmnt: the tx latency of the pkt
- * @tid: tid of the pkt
- */
-struct ieee80211_tx_latency_event {
-	u16 mode;
-	u32 monitor_collec_wind;
-	u16 seq;
-	u32 pkt_start;
-	u32 pkt_end;
-	u32 msrmnt;
-	u16 tid;
-};
-#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
-
 /**
  * struct ieee80211_event - event to be sent to the driver
  * @type: The event itself. See &enum ieee80211_event_type.
@@ -478,9 +434,6 @@ struct ieee80211_event {
 		struct ieee80211_rssi_event rssi;
 		struct ieee80211_mlme_event mlme;
 		struct ieee80211_ba_event ba;
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-		struct ieee80211_tx_latency_event tx_lat;
-#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
 	} u;
 };
 
@@ -1434,11 +1387,6 @@ struct ieee80211_vif {
 	struct ieee80211_chanctx_conf __rcu *chanctx_conf;
 
 	u32 driver_flags;
-
-#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
-	bool filter_grat_arp_unsol_na;
-	bool filter_gtk;
-#endif
 
 #ifdef CPTCFG_MAC80211_DEBUGFS
 	struct dentry *debugfs_dir;
@@ -4022,25 +3970,6 @@ void ieee80211_get_tx_rates(struct ieee80211_vif *vif,
  */
 void ieee80211_tx_status(struct ieee80211_hw *hw,
 			 struct sk_buff *skb);
-
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-/**
- * ieee80211_tx_lat_thrshld_cfg - tx latency threshold configure
- *
- * Call this function on time for configuring the latency threshold on
- * tx packets for triggering the dbg data collection as part of the WRT
- * mechanism.
- *
- * @hw: the hardware the fw was uploaded with.
- * @thrshld: the threshold for the latency of tx packets.
- * @tid: the tid that the lateny was collectd on.
- * @window: window before collecting the data.
- * @mode: Internal buffer or continuos recording (recording with MIPI)
- * @iface: the interface we are checking on.
- */
-void ieee80211_tx_lat_thrshld_cfg(struct ieee80211_hw *hw,  u32 thrshld,
-				  u16 tid, u16 window, u16 mode, u32 iface);
-#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
 
 /**
  * ieee80211_tx_status_noskb - transmit status callback without skb

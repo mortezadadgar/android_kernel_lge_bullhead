@@ -1106,41 +1106,6 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 		mvm->fw_dbg_conf = FW_DBG_START_FROM_ALIVE;
 	iwl_mvm_start_fw_dbg_conf(mvm, FW_DBG_START_FROM_ALIVE);
 
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-	if (iwl_fw_dbg_trigger_enabled(mvm->fw, FW_DBG_TRIGGER_TX_LATENCY)) {
-		struct iwl_fw_dbg_trigger_tlv *trig;
-		struct iwl_fw_dbg_trigger_tx_latency *thrshold_trig;
-		u32 thrshld;
-		u32 vif;
-		u32 iface = 0;
-		u16 tid;
-		u16 mode;
-		u32 window;
-
-		trig = iwl_fw_dbg_get_trigger(mvm->fw,
-					      FW_DBG_TRIGGER_TX_LATENCY);
-		vif = le32_to_cpu(trig->vif_type);
-		if (vif == IWL_FW_DBG_CONF_VIF_ANY) {
-			iface = BIT(IEEE80211_TX_LATENCY_BSS);
-			iface |= BIT(IEEE80211_TX_LATENCY_P2P);
-		} else if (vif <= IWL_FW_DBG_CONF_VIF_AP) {
-			iface = BIT(IEEE80211_TX_LATENCY_BSS);
-		} else {
-			iface = BIT(IEEE80211_TX_LATENCY_P2P);
-		}
-		thrshold_trig = (void *)trig->data;
-		thrshld = le32_to_cpu(thrshold_trig->thrshold);
-		tid = le16_to_cpu(thrshold_trig->tid_bitmap);
-		mode = le16_to_cpu(thrshold_trig->mode);
-		window = le32_to_cpu(thrshold_trig->window);
-		IWL_DEBUG_INFO(mvm,
-			       "Tx latency trigger cfg: threshold = %u, tid = 0x%x, mode = 0x%x, window = %u vif = 0x%x\n",
-			       thrshld, tid, mode, window, iface);
-		ieee80211_tx_lat_thrshld_cfg(mvm->hw, thrshld,
-					     tid, window, mode, iface);
-	}
-#endif
-
 	ret = iwl_send_tx_ant_cfg(mvm, iwl_mvm_get_valid_tx_ant(mvm));
 	if (ret)
 		goto error;

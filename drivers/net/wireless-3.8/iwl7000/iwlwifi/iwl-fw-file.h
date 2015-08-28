@@ -707,24 +707,6 @@ struct iwl_fw_dbg_trigger_ba {
 	__le16 frame_timeout;
 } __packed;
 
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-/**
- * struct iwl_fw_dbg_trigger_tx_latency - configures tx latency related trigger
- * @thrshold: the wanted threshold.
- * @tid_bitmap: the tid to apply the threshold on
- * @mode: recording mode (Internal buffer or continues recording)
- * @window: the size of the window before collecting.
- * @reserved: reserved.
- */
-struct iwl_fw_dbg_trigger_tx_latency {
-	__le32 thrshold;
-	__le16 tid_bitmap;
-	__le16 mode;
-	__le32 window;
-	__le32 reserved[4];
-} __packed;
-#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
-
 /**
  * struct iwl_fw_dbg_conf_tlv - a TLV that describes a debug configuration.
  * @id: conf id

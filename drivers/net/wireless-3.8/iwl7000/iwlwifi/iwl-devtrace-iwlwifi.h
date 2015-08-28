@@ -67,39 +67,6 @@ TRACE_EVENT(iwlwifi_dev_hcmd,
 		  __entry->flags & CMD_ASYNC ? "a" : "")
 );
 
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-TRACE_EVENT(iwlwifi_dev_tx_latency_thrshld,
-	TP_PROTO(const struct device *dev,
-		 struct ieee80211_tx_latency_event *tx_lat,
-		 u32 gp2, int max),
-	TP_ARGS(dev, tx_lat, gp2, max),
-	TP_STRUCT__entry(
-		DEV_ENTRY
-		__field(u32, msrmnt)
-		__field(u32, pkt_start)
-		__field(u32, pkt_end)
-		__field(u16, tid)
-		__field(u16, seq)
-		__field(u32, gp2)
-		__field(int, max)
-	),
-	TP_fast_assign(
-		DEV_ASSIGN;
-		__entry->msrmnt = tx_lat->msrmnt;
-		__entry->pkt_start = tx_lat->pkt_start;
-		__entry->pkt_end = tx_lat->pkt_end;
-		__entry->tid = tx_lat->tid;
-		__entry->seq = tx_lat->seq;
-		__entry->gp2 = gp2;
-		__entry->max = max;
-	),
-	TP_printk("Tx Latency Metadata: %u, %u, %u, %u, %u, %s, %u",
-		  __entry->seq, __entry->pkt_start, __entry->pkt_end,
-		  __entry->msrmnt, __entry->tid,
-		  __entry->max ? "True" : "False", __entry->gp2)
-);
-#endif /*CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
-
 TRACE_EVENT(iwlwifi_dev_rx,
 	TP_PROTO(const struct device *dev, const struct iwl_trans *trans,
 		 struct iwl_rx_packet *pkt, size_t len),
