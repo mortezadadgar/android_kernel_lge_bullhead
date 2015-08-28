@@ -1056,103 +1056,6 @@ struct tpt_led_trigger {
 };
 #endif
 
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-/*
- * struct ieee80211_tx_consec_loss_ranges - Tx consecutive loss statistics
- * bins ranges
- *
- * Measuring Tx consecutive loss  statistics.
- * 1) Tx frames that were transmitted unsuccessfully.
- * 2) Tx frames that were transmitted successfully, but there latency passed
- * the late threshold, and therefor considered as transmitted unsuccessfully.
- * The user can configure the ranges via debugfs.
- *
- * @late_threshold: the late threshold for the successful packets.
- * @n_ranges: number of ranges that are taken in account
- * @ranges: the ranges that the user requested or NULL if disabled.
- */
-struct ieee80211_tx_consec_loss_ranges {
-	u32 late_threshold;
-	u32 n_ranges;
-	u32 ranges[];
-};
-
-/*
- * enum ieee80211_tx_latency_iface - ifaces that can have a latency threshold
- */
-enum ieee80211_tx_latency_iface {
-	IEEE80211_TX_LATENCY_BSS,
-	IEEE80211_TX_LATENCY_P2P
-};
-
-/*
- * enum ieee80211_tx_lat_msr_point - points where to measure the latency
- *
- * There are 4 points where we are capturing the timestamp:
- * 1. Tx packet Enter the Kernel
- * 2. Tx packet is written to the bus
- * 3. Tx packet is acked by the AP
- * 4. Tx packet is erased.
- */
-enum ieee80211_tx_lat_msr_point {
-	IEEE80211_TX_LAT_ENTER,
-	IEEE80211_TX_LAT_WRITE,
-	IEEE80211_TX_LAT_ACK,
-	IEEE80211_TX_LAT_DEL,
-	/* should always be last */
-	IEEE80211_TX_LAT_MAX_POINT,
-};
-
-#define IEEE80211_IF_DISABLE_THSHLD -1
-
-/*
- * struct ieee80211_tx_latency_bin_ranges - Tx latency statistics bins ranges
- *
- * Measuring Tx latency statistics. Counts how many Tx frames transmitted in a
- * certain latency range (in Milliseconds). Each station that uses these
- * ranges will have bins to count the amount of frames received in that range.
- * The user can configure the ranges via debugfs.
- * If ranges is NULL then Tx latency statistics bins are disabled for all
- * stations.
- *
- * @n_ranges: number of ranges that are taken in account
- * @ranges: the ranges that the user requested or NULL if disabled.
- */
-struct ieee80211_tx_latency_bin_ranges {
-	int n_ranges;
-	u32 ranges[];
-};
-
-/*
- * struct ieee80211_tx_latency_points - Tx latency statistics measurment points
- *
- * Measuring Tx latency statistics. Needs a definition of the measurment points,
- * which is defined in this struct.
- *
- * @points: start & end points from where to measure the latency.
- */
-struct ieee80211_tx_latency_points {
-	enum ieee80211_tx_lat_msr_point points[2];
-};
-
-/*
- * struct ieee80211_tx_latency_threshold - Tx latency threshold
- *
- * A user can configure the Tx latency threshold that would trigger collecting
- * debug data via the wrt mechanism.
- *
- * @thresholds_bss: list of thresholds for each tid in a bss interface
- * @thresholds_p2p: list of thresholds for each tid in a p2p interface
- * @monitor_collec_wind: collection window for monitor logs
- */
-struct ieee80211_tx_latency_threshold {
-	u32 *thresholds_bss;
-	u32 *thresholds_p2p;
-	u8 monitor_record_mode;
-	u16 monitor_collec_wind;
-};
-#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
-
 /**
  * mac80211 scan flags - currently active scan mode
  *
@@ -1318,19 +1221,6 @@ struct ieee80211_local {
 	struct rhashtable sta_hash;
 	struct timer_list sta_cleanup;
 	int sta_generation;
-
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-	/*
-	 * Tx latency & consecutive loss statistics parameters for
-	 * all stations.
-	 * Can enable via debugfs (NULL when disabled).
-	 */
-	struct ieee80211_tx_consec_loss_ranges __rcu *tx_consec;
-	struct ieee80211_tx_latency_bin_ranges __rcu *tx_latency;
-	/* start & end points from where to measure the latency. */
-	enum ieee80211_tx_lat_msr_point tx_msrmnt_points[2];
-	struct ieee80211_tx_latency_threshold __rcu *tx_threshold;
-#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
 
 	struct sk_buff_head pending[IEEE80211_MAX_QUEUES];
 	struct tasklet_struct tx_pending_tasklet;

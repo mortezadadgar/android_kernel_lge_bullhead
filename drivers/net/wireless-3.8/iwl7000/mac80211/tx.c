@@ -1895,32 +1895,6 @@ fail:
 	return NETDEV_TX_OK; /* meaning, we dealt with the skb */
 }
 
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-/*
- * Measure Tx frame arrival time for Tx latency & Tx consecutive packet loss
- * statistics calculation.
- * A single Tx frame latency should be measured from when it is entering the
- * Kernel until we receive Tx complete confirmation indication and the skb is
- * freed.
- */
-static void ieee80211_tx_latency_start_msrmnt(struct ieee80211_local *local,
-					      struct sk_buff *skb)
-{
-	struct ieee80211_tx_latency_bin_ranges *tx_latency;
-	struct ieee80211_tx_consec_loss_ranges *tx_consec;
-	struct ieee80211_tx_latency_threshold *tx_thrshld;
-	s64 temp;
-
-	tx_latency = rcu_dereference(local->tx_latency);
-	tx_consec = rcu_dereference(local->tx_consec);
-	tx_thrshld = rcu_dereference(local->tx_threshold);
-	if (!tx_latency && !tx_consec && !tx_thrshld)
-		return;
-	temp = ktime_to_ms(ktime_get());
-	skb->tstamp.tv64 = temp << 32;
-}
-#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
-
 static inline bool ieee80211_is_tdls_setup(struct sk_buff *skb)
 {
 	u16 ethertype = (skb->data[12] << 8) | skb->data[13];
@@ -2883,17 +2857,6 @@ void __ieee80211_subif_start_xmit(struct sk_buff *skb,
 	}
 
 	rcu_read_lock();
-
-#ifdef CPTCFG_MAC80211_LATENCY_MEASUREMENTS
-	{
-		struct ieee80211_local *local = sdata->local;
-
-		/* Measure frame arrival for Tx latency statistics
-		 * calculation
-		 */
-		ieee80211_tx_latency_start_msrmnt(local, skb);
-	}
-#endif /* CPTCFG_MAC80211_LATENCY_MEASUREMENTS */
 
 	if (ieee80211_lookup_ra_sta(sdata, skb, &sta))
 		goto out_free;
