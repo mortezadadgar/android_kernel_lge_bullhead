@@ -3421,8 +3421,6 @@ struct ieee80211_ops {
 	int (*testmode_dump)(struct ieee80211_hw *hw, struct sk_buff *skb,
 			     struct netlink_callback *cb,
 			     void *data, int len);
-	int (*testmode_retrieve_monitor)(struct ieee80211_hw *hw,
-					 struct ieee80211_tx_thrshld_md *md);
 #endif
 	void (*flush)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		      u32 queues, bool drop);

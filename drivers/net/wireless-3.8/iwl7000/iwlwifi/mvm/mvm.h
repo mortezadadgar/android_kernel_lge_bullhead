@@ -1291,8 +1291,6 @@ iwl_mvm_vif_dbgfs_clean(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 int iwl_mvm_tm_cmd_execute(struct iwl_op_mode *op_mode, u32 cmd_idx,
 			   struct iwl_tm_data *data_in,
 			   struct iwl_tm_data *data_out);
-int iwl_tm_mvm_retrieve_monitor(struct ieee80211_hw *hw,
-				struct ieee80211_tx_thrshld_md *md);
 
 void iwl_tm_mvm_send_rx(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb);
 

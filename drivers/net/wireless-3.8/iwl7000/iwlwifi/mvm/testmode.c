@@ -440,34 +440,6 @@ int iwl_mvm_tm_cmd_execute(struct iwl_op_mode *op_mode, u32 cmd,
 	return ret;
 }
 
-#ifdef CPTCFG_NL80211_TESTMODE
-/**
- * iwl_tm_mvm_retrieve_monitor() - trigger monitor retrieve event
- */
-int iwl_tm_mvm_retrieve_monitor(struct ieee80211_hw *hw,
-				struct ieee80211_tx_thrshld_md *md)
-{
-	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
-	struct iwl_tm_thrshld_md tm_md;
-
-	if (!md)
-		return -1;
-
-	tm_md.mode = md->mode;
-	tm_md.monitor_collec_wind = md->monitor_collec_wind;
-	tm_md.seq = md->seq;
-	tm_md.pkt_start = md->pkt_start;
-	tm_md.pkt_end = md->pkt_end;
-	tm_md.msrmnt = md->msrmnt;
-	tm_md.tid = md->tid;
-
-	return iwl_tm_gnl_send_msg(mvm->trans,
-				   IWL_TM_USER_CMD_NOTIF_RETRIEVE_MONITOR,
-				   false, &tm_md, sizeof(tm_md),
-				   GFP_ATOMIC);
-}
-#endif
-
 /**
  * iwl_tm_mvm_send_rx() - Send a spontaneous rx message to user
  * @mvm:	mvm opmode pointer
