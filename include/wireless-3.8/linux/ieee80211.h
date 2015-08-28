@@ -1721,7 +1721,7 @@ enum ieee80211_tdls_actioncode {
 #define WLAN_EXT_CAPA5_TDLS_ENABLED	BIT(5)
 #define WLAN_EXT_CAPA5_TDLS_PROHIBITED	BIT(6)
 
-#define WLAN_EXT_CAPA8_TDLS_WIDE_BW_ENABLED	BIT(7)
+#define WLAN_EXT_CAPA8_TDLS_WIDE_BW_ENABLED	BIT(5)
 
 /* TDLS specific payload type in the LLC/SNAP header */
 #define WLAN_TDLS_SNAP_RFTYPE	0x2
