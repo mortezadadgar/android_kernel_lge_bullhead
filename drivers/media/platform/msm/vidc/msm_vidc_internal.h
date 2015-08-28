@@ -261,6 +261,7 @@ struct msm_vidc_core {
 	struct msm_video_device vdev[MSM_VIDC_MAX_DEVICES];
 	struct v4l2_device v4l2_dev;
 	struct list_head instances;
+	u32 max_supported_instances;
 	struct dentry *debugfs_root;
 	enum vidc_core_state state;
 	struct completion completions[SYS_MSG_END - SYS_MSG_START + 1];
