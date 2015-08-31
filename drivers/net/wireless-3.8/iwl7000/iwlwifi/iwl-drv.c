@@ -819,6 +819,17 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 	bool usniffer_req = false;
 	bool gscan_capa = false;
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (ucode->magic == cpu_to_le32(IWL_TLV_FW_DBG_MAGIC)) {
+		size_t dbg_data_ofs = offsetof(struct iwl_tlv_ucode_header,
+					       human_readable);
+		data = (void *)ucode_raw->data + dbg_data_ofs;
+		len -= dbg_data_ofs;
+
+		goto fw_dbg_conf;
+	}
+#endif
+
 	if (len < sizeof(*ucode)) {
 		IWL_ERR(drv, "uCode has invalid length: %zd\n", len);
 		return -EINVAL;
@@ -854,6 +865,10 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 	data = ucode->data;
 
 	len -= sizeof(*ucode);
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+fw_dbg_conf:
+#endif
 
 	while (len >= sizeof(*tlv)) {
 		len -= sizeof(*tlv);
@@ -1285,8 +1300,9 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 	/*
 	 * If ucode advertises that it supports GSCAN but GSCAN
 	 * capabilities TLV is not present, warn and continue without GSCAN.
+	 * Check capa since parse_tlv is called one time with capa NULL.
 	 */
-	if (fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
+	if (capa && fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
 	    WARN(!gscan_capa,
 		 "GSCAN is supported but capabilities TLV is unavailable\n"))
 		__clear_bit((__force long)IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT,
@@ -1434,6 +1450,11 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	bool load_module = false;
 	bool usniffer_images = false;
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	const struct firmware *fw_dbg_config;
+	int load_fw_dbg_err = -ENOENT;
+#endif
+
 	fw->ucode_capa.max_probe_length = IWL_DEFAULT_MAX_PROBE_LENGTH;
 	fw->ucode_capa.standard_phy_calibration_size =
 			IWL_DEFAULT_STANDARD_PHY_CALIBRATE_TBL_SIZE;
@@ -1503,6 +1524,22 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 
 	if (err)
 		goto try_again;
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (!ucode->ver && drv->trans->dbg_cfg.fw_dbg_conf) {
+		load_fw_dbg_err =
+			request_firmware(&fw_dbg_config,
+					 drv->trans->dbg_cfg.fw_dbg_conf,
+					 drv->trans->dev);
+		if (!load_fw_dbg_err) {
+			err = iwl_parse_tlv_firmware(drv, fw_dbg_config, pieces,
+						     NULL, &usniffer_images);
+			if (err)
+				IWL_ERR(drv,
+					"Failed to configure FW DBG data!\n");
+		}
+	}
+#endif
 
 	if (fw_has_api(&drv->fw.ucode_capa, IWL_UCODE_TLV_API_NEW_VERSION))
 		api_ver = drv->fw.ucode_ver;
@@ -1657,6 +1694,11 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 
 	/* We have our copies now, allow OS release its copies */
 	release_firmware(ucode_raw);
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (!load_fw_dbg_err)
+		release_firmware(fw_dbg_config);
+#endif
 
 	mutex_lock(&iwlwifi_opmode_table_mtx);
 	if (fw->mvm_fw)

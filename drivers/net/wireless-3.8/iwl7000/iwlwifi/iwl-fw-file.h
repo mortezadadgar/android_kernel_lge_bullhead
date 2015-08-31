@@ -148,6 +148,7 @@ struct iwl_ucode_tlv {
 	u8 data[0];
 };
 
+#define IWL_TLV_FW_DBG_MAGIC		0xb5221389
 #define IWL_TLV_UCODE_MAGIC		0x0a4c5749
 #define FW_VER_HUMAN_READABLE_SZ	64
 
