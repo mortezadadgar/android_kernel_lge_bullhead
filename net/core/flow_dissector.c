@@ -28,8 +28,9 @@ static void iph_to_flow_copy_addrs(struct flow_keys *flow, const struct iphdr *i
 bool skb_flow_dissect(const struct sk_buff *skb, struct flow_keys *flow)
 {
 	int poff, nhoff = skb_network_offset(skb);
-	u8 ip_proto;
+	u8 ip_proto = 0;
 	__be16 proto = skb->protocol;
+	int ret = false;
 
 	memset(flow, 0, sizeof(*flow));
 
@@ -41,7 +42,7 @@ again:
 ip:
 		iph = skb_header_pointer(skb, nhoff, sizeof(_iph), &_iph);
 		if (!iph || iph->ihl < 5)
-			return false;
+			goto out_bad;
 
 		if (ip_is_fragment(iph))
 			ip_proto = 0;
@@ -57,7 +58,7 @@ ip:
 ipv6:
 		iph = skb_header_pointer(skb, nhoff, sizeof(_iph), &_iph);
 		if (!iph)
-			return false;
+			goto out_bad;
 
 		ip_proto = iph->nexthdr;
 		flow->src = (__force __be32)ipv6_addr_hash(&iph->saddr);
@@ -71,7 +72,7 @@ ipv6:
 
 		vlan = skb_header_pointer(skb, nhoff, sizeof(_vlan), &_vlan);
 		if (!vlan)
-			return false;
+			goto out_bad;
 
 		proto = vlan->h_vlan_encapsulated_proto;
 		nhoff += sizeof(*vlan);
@@ -84,7 +85,7 @@ ipv6:
 		} *hdr, _hdr;
 		hdr = skb_header_pointer(skb, nhoff, sizeof(_hdr), &_hdr);
 		if (!hdr)
-			return false;
+			goto out_bad;
 		proto = hdr->proto;
 		nhoff += PPPOE_SES_HLEN;
 		switch (proto) {
@@ -93,11 +94,11 @@ ipv6:
 		case __constant_htons(PPP_IPV6):
 			goto ipv6;
 		default:
-			return false;
+			goto out_bad;
 		}
 	}
 	default:
-		return false;
+		goto out_bad;
 	}
 
 	switch (ip_proto) {
@@ -109,7 +110,7 @@ ipv6:
 
 		hdr = skb_header_pointer(skb, nhoff, sizeof(_hdr), &_hdr);
 		if (!hdr)
-			return false;
+			goto out_bad;
 		/*
 		 * Only look inside GRE if version zero and no
 		 * routing
@@ -130,7 +131,7 @@ ipv6:
 				eth = skb_header_pointer(skb, nhoff,
 							 sizeof(_eth), &_eth);
 				if (!eth)
-					return false;
+					goto out_bad;
 				proto = eth->h_proto;
 				nhoff += sizeof(*eth);
 			}
@@ -144,7 +145,6 @@ ipv6:
 		break;
 	}
 
-	flow->ip_proto = ip_proto;
 	poff = proto_ports_offset(ip_proto);
 	if (poff >= 0) {
 		__be32 *ports, _ports;
@@ -155,9 +155,13 @@ ipv6:
 			flow->ports = *ports;
 	}
 
+	ret = true;
+
+out_bad:
+	flow->ip_proto = ip_proto;
 	flow->thoff = (u16) nhoff;
 
-	return true;
+	return ret;
 }
 EXPORT_SYMBOL(skb_flow_dissect);
 
