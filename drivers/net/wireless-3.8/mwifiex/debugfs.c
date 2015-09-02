@@ -590,6 +590,77 @@ done:
 	return ret;
 }
 
+/* Proc memrw file write handler.
+ * This function is called when the 'memrw' file is opened for writing
+ * This function can be used to write to a memory location.
+ */
+static ssize_t
+mwifiex_memrw_write(struct file *file, const char __user *ubuf, size_t count,
+		    loff_t *ppos)
+{
+	int ret;
+	char cmd;
+	struct mwifiex_ds_mem_rw mem_rw;
+	u16 cmd_action;
+	struct mwifiex_private *priv = (void *)file->private_data;
+	char *buf;
+
+	buf = memdup_user(ubuf, count + 1);
+	if (!buf)
+		return -ENOMEM;
+
+	buf[count] = 0;
+	ret = sscanf(buf, "%c %x %x", &cmd, &mem_rw.addr, &mem_rw.value);
+	if (ret != 3) {
+		ret = -EINVAL;
+		goto done;
+	}
+
+	if (toupper(cmd) == 'R') {
+		cmd_action = HostCmd_ACT_GEN_GET;
+		mem_rw.value = 0;
+	} else if (toupper(cmd) == 'W') {
+		cmd_action = HostCmd_ACT_GEN_SET;
+	} else {
+		ret = -EINVAL;
+		goto done;
+	}
+
+	memcpy(&priv->mem_rw, &mem_rw, sizeof(mem_rw));
+	if (mwifiex_send_cmd(priv, HostCmd_CMD_MEM_ACCESS, cmd_action, 0,
+			     &mem_rw, true))
+		ret = -1;
+	else
+		ret = count;
+
+done:
+	kfree(buf);
+	return ret;
+}
+
+/* Proc memrw file read handler.
+ * This function is called when the 'memrw' file is opened for reading
+ * This function can be used to read from a memory location.
+ */
+static ssize_t
+mwifiex_memrw_read(struct file *file, char __user *ubuf,
+		   size_t count, loff_t *ppos)
+{
+	struct mwifiex_private *priv = file->private_data;
+	char *buf;
+	int ret;
+
+	buf = kasprintf(GFP_KERNEL, "0x%x 0x%x\n",
+			priv->mem_rw.addr, priv->mem_rw.value);
+	if (!buf)
+		return -ENOMEM;
+
+	ret = simple_read_from_buffer(ubuf, count, ppos, buf, strlen(buf));
+
+	kfree(buf);
+	return ret;
+}
+
 static u32 saved_offset = -1, saved_bytes = -1;
 
 /*
@@ -743,6 +814,7 @@ MWIFIEX_DFS_FILE_READ_OPS(getlog);
 MWIFIEX_DFS_FILE_READ_OPS(fw_dump);
 MWIFIEX_DFS_FILE_OPS(regrdwr);
 MWIFIEX_DFS_FILE_OPS(rdeeprom);
+MWIFIEX_DFS_FILE_OPS(memrw);
 MWIFIEX_DFS_FILE_WRITE_OPS(reset);
 
 /*
@@ -766,6 +838,7 @@ mwifiex_dev_debugfs_init(struct mwifiex_private *priv)
 	MWIFIEX_DFS_ADD_FILE(fw_dump);
 	MWIFIEX_DFS_ADD_FILE(regrdwr);
 	MWIFIEX_DFS_ADD_FILE(rdeeprom);
+	MWIFIEX_DFS_ADD_FILE(memrw);
 	MWIFIEX_DFS_ADD_FILE(reset);
 }
 

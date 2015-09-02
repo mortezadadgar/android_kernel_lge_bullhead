@@ -572,6 +572,7 @@ struct mwifiex_private {
 	struct station_parameters *sta_params;
 	struct sk_buff_head tdls_txq;
 	struct mwifiex_user_scan_chan hidden_chan[MWIFIEX_USER_SCAN_CHAN_MAX];
+	struct mwifiex_ds_mem_rw mem_rw;
 };
 
 
