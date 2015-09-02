@@ -203,12 +203,14 @@ static int mwifiex_sdio_suspend(struct device *dev)
 
 	/* Enable the Host Sleep */
 	if (!mwifiex_enable_hs(adapter)) {
-		dev_err(adapter->dev, "cmd: failed to suspend\n");
+		mwifiex_dbg(adapter, ERROR,
+			    "cmd: failed to suspend\n");
 		adapter->hs_enabling = false;
 		return -EFAULT;
 	}
 
-	dev_dbg(adapter->dev, "cmd: suspend with MMC_PM_KEEP_POWER\n");
+	mwifiex_dbg(adapter, CMD,
+		    "cmd: suspend with MMC_PM_KEEP_POWER\n");
 	ret = sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
 
 	/* Indicate device suspended */
@@ -250,7 +252,8 @@ static int mwifiex_sdio_resume(struct device *dev)
 	adapter = card->adapter;
 
 	if (!adapter->is_suspended) {
-		dev_warn(adapter->dev, "device already resumed\n");
+		mwifiex_dbg(adapter, WARN,
+			    "device already resumed\n");
 		return 0;
 	}
 
@@ -368,8 +371,9 @@ mwifiex_write_data_sync(struct mwifiex_adapter *adapter,
 	u32 ioport = (port & MWIFIEX_SDIO_IO_PORT_MASK);
 
 	if (adapter->is_suspended) {
-		dev_err(adapter->dev,
-			"%s: not allowed while suspended\n", __func__);
+		mwifiex_dbg(adapter, ERROR,
+			    "%s: not allowed while suspended\n",
+			    __func__);
 		return -1;
 	}
 
@@ -416,7 +420,8 @@ static int mwifiex_read_data_sync(struct mwifiex_adapter *adapter, u8 *buffer,
  */
 static int mwifiex_pm_wakeup_card(struct mwifiex_adapter *adapter)
 {
-	dev_dbg(adapter->dev, "event: wakeup device...\n");
+	mwifiex_dbg(adapter, EVENT,
+		    "event: wakeup device...\n");
 
 	return mwifiex_write_reg(adapter, CONFIGURATION_REG, HOST_POWER_UP);
 }
@@ -428,7 +433,8 @@ static int mwifiex_pm_wakeup_card(struct mwifiex_adapter *adapter)
  */
 static int mwifiex_pm_wakeup_card_complete(struct mwifiex_adapter *adapter)
 {
-	dev_dbg(adapter->dev, "cmd: wakeup device completed\n");
+	mwifiex_dbg(adapter, EVENT,
+		    "cmd: wakeup device completed\n");
 
 	return mwifiex_write_reg(adapter, CONFIGURATION_REG, 0);
 }
@@ -503,7 +509,8 @@ static int mwifiex_init_sdio_ioport(struct mwifiex_adapter *adapter)
 	else
 		return -1;
 cont:
-	pr_debug("info: SDIO FUNC1 IO port: %#x\n", adapter->ioport);
+	mwifiex_dbg(adapter, INFO,
+		    "info: SDIO FUNC1 IO port: %#x\n", adapter->ioport);
 
 	/* Set Host interrupt reset to read to clear */
 	if (!mwifiex_read_reg(adapter, HOST_INT_RSR_REG, &reg))
@@ -535,10 +542,12 @@ static int mwifiex_write_data_to_card(struct mwifiex_adapter *adapter,
 		ret = mwifiex_write_data_sync(adapter, payload, pkt_len, port);
 		if (ret) {
 			i++;
-			dev_err(adapter->dev, "host_to_card, write iomem"
-					" (%d) failed: %d\n", i, ret);
+			mwifiex_dbg(adapter, ERROR,
+				    "host_to_card, write iomem\t"
+				    "(%d) failed: %d\n", i, ret);
 			if (mwifiex_write_reg(adapter, CONFIGURATION_REG, 0x04))
-				dev_err(adapter->dev, "write CFG reg failed\n");
+				mwifiex_dbg(adapter, ERROR,
+					    "write CFG reg failed\n");
 
 			ret = -1;
 			if (i > MAX_WRITE_IOMEM_RETRY)
@@ -563,7 +572,8 @@ static int mwifiex_get_rd_port(struct mwifiex_adapter *adapter, u8 *port)
 	const struct mwifiex_sdio_card_reg *reg = card->reg;
 	u32 rd_bitmap = card->mp_rd_bitmap;
 
-	dev_dbg(adapter->dev, "data: mp_rd_bitmap=0x%08x\n", rd_bitmap);
+	mwifiex_dbg(adapter, DATA,
+		    "data: mp_rd_bitmap=0x%08x\n", rd_bitmap);
 
 	if (card->supports_sdio_new_mode) {
 		if (!(rd_bitmap & reg->data_port_mask))
@@ -577,8 +587,9 @@ static int mwifiex_get_rd_port(struct mwifiex_adapter *adapter, u8 *port)
 	    (card->mp_rd_bitmap & CTRL_PORT_MASK)) {
 		card->mp_rd_bitmap &= (u32) (~CTRL_PORT_MASK);
 		*port = CTRL_PORT;
-		dev_dbg(adapter->dev, "data: port=%d mp_rd_bitmap=0x%08x\n",
-			*port, card->mp_rd_bitmap);
+		mwifiex_dbg(adapter, DATA,
+			    "data: port=%d mp_rd_bitmap=0x%08x\n",
+			    *port, card->mp_rd_bitmap);
 	} else {
 		if (card->mp_rd_bitmap & (1 << card->curr_rd_port)) {
 			card->mp_rd_bitmap &= (u32)
@@ -591,9 +602,9 @@ static int mwifiex_get_rd_port(struct mwifiex_adapter *adapter, u8 *port)
 			return -1;
 		}
 
-		dev_dbg(adapter->dev,
-			"data: port=%d mp_rd_bitmap=0x%08x -> 0x%08x\n",
-			*port, rd_bitmap, card->mp_rd_bitmap);
+		mwifiex_dbg(adapter, DATA,
+			    "data: port=%d mp_rd_bitmap=0x%08x -> 0x%08x\n",
+			    *port, rd_bitmap, card->mp_rd_bitmap);
 	}
 	return 0;
 }
@@ -611,7 +622,8 @@ static int mwifiex_get_wr_port_data(struct mwifiex_adapter *adapter, u32 *port)
 	const struct mwifiex_sdio_card_reg *reg = card->reg;
 	u32 wr_bitmap = card->mp_wr_bitmap;
 
-	dev_dbg(adapter->dev, "data: mp_wr_bitmap=0x%08x\n", wr_bitmap);
+	mwifiex_dbg(adapter, DATA,
+		    "data: mp_wr_bitmap=0x%08x\n", wr_bitmap);
 
 	if (!(wr_bitmap & card->mp_data_port_mask)) {
 		adapter->data_sent = true;
@@ -629,15 +641,17 @@ static int mwifiex_get_wr_port_data(struct mwifiex_adapter *adapter, u32 *port)
 	}
 
 	if ((card->has_control_mask) && (*port == CTRL_PORT)) {
-		dev_err(adapter->dev,
-			"invalid data port=%d cur port=%d mp_wr_bitmap=0x%08x -> 0x%08x\n",
-			*port, card->curr_wr_port, wr_bitmap,
-			card->mp_wr_bitmap);
+		mwifiex_dbg(adapter, ERROR,
+			    "invalid data port=%d cur port=%d\t"
+			    "mp_wr_bitmap=0x%08x -> 0x%08x\n",
+			    *port, card->curr_wr_port, wr_bitmap,
+			    card->mp_wr_bitmap);
 		return -1;
 	}
 
-	dev_dbg(adapter->dev, "data: port=%d mp_wr_bitmap=0x%08x -> 0x%08x\n",
-		*port, wr_bitmap, card->mp_wr_bitmap);
+	mwifiex_dbg(adapter, DATA,
+		    "data: port=%d mp_wr_bitmap=0x%08x -> 0x%08x\n",
+		    *port, wr_bitmap, card->mp_wr_bitmap);
 
 	return 0;
 }
@@ -661,7 +675,8 @@ mwifiex_sdio_poll_card_status(struct mwifiex_adapter *adapter, u8 bits)
 		usleep_range(10, 20);
 	}
 
-	dev_err(adapter->dev, "poll card status failed, tries = %d\n", tries);
+	mwifiex_dbg(adapter, ERROR,
+		    "poll card status failed, tries = %d\n", tries);
 
 	return -1;
 }
@@ -721,7 +736,8 @@ static int mwifiex_sdio_enable_host_int(struct mwifiex_adapter *adapter)
 	/* Request the SDIO IRQ */
 	ret = sdio_claim_irq(func, mwifiex_sdio_interrupt);
 	if (ret) {
-		dev_err(adapter->dev, "claim irq failed: ret=%d\n", ret);
+		mwifiex_dbg(adapter, ERROR,
+			    "claim irq failed: ret=%d\n", ret);
 		goto out;
 	}
 
@@ -729,7 +745,8 @@ static int mwifiex_sdio_enable_host_int(struct mwifiex_adapter *adapter)
 	ret = mwifiex_write_reg_locked(func, HOST_INT_MASK_REG,
 				       card->reg->host_int_enable);
 	if (ret) {
-		dev_err(adapter->dev, "enable host interrupt failed\n");
+		mwifiex_dbg(adapter, ERROR,
+			    "enable host interrupt failed\n");
 		sdio_release_irq(func);
 	}
 out:
@@ -748,22 +765,25 @@ static int mwifiex_sdio_card_to_host(struct mwifiex_adapter *adapter,
 	u32 nb;
 
 	if (!buffer) {
-		dev_err(adapter->dev, "%s: buffer is NULL\n", __func__);
+		mwifiex_dbg(adapter, ERROR,
+			    "%s: buffer is NULL\n", __func__);
 		return -1;
 	}
 
 	ret = mwifiex_read_data_sync(adapter, buffer, npayload, ioport, 1);
 
 	if (ret) {
-		dev_err(adapter->dev, "%s: read iomem failed: %d\n", __func__,
-			ret);
+		mwifiex_dbg(adapter, ERROR,
+			    "%s: read iomem failed: %d\n", __func__,
+			    ret);
 		return -1;
 	}
 
 	nb = le16_to_cpu(*(__le16 *) (buffer));
 	if (nb > npayload) {
-		dev_err(adapter->dev, "%s: invalid packet, nb=%d npayload=%d\n",
-			__func__, nb, npayload);
+		mwifiex_dbg(adapter, ERROR,
+			    "%s: invalid packet, nb=%d npayload=%d\n",
+			    __func__, nb, npayload);
 		return -1;
 	}
 
@@ -795,13 +815,15 @@ static int mwifiex_prog_fw_w_helper(struct mwifiex_adapter *adapter,
 	u32 i = 0;
 
 	if (!firmware_len) {
-		dev_err(adapter->dev,
-			"firmware image not found! Terminating download\n");
+		mwifiex_dbg(adapter, ERROR,
+			    "firmware image not found!\t"
+			    "Terminating download\n");
 		return -1;
 	}
 
-	dev_dbg(adapter->dev, "info: downloading FW image (%d bytes)\n",
-		firmware_len);
+	mwifiex_dbg(adapter, INFO,
+		    "info: downloading FW image (%d bytes)\n",
+		    firmware_len);
 
 	/* Assume that the allocated buffer is 8-byte aligned */
 	fwbuf = kzalloc(MWIFIEX_UPLD_SIZE, GFP_KERNEL);
@@ -815,8 +837,9 @@ static int mwifiex_prog_fw_w_helper(struct mwifiex_adapter *adapter,
 		ret = mwifiex_sdio_poll_card_status(adapter, CARD_IO_READY |
 						    DN_LD_CARD_RDY);
 		if (ret) {
-			dev_err(adapter->dev, "FW download with helper:"
-				" poll status timeout @ %d\n", offset);
+			mwifiex_dbg(adapter, ERROR,
+				    "FW download with helper:\t"
+				    "poll status timeout @ %d\n", offset);
 			goto done;
 		}
 
@@ -828,19 +851,19 @@ static int mwifiex_prog_fw_w_helper(struct mwifiex_adapter *adapter,
 			ret = mwifiex_read_reg(adapter, reg->base_0_reg,
 					       &base0);
 			if (ret) {
-				dev_err(adapter->dev,
-					"dev BASE0 register read failed: "
-					"base0=%#04X(%d). Terminating dnld\n",
-					base0, base0);
+				mwifiex_dbg(adapter, ERROR,
+					    "dev BASE0 register read failed:\t"
+					    "base0=%#04X(%d). Terminating dnld\n",
+					    base0, base0);
 				goto done;
 			}
 			ret = mwifiex_read_reg(adapter, reg->base_1_reg,
 					       &base1);
 			if (ret) {
-				dev_err(adapter->dev,
-					"dev BASE1 register read failed: "
-					"base1=%#04X(%d). Terminating dnld\n",
-					base1, base1);
+				mwifiex_dbg(adapter, ERROR,
+					    "dev BASE1 register read failed:\t"
+					    "base1=%#04X(%d). Terminating dnld\n",
+					    base1, base1);
 				goto done;
 			}
 			len = (u16) (((base1 & 0xff) << 8) | (base0 & 0xff));
@@ -854,9 +877,9 @@ static int mwifiex_prog_fw_w_helper(struct mwifiex_adapter *adapter,
 		if (!len) {
 			break;
 		} else if (len > MWIFIEX_UPLD_SIZE) {
-			dev_err(adapter->dev,
-				"FW dnld failed @ %d, invalid length %d\n",
-				offset, len);
+			mwifiex_dbg(adapter, ERROR,
+				    "FW dnld failed @ %d, invalid length %d\n",
+				    offset, len);
 			ret = -1;
 			goto done;
 		}
@@ -866,14 +889,16 @@ static int mwifiex_prog_fw_w_helper(struct mwifiex_adapter *adapter,
 		if (len & BIT(0)) {
 			i++;
 			if (i > MAX_WRITE_IOMEM_RETRY) {
-				dev_err(adapter->dev,
-					"FW dnld failed @ %d, over max retry\n",
-					offset);
+				mwifiex_dbg(adapter, ERROR,
+					    "FW dnld failed @ %d,\t"
+					    "over max retry\n", offset);
 				ret = -1;
 				goto done;
 			}
-			dev_err(adapter->dev, "CRC indicated by the helper:"
-				" len = 0x%04X, txlen = %d\n", len, txlen);
+			mwifiex_dbg(adapter, ERROR,
+				    "CRC indicated by the helper:\t"
+				    "len = 0x%04X, txlen = %d\n",
+				    len, txlen);
 			len &= ~BIT(0);
 			/* Setting this to 0 to resend from same offset */
 			txlen = 0;
@@ -896,11 +921,12 @@ static int mwifiex_prog_fw_w_helper(struct mwifiex_adapter *adapter,
 					      MWIFIEX_SDIO_BLOCK_SIZE,
 					      adapter->ioport);
 		if (ret) {
-			dev_err(adapter->dev,
-				"FW download, write iomem (%d) failed @ %d\n",
-				i, offset);
+			mwifiex_dbg(adapter, ERROR,
+				    "FW download, write iomem (%d) failed @ %d\n",
+				    i, offset);
 			if (mwifiex_write_reg(adapter, CONFIGURATION_REG, 0x04))
-				dev_err(adapter->dev, "write CFG reg failed\n");
+				mwifiex_dbg(adapter, ERROR,
+					    "write CFG reg failed\n");
 
 			ret = -1;
 			goto done;
@@ -909,8 +935,9 @@ static int mwifiex_prog_fw_w_helper(struct mwifiex_adapter *adapter,
 		offset += txlen;
 	} while (true);
 
-	dev_dbg(adapter->dev, "info: FW download over, size %d bytes\n",
-		offset);
+	mwifiex_dbg(adapter, MSG,
+		    "info: FW download over, size %d bytes\n",
+		    offset);
 
 	ret = 0;
 done:
@@ -971,7 +998,7 @@ static void mwifiex_interrupt_status(struct mwifiex_adapter *adapter)
 	if (mwifiex_read_data_sync(adapter, card->mp_regs,
 				   card->reg->max_mp_regs,
 				   REG_PORT | MWIFIEX_SDIO_BYTE_MODE_MASK, 0)) {
-		dev_err(adapter->dev, "read mp_regs failed\n");
+		mwifiex_dbg(adapter, ERROR, "read mp_regs failed\n");
 		return;
 	}
 
@@ -984,7 +1011,8 @@ static void mwifiex_interrupt_status(struct mwifiex_adapter *adapter)
 		 *	UP_LD_CMD_PORT_HOST_INT_STATUS
 		 * Clear the interrupt status register
 		 */
-		dev_dbg(adapter->dev, "int: sdio_ireg = %#x\n", sdio_ireg);
+		mwifiex_dbg(adapter, INTR,
+			    "int: sdio_ireg = %#x\n", sdio_ireg);
 		spin_lock_irqsave(&adapter->int_lock, flags);
 		adapter->int_status |= sdio_ireg;
 		spin_unlock_irqrestore(&adapter->int_lock, flags);
@@ -1043,18 +1071,22 @@ static void mwifiex_deaggr_sdio_pkt(struct mwifiex_adapter *adapter,
 		blk_num = *(data + BLOCK_NUMBER_OFFSET);
 		blk_size = adapter->sdio_rx_block_size * blk_num;
 		if (blk_size > total_pkt_len) {
-			dev_err(adapter->dev, "%s: error in pkt,\t"
-				"blk_num=%d, blk_size=%d, total_pkt_len=%d\n",
-				__func__, blk_num, blk_size, total_pkt_len);
+			mwifiex_dbg(adapter, ERROR,
+				    "%s: error in pkt,\t"
+				    "blk_num=%d, blk_size=%d,\t"
+				    "total_pkt_len=%d\n",
+				    __func__, blk_num, blk_size,
+				    total_pkt_len);
 			break;
 		}
 		pkt_len = le16_to_cpu(*(__le16 *)(data + SDIO_HEADER_OFFSET));
 		pkt_type = le16_to_cpu(*(__le16 *)(data + SDIO_HEADER_OFFSET +
 					 2));
 		if ((pkt_len + SDIO_HEADER_OFFSET) > blk_size) {
-			dev_err(adapter->dev, "%s: error in pkt,\t"
-				"pkt_len=%d, blk_size=%d\n",
-				__func__, pkt_len, blk_size);
+			mwifiex_dbg(adapter, ERROR,
+				    "%s: error in pkt,\t"
+				    "pkt_len=%d, blk_size=%d\n",
+				    __func__, pkt_len, blk_size);
 			break;
 		}
 		skb_deaggr = mwifiex_alloc_dma_align_buf(pkt_len,
@@ -1093,7 +1125,8 @@ static int mwifiex_decode_rx_packet(struct mwifiex_adapter *adapter,
 
 	switch (upld_typ) {
 	case MWIFIEX_TYPE_AGGR_DATA:
-		dev_dbg(adapter->dev, "info: --- Rx: Aggr Data packet ---\n");
+		mwifiex_dbg(adapter, INFO,
+			    "info: --- Rx: Aggr Data packet ---\n");
 		rx_info = MWIFIEX_SKB_RXCB(skb);
 		rx_info->buf_type = MWIFIEX_TYPE_AGGR_DATA;
 		if (adapter->rx_work_enabled) {
@@ -1107,7 +1140,8 @@ static int mwifiex_decode_rx_packet(struct mwifiex_adapter *adapter,
 		break;
 
 	case MWIFIEX_TYPE_DATA:
-		dev_dbg(adapter->dev, "info: --- Rx: Data packet ---\n");
+		mwifiex_dbg(adapter, DATA,
+			    "info: --- Rx: Data packet ---\n");
 		if (adapter->rx_work_enabled) {
 			skb_queue_tail(&adapter->rx_data_q, skb);
 			adapter->data_received = true;
@@ -1118,7 +1152,8 @@ static int mwifiex_decode_rx_packet(struct mwifiex_adapter *adapter,
 		break;
 
 	case MWIFIEX_TYPE_CMD:
-		dev_dbg(adapter->dev, "info: --- Rx: Cmd Response ---\n");
+		mwifiex_dbg(adapter, CMD,
+			    "info: --- Rx: Cmd Response ---\n");
 		/* take care of curr_cmd = NULL case */
 		if (!adapter->curr_cmd) {
 			cmd_buf = adapter->upld_buf;
@@ -1140,7 +1175,8 @@ static int mwifiex_decode_rx_packet(struct mwifiex_adapter *adapter,
 		break;
 
 	case MWIFIEX_TYPE_EVENT:
-		dev_dbg(adapter->dev, "info: --- Rx: Event ---\n");
+		mwifiex_dbg(adapter, EVENT,
+			    "info: --- Rx: Event ---\n");
 		adapter->event_cause = *(u32 *) skb->data;
 
 		if ((skb->len > 0) && (skb->len  < MAX_EVENT_SIZE))
@@ -1155,7 +1191,8 @@ static int mwifiex_decode_rx_packet(struct mwifiex_adapter *adapter,
 		break;
 
 	default:
-		dev_err(adapter->dev, "unknown upload type %#x\n", upld_typ);
+		mwifiex_dbg(adapter, ERROR,
+			    "unknown upload type %#x\n", upld_typ);
 		dev_kfree_skb_any(skb);
 		break;
 	}
@@ -1187,16 +1224,18 @@ static int mwifiex_sdio_card_to_host_mp_aggr(struct mwifiex_adapter *adapter,
 
 	if ((card->has_control_mask) && (port == CTRL_PORT)) {
 		/* Read the command Resp without aggr */
-		dev_dbg(adapter->dev, "info: %s: no aggregation for cmd "
-			"response\n", __func__);
+		mwifiex_dbg(adapter, CMD,
+			    "info: %s: no aggregation for cmd\t"
+			    "response\n", __func__);
 
 		f_do_rx_cur = 1;
 		goto rx_curr_single;
 	}
 
 	if (!card->mpa_rx.enabled) {
-		dev_dbg(adapter->dev, "info: %s: rx aggregation disabled\n",
-			__func__);
+		mwifiex_dbg(adapter, WARN,
+			    "info: %s: rx aggregation disabled\n",
+			    __func__);
 
 		f_do_rx_cur = 1;
 		goto rx_curr_single;
@@ -1207,7 +1246,8 @@ static int mwifiex_sdio_card_to_host_mp_aggr(struct mwifiex_adapter *adapter,
 	    (card->has_control_mask && (card->mp_rd_bitmap &
 					(~((u32) CTRL_PORT_MASK))))) {
 		/* Some more data RX pending */
-		dev_dbg(adapter->dev, "info: %s: not last packet\n", __func__);
+		mwifiex_dbg(adapter, INFO,
+			    "info: %s: not last packet\n", __func__);
 
 		if (MP_RX_AGGR_IN_PROGRESS(card)) {
 			if (MP_RX_AGGR_BUF_HAS_ROOM(card, rx_len)) {
@@ -1224,7 +1264,8 @@ static int mwifiex_sdio_card_to_host_mp_aggr(struct mwifiex_adapter *adapter,
 
 	} else {
 		/* No more data RX pending */
-		dev_dbg(adapter->dev, "info: %s: last packet\n", __func__);
+		mwifiex_dbg(adapter, INFO,
+			    "info: %s: last packet\n", __func__);
 
 		if (MP_RX_AGGR_IN_PROGRESS(card)) {
 			f_do_rx_aggr = 1;
@@ -1239,14 +1280,16 @@ static int mwifiex_sdio_card_to_host_mp_aggr(struct mwifiex_adapter *adapter,
 	}
 
 	if (f_aggr_cur) {
-		dev_dbg(adapter->dev, "info: current packet aggregation\n");
+		mwifiex_dbg(adapter, INFO,
+			    "info: current packet aggregation\n");
 		/* Curr pkt can be aggregated */
 		mp_rx_aggr_setup(card, rx_len, port);
 
 		if (MP_RX_AGGR_PKT_LIMIT_REACHED(card) ||
 		    mp_rx_aggr_port_limit_reached(card)) {
-			dev_dbg(adapter->dev, "info: %s: aggregated packet "
-				"limit reached\n", __func__);
+			mwifiex_dbg(adapter, INFO,
+				    "info: %s: aggregated packet\t"
+				    "limit reached\n", __func__);
 			/* No more pkts allowed in Aggr buf, rx it */
 			f_do_rx_aggr = 1;
 		}
@@ -1254,8 +1297,9 @@ static int mwifiex_sdio_card_to_host_mp_aggr(struct mwifiex_adapter *adapter,
 
 	if (f_do_rx_aggr) {
 		/* do aggr RX now */
-		dev_dbg(adapter->dev, "info: do_rx_aggr: num of packets: %d\n",
-			card->mpa_rx.pkt_cnt);
+		mwifiex_dbg(adapter, DATA,
+			    "info: do_rx_aggr: num of packets: %d\n",
+			    card->mpa_rx.pkt_cnt);
 
 		if (card->supports_sdio_new_mode) {
 			int i;
@@ -1312,12 +1356,13 @@ static int mwifiex_sdio_card_to_host_mp_aggr(struct mwifiex_adapter *adapter,
 				mwifiex_decode_rx_packet(adapter, skb_deaggr,
 							 pkt_type);
 			} else {
-				dev_err(adapter->dev, "wrong aggr pkt:\t"
-					"sdio_single_port_rx_aggr=%d\t"
-					"type=%d len=%d max_len=%d\n",
-					adapter->sdio_rx_aggr_enable,
-					pkt_type, pkt_len,
-					len_arr[pind]);
+				mwifiex_dbg(adapter, ERROR,
+					    "wrong aggr pkt:\t"
+					    "sdio_single_port_rx_aggr=%d\t"
+					    "type=%d len=%d max_len=%d\n",
+					    adapter->sdio_rx_aggr_enable,
+					    pkt_type, pkt_len,
+					    len_arr[pind]);
 				dev_kfree_skb_any(skb_deaggr);
 			}
 			curr_ptr += len_arr[pind];
@@ -1327,8 +1372,9 @@ static int mwifiex_sdio_card_to_host_mp_aggr(struct mwifiex_adapter *adapter,
 
 rx_curr_single:
 	if (f_do_rx_cur) {
-		dev_dbg(adapter->dev, "info: RX: port: %d, rx_len: %d\n",
-			port, rx_len);
+		mwifiex_dbg(adapter, INFO,
+			    "info: RX: port: %d, rx_len: %d\n",
+			    port, rx_len);
 		skb = mwifiex_alloc_dma_align_buf(rx_len, GFP_KERNEL | GFP_DMA);
 		if (!skb)
 			goto error;
@@ -1340,16 +1386,18 @@ rx_curr_single:
 			goto error;
 		if (!adapter->sdio_rx_aggr_enable &&
 		    pkt_type == MWIFIEX_TYPE_AGGR_DATA) {
-			dev_err(adapter->dev, "Wrong pkt type %d\t"
-				"Current SDIO RX Aggr not enabled\n",
-				pkt_type);
+			mwifiex_dbg(adapter, ERROR,
+				    "Wrong pkt type %d\t"
+				    "Current SDIO RX Aggr not enabled\n",
+				    pkt_type);
 			goto error;
 		}
 
 		mwifiex_decode_rx_packet(adapter, skb, pkt_type);
 	}
 	if (f_post_aggr_cur) {
-		dev_dbg(adapter->dev, "info: current packet aggregation\n");
+		mwifiex_dbg(adapter, INFO,
+			    "info: current packet aggregation\n");
 		/* Curr pkt can be aggregated */
 		mp_rx_aggr_setup(card, rx_len, port);
 	}
@@ -1429,7 +1477,7 @@ static int mwifiex_process_int_status(struct mwifiex_adapter *adapter)
 		     MWIFIEX_RX_DATA_BUF_SIZE)
 			return -1;
 		rx_len = (u16) (rx_blocks * MWIFIEX_SDIO_BLOCK_SIZE);
-		dev_dbg(adapter->dev, "info: rx_len = %d\n", rx_len);
+		mwifiex_dbg(adapter, INFO, "info: rx_len = %d\n", rx_len);
 
 		skb = mwifiex_alloc_dma_align_buf(rx_len, GFP_KERNEL | GFP_DMA);
 		if (!skb)
@@ -1440,17 +1488,17 @@ static int mwifiex_process_int_status(struct mwifiex_adapter *adapter)
 		if (mwifiex_sdio_card_to_host(adapter, &pkt_type, skb->data,
 					      skb->len, adapter->ioport |
 							CMD_PORT_SLCT)) {
-			dev_err(adapter->dev,
-				"%s: failed to card_to_host", __func__);
+			mwifiex_dbg(adapter, ERROR,
+				    "%s: failed to card_to_host", __func__);
 			dev_kfree_skb_any(skb);
 			goto term_cmd;
 		}
 
 		if ((pkt_type != MWIFIEX_TYPE_CMD) &&
 		    (pkt_type != MWIFIEX_TYPE_EVENT))
-			dev_err(adapter->dev,
-				"%s:Received wrong packet on cmd port",
-				__func__);
+			mwifiex_dbg(adapter, ERROR,
+				    "%s:Received wrong packet on cmd port",
+				    __func__);
 
 		mwifiex_decode_rx_packet(adapter, skb, pkt_type);
 	}
@@ -1466,12 +1514,13 @@ static int mwifiex_process_int_status(struct mwifiex_adapter *adapter)
 		}
 		card->mp_wr_bitmap = bitmap;
 
-		dev_dbg(adapter->dev, "int: DNLD: wr_bitmap=0x%x\n",
-			card->mp_wr_bitmap);
+		mwifiex_dbg(adapter, INTR,
+			    "int: DNLD: wr_bitmap=0x%x\n",
+			    card->mp_wr_bitmap);
 		if (adapter->data_sent &&
 		    (card->mp_wr_bitmap & card->mp_data_port_mask)) {
-			dev_dbg(adapter->dev,
-				"info:  <--- Tx DONE Interrupt --->\n");
+			mwifiex_dbg(adapter, INTR,
+				    "info:  <--- Tx DONE Interrupt --->\n");
 			adapter->data_sent = false;
 		}
 	}
@@ -1488,8 +1537,8 @@ static int mwifiex_process_int_status(struct mwifiex_adapter *adapter)
 			adapter->cmd_sent = false;
 	}
 
-	dev_dbg(adapter->dev, "info: cmd_sent=%d data_sent=%d\n",
-		adapter->cmd_sent, adapter->data_sent);
+	mwifiex_dbg(adapter, INTR, "info: cmd_sent=%d data_sent=%d\n",
+		    adapter->cmd_sent, adapter->data_sent);
 	if (sdio_ireg & UP_LD_HOST_INT_STATUS) {
 		bitmap = (u32) card->mp_regs[reg->rd_bitmap_l];
 		bitmap |= ((u32) card->mp_regs[reg->rd_bitmap_u]) << 8;
@@ -1500,40 +1549,44 @@ static int mwifiex_process_int_status(struct mwifiex_adapter *adapter)
 				((u32) card->mp_regs[reg->rd_bitmap_1u]) << 24;
 		}
 		card->mp_rd_bitmap = bitmap;
-		dev_dbg(adapter->dev, "int: UPLD: rd_bitmap=0x%x\n",
-			card->mp_rd_bitmap);
+		mwifiex_dbg(adapter, INTR, "int: UPLD: rd_bitmap=0x%x\n",
+			    card->mp_rd_bitmap);
 
 		while (true) {
 			ret = mwifiex_get_rd_port(adapter, &port);
 			if (ret) {
-				dev_dbg(adapter->dev,
-					"info: no more rd_port available\n");
+				mwifiex_dbg(adapter, INFO,
+					    "info: no more rd_port available\n");
 				break;
 			}
 			len_reg_l = reg->rd_len_p0_l + (port << 1);
 			len_reg_u = reg->rd_len_p0_u + (port << 1);
 			rx_len = ((u16) card->mp_regs[len_reg_u]) << 8;
 			rx_len |= (u16) card->mp_regs[len_reg_l];
-			dev_dbg(adapter->dev, "info: RX: port=%d rx_len=%u\n",
-				port, rx_len);
+			mwifiex_dbg(adapter, INFO,
+				    "info: RX: port=%d rx_len=%u\n",
+				    port, rx_len);
 			rx_blocks =
 				(rx_len + MWIFIEX_SDIO_BLOCK_SIZE -
 				 1) / MWIFIEX_SDIO_BLOCK_SIZE;
 			if (rx_len <= INTF_HEADER_LEN ||
 			    (rx_blocks * MWIFIEX_SDIO_BLOCK_SIZE) >
 			     card->mpa_rx.buf_size) {
-				dev_err(adapter->dev, "invalid rx_len=%d\n",
-					rx_len);
+				mwifiex_dbg(adapter, ERROR,
+					    "invalid rx_len=%d\n",
+					    rx_len);
 				return -1;
 			}
 
 			rx_len = (u16) (rx_blocks * MWIFIEX_SDIO_BLOCK_SIZE);
-			dev_dbg(adapter->dev, "info: rx_len = %d\n", rx_len);
+			mwifiex_dbg(adapter, INFO,
+				    "info: rx_len = %d\n", rx_len);
 
 			if (mwifiex_sdio_card_to_host_mp_aggr(adapter, rx_len,
 							      port)) {
-				dev_err(adapter->dev, "card_to_host_mpa failed:"
-					" int status=%#x\n", sdio_ireg);
+				mwifiex_dbg(adapter, ERROR,
+					    "card_to_host_mpa failed:\t"
+					    "int status=%#x\n", sdio_ireg);
 				goto term_cmd;
 			}
 		}
@@ -1544,19 +1597,25 @@ static int mwifiex_process_int_status(struct mwifiex_adapter *adapter)
 term_cmd:
 	/* terminate cmd */
 	if (mwifiex_read_reg(adapter, CONFIGURATION_REG, &cr))
-		dev_err(adapter->dev, "read CFG reg failed\n");
+		mwifiex_dbg(adapter, ERROR,
+			    "read CFG reg failed\n");
 	else
-		dev_dbg(adapter->dev, "info: CFG reg val = %d\n", cr);
+		mwifiex_dbg(adapter, INFO,
+			    "info: CFG reg val = %d\n", cr);
 
 	if (mwifiex_write_reg(adapter, CONFIGURATION_REG, (cr | 0x04)))
-		dev_err(adapter->dev, "write CFG reg failed\n");
+		mwifiex_dbg(adapter, ERROR,
+			    "write CFG reg failed\n");
 	else
-		dev_dbg(adapter->dev, "info: write success\n");
+		mwifiex_dbg(adapter, INFO,
+			    "info: write success\n");
 
 	if (mwifiex_read_reg(adapter, CONFIGURATION_REG, &cr))
-		dev_err(adapter->dev, "read CFG reg failed\n");
+		mwifiex_dbg(adapter, ERROR,
+			    "read CFG reg failed\n");
 	else
-		dev_dbg(adapter->dev, "info: CFG reg val =%x\n", cr);
+		mwifiex_dbg(adapter, INFO,
+			    "info: CFG reg val =%x\n", cr);
 
 	return -1;
 }
@@ -1590,8 +1649,9 @@ static int mwifiex_host_to_card_mp_aggr(struct mwifiex_adapter *adapter,
 	if (!card->mpa_tx.enabled ||
 	    (card->has_control_mask && (port == CTRL_PORT)) ||
 	    (card->supports_sdio_new_mode && (port == CMD_PORT_SLCT))) {
-		dev_dbg(adapter->dev, "info: %s: tx aggregation disabled\n",
-			__func__);
+		mwifiex_dbg(adapter, WARN,
+			    "info: %s: tx aggregation disabled\n",
+			    __func__);
 
 		f_send_cur_buf = 1;
 		goto tx_curr_single;
@@ -1599,8 +1659,9 @@ static int mwifiex_host_to_card_mp_aggr(struct mwifiex_adapter *adapter,
 
 	if (next_pkt_len) {
 		/* More pkt in TX queue */
-		dev_dbg(adapter->dev, "info: %s: more packets in queue.\n",
-			__func__);
+		mwifiex_dbg(adapter, INFO,
+			    "info: %s: more packets in queue.\n",
+			    __func__);
 
 		if (MP_TX_AGGR_IN_PROGRESS(card)) {
 			if (MP_TX_AGGR_BUF_HAS_ROOM(card, pkt_len)) {
@@ -1630,8 +1691,9 @@ static int mwifiex_host_to_card_mp_aggr(struct mwifiex_adapter *adapter,
 		}
 	} else {
 		/* Last pkt in TX queue */
-		dev_dbg(adapter->dev, "info: %s: Last packet in Tx Queue.\n",
-			__func__);
+		mwifiex_dbg(adapter, INFO,
+			    "info: %s: Last packet in Tx Queue.\n",
+			    __func__);
 
 		if (MP_TX_AGGR_IN_PROGRESS(card)) {
 			/* some packs in Aggr buf already */
@@ -1648,8 +1710,9 @@ static int mwifiex_host_to_card_mp_aggr(struct mwifiex_adapter *adapter,
 	}
 
 	if (f_precopy_cur_buf) {
-		dev_dbg(adapter->dev, "data: %s: precopy current buffer\n",
-			__func__);
+		mwifiex_dbg(adapter, DATA,
+			    "data: %s: precopy current buffer\n",
+			    __func__);
 		MP_TX_AGGR_BUF_PUT(card, payload, pkt_len, port);
 
 		if (MP_TX_AGGR_PKT_LIMIT_REACHED(card) ||
@@ -1659,9 +1722,10 @@ static int mwifiex_host_to_card_mp_aggr(struct mwifiex_adapter *adapter,
 	}
 
 	if (f_send_aggr_buf) {
-		dev_dbg(adapter->dev, "data: %s: send aggr buffer: %d %d\n",
-			__func__,
-				card->mpa_tx.start_port, card->mpa_tx.ports);
+		mwifiex_dbg(adapter, DATA,
+			    "data: %s: send aggr buffer: %d %d\n",
+			    __func__, card->mpa_tx.start_port,
+			    card->mpa_tx.ports);
 		if (card->supports_sdio_new_mode) {
 			u32 port_count;
 			int i;
@@ -1690,15 +1754,17 @@ static int mwifiex_host_to_card_mp_aggr(struct mwifiex_adapter *adapter,
 
 tx_curr_single:
 	if (f_send_cur_buf) {
-		dev_dbg(adapter->dev, "data: %s: send current buffer %d\n",
-			__func__, port);
+		mwifiex_dbg(adapter, DATA,
+			    "data: %s: send current buffer %d\n",
+			    __func__, port);
 		ret = mwifiex_write_data_to_card(adapter, payload, pkt_len,
 						 adapter->ioport + port);
 	}
 
 	if (f_postcopy_cur_buf) {
-		dev_dbg(adapter->dev, "data: %s: postcopy current buffer\n",
-			__func__);
+		mwifiex_dbg(adapter, DATA,
+			    "data: %s: postcopy current buffer\n",
+			    __func__);
 		MP_TX_AGGR_BUF_PUT(card, payload, pkt_len, port);
 	}
 
@@ -1742,8 +1808,9 @@ static int mwifiex_sdio_host_to_card(struct mwifiex_adapter *adapter,
 	if (type == MWIFIEX_TYPE_DATA) {
 		ret = mwifiex_get_wr_port_data(adapter, &port);
 		if (ret) {
-			dev_err(adapter->dev, "%s: no wr_port available\n",
-				__func__);
+			mwifiex_dbg(adapter, ERROR,
+				    "%s: no wr_port available\n",
+				    __func__);
 			return ret;
 		}
 	} else {
@@ -1752,8 +1819,9 @@ static int mwifiex_sdio_host_to_card(struct mwifiex_adapter *adapter,
 
 		if (pkt_len <= INTF_HEADER_LEN ||
 		    pkt_len > MWIFIEX_UPLD_SIZE)
-			dev_err(adapter->dev, "%s: payload=%p, nb=%d\n",
-				__func__, payload, pkt_len);
+			mwifiex_dbg(adapter, ERROR,
+				    "%s: payload=%p, nb=%d\n",
+				    __func__, payload, pkt_len);
 
 		if (card->supports_sdio_new_mode)
 			port = CMD_PORT_SLCT;
@@ -1864,7 +1932,8 @@ static int mwifiex_register_dev(struct mwifiex_adapter *adapter)
 	ret = sdio_set_block_size(card->func, MWIFIEX_SDIO_BLOCK_SIZE);
 	sdio_release_host(func);
 	if (ret) {
-		pr_err("cannot set SDIO block size\n");
+		mwifiex_dbg(adapter, ERROR,
+			    "cannot set SDIO block size\n");
 		return ret;
 	}
 
@@ -1942,7 +2011,8 @@ static int mwifiex_init_sdio(struct mwifiex_adapter *adapter)
 					     card->mp_tx_agg_buf_size,
 					     card->mp_rx_agg_buf_size);
 	if (ret) {
-		dev_err(adapter->dev, "failed to alloc sdio mp-a buffers\n");
+		mwifiex_dbg(adapter, ERROR,
+			    "failed to alloc sdio mp-a buffers\n");
 		kfree(card->mp_regs);
 		return -1;
 	}
@@ -2002,8 +2072,9 @@ mwifiex_update_mp_end_port(struct mwifiex_adapter *adapter, u16 port)
 
 	card->curr_wr_port = reg->start_wr_port;
 
-	dev_dbg(adapter->dev, "cmd: mp_end_port %d, data port mask 0x%x\n",
-		port, card->mp_data_port_mask);
+	mwifiex_dbg(adapter, CMD,
+		    "cmd: mp_end_port %d, data port mask 0x%x\n",
+		    port, card->mp_data_port_mask);
 }
 
 static struct mmc_host *reset_host;

@@ -105,7 +105,8 @@ int mwifiex_process_rx_packet(struct mwifiex_private *priv,
 
 	ret = mwifiex_recv_packet(priv, skb);
 	if (ret == -1)
-		dev_err(priv->adapter->dev, "recv packet failed\n");
+		mwifiex_dbg(priv->adapter, ERROR,
+			    "recv packet failed\n");
 
 	return ret;
 }
@@ -142,9 +143,10 @@ int mwifiex_process_sta_rx_packet(struct mwifiex_private *priv,
 	rx_pkt_hdr = (void *)local_rx_pd + rx_pkt_offset;
 
 	if ((rx_pkt_offset + rx_pkt_length) > (u16) skb->len) {
-		dev_err(adapter->dev,
-			"wrong rx packet: len=%d, rx_pkt_offset=%d, rx_pkt_length=%d\n",
-			skb->len, rx_pkt_offset, rx_pkt_length);
+		mwifiex_dbg(adapter, ERROR,
+			    "wrong rx packet: len=%d,\t"
+			    "rx_pkt_offset=%d, rx_pkt_length=%d\n",
+			    skb->len, rx_pkt_offset, rx_pkt_length);
 		priv->stats.rx_dropped++;
 
 		if (adapter->if_ops.data_complete)
@@ -158,7 +160,8 @@ int mwifiex_process_sta_rx_packet(struct mwifiex_private *priv,
 	if (rx_pkt_type == PKT_TYPE_MGMT) {
 		ret = mwifiex_process_mgmt_packet(priv, skb);
 		if (ret)
-			dev_err(adapter->dev, "Rx of mgmt packet failed");
+			mwifiex_dbg(adapter, ERROR,
+				    "Rx of mgmt packet failed");
 		dev_kfree_skb_any(skb);
 		return ret;
 	}

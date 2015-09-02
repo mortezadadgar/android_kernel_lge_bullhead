@@ -831,7 +831,8 @@ mwifiex_reset_write(struct file *file,
 	case 'Y':
 	case '1':
 		if (adapter->if_ops.card_reset) {
-			dev_info(adapter->dev, "Resetting per request\n");
+			mwifiex_dbg(adapter, MSG,
+				    "Resetting per request\n");
 			adapter->hw_status = MWIFIEX_HW_STATUS_RESET;
 			mwifiex_cancel_all_pending_cmd(adapter);
 			adapter->if_ops.card_reset(adapter);

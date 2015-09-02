@@ -115,20 +115,20 @@ int mwifiex_sysfs_register(struct mwifiex_private *priv)
 	/* Create sysfs file to control manufacturing mode feature*/
 	ret = device_create_file(&priv->netdev->dev, &dev_attr_mfg_mode);
 	if (ret)
-		dev_err(priv->adapter->dev,
-			"failed to create sysfs file mfg_mode\n");
+		mwifiex_dbg(priv->adapter, ERROR,
+			    "failed to create sysfs file mfg_mode\n");
 
 	/* Create sysfs file for manufacturing firmware name */
 	ret = device_create_file(&priv->netdev->dev, &dev_attr_mfg_firmware);
 	if (ret)
-		dev_err(priv->adapter->dev,
-			"failed to create sysfs file mfg_firmware\n");
+		mwifiex_dbg(priv->adapter, ERROR,
+			    "failed to create sysfs file mfg_firmware\n");
 
 	/* Create sysfs file to control LED feature */
 	ret = device_create_file(&priv->netdev->dev, &dev_attr_led);
 	if (ret)
-		dev_err(priv->adapter->dev,
-			"failed to create sysfs file rf_led\n");
+		mwifiex_dbg(priv->adapter, ERROR,
+			    "failed to create sysfs file rf_led\n");
 
 	return ret;
 }

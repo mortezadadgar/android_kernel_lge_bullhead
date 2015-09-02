@@ -68,7 +68,8 @@ int mwifiex_init_shutdown_fw(struct mwifiex_private *priv,
 	} else if (func_init_shutdown == MWIFIEX_FUNC_SHUTDOWN) {
 		cmd = HostCmd_CMD_FUNC_SHUTDOWN;
 	} else {
-		dev_err(priv->adapter->dev, "unsupported parameter\n");
+		mwifiex_dbg(priv->adapter, ERROR,
+			    "unsupported parameter\n");
 		return -1;
 	}
 
@@ -240,13 +241,14 @@ int mwifiex_recv_packet(struct mwifiex_private *priv, struct sk_buff *skb)
 int mwifiex_complete_cmd(struct mwifiex_adapter *adapter,
 			 struct cmd_ctrl_node *cmd_node)
 {
-	dev_dbg(adapter->dev, "cmd completed: status=%d\n",
-		adapter->cmd_wait_q.status);
+	mwifiex_dbg(adapter, CMD,
+		    "cmd completed: status=%d\n",
+		    adapter->cmd_wait_q.status);
 
 	*(cmd_node->condition) = true;
 
 	if (adapter->cmd_wait_q.status == -ETIMEDOUT)
-		dev_err(adapter->dev, "cmd timeout\n");
+		mwifiex_dbg(adapter, ERROR, "cmd timeout\n");
 	else
 		wake_up_interruptible(&adapter->cmd_wait_q.wait);
 

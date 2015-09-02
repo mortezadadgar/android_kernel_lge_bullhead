@@ -78,8 +78,8 @@ int mwifiex_process_uap_event(struct mwifiex_private *priv)
 
 		node = mwifiex_add_sta_entry(priv, event->sta_addr);
 		if (!node) {
-			dev_warn(adapter->dev,
-				 "could not create station entry!\n");
+			mwifiex_dbg(adapter, FATAL,
+				    "could not create station entry!\n");
 			return -1;
 		}
 
@@ -125,53 +125,59 @@ int mwifiex_process_uap_event(struct mwifiex_private *priv)
 		mwifiex_wake_up_net_dev_queue(priv->netdev, adapter);
 		break;
 	case EVENT_UAP_BSS_START:
-		dev_dbg(adapter->dev, "AP EVENT: event id: %#x\n", eventcause);
+		mwifiex_dbg(adapter, EVENT,
+			    "AP EVENT: event id: %#x\n", eventcause);
 		memcpy(priv->netdev->dev_addr, adapter->event_body + 2,
 		       ETH_ALEN);
 		break;
 	case EVENT_UAP_MIC_COUNTERMEASURES:
 		/* For future development */
-		dev_dbg(adapter->dev, "AP EVENT: event id: %#x\n", eventcause);
+		mwifiex_dbg(adapter, EVENT,
+			    "AP EVENT: event id: %#x\n", eventcause);
 		break;
 	case EVENT_AMSDU_AGGR_CTRL:
 		ctrl = le16_to_cpu(*(__le16 *)adapter->event_body);
-		dev_dbg(adapter->dev, "event: AMSDU_AGGR_CTRL %d\n", ctrl);
+		mwifiex_dbg(adapter, EVENT,
+			    "event: AMSDU_AGGR_CTRL %d\n", ctrl);
 
 		if (priv->media_connected) {
 			adapter->tx_buf_size =
 				min_t(u16, adapter->curr_tx_buf_size, ctrl);
-			dev_dbg(adapter->dev, "event: tx_buf_size %d\n",
-				adapter->tx_buf_size);
+			mwifiex_dbg(adapter, EVENT,
+				    "event: tx_buf_size %d\n",
+				    adapter->tx_buf_size);
 		}
 		break;
 	case EVENT_ADDBA:
-		dev_dbg(adapter->dev, "event: ADDBA Request\n");
+		mwifiex_dbg(adapter, EVENT, "event: ADDBA Request\n");
 		if (priv->media_connected)
 			mwifiex_send_cmd(priv, HostCmd_CMD_11N_ADDBA_RSP,
 					 HostCmd_ACT_GEN_SET, 0,
 					 adapter->event_body, false);
 		break;
 	case EVENT_DELBA:
-		dev_dbg(adapter->dev, "event: DELBA Request\n");
+		mwifiex_dbg(adapter, EVENT, "event: DELBA Request\n");
 		if (priv->media_connected)
 			mwifiex_11n_delete_ba_stream(priv, adapter->event_body);
 		break;
 	case EVENT_BA_STREAM_TIEMOUT:
-		dev_dbg(adapter->dev, "event:  BA Stream timeout\n");
+		mwifiex_dbg(adapter, EVENT,
+			    "event:  BA Stream timeout\n");
 		if (priv->media_connected) {
 			ba_timeout = (void *)adapter->event_body;
 			mwifiex_11n_ba_stream_timeout(priv, ba_timeout);
 		}
 		break;
 	case EVENT_EXT_SCAN_REPORT:
-		dev_dbg(adapter->dev, "event: EXT_SCAN Report\n");
+		mwifiex_dbg(adapter, EVENT, "event: EXT_SCAN Report\n");
 		if (adapter->ext_scan)
 			return mwifiex_handle_event_ext_scan_report(priv,
 						adapter->event_skb->data);
 		break;
 	default:
-		dev_dbg(adapter->dev, "event: unknown event id: %#x\n",
-			eventcause);
+		mwifiex_dbg(adapter, ERROR,
+			    "event: unknown event id: %#x\n",
+			    eventcause);
 		break;
 	}
 
