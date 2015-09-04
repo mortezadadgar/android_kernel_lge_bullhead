@@ -609,11 +609,14 @@ static int azx_suspend(struct device *dev)
 	return 0;
 }
 
+extern int i915_get_power_well_status(void);
+
 static int azx_resume(struct device *dev)
 {
 	struct pci_dev *pci = to_pci_dev(dev);
 	struct snd_card *card = dev_get_drvdata(dev);
 	struct azx *chip;
+	int i;
 
 	if (!card)
 		return 0;
@@ -641,6 +644,15 @@ static int azx_resume(struct device *dev)
 	azx_init_pci(chip);
 
 	azx_init_chip(chip, 1);
+
+	for (i = 0; i < 80; i++) {
+		if (i915_get_power_well_status())
+			break;
+		msleep(10);
+	}
+	if (i == 80)
+		printk(KERN_WARNING
+		       "hda-intel: get_i915_power_well_status timeout\n");
 
 	snd_hda_resume(chip->bus);
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);

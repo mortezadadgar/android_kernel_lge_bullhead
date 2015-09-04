@@ -156,6 +156,7 @@ MODULE_PARM_DESC(prefault_disable,
 
 static struct drm_driver driver;
 extern int intel_agp_enabled;
+static int i915_power_well_resumed;
 
 static const struct intel_device_info intel_i830_info = {
 	.gen = 2, .is_mobile = 1, .cursor_needs_physical = 1, .num_pipes = 2,
@@ -461,6 +462,7 @@ static int i915_drm_freeze(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_crtc *crtc;
 
+	i915_power_well_resumed = 0;
 	/* ignore lid events during suspend */
 	mutex_lock(&dev_priv->modeset_restore_lock);
 	dev_priv->modeset_restore = MODESET_SUSPENDED;
@@ -606,6 +608,7 @@ static int __i915_drm_thaw(struct drm_device *dev, bool restore_gtt_mappings)
 		vlv_set_power_well(dev_priv, 0xcfcf);
 		vlv_set_power_well(dev_priv, 0xf);
 	}
+	i915_power_well_resumed = 1;
 
 	i915_restore_state(dev);
 	intel_opregion_setup(dev);
@@ -674,11 +677,15 @@ int i915_resume(struct drm_device *dev)
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int ret;
 
-	if (dev->switch_power_state == DRM_SWITCH_POWER_OFF)
+	if (dev->switch_power_state == DRM_SWITCH_POWER_OFF) {
+		i915_power_well_resumed = 1;
 		return 0;
+	}
 
-	if (pci_enable_device(dev->pdev))
+	if (pci_enable_device(dev->pdev)) {
+		i915_power_well_resumed = 1;
 		return -EIO;
+	}
 
 	pci_set_master(dev->pdev);
 
@@ -694,6 +701,12 @@ int i915_resume(struct drm_device *dev)
 	drm_kms_helper_poll_enable(dev);
 	return 0;
 }
+
+int i915_get_power_well_status(void)
+{
+	return i915_power_well_resumed;
+}
+EXPORT_SYMBOL(i915_get_power_well_status);
 
 /**
  * i915_reset - reset chip after a hang
