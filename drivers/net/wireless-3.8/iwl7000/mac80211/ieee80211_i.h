@@ -85,6 +85,8 @@ struct ieee80211_local;
 
 #define IEEE80211_DEAUTH_FRAME_LEN	(24 /* hdr */ + 2 /* reason */)
 
+#define IEEE80211_MAX_NAN_INSTANCE_ID 255
+
 struct ieee80211_fragment_entry {
 	struct sk_buff_head skb_list;
 	unsigned long first_frag_time;
@@ -818,9 +820,16 @@ struct ieee80211_if_mntr {
  * struct ieee80211_if_nan - NAN state
  *
  * @nan_conf: current nan configuration
+ * @func_ids: a bitmap of available instance_id's
  */
 struct ieee80211_if_nan {
 	struct cfg80211_nan_conf nan_conf;
+	unsigned long func_ids[BITS_TO_LONGS(IEEE80211_MAX_NAN_INSTANCE_ID +
+					     1)];
+
+	/* protects functions_list */
+	spinlock_t func_lock;
+	struct list_head functions_list;
 };
 
 struct ieee80211_sub_if_data {
@@ -1475,6 +1484,12 @@ struct ieee802_11_elems {
 
 	/* whether a parse error occurred while retrieving these elements */
 	bool parse_error;
+};
+
+/* NAN function entry */
+struct ieee80211_nan_func {
+	struct list_head list;
+	struct cfg80211_nan_func func;
 };
 
 static inline struct ieee80211_local *hw_to_local(

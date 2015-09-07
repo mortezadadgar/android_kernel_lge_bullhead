@@ -1748,6 +1748,61 @@ static void ieee80211_reconfig_stations(struct ieee80211_sub_if_data *sdata)
 	mutex_unlock(&local->sta_mtx);
 }
 
+#if CFG80211_VERSION < KERNEL_VERSION(4,5,0)
+static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
+{
+	return 0;
+}
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
+{
+	struct ieee80211_nan_func *func, *ftmp;
+	LIST_HEAD(tmp_list);
+	int res;
+
+	res = drv_start_nan(sdata->local, sdata,
+			    &sdata->u.nan.nan_conf);
+	if (WARN_ON(res))
+		return res;
+
+	/* Add all the functions:
+	 * This is a little bit ugly. We need to call a potentially sleeping
+	 * callback for each entry in the list, so we can't hold the spinlock.
+	 * So we will copy everything to a temporary list and empty the
+	 * original one. And then we re-add the functions one by one
+	 * to the list.
+	 */
+	spin_lock_bh(&sdata->u.nan.func_lock);
+	list_splice_tail_init(&sdata->u.nan.functions_list, &tmp_list);
+	spin_unlock_bh(&sdata->u.nan.func_lock);
+
+	list_for_each_entry_safe(func, ftmp, &tmp_list, list) {
+		list_del(&func->list);
+
+		/* TODO: need to adjust TTL of the function */
+		spin_lock_bh(&sdata->u.nan.func_lock);
+		list_add(&func->list, &sdata->u.nan.functions_list);
+		spin_unlock_bh(&sdata->u.nan.func_lock);
+		res = drv_add_nan_func(sdata->local, sdata,
+				       &func->func);
+		if (WARN_ON(res)) {
+			/* make sure all the functions are back in the list,
+			 * otherwise we leak memory
+			 */
+			spin_lock_bh(&sdata->u.nan.func_lock);
+			list_splice_tail(&tmp_list,
+					 &sdata->u.nan.functions_list);
+			spin_unlock_bh(&sdata->u.nan.func_lock);
+
+			return -EIO;
+		}
+	}
+
+	return 0;
+}
+#endif
+
 int ieee80211_reconfig(struct ieee80211_local *local)
 {
 	struct ieee80211_hw *hw = &local->hw;
@@ -1974,14 +2029,20 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 				ieee80211_bss_info_change_notify(sdata, changed);
 			}
 			break;
-		case NL80211_IFTYPE_WDS:
-		case NL80211_IFTYPE_AP_VLAN:
-		case NL80211_IFTYPE_MONITOR:
-		case NL80211_IFTYPE_P2P_DEVICE:
 #if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 		case NL80211_IFTYPE_NAN:
 			/* keep code in case of fall-through (spatch generated) */
 #endif
+			res = ieee80211_reconfig_nan(sdata);
+			if (res < 0) {
+				ieee80211_handle_reconfig_failure(local);
+				return res;
+			}
+			break;
+		case NL80211_IFTYPE_WDS:
+		case NL80211_IFTYPE_AP_VLAN:
+		case NL80211_IFTYPE_MONITOR:
+		case NL80211_IFTYPE_P2P_DEVICE:
 			/* nothing to do */
 			break;
 		case NL80211_IFTYPE_UNSPECIFIED:

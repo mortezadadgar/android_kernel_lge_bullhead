@@ -2116,6 +2116,8 @@ struct ieee80211_tx_thrshld_md {
  *
  * @txq_ac_max_pending: maximum number of frames per AC pending in all txq
  *	entries for a vif.
+ * @max_nan_de_entries: maximum number of NAN DE functions supported by the
+ *	device.
  */
 struct ieee80211_hw {
 	struct ieee80211_conf conf;
@@ -2146,6 +2148,7 @@ struct ieee80211_hw {
 	u8 n_cipher_schemes;
 	const struct ieee80211_cipher_scheme *cipher_schemes;
 	int txq_ac_max_pending;
+	u8 max_nan_de_entries;
 };
 
 static inline bool _ieee80211_hw_check(struct ieee80211_hw *hw,
@@ -3366,6 +3369,12 @@ enum ieee80211_reconfig_type {
  * @nan_change_conf: change nan configuration. The data in cfg80211_nan_conf
  *	contains full new configuration and changes specify which parameters
  *	are changed with respect to the last nan config.
+ * @add_nan_func: Add a nan function. Returns 0 on success. The data in
+ *	cfg80211_nan_func must not be referenced outside the scope of
+ *	this call.
+ * @rm_nan_func: Remove a nan function. The driver must call
+ * ieee80211_nan_func_terminated() with
+ * NL80211_NAN_FUNC_TERM_REASON_USER_REQUEST reason code upon removal.
  */
 struct ieee80211_ops {
 	void (*tx)(struct ieee80211_hw *hw,
@@ -3620,6 +3629,12 @@ struct ieee80211_ops {
 	int (*nan_change_conf)(struct ieee80211_hw *hw,
 			       struct ieee80211_vif *vif,
 			       struct cfg80211_nan_conf *conf, u8 changes);
+	int (*add_nan_func)(struct ieee80211_hw *hw,
+			    struct ieee80211_vif *vif,
+			    const struct cfg80211_nan_func *nan_func);
+	void (*rm_nan_func)(struct ieee80211_hw *hw,
+			    struct ieee80211_vif *vif,
+			    u8 instance_id);
 };
 
 /**
@@ -5635,4 +5650,20 @@ void ieee80211_unreserve_tid(struct ieee80211_sta *sta, u8 tid);
  */
 struct sk_buff *ieee80211_tx_dequeue(struct ieee80211_hw *hw,
 				     struct ieee80211_txq *txq);
+
+/**
+ * ieee80211_nan_func_terminated - notify about NAN function termination.
+ *
+ * This function is used to notify mac80211 about nan function termination.
+ *
+ * @vif: &struct ieee80211_vif pointer from the add_interface callback.
+ * @inst_id: the local instance id
+ * @reason: termination reason (one of the NL80211_NAN_FUNC_TERM_REASON_*)
+ * @gfp: allocation flags
+ */
+void ieee80211_nan_func_terminated(struct ieee80211_vif *vif,
+				   u8 inst_id,
+				   enum nl80211_nan_func_term_reason reason,
+				   gfp_t gfp);
+
 #endif /* MAC80211_H */
