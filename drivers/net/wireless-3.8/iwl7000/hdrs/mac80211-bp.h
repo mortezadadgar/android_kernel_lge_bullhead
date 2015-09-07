@@ -1420,6 +1420,11 @@ struct cfg80211_nan_match_params {
 	u64 cookie;
 };
 
+static inline bool cfg80211_nan_started(struct wireless_dev *wdev)
+{
+	return false;
+}
+
 #endif /* CFG80211_VERSION < KERNEL_VERSION(4,5,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0)

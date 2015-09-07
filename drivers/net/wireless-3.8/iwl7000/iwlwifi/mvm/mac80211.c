@@ -119,6 +119,39 @@ static const struct ieee80211_iface_combination iwl_mvm_iface_combinations[] = {
 	},
 };
 
+static const struct ieee80211_iface_limit iwl_mvm_limits_nan[] = {
+	{
+		.max = 1,
+		.types = BIT(NL80211_IFTYPE_STATION),
+	},
+	{
+		.max = 1,
+		.types = BIT(NL80211_IFTYPE_AP) |
+			BIT(NL80211_IFTYPE_P2P_CLIENT) |
+			BIT(NL80211_IFTYPE_P2P_GO),
+	},
+	{
+		.max = 1,
+		.types = BIT(NL80211_IFTYPE_P2P_DEVICE),
+	},
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	{
+		.max = 1,
+		.types = BIT(NL80211_IFTYPE_NAN),
+	},
+#endif
+};
+
+static const struct ieee80211_iface_combination
+iwl_mvm_iface_combinations_nan[] = {
+	{
+		.num_different_channels = CPTCFG_IWLWIFI_NUM_CHANNELS,
+		.max_interfaces = CPTCFG_IWLWIFI_NUM_STA_INTERFACES + 3,
+		.limits = iwl_mvm_limits_nan,
+		.n_limits = ARRAY_SIZE(iwl_mvm_limits_nan),
+	},
+};
+
 #ifdef CONFIG_PM_SLEEP
 static const struct nl80211_wowlan_tcp_data_token_feature
 iwl_mvm_wowlan_tcp_token_feature = {
@@ -529,9 +562,16 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 
 	hw->wiphy->flags |= WIPHY_FLAG_HAS_CHANNEL_SWITCH;
 
-	hw->wiphy->iface_combinations = iwl_mvm_iface_combinations;
-	hw->wiphy->n_iface_combinations =
-		ARRAY_SIZE(iwl_mvm_iface_combinations);
+	if (false) {
+		hw->wiphy->interface_modes |= 0;
+		hw->wiphy->iface_combinations = iwl_mvm_iface_combinations_nan;
+		hw->wiphy->n_iface_combinations =
+			ARRAY_SIZE(iwl_mvm_iface_combinations_nan);
+	} else {
+		hw->wiphy->iface_combinations = iwl_mvm_iface_combinations;
+		hw->wiphy->n_iface_combinations =
+			ARRAY_SIZE(iwl_mvm_iface_combinations);
+	}
 
 	hw->wiphy->max_remain_on_channel_duration = 10000;
 	hw->max_listen_interval = IWL_CONN_MAX_LISTEN_INTERVAL;
@@ -1315,6 +1355,10 @@ static int iwl_mvm_mac_add_interface(struct ieee80211_hw *hw,
 	if (ret)
 		goto out_unlock;
 
+	/* Currently not much to do for NAN */
+	if (ieee80211_viftype_nan(vif->type))
+		goto out_unlock;
+
 	/* Counting number of interfaces is needed for legacy PM */
 	if (vif->type != NL80211_IFTYPE_P2P_DEVICE)
 		mvm->vif_count++;
@@ -1466,7 +1510,7 @@ static void iwl_mvm_prepare_mac_removal(struct iwl_mvm *mvm,
 		 * queue are sent in ROC session.
 		 */
 		flush_work(&mvm->roc_done_wk);
-	} else {
+	} else if (!ieee80211_viftype_nan(vif->type)) {
 		/*
 		 * By now, all the AC queues are empty. The AGG queues are
 		 * empty too. We already got all the Tx responses for all the
@@ -1477,6 +1521,14 @@ static void iwl_mvm_prepare_mac_removal(struct iwl_mvm *mvm,
 	}
 }
 
+static int iwl_mvm_stop_nan(struct ieee80211_hw *hw,
+			    struct ieee80211_vif *vif)
+{
+	IWL_DEBUG_MAC80211(IWL_MAC80211_GET_MVM(hw), "Stop NAN\n");
+
+	return 0;
+}
+
 static void iwl_mvm_mac_remove_interface(struct ieee80211_hw *hw,
 					 struct ieee80211_vif *vif)
 {
@@ -1484,6 +1536,15 @@ static void iwl_mvm_mac_remove_interface(struct ieee80211_hw *hw,
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 
 	iwl_mvm_prepare_mac_removal(mvm, vif);
+
+	if (ieee80211_viftype_nan(vif->type)) {
+		struct wireless_dev *wdev = ieee80211_vif_to_wdev(vif);
+		/* cfg80211 should stop nan before interface removal */
+		if (wdev && WARN_ON(cfg80211_nan_started(wdev)))
+			iwl_mvm_stop_nan(hw, vif);
+
+		return;
+	}
 
 #ifdef CPTCFG_IWLMVM_TCM
 	iwl_mvm_tcm_rm_vif(mvm, vif);
@@ -4123,6 +4184,15 @@ iwl_mvm_mac_start_ftm_responder(struct ieee80211_hw *hw,
 	return ret;
 }
 
+static int iwl_mvm_start_nan(struct ieee80211_hw *hw,
+			     struct ieee80211_vif *vif,
+			     struct cfg80211_nan_conf *conf)
+{
+	IWL_DEBUG_MAC80211(IWL_MAC80211_GET_MVM(hw), "Start NAN\n");
+
+	return 0;
+}
+
 const struct ieee80211_ops iwl_mvm_hw_ops = {
 	.tx = iwl_mvm_mac_tx,
 	.ampdu_action = iwl_mvm_mac_ampdu_action,
@@ -4197,4 +4267,7 @@ const struct ieee80211_ops iwl_mvm_hw_ops = {
 	.perform_ftm = iwl_mvm_perform_ftm,
 	.abort_ftm = iwl_mvm_abort_ftm,
 	.start_ftm_responder = iwl_mvm_mac_start_ftm_responder,
+
+	.start_nan = iwl_mvm_start_nan,
+	.stop_nan = iwl_mvm_stop_nan,
 };

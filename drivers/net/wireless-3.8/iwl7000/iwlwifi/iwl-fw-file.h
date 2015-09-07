@@ -311,6 +311,7 @@ typedef unsigned int __bitwise__ iwl_ucode_tlv_capa_t;
  *	is supported.
  * @IWL_UCODE_TLV_CAPA_BT_COEX_RRC: supports BT Coex RRC
  * @IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT: supports gscan
+ * @IWL_UCODE_TLV_CAPA_NAN_SUPPORT: supports NAN
  * @IWL_UCODE_TLV_CAPA_EXTENDED_DTS_MEASURE: extended DTS measurement
  * @IWL_UCODE_TLV_CAPA_SHORT_PM_TIMEOUTS: supports short PM timeouts
  * @IWL_UCODE_TLV_CAPA_BT_MPLUT_SUPPORT: supports bt-coex Multi-priority LUT
@@ -341,6 +342,7 @@ enum iwl_ucode_tlv_capa {
 	IWL_UCODE_TLV_CAPA_LAR_MULTI_MCC		= (__force iwl_ucode_tlv_capa_t)29,
 	IWL_UCODE_TLV_CAPA_BT_COEX_RRC			= (__force iwl_ucode_tlv_capa_t)30,
 	IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT		= (__force iwl_ucode_tlv_capa_t)31,
+	IWL_UCODE_TLV_CAPA_NAN_SUPPORT			= (__force iwl_ucode_tlv_capa_t)34,
 	IWL_UCODE_TLV_CAPA_EXTENDED_DTS_MEASURE		= (__force iwl_ucode_tlv_capa_t)64,
 	IWL_UCODE_TLV_CAPA_SHORT_PM_TIMEOUTS		= (__force iwl_ucode_tlv_capa_t)65,
 	IWL_UCODE_TLV_CAPA_BT_MPLUT_SUPPORT		= (__force iwl_ucode_tlv_capa_t)67,
@@ -533,6 +535,7 @@ enum iwl_fw_dbg_trigger_mode {
  * @IWL_FW_DBG_CONF_VIF_P2P_CLIENT: P2P Client mode
  * @IWL_FW_DBG_CONF_VIF_P2P_GO: P2P GO mode
  * @IWL_FW_DBG_CONF_VIF_P2P_DEVICE: P2P device
+ * @IWL_FW_DBG_CONF_VIF_NAN: NAN device
  */
 enum iwl_fw_dbg_trigger_vif_type {
 	IWL_FW_DBG_CONF_VIF_ANY = NL80211_IFTYPE_UNSPECIFIED,
@@ -542,6 +545,9 @@ enum iwl_fw_dbg_trigger_vif_type {
 	IWL_FW_DBG_CONF_VIF_P2P_CLIENT = NL80211_IFTYPE_P2P_CLIENT,
 	IWL_FW_DBG_CONF_VIF_P2P_GO = NL80211_IFTYPE_P2P_GO,
 	IWL_FW_DBG_CONF_VIF_P2P_DEVICE = NL80211_IFTYPE_P2P_DEVICE,
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	IWL_FW_DBG_CONF_VIF_NAN = NL80211_IFTYPE_NAN,
+#endif
 };
 
 /**
