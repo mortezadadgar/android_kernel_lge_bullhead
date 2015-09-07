@@ -156,6 +156,8 @@ static int ieee80211_start_nan(struct wiphy *wiphy,
 	if (ret)
 		ieee80211_sdata_stop(sdata);
 
+	memcpy(&sdata->u.nan.nan_conf, conf, sizeof(sdata->u.nan.nan_conf));
+
 	return ret;
 }
 #endif
@@ -168,6 +170,38 @@ static void ieee80211_stop_nan(struct wiphy *wiphy,
 
 	drv_stop_nan(sdata->local, sdata);
 	ieee80211_sdata_stop(sdata);
+}
+#endif
+
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+static int ieee80211_nan_change_conf(struct wiphy *wiphy,
+				     struct wireless_dev *wdev,
+				     struct cfg80211_nan_conf *conf,
+				     u32 changes)
+{
+	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
+	struct cfg80211_nan_conf new_conf;
+	int ret = 0;
+
+	if (!ieee80211_viftype_nan(sdata->vif.type))
+		return -EOPNOTSUPP;
+
+	if (!ieee80211_sdata_running(sdata))
+		return -ENETDOWN;
+
+	memcpy(&new_conf, &sdata->u.nan.nan_conf, sizeof(new_conf));
+	if (changes & CFG80211_NAN_CONF_CHANGED_PREF)
+		new_conf.master_pref = conf->master_pref;
+
+	if (changes & CFG80211_NAN_CONF_CHANGED_DUAL)
+		new_conf.dual = conf->dual;
+
+	ret = drv_nan_change_conf(sdata->local, sdata, &new_conf, changes);
+	if (!ret)
+		memcpy(&sdata->u.nan.nan_conf, &new_conf,
+		       sizeof(sdata->u.nan.nan_conf));
+
+	return ret;
 }
 #endif
 
@@ -3682,5 +3716,8 @@ const struct cfg80211_ops mac80211_config_ops = {
 #endif
 #if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 	.stop_nan = ieee80211_stop_nan,
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	.nan_change_conf = ieee80211_nan_change_conf,
 #endif
 };

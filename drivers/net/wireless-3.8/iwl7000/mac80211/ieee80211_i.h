@@ -814,6 +814,15 @@ struct ieee80211_if_mntr {
 	u32 flags;
 };
 
+/**
+ * struct ieee80211_if_nan - NAN state
+ *
+ * @nan_conf: current nan configuration
+ */
+struct ieee80211_if_nan {
+	struct cfg80211_nan_conf nan_conf;
+};
+
 struct ieee80211_sub_if_data {
 	struct list_head list;
 
@@ -913,6 +922,7 @@ struct ieee80211_sub_if_data {
 		struct ieee80211_if_mesh mesh;
 		struct ieee80211_if_ocb ocb;
 		struct ieee80211_if_mntr mntr;
+		struct ieee80211_if_nan nan;
 	} u;
 
 #ifdef CPTCFG_MAC80211_DEBUGFS

@@ -3363,6 +3363,9 @@ enum ieee80211_reconfig_type {
  *
  * @start_nan: join an existing nan cluster, or create a new one.
  * @stop_nan: leave the nan cluster.
+ * @nan_change_conf: change nan configuration. The data in cfg80211_nan_conf
+ *	contains full new configuration and changes specify which parameters
+ *	are changed with respect to the last nan config.
  */
 struct ieee80211_ops {
 	void (*tx)(struct ieee80211_hw *hw,
@@ -3614,6 +3617,9 @@ struct ieee80211_ops {
 			 struct cfg80211_nan_conf *conf);
 	int (*stop_nan)(struct ieee80211_hw *hw,
 			struct ieee80211_vif *vif);
+	int (*nan_change_conf)(struct ieee80211_hw *hw,
+			       struct ieee80211_vif *vif,
+			       struct cfg80211_nan_conf *conf, u8 changes);
 };
 
 /**
