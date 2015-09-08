@@ -294,6 +294,7 @@ enum {
 	PHY_OPS_GROUP = 0x4,
 	DATA_PATH_GROUP = 0x5,
 	SCAN_GROUP = 0x6,
+	NAN_GROUP = 0x7,
 };
 
 /**

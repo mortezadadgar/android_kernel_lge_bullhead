@@ -957,6 +957,7 @@ struct iwl_mvm {
 	u32 ciphers[6];
 	struct iwl_mvm_tof_data tof_data;
 
+	struct ieee80211_vif *nan_vif;
 };
 
 /* Extract MVM priv from op_mode and _hw */
@@ -1692,5 +1693,22 @@ unsigned int iwl_mvm_get_wd_timeout(struct iwl_mvm *mvm,
 				    bool tdls, bool cmd_q);
 void iwl_mvm_connection_loss(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			     const char *errmsg);
+
+/* NAN */
+void iwl_mvm_nan_match(struct iwl_mvm *mvm,
+		       struct iwl_rx_cmd_buffer *rxb);
+void iwl_mvm_nan_de_term_notif(struct iwl_mvm *mvm,
+			       struct iwl_rx_cmd_buffer *rxb);
+int iwl_mvm_start_nan(struct ieee80211_hw *hw,
+		      struct ieee80211_vif *vif,
+		      struct cfg80211_nan_conf *conf);
+int iwl_mvm_stop_nan(struct ieee80211_hw *hw,
+		     struct ieee80211_vif *vif);
+int iwl_mvm_add_nan_func(struct ieee80211_hw *hw,
+			 struct ieee80211_vif *vif,
+			 const struct cfg80211_nan_func *nan_func);
+void iwl_mvm_rm_nan_func(struct ieee80211_hw *hw,
+			 struct ieee80211_vif *vif,
+			 u8 instance_id);
 
 #endif /* __IWL_MVM_H__ */

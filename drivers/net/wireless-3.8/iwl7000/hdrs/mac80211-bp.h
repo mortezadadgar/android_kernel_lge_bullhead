@@ -1426,6 +1426,11 @@ static inline bool cfg80211_nan_started(struct wireless_dev *wdev)
 	return false;
 }
 
+enum nl80211_nan_publish_type {
+	NL80211_NAN_SOLICITED_PUBLISH = 1 << 0,
+	NL80211_NAN_UNSOLICITED_PUBLISH = 1 << 1,
+};
+
 #endif /* CFG80211_VERSION < KERNEL_VERSION(4,5,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0)
