@@ -412,6 +412,7 @@ enum iwl_d3_status {
  *	are sent
  * @STATUS_TRANS_IDLE: the trans is idle - general commands are not to be sent
  * @STATUS_TA_ACTIVE: target access is in progress
+ * @STATUS_TRANS_DEAD: trans is dead - avoid any read/write operation
  */
 enum iwl_trans_status {
 	STATUS_SYNC_HCMD_ACTIVE,
@@ -423,6 +424,7 @@ enum iwl_trans_status {
 	STATUS_TRANS_GOING_IDLE,
 	STATUS_TRANS_IDLE,
 	STATUS_TA_ACTIVE,
+	STATUS_TRANS_DEAD,
 };
 
 /**
