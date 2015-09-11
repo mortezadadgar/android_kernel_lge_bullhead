@@ -830,3 +830,10 @@ size_t ieee80211_ie_split(const u8 *ies, size_t ielen,
 			(val << factor);				\
 	}
 #endif /* DECLARE_EWMA */
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,4,0)
+struct cfg80211_sched_scan_plan {
+	u32 interval;
+	u32 iterations;
+};
+#endif

@@ -2041,7 +2041,10 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		 * scan plan was currently running (and some scan plans may have
 		 * already finished).
 		 */
-		if (sched_scan_req->n_scan_plans > 1 ||
+		if (
+#if CFG80211_VERSION >= KERNEL_VERSION(4,4,0)
+		    sched_scan_req->n_scan_plans > 1 ||
+#endif
 		    __ieee80211_request_sched_scan_start(sched_scan_sdata,
 							 sched_scan_req))
 			sched_scan_stopped = true;
