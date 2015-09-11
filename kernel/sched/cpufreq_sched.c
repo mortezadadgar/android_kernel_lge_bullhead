@@ -221,14 +221,12 @@ void cpufreq_sched_reset_cap(int cpu)
 
 static inline void set_sched_energy_freq(void)
 {
-	if (!sched_energy_freq())
-		static_key_slow_inc(&__sched_energy_freq);
+	static_key_slow_inc(&__sched_energy_freq);
 }
 
 static inline void clear_sched_energy_freq(void)
 {
-	if (sched_energy_freq())
-		static_key_slow_dec(&__sched_energy_freq);
+	static_key_slow_dec(&__sched_energy_freq);
 }
 
 static int cpufreq_sched_start(struct cpufreq_policy *policy)
