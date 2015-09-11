@@ -580,6 +580,7 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 	/* we create the 802.11 header and zero length SSID IE. */
 	hw->wiphy->max_sched_scan_ie_len =
 		SCAN_OFFLOAD_PROBE_REQ_SIZE - 24 - 2;
+#if CFG80211_VERSION >= KERNEL_VERSION(4,4,0)
 	hw->wiphy->max_sched_scan_plans = IWL_MAX_SCHED_SCAN_PLANS;
 	hw->wiphy->max_sched_scan_plan_interval = U16_MAX;
 
@@ -588,6 +589,7 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 	 * infinite loop, so the maximum number of iterations is actually 254.
 	 */
 	hw->wiphy->max_sched_scan_plan_iterations = 254;
+#endif
 
 	hw->wiphy->features |= NL80211_FEATURE_P2P_GO_CTWIN |
 			       NL80211_FEATURE_LOW_PRIORITY_SCAN |

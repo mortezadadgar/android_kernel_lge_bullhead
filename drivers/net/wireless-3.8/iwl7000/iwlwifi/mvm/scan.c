@@ -1285,6 +1285,9 @@ int iwl_mvm_sched_scan_start(struct iwl_mvm *mvm,
 	};
 	struct iwl_mvm_scan_params params = {};
 	int ret;
+#if CFG80211_VERSION < KERNEL_VERSION(4,4,0)
+	struct cfg80211_sched_scan_plan scan_plan = {};
+#endif
 
 	lockdep_assert_held(&mvm->mutex);
 
@@ -1315,11 +1318,20 @@ int iwl_mvm_sched_scan_start(struct iwl_mvm *mvm,
 	params.pass_all =  iwl_mvm_scan_pass_all(mvm, req);
 	params.n_match_sets = req->n_match_sets;
 	params.match_sets = req->match_sets;
+#if CFG80211_VERSION >= KERNEL_VERSION(4,4,0)
 	if (!req->n_scan_plans)
 		return -EINVAL;
 
 	params.n_scan_plans = req->n_scan_plans;
 	params.scan_plans = req->scan_plans;
+#else
+	params.n_scan_plans = 1;
+	params.scan_plans = &scan_plan;
+	if (req->interval / MSEC_PER_SEC > U16_MAX)
+		scan_plan.interval = U16_MAX;
+	else
+		scan_plan.interval = req->interval / MSEC_PER_SEC;
+#endif
 
 	params.type = iwl_mvm_get_scan_type(mvm, vif, &params);
 

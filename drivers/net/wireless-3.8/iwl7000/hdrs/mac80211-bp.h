@@ -789,3 +789,10 @@ size_t ieee80211_ie_split(const u8 *ies, size_t ielen,
 #define cfg80211_reg_can_beacon_relax(wiphy, chandef, iftype) \
 	cfg80211_reg_can_beacon(wiphy, chandef, iftype)
 #endif
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,4,0)
+struct cfg80211_sched_scan_plan {
+	u32 interval;
+	u32 iterations;
+};
+#endif
