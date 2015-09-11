@@ -1829,7 +1829,6 @@ static void iwl_mvm_mac_remove_interface(struct ieee80211_hw *hw,
 {
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
-	struct wireless_dev *wdev = ieee80211_vif_to_wdev(vif);
 
 	iwl_mvm_prepare_mac_removal(mvm, vif);
 
