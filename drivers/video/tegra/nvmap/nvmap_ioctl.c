@@ -56,11 +56,24 @@ static ssize_t rw_handle(struct nvmap_client *client, struct nvmap_handle *h,
  */
 static ulong __attribute__((unused)) fd_to_handle_id(int handle)
 {
-	ulong id;
+	ulong id = (unsigned long)-EINVAL;
 
-	id = nvmap_get_id_from_dmabuf_fd(NULL, (int)handle);
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+	if (handle >= NVMAP_HANDLE_NATIVE_FD_START &&
+			handle < NVMAP_HANDLE_FOREIGN_FD_START)
+		/* nvmap dmabuf */
+		id = nvmap_get_id_from_dmabuf_fd(NULL, (int)handle);
+	else if (handle >= NVMAP_HANDLE_FOREIGN_FD_START &&
+			handle < NVMAP_HANDLE_FOREIGN_FD_END)
+		/* foreign dmabuf */
+		id = (ulong)nvmap_foreign_dmabuf_find_by_fd(handle);
+#else
+		id = nvmap_get_id_from_dmabuf_fd(NULL, (int)handle);
+#endif
+
 	if (!IS_ERR_VALUE(id))
 		return id;
+
 	return 0;
 }
 
@@ -388,6 +401,10 @@ int nvmap_create_fd(struct nvmap_handle *h)
 	 * to balance ref count, ref count dma_buf.
 	 */
 	get_dma_buf(h->dmabuf);
+
+	if (nvmap_dmabuf_is_foreign_dmabuf(h->dmabuf))
+		nvmap_foreign_dmabuf_add(h, h->dmabuf, fd);
+
 	return fd;
 }
 
@@ -429,6 +446,11 @@ int nvmap_ioctl_create(struct file *filp, unsigned int cmd, void __user *arg)
 
 	if (copy_to_user(arg, &op, sizeof(op))) {
 		err = -EFAULT;
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+		if (nvmap_dmabuf_is_foreign_dmabuf(ref->handle->dmabuf) &&
+				(int)op.handle > 0)
+			nvmap_foreign_dmabuf_put(ref->handle->dmabuf);
+#endif
 		nvmap_free_handle_id(client, __nvmap_ref_to_id(ref));
 	}
 

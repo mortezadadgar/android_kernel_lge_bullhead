@@ -527,6 +527,12 @@ void _nvmap_handle_free(struct nvmap_handle *h)
 
 	if (nvmap_handle_remove(h->dev, h) != 0)
 		return;
+	/*
+	 * The pages allocated by DMA-BUF exporters other than NVMAP will be
+	 * freed by themselves.
+	 */
+	if (h->flags & NVMAP_HANDLE_FOREIGN_DMABUF)
+		goto out;
 
 	if (!h->alloc)
 		goto out;
@@ -928,6 +934,13 @@ void nvmap_free_handle_user_id(struct nvmap_client *client,
 	unsigned long id;
 	id = unmarshal_user_id(user_id);
 	if (id) {
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+		struct nvmap_handle *h = (struct nvmap_handle *)id;
+
+		if (nvmap_dmabuf_is_foreign_dmabuf(h->dmabuf))
+			nvmap_foreign_dmabuf_put(h->dmabuf);
+#endif
+
 		nvmap_free_handle_id(client, id);
 		nvmap_handle_put((struct nvmap_handle *)id);
 	}
@@ -955,6 +968,70 @@ static void add_handle_ref(struct nvmap_client *client,
 	if (client->handle_count > nvmap_max_handle_count)
 		nvmap_max_handle_count = client->handle_count;
 	nvmap_ref_unlock(client);
+}
+
+struct nvmap_handle_ref *nvmap_create_handle_dmabuf(struct nvmap_client *client,
+						    struct dma_buf *dmabuf)
+{
+	void *err = ERR_PTR(-ENOMEM);
+	struct nvmap_handle *h;
+	struct nvmap_handle_ref *ref = NULL;
+
+	if (!client)
+		return ERR_PTR(-EINVAL);
+
+	if (!dmabuf->size)
+		return ERR_PTR(-EINVAL);
+
+	h = kzalloc(sizeof(*h), GFP_KERNEL);
+	if (!h)
+		return ERR_PTR(-ENOMEM);
+
+	ref = kzalloc(sizeof(*ref), GFP_KERNEL);
+	if (!ref)
+		goto ref_alloc_fail;
+
+	atomic_set(&h->ref, 1);
+	atomic_set(&h->pin, 0);
+	h->owner = client;
+	h->owner_ref = ref;
+	h->dev = nvmap_dev;
+	BUG_ON(!h->owner);
+	h->size = h->orig_size = dmabuf->size;
+	h->flags = NVMAP_HANDLE_WRITE_COMBINE;
+	mutex_init(&h->lock);
+
+	h->dmabuf = dmabuf;
+
+	/*
+	 * Pre-attach nvmap to this dmabuf. This gets unattached during the
+	 * dma_buf_release() operation.
+	 */
+	h->attachment = dma_buf_attach(h->dmabuf, &nvmap_pdev->dev);
+	if (IS_ERR(h->attachment)) {
+		err = h->attachment;
+		goto dma_buf_attach_fail;
+	}
+
+	nvmap_handle_add(nvmap_dev, h);
+
+	/*
+	 * Major assumption here: the dma_buf object that the handle contains
+	 * is created with a ref count of 1.
+	 */
+	atomic_set(&ref->dupes, 1);
+	ref->handle = h;
+	atomic_set(&ref->pin, 0);
+	ref->is_foreign = true;
+	add_handle_ref(client, ref);
+	trace_nvmap_create_handle(client, client->name, h, dmabuf->size, ref);
+	return ref;
+
+dma_buf_attach_fail:
+	kfree(ref);
+ref_alloc_fail:
+	kfree(h);
+	return err;
 }
 
 struct nvmap_handle_ref *nvmap_create_handle(struct nvmap_client *client,
@@ -1017,6 +1094,7 @@ struct nvmap_handle_ref *nvmap_create_handle(struct nvmap_client *client,
 	atomic_set(&ref->dupes, 1);
 	ref->handle = h;
 	atomic_set(&ref->pin, 0);
+	ref->is_foreign = false;
 	add_handle_ref(client, ref);
 	trace_nvmap_create_handle(client, client->name, h, size, ref);
 	return ref;
@@ -1047,7 +1125,7 @@ struct nvmap_handle_ref *nvmap_duplicate_handle_id(struct nvmap_client *client,
 		return ERR_PTR(-EPERM);
 	}
 
-	if (!h->alloc) {
+	if (!h->alloc && !(h->flags & NVMAP_HANDLE_FOREIGN_DMABUF)) {
 		nvmap_err(client, "%s duplicating unallocated handle\n",
 			  current->group_leader->comm);
 		nvmap_handle_put(h);
@@ -1086,6 +1164,7 @@ struct nvmap_handle_ref *nvmap_duplicate_handle_id(struct nvmap_client *client,
 	atomic_set(&ref->dupes, 1);
 	ref->handle = h;
 	atomic_set(&ref->pin, 0);
+	ref->is_foreign = false;
 	add_handle_ref(client, ref);
 
 	/*
@@ -1104,16 +1183,34 @@ struct nvmap_handle_ref *nvmap_create_handle_from_fd(
 			struct nvmap_client *client, int fd)
 {
 	unsigned long id;
-	struct nvmap_handle_ref *ref;
+	struct nvmap_handle_ref *ref = NULL;
+	struct dma_buf *dmabuf;
 
 	BUG_ON(!client);
 
-	id = nvmap_get_id_from_dmabuf_fd(client, fd);
-	if (IS_ERR_VALUE(id))
+	dmabuf = dma_buf_get(fd);
+	if (IS_ERR(dmabuf)) {
+		nvmap_err(client, "failed to get dmabuf for fd %d\n", fd);
+		return ERR_CAST(dmabuf);
+	}
+
+	id = nvmap_get_id_from_dmabuf(client, dmabuf);
+	if (IS_ERR_VALUE(id)) {
+		dma_buf_put(dmabuf);
 		return ERR_PTR(id);
+	}
+
+	if (nvmap_dmabuf_is_foreign_dmabuf(dmabuf)) {
+		struct nvmap_handle *h = (struct nvmap_handle *)id;
+
+		h->flags |= NVMAP_HANDLE_FOREIGN_DMABUF;
+	}
+
 	ref = nvmap_duplicate_handle_id(client, id, 1);
+
 	nvmap_handle_put((struct nvmap_handle *)id);
-	return ref;
+	dma_buf_put(dmabuf);
+	return ref ? ref : ERR_PTR(-EINVAL);
 }
 
 unsigned long nvmap_duplicate_handle_id_ex(struct nvmap_client *client,
@@ -1292,4 +1389,9 @@ int nvmap_get_handle_param(struct nvmap_client *client,
 		return -EINVAL;
 
 	return __nvmap_get_handle_param(client, ref->handle, param, result);
+}
+
+struct dma_buf_attachment *nvmap_get_dmabuf_attachment(struct nvmap_handle *h)
+{
+	return h->attachment;
 }

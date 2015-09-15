@@ -47,11 +47,18 @@
 #define NVMAP_HANDLE_INNER_CACHEABLE (0x2ul << 0)
 #define NVMAP_HANDLE_CACHEABLE       (0x3ul << 0)
 #define NVMAP_HANDLE_CACHE_FLAG      (0x3ul << 0)
+#define NVMAP_HANDLE_FOREIGN_DMABUF  (0x4ul << 0)
 
 #define NVMAP_HANDLE_SECURE          (0x1ul << 2)
 #define NVMAP_HANDLE_KIND_SPECIFIED  (0x1ul << 3)
 #define NVMAP_HANDLE_COMPR_SPECIFIED (0x1ul << 4)
 #define NVMAP_HANDLE_ZEROED_PAGES    (0x1ul << 5)
+
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+#define NVMAP_HANDLE_NATIVE_FD_START  1024
+#define NVMAP_HANDLE_FOREIGN_FD_START 4096
+#define NVMAP_HANDLE_FOREIGN_FD_END   (NVMAP_HANDLE_FOREIGN_FD_START + 4096)
+#endif
 
 struct nvmap_handle;
 struct nvmap_handle_ref;
@@ -85,6 +92,8 @@ void nvmap_set_dmabuf_private(struct dma_buf *dmabuf, void *priv,
 void *nvmap_get_dmabuf_private(struct dma_buf *dmabuf);
 
 int nvmap_get_dmabuf_param(struct dma_buf *dmabuf, u32 param, u64 *result);
+
+struct dma_buf_attachment *nvmap_get_dmabuf_attachment(struct nvmap_handle *h);
 
 #ifdef CONFIG_NVMAP_PAGE_POOLS
 ulong nvmap_page_pool_get_unused_pages(void);

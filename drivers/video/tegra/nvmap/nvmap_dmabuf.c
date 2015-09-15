@@ -44,6 +44,16 @@
 #define nvmap_masid_mapping(attach)   NULL
 #endif
 
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+struct dmabuf_fd {
+	struct nvmap_handle *handle;
+	struct dma_buf *dmabuf;
+	int fd;
+	struct list_head node;
+	struct kref ref;
+};
+#endif
+
 struct nvmap_handle_info {
 	struct nvmap_handle *handle;
 	struct list_head maps;
@@ -76,9 +86,131 @@ struct nvmap_handle_sgt {
 	struct nvmap_handle_info *owner;
 } ____cacheline_aligned_in_smp;
 
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+static LIST_HEAD(dmabuf_fd_list);
+static DEFINE_MUTEX(dmabuf_fd_mutex);
+#endif
 static DEFINE_MUTEX(nvmap_stashed_maps_lock);
 static LIST_HEAD(nvmap_stashed_maps);
 static struct kmem_cache *handle_sgt_cache;
+
+struct dma_buf_ops nvmap_dma_buf_ops;
+
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+int nvmap_foreign_dmabuf_add(struct nvmap_handle *h, struct dma_buf *dmabuf,
+		int fd)
+{
+	struct dmabuf_fd *df = kzalloc(sizeof(*df), GFP_KERNEL);
+
+	if (WARN_ON(!df))
+		return -ENOMEM;
+
+	df->handle = h;
+	df->dmabuf = dmabuf;
+	df->fd = fd;
+	kref_init(&df->ref);
+
+	mutex_lock(&dmabuf_fd_mutex);
+	list_add(&df->node, &dmabuf_fd_list);
+	mutex_unlock(&dmabuf_fd_mutex);
+
+	return 0;
+}
+
+static void _nvmap_foreign_dmabuf_del_locked(struct dmabuf_fd *df)
+{
+	list_del(&df->node);
+	kfree(df);
+}
+
+struct nvmap_handle *nvmap_foreign_dmabuf_find_by_fd(int fd)
+{
+	struct dmabuf_fd *df = NULL;
+	struct dma_buf *dmabuf;
+
+	mutex_lock(&dmabuf_fd_mutex);
+	list_for_each_entry(df, &dmabuf_fd_list, node) {
+		dmabuf = dma_buf_get(fd);
+
+		if (IS_ERR(dmabuf)) {
+			WARN(1, "failed to get dmabuf by fd %d\n", fd);
+			mutex_unlock(&dmabuf_fd_mutex);
+			return (struct nvmap_handle *)dmabuf;
+		}
+
+		if (df->fd == fd && df->dmabuf == dmabuf) {
+			if (!nvmap_handle_get(df->handle))
+				WARN(1, "failed to get ref for handle %p fd %d\n",
+						df->handle, fd);
+			dma_buf_put(dmabuf);
+			mutex_unlock(&dmabuf_fd_mutex);
+			return df->handle;
+		}
+		dma_buf_put(dmabuf);
+	}
+	mutex_unlock(&dmabuf_fd_mutex);
+
+	WARN(1, "failed to find dmabuf by fd %d\n", fd);
+	return ERR_PTR(-EINVAL);
+}
+
+struct dma_buf_attachment *nvmap_foreign_dmabuf_get_att(
+		struct dma_buf *dmabuf)
+{
+	struct dmabuf_fd *df = NULL;
+
+	mutex_lock(&dmabuf_fd_mutex);
+	list_for_each_entry(df, &dmabuf_fd_list, node) {
+		if (df->dmabuf == dmabuf) {
+			mutex_unlock(&dmabuf_fd_mutex);
+			return df->handle->attachment;
+		}
+	}
+	mutex_unlock(&dmabuf_fd_mutex);
+
+	WARN(1, "failed to find attachment from dmabuf %p\n", dmabuf);
+	return NULL;
+}
+
+int nvmap_foreign_dmabuf_get(struct dma_buf *dmabuf)
+{
+	struct dmabuf_fd *df = NULL;
+
+	mutex_lock(&dmabuf_fd_mutex);
+	list_for_each_entry(df, &dmabuf_fd_list, node) {
+		if (df->dmabuf == dmabuf)
+			kref_get(&df->ref);
+	}
+	mutex_unlock(&dmabuf_fd_mutex);
+
+	return 0;
+}
+
+static void nvmap_foreign_dmabuf_del_kref(struct kref *ref)
+{
+	struct dmabuf_fd *df = container_of(ref, struct dmabuf_fd, ref);
+
+	_nvmap_foreign_dmabuf_del_locked(df);
+}
+
+void nvmap_foreign_dmabuf_put(struct dma_buf *dmabuf)
+{
+	struct dmabuf_fd *df = NULL;
+	bool found = false;
+
+	mutex_lock(&dmabuf_fd_mutex);
+	list_for_each_entry(df, &dmabuf_fd_list, node) {
+		if (df->dmabuf == dmabuf) {
+			found = true;
+			kref_put(&df->ref, nvmap_foreign_dmabuf_del_kref);
+			break;
+		}
+	}
+	mutex_unlock(&dmabuf_fd_mutex);
+
+	WARN(!found, "failed to find foreign dmabuf %p\n", dmabuf);
+}
+#endif
 
 /*
  * Initialize a kmem cache for allocating nvmap_handle_sgt's.
@@ -422,10 +554,17 @@ static void nvmap_dmabuf_unmap_dma_buf(struct dma_buf_attachment *attach,
 	mutex_unlock(&info->maps_lock);
 }
 
+bool nvmap_dmabuf_is_foreign_dmabuf(struct dma_buf *dmabuf)
+{
+	return dmabuf->ops != &nvmap_dma_buf_ops;
+}
+
 static void nvmap_dmabuf_release(struct dma_buf *dmabuf)
 {
 	struct nvmap_handle_info *info = dmabuf->priv;
 	struct nvmap_handle_sgt *nvmap_sgt;
+
+	BUG_ON(nvmap_dmabuf_is_foreign_dmabuf(dmabuf));
 
 	trace_nvmap_dmabuf_release(info->handle->owner ?
 				   info->handle->owner->name : "unknown",
@@ -443,6 +582,7 @@ static void nvmap_dmabuf_release(struct dma_buf *dmabuf)
 	mutex_unlock(&info->maps_lock);
 
 	dma_buf_detach(info->handle->dmabuf, info->handle->attachment);
+	info->handle->attachment = NULL;
 	info->handle->dmabuf = NULL;
 	nvmap_handle_put(info->handle);
 	kfree(info);
@@ -509,7 +649,7 @@ static void nvmap_dmabuf_vunmap(struct dma_buf *dmabuf, void *vaddr)
 	__nvmap_munmap(info->handle, vaddr);
 }
 
-static struct dma_buf_ops nvmap_dma_buf_ops = {
+struct dma_buf_ops nvmap_dma_buf_ops = {
 	.attach		= nvmap_dmabuf_attach,
 	.detach		= nvmap_dmabuf_detach,
 	.map_dma_buf	= nvmap_dmabuf_map_dma_buf,
@@ -564,17 +704,29 @@ err_nomem:
 int __nvmap_dmabuf_fd(struct dma_buf *dmabuf, int flags)
 {
 	int fd;
+	unsigned start;
 
 	if (!dmabuf || !dmabuf->file)
 		return -EINVAL;
-	/* Allocate fd from 1024 onwards to overcome
+
+	if (nvmap_dmabuf_is_foreign_dmabuf(dmabuf))
+		start = NVMAP_HANDLE_FOREIGN_FD_START;
+	else
+		start = NVMAP_HANDLE_NATIVE_FD_START;
+
+	/* Allocate fd from _start_ onwards to overcome
 	 * __FD_SETSIZE limitation issue for select(),
 	 * pselect() syscalls.
 	 */
-	fd = __alloc_fd(current->files, 1024,
+	fd = __alloc_fd(current->files, start,
 			sysctl_nr_open, flags);
 	if (fd < 0)
 		return fd;
+
+	WARN_ON((start == NVMAP_HANDLE_NATIVE_FD_START &&
+			fd >= NVMAP_HANDLE_FOREIGN_FD_START) ||
+			(start == NVMAP_HANDLE_FOREIGN_FD_START &&
+			fd > NVMAP_HANDLE_FOREIGN_FD_END));
 
 	fd_install(fd, dmabuf->file);
 
@@ -668,20 +820,53 @@ struct dma_buf *__nvmap_dmabuf_export_from_ref(struct nvmap_handle_ref *ref)
  */
 ulong nvmap_get_id_from_dmabuf_fd(struct nvmap_client *client, int fd)
 {
-	ulong id = -EINVAL;
+	ulong id;
 	struct dma_buf *dmabuf;
-	struct nvmap_handle_info *info;
 
 	dmabuf = dma_buf_get(fd);
-	if (IS_ERR(dmabuf))
+	if (IS_ERR(dmabuf)) {
+		nvmap_err(client, "failed to get dmabuf for fd %d\n", fd);
 		return PTR_ERR(dmabuf);
-	if (dmabuf->ops == &nvmap_dma_buf_ops) {
+	}
+
+	id = nvmap_get_id_from_dmabuf(client, dmabuf);
+
+	dma_buf_put(dmabuf);
+	return id;
+}
+
+ulong nvmap_get_id_from_dmabuf(struct nvmap_client *client,
+		struct dma_buf *dmabuf)
+{
+	ulong id = -EINVAL;
+	struct nvmap_handle_info *info;
+
+	if (IS_ERR_OR_NULL(dmabuf)) {
+		nvmap_err(client, "invalid dmabuf\n");
+		return -EINVAL;
+	}
+
+	if (!nvmap_dmabuf_is_foreign_dmabuf(dmabuf)){
+		/* Self-imported dmabuf, we can just get a ref and move on */
 		info = dmabuf->priv;
 		id = (ulong) info->handle;
 		if (!nvmap_handle_get(info->handle))
 			id = -EINVAL;
+	} else {
+		/* Foreign dmabuf, need to import */
+		struct nvmap_handle_ref *ref;
+
+		ref = nvmap_create_handle_dmabuf(client, dmabuf);
+		if (IS_ERR(ref))
+			goto fail;
+
+		if (!nvmap_handle_get(ref->handle))
+			id = -EINVAL;
+		else
+			id = (ulong) (ref->handle);
 	}
-	dma_buf_put(dmabuf);
+
+fail:
 	return id;
 }
 
@@ -763,8 +948,13 @@ void *nvmap_get_dmabuf_private(struct dma_buf *dmabuf)
 	if (WARN_ON(!virt_addr_valid(dmabuf)))
 		return ERR_PTR(-EINVAL);
 
-	info = dmabuf->priv;
-	priv = info->handle->nvhost_priv;
+	if (!nvmap_dmabuf_is_foreign_dmabuf(dmabuf)) {
+		info = dmabuf->priv;
+		priv = info->handle->nvhost_priv;
+	} else {
+		WARN_ON(1);
+		return NULL;
+	}
 	return priv;
 }
 

@@ -141,6 +141,7 @@ struct nvmap_handle_ref {
 	struct rb_node	node;
 	atomic_t	dupes;	/* number of times to free on file close */
 	atomic_t	pin;	/* number of times to unpin on free */
+	bool is_foreign;
 };
 
 #ifdef CONFIG_NVMAP_PAGE_POOLS
@@ -293,6 +294,9 @@ void nvmap_handle_put(struct nvmap_handle *h);
 struct nvmap_handle_ref *__nvmap_validate_id_locked(struct nvmap_client *priv,
 						   unsigned long id);
 
+struct nvmap_handle_ref *nvmap_create_handle_dmabuf(struct nvmap_client *client,
+						    struct dma_buf *dmabuf);
+
 struct nvmap_handle_ref *nvmap_create_handle(struct nvmap_client *client,
 					     size_t size);
 
@@ -324,6 +328,8 @@ void nvmap_handle_add(struct nvmap_device *dev, struct nvmap_handle *h);
 int is_nvmap_vma(struct vm_area_struct *vma);
 
 int nvmap_get_dmabuf_fd(struct nvmap_client *client, ulong id);
+ulong nvmap_get_id_from_dmabuf(struct nvmap_client *client,
+		struct dma_buf *dmabuf);
 ulong nvmap_get_id_from_dmabuf_fd(struct nvmap_client *client, int fd);
 
 int nvmap_get_handle_param(struct nvmap_client *client,
@@ -385,6 +391,7 @@ ulong __nvmap_ref_to_id(struct nvmap_handle_ref *ref);
 int __nvmap_pin(struct nvmap_handle_ref *ref, phys_addr_t *phys);
 void __nvmap_unpin(struct nvmap_handle_ref *ref);
 int __nvmap_dmabuf_fd(struct dma_buf *dmabuf, int flags);
+bool nvmap_dmabuf_is_foreign_dmabuf(struct dma_buf *dmabuf);
 
 void nvmap_dmabuf_debugfs_init(struct dentry *nvmap_root);
 int nvmap_dmabuf_stash_init(void);

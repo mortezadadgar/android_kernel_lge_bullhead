@@ -197,6 +197,16 @@ int nvmap_ioctl_rw_handle(struct file *filp, int is_read, void __user *arg);
 
 int nvmap_ioctl_share_dmabuf(struct file *filp, void __user *arg);
 
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+int nvmap_foreign_dmabuf_add(struct nvmap_handle *h, struct dma_buf *dmabuf,
+		int fd);
+struct nvmap_handle *nvmap_foreign_dmabuf_find_by_fd(int fd);
+struct dma_buf_attachment *nvmap_foreign_dmabuf_get_att(
+		struct dma_buf *dmabuf);
+int nvmap_foreign_dmabuf_get(struct dma_buf *dmabuf);
+void nvmap_foreign_dmabuf_put(struct dma_buf *dmabuf);
+#endif
+
 #endif	/* __KERNEL__ */
 
 #endif	/*  __VIDEO_TEGRA_NVMAP_IOCTL_H */
