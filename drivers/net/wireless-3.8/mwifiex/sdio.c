@@ -2017,14 +2017,24 @@ static int mwifiex_init_sdio(struct mwifiex_adapter *adapter)
 	ret = mwifiex_alloc_sdio_mpa_buffers(adapter,
 					     card->mp_tx_agg_buf_size,
 					     card->mp_rx_agg_buf_size);
-	if (ret) {
-		mwifiex_dbg(adapter, ERROR,
-			    "failed to alloc sdio mp-a buffers\n");
-		kfree(card->mp_regs);
-		return -1;
+
+	/* Allocate 32k MPA Tx/Rx buffers if 64k memory allocation fails */
+	if (ret && (card->mp_tx_agg_buf_size == MWIFIEX_MP_AGGR_BUF_SIZE_MAX ||
+		    card->mp_rx_agg_buf_size == MWIFIEX_MP_AGGR_BUF_SIZE_MAX)) {
+		/* Disable rx single port aggregation */
+		adapter->host_disable_sdio_rx_aggr = true;
+
+		ret = mwifiex_alloc_sdio_mpa_buffers
+			(adapter, MWIFIEX_MP_AGGR_BUF_SIZE_32K,
+			 MWIFIEX_MP_AGGR_BUF_SIZE_32K);
+		if (ret) {
+			/* Disable multi port aggregation */
+			card->mpa_tx.enabled = 0;
+			card->mpa_rx.enabled = 0;
+		}
 	}
 
-	return ret;
+	return 0;
 }
 
 /*
