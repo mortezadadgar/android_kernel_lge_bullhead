@@ -101,12 +101,13 @@ void iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
 	void *data = pkt->data;
 	u32 size = iwl_rx_packet_payload_len(pkt);
 
-	switch (pkt->hdr.cmd) {
+	switch (WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd)) {
 	case GET_SET_PHY_DB_CMD:
 		iwl_xvt_user_send_notif(xvt, IWL_TM_USER_CMD_NOTIF_PHY_DB,
 					data, size, GFP_ATOMIC);
 		break;
 	case DTS_MEASUREMENT_NOTIFICATION:
+	case DTS_MEASUREMENT_NOTIF_WIDE:
 		iwl_xvt_user_send_notif(xvt,
 					IWL_TM_USER_CMD_NOTIF_DTS_MEASUREMENTS,
 					data, size, GFP_ATOMIC);

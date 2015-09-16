@@ -72,6 +72,11 @@
 #define IWL_XVT_DEFAULT_TX_FIFO	0
 #define IWL_XVT_CMD_FIFO	7
 
+/* command groups */
+enum {
+	PHY_OPS_GROUP = 0x4,
+};
+
 enum {
 	XVT_ALIVE = 0x1,
 	INIT_COMPLETE_NOTIF = 0x4,
@@ -107,6 +112,10 @@ enum {
 	DEBUG_LOG_MSG = 0xf7,
 
 	REPLY_MAX = 0xff,
+};
+
+enum iwl_phy_ops_subcmd_ids {
+	DTS_MEASUREMENT_NOTIF_WIDE = WIDE_ID(PHY_OPS_GROUP, 0xFF),
 };
 
 /*
