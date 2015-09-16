@@ -2401,6 +2401,12 @@ TRACE_EVENT(drv_wake_tx_queue,
 	)
 );
 
+DEFINE_EVENT(local_sdata_evt, drv_start_ftm_responder,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata),
+	TP_ARGS(local, sdata)
+);
+
 #endif /* !__MAC80211_DRIVER_TRACE || TRACE_HEADER_MULTI_READ */
 
 #undef TRACE_INCLUDE_PATH

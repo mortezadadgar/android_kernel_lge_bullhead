@@ -1164,4 +1164,20 @@ static inline void drv_wake_tx_queue(struct ieee80211_local *local,
 	local->ops->wake_tx_queue(&local->hw, &txq->txq);
 }
 
+static inline int
+drv_start_ftm_responder(struct ieee80211_local *local,
+			struct ieee80211_sub_if_data *sdata,
+			struct cfg80211_ftm_responder_params *params)
+{
+	u32 ret = -EOPNOTSUPP;
+
+	trace_drv_start_ftm_responder(local, sdata);
+	if (local->ops->start_ftm_responder)
+		ret = local->ops->start_ftm_responder(&local->hw, &sdata->vif,
+						      params);
+	trace_drv_return_int(local, ret);
+
+	return ret;
+}
+
 #endif /* __MAC80211_DRIVER_OPS */

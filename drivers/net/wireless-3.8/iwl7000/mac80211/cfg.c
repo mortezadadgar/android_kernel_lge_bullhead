@@ -3483,6 +3483,18 @@ static int ieee80211_abort_msrment(struct wiphy *wiphy,
 }
 #endif
 
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+static int ieee80211_start_ftm_responder(struct wiphy *wiphy,
+					 struct net_device *dev,
+			       struct cfg80211_ftm_responder_params *params)
+{
+	struct ieee80211_local *local = wiphy_priv(wiphy);
+	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
+
+	return drv_start_ftm_responder(local, sdata, params);
+}
+#endif
+
 #if CFG80211_VERSION < KERNEL_VERSION(3,14,0)
 static int _wrap_mgmt_tx(struct wiphy *wiphy, struct wireless_dev *wdev, struct ieee80211_channel *chan, bool offchan, unsigned int wait, const u8 *buf, size_t len, bool no_cck, bool dont_wait_for_ack, u64 *cookie)
 {
@@ -3525,6 +3537,9 @@ const struct cfg80211_ops mac80211_config_ops = {
 #endif
 #if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 	.abort_msrment = ieee80211_abort_msrment,
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	.start_ftm_responder = ieee80211_start_ftm_responder,
 #endif
 #ifdef CPTCFG_MAC80211_MESH
 	.add_mpath = ieee80211_add_mpath,

@@ -1316,6 +1316,13 @@ struct cfg80211_msrment_response {
 	} u;
 };
 
+struct cfg80211_ftm_responder_params {
+	const u8 *lci;
+	const u8 *civic;
+	size_t lci_len;
+	size_t civic_len;
+};
+
 static inline void
 cfg80211_measurement_response(struct wiphy *wiphy,
 			      struct cfg80211_msrment_response *resp,

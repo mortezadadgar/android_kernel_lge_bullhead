@@ -3359,6 +3359,7 @@ enum ieee80211_reconfig_type {
  *	parameters. The given request can only be used within the function call.
  * @abort_ftm: Abort a Fine Timing Measurement request. The given cookie must
  *	match that of the active FTM request.
+ * @start_ftm_responder: Start FTM responder and configure its parameters.
  */
 struct ieee80211_ops {
 	void (*tx)(struct ieee80211_hw *hw,
@@ -3601,6 +3602,9 @@ struct ieee80211_ops {
 			   struct ieee80211_vif *vif,
 			   struct cfg80211_ftm_request *ftm_req);
 	int (*abort_ftm)(struct ieee80211_hw *hw, u64 cookie);
+	int (*start_ftm_responder)(struct ieee80211_hw *hw,
+				   struct ieee80211_vif *vif,
+				   struct cfg80211_ftm_responder_params *params);
 };
 
 /**
