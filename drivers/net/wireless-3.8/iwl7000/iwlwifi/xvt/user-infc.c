@@ -1086,8 +1086,8 @@ static int iwl_xvt_get_fw_info(struct iwl_xvt *xvt,
 	u32 *bitmap;
 	int i;
 
-	api_len = IWL_API_MAX_BITS / 8;
-	capa_len = IWL_API_MAX_BITS / 8;
+	api_len = 4 * DIV_ROUND_UP(NUM_IWL_UCODE_TLV_API, 32);
+	capa_len = 4 * DIV_ROUND_UP(NUM_IWL_UCODE_TLV_CAPA, 32);
 
 	fw_info = kzalloc(sizeof(*fw_info) + api_len + capa_len, GFP_KERNEL);
 	if (!fw_info)
@@ -1100,14 +1100,14 @@ static int iwl_xvt_get_fw_info(struct iwl_xvt *xvt,
 	fw_info->fw_capa_len = capa_len;
 
 	bitmap = (u32 *)fw_info->data;
-	for (i = 0; i < 8 * api_len; i++) {
+	for (i = 0; i < NUM_IWL_UCODE_TLV_API; i++) {
 		if (fw_has_api(&xvt->fw->ucode_capa,
 			       (__force iwl_ucode_tlv_api_t)i))
 			bitmap[i / 32] |= BIT(i % 32);
 	}
 
 	bitmap = (u32 *)(fw_info->data + api_len);
-	for (i = 0; i < 8 * capa_len; i++) {
+	for (i = 0; i < NUM_IWL_UCODE_TLV_CAPA; i++) {
 		if (fw_has_capa(&xvt->fw->ucode_capa,
 				(__force iwl_ucode_tlv_capa_t)i))
 			bitmap[i / 32] |= BIT(i % 32);
