@@ -896,6 +896,7 @@ static ssize_t iwl_dbgfs_tof_range_request_write(struct ieee80211_vif *vif,
 			goto out;
 		}
 		memcpy(mvm->tof_data.range_req.macaddr_template, mac, ETH_ALEN);
+		goto out;
 	}
 
 	data = iwl_dbgfs_is_match("macaddr_mask=", buf);
@@ -907,11 +908,12 @@ static ssize_t iwl_dbgfs_tof_range_request_write(struct ieee80211_vif *vif,
 			goto out;
 		}
 		memcpy(mvm->tof_data.range_req.macaddr_mask, mac, ETH_ALEN);
+		goto out;
 	}
 
 	data = iwl_dbgfs_is_match("ap=", buf);
 	if (data) {
-		struct iwl_tof_range_req_ap_entry ap;
+		struct iwl_tof_range_req_ap_entry ap = {};
 		int size = sizeof(struct iwl_tof_range_req_ap_entry);
 		u16 burst_period;
 		u8 *mac = ap.bssid;
@@ -948,12 +950,12 @@ static ssize_t iwl_dbgfs_tof_range_request_write(struct ieee80211_vif *vif,
 	data = iwl_dbgfs_is_match("send_range_request=", buf);
 	if (data) {
 		ret = kstrtou32(data, 10, &value);
-		if (ret == 0 && value) {
+		if (ret == 0 && value)
 			ret = iwl_mvm_tof_range_request_cmd(mvm, vif);
-			goto out;
-		}
+		goto out;
 	}
 
+	ret = -EINVAL;
 out:
 	mutex_unlock(&mvm->mutex);
 	return ret ?: count;
@@ -1077,12 +1079,12 @@ static ssize_t iwl_dbgfs_tof_range_req_ext_write(struct ieee80211_vif *vif,
 	data = iwl_dbgfs_is_match("send_range_req_ext=", buf);
 	if (data) {
 		ret = kstrtou32(data, 10, &value);
-		if (ret == 0 && value) {
+		if (ret == 0 && value)
 			ret = iwl_mvm_tof_range_request_ext_cmd(mvm, vif);
-			goto out;
-		}
+		goto out;
 	}
 
+	ret = -EINVAL;
 out:
 	mutex_unlock(&mvm->mutex);
 	return ret ?: count;
