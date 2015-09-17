@@ -130,7 +130,6 @@ static const struct iwl_tt_params iwl9000_tt_params = {
 	.base_params = &iwl9000_base_params,				\
 	.led_mode = IWL_LED_RF_STATE,					\
 	.nvm_hw_section_num = NVM_HW_SECTION_NUM_FAMILY_9000,		\
-	.d0i3 = true,							\
 	.non_shared_ant = ANT_A,					\
 	.dccm_offset = IWL9000_DCCM_OFFSET,				\
 	.dccm_len = IWL9000_DCCM_LEN,					\
