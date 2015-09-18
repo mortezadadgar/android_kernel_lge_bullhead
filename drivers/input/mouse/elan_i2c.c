@@ -945,6 +945,7 @@ static int elan_get_fwinfo(u8 ic_type, u16 *vaildpage_count,
 {
 	switch (ic_type) {
 	case 0x09:
+	case 0x03:
 		*vaildpage_count = 768;
 		break;
 	case 0x0D:
