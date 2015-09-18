@@ -104,6 +104,8 @@ enum iwl_disable_11n {
  * @ant_coupling: antenna coupling in dB, default = 0
  * @xvt_default_mode: xVT is the default operation mode, default = false
  * @d0i3_disable: disable d0i3, default = 1,
+ * @d0i3_entry_delay: time to wait after no refs are taken before
+ *	entering D0i3 (in msecs)
  * @lar_disable: disable LAR (regulatory), default = 0
  * @fw_monitor: allow to use firmware monitor
  */
@@ -126,6 +128,7 @@ struct iwl_mod_params {
 	char *nvm_file;
 	bool uapsd_disable;
 	bool d0i3_disable;
+	unsigned int d0i3_entry_delay;
 	bool lar_disable;
 	bool fw_monitor;
 };
