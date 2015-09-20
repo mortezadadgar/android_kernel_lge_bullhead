@@ -297,7 +297,46 @@ int iwl_mvm_tof_range_abort_cmd(struct iwl_mvm *mvm, u8 id)
 				    0, sizeof(cmd), &cmd);
 }
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+static void
+iwl_mvm_tof_set_responder(struct iwl_mvm *mvm,
+			  struct ieee80211_vif *vif,
+			  struct cfg80211_ftm_responder_params *params,
+			  struct cfg80211_chan_def *def)
+{
+	struct iwl_tof_responder_config_cmd *cmd = &mvm->tof_data.responder_cfg;
+
+	memset(cmd, 0, sizeof(*cmd));
+
+	cmd->sub_grp_cmd_id = cpu_to_le32(TOF_RESPONDER_CONFIG_CMD);
+	cmd->abort_responder = 0;
+
+	cmd->channel_num = def->chan->hw_value;
+
+	switch (def->width) {
+	case NL80211_CHAN_WIDTH_20_NOHT:
+		cmd->bandwidth = IWL_TOF_BW_20_LEGACY;
+		break;
+	case NL80211_CHAN_WIDTH_20:
+		cmd->bandwidth = IWL_TOF_BW_20_HT;
+		break;
+	case NL80211_CHAN_WIDTH_40:
+		cmd->bandwidth = IWL_TOF_BW_40;
+		if (def->center_freq1 > def->chan->center_freq)
+			cmd->ctrl_ch_position = 1;
+		break;
+	case NL80211_CHAN_WIDTH_80:
+		cmd->bandwidth = IWL_TOF_BW_80;
+		if (def->center_freq1 > def->chan->center_freq)
+			cmd->ctrl_ch_position = 2;
+		if (abs((int)def->center_freq1 -
+			 (int)def->chan->center_freq) > 20)
+			cmd->ctrl_ch_position += 1;
+		break;
+	default:
+		WARN_ON(1);
+	}
+}
+
 int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
 			      struct ieee80211_vif *vif)
 {
@@ -320,6 +359,34 @@ int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
 	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CMD,
 						    IWL_ALWAYS_LONG_GROUP, 0),
 				    0, sizeof(*cmd), cmd);
+}
+
+static void
+iwl_mvm_tof_set_responder_dyn(struct iwl_mvm *mvm,
+			      struct ieee80211_vif *vif,
+			      struct cfg80211_ftm_responder_params *params)
+{
+	struct iwl_tof_responder_dyn_config_cmd *cmd =
+					&mvm->tof_data.responder_dyn_cfg;
+	int aligned = ALIGN(params->lci_len + 2, 4);
+
+	if (aligned + 2 + params->civic_len > IWL_TOF_LCI_CIVIC_BUF_SIZE)
+		return;
+
+	memset(cmd, 0, sizeof(*cmd));
+
+	cmd->sub_grp_cmd_id = cpu_to_le32(TOF_RESPONDER_DYN_CONFIG_CMD);
+
+	cmd->lci_len = cpu_to_le32(params->lci_len + 2);
+	cmd->civic_len = cpu_to_le32(params->civic_len + 2);
+
+	cmd->lci_civic[0] = WLAN_EID_MEASURE_REPORT;
+	cmd->lci_civic[1] = params->lci_len;
+	memcpy(cmd->lci_civic, params->lci, params->lci_len);
+
+	cmd->lci_civic[aligned] = WLAN_EID_MEASURE_REPORT;
+	cmd->lci_civic[aligned + 1] = params->lci_len;
+	memcpy(cmd->lci_civic + aligned + 2, params->civic, params->civic_len);
 }
 
 int iwl_mvm_tof_responder_dyn_cfg_cmd(struct iwl_mvm *mvm,
@@ -347,7 +414,41 @@ int iwl_mvm_tof_responder_dyn_cfg_cmd(struct iwl_mvm *mvm,
 				    0, sizeof(*cmd) + actual_lci_len +
 				    actual_civic_len, cmd);
 }
-#endif
+
+int iwl_mvm_tof_start_responder(struct iwl_mvm *mvm,
+				struct ieee80211_vif *vif,
+				struct cfg80211_ftm_responder_params *params)
+{
+	struct ieee80211_chanctx_conf *pctx;
+	int ret;
+
+	lockdep_assert_held(mvm->mutex);
+
+	rcu_read_lock();
+	pctx = rcu_dereference(vif->chanctx_conf);
+	iwl_mvm_tof_set_responder(mvm, vif, params, &pctx->def);
+	rcu_read_unlock();
+
+	ret = iwl_mvm_tof_responder_cmd(mvm, vif);
+	if (ret)
+		return ret;
+
+	if (params->lci_len || params->civic_len) {
+		iwl_mvm_tof_set_responder_dyn(mvm, vif, params);
+		ret = iwl_mvm_tof_responder_dyn_cfg_cmd(mvm, vif);
+	}
+
+	return ret;
+}
+
+void iwl_mvm_tof_restart_responder(struct iwl_mvm *mvm,
+				   struct ieee80211_vif *vif)
+{
+	iwl_mvm_tof_responder_cmd(mvm, vif);
+	if (mvm->tof_data.responder_dyn_cfg.lci_len ||
+	    mvm->tof_data.responder_dyn_cfg.civic_len)
+		iwl_mvm_tof_responder_dyn_cfg_cmd(mvm, vif);
+}
 
 int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
 			    struct ieee80211_vif *vif,

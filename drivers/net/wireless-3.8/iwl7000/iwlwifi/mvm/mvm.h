@@ -366,6 +366,7 @@ struct iwl_mvm_vif_bf_data {
  *	average signal of beacons retrieved from the firmware
  * @csa_failed: CSA failed to schedule time event, report an error later
  * @features: hw features active for this vif
+ * @ftm_responder: FTM responder is enabled on this interface (for AP only)
  */
 struct iwl_mvm_vif {
 	struct iwl_mvm *mvm;
@@ -455,6 +456,8 @@ struct iwl_mvm_vif {
 
 	/* TCP Checksum Offload */
 	netdev_features_t features;
+
+	bool ftm_responder;
 };
 
 static inline struct iwl_mvm_vif *

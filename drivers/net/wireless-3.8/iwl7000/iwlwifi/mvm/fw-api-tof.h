@@ -97,6 +97,16 @@ struct iwl_tof_config_cmd {
 } __packed;
 
 /**
+ * enum iwl_tof_bandwidth - values for iwl_tof_range_req_ap_entry.bandwidth
+ */
+enum iwl_tof_bandwidth {
+	IWL_TOF_BW_20_LEGACY,
+	IWL_TOF_BW_20_HT,
+	IWL_TOF_BW_40,
+	IWL_TOF_BW_80,
+};
+
+/**
  * struct iwl_tof_responder_config_cmd - ToF AP mode (for debug)
  * @burst_period: future use: (currently hard coded in the LMAC)
  *		  The interval between two sequential bursts.
@@ -116,7 +126,7 @@ struct iwl_tof_config_cmd {
  *			 params and use the recomended Initiator params.
  *			 0 - otherwise
  * @channel_num: current AP Channel
- * @bandwidth: current AP Bandwidth: 0  20MHz, 1  40MHz, 2  80MHz
+ * @bandwidth: current AP Bandwidth: &enum iwl_tof_bandwidth
  * @rate: current AP rate
  * @ctrl_ch_position: coding of the control channel position relative to
  *	     the center frequency.
@@ -197,16 +207,6 @@ struct iwl_tof_range_req_ext_cmd {
 
 #define IWL_MVM_TOF_MAX_APS 21
 #define IWL_MVM_TOF_MAX_TWO_SIDED_APS 5
-
-/**
- * enum iwl_tof_bandwidth - values for iwl_tof_range_req_ap_entry.bandwidth
- */
-enum iwl_tof_bandwidth {
-	IWL_TOF_BW_20_LEGACY,
-	IWL_TOF_BW_20_HT,
-	IWL_TOF_BW_40,
-	IWL_TOF_BW_80,
-};
 
 /**
  * enum iwl_tof_location_query - values for query bitmap

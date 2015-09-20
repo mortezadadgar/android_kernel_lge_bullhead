@@ -83,12 +83,10 @@ struct iwl_mvm_tof_data {
 	struct iwl_tof_config_cmd tof_cfg;
 	struct iwl_tof_range_req_cmd range_req;
 	struct iwl_tof_range_req_ext_cmd range_req_ext;
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
-#define IWL_DEBUGFS_TOF_LCI_CIVIC_BUF_SIZE 512
+#define IWL_TOF_LCI_CIVIC_BUF_SIZE 512
 	struct iwl_tof_responder_config_cmd responder_cfg;
 	struct iwl_tof_responder_dyn_config_cmd responder_dyn_cfg;
-	u8 lci_civic_buf[IWL_DEBUGFS_TOF_LCI_CIVIC_BUF_SIZE];
-#endif
+	u8 lci_civic_buf[IWL_TOF_LCI_CIVIC_BUF_SIZE];
 	struct iwl_tof_range_rsp_ntfy range_resp;
 	u8 last_abort_id;
 #define IWL_MVM_TOF_RANGE_REQ_MAX_ID 256
@@ -115,10 +113,13 @@ int iwl_mvm_tof_range_request_cmd(struct iwl_mvm *mvm);
 void iwl_mvm_tof_resp_handler(struct iwl_mvm *mvm,
 			      struct iwl_rx_cmd_buffer *rxb);
 int iwl_mvm_tof_range_request_ext_cmd(struct iwl_mvm *mvm);
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
 int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
 			      struct ieee80211_vif *vif);
 int iwl_mvm_tof_responder_dyn_cfg_cmd(struct iwl_mvm *mvm,
 				      struct ieee80211_vif *vif);
-#endif
+int iwl_mvm_tof_start_responder(struct iwl_mvm *mvm,
+				struct ieee80211_vif *vif,
+				struct cfg80211_ftm_responder_params *params);
+void iwl_mvm_tof_restart_responder(struct iwl_mvm *mvm,
+				   struct ieee80211_vif *vif);
 #endif /* __tof_h__ */

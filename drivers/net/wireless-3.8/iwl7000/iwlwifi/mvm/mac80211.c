@@ -495,6 +495,7 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 		hw->wiphy->max_total_ftm_targets = IWL_MVM_TOF_MAX_APS;
 		hw->wiphy->max_two_sided_ftm_targets =
 			IWL_MVM_TOF_MAX_TWO_SIDED_APS;
+		hw->wiphy->flags |= WIPHY_FLAG_HAS_FTM_RESPONDER;
 	}
 #endif
 
@@ -1496,6 +1497,8 @@ static void iwl_mvm_mac_remove_interface(struct ieee80211_hw *hw,
 				       IEEE80211_VIF_SUPPORTS_CQM_RSSI);
 	}
 
+	mvmvif->ftm_responder = false;
+
 	iwl_mvm_vif_dbgfs_clean(mvm, vif);
 
 	/*
@@ -2091,6 +2094,9 @@ static int iwl_mvm_start_ap_ibss(struct ieee80211_hw *hw,
 	/* we don't support TDLS during DCM */
 	if (iwl_mvm_phy_ctx_count(mvm) > 1)
 		iwl_mvm_teardown_tdls_peers(mvm);
+
+	if (mvmvif->ftm_responder)
+		iwl_mvm_tof_restart_responder(mvm, vif);
 
 	goto out_unlock;
 
@@ -4008,6 +4014,32 @@ static int iwl_mvm_abort_ftm(struct ieee80211_hw *hw, u64 cookie)
 	return ret;
 }
 
+static int
+iwl_mvm_mac_start_ftm_responder(struct ieee80211_hw *hw,
+				struct ieee80211_vif *vif,
+				struct cfg80211_ftm_responder_params *params)
+{
+	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	int ret;
+
+	if (!fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT))
+		return -EOPNOTSUPP;
+
+	mutex_lock(&mvm->mutex);
+
+	if (vif->p2p || vif->type != NL80211_IFTYPE_AP ||
+	    !mvmvif->ap_ibss_active)
+		return -EINVAL;
+
+	mvmvif->ftm_responder = true;
+
+	ret = iwl_mvm_tof_start_responder(mvm, vif, params);
+
+	mutex_unlock(&mvm->mutex);
+	return ret;
+}
+
 const struct ieee80211_ops iwl_mvm_hw_ops = {
 	.tx = iwl_mvm_mac_tx,
 	.ampdu_action = iwl_mvm_mac_ampdu_action,
@@ -4081,4 +4113,5 @@ const struct ieee80211_ops iwl_mvm_hw_ops = {
 	.sta_statistics = iwl_mvm_mac_sta_statistics,
 	.perform_ftm = iwl_mvm_perform_ftm,
 	.abort_ftm = iwl_mvm_abort_ftm,
+	.start_ftm_responder = iwl_mvm_mac_start_ftm_responder,
 };
