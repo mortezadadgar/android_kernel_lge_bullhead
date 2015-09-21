@@ -179,11 +179,30 @@ struct iwl_tof_range_req_ext_cmd {
 } __packed;
 
 #define IWL_MVM_TOF_MAX_APS 21
+#define IWL_MVM_TOF_MAX_TWO_SIDED_APS 5
 
 /**
+ * enum iwl_tof_bandwidth - values for iwl_tof_range_req_ap_entry.bandwidth
+ */
+enum iwl_tof_bandwidth {
+	IWL_TOF_BW_20_LEGACY,
+	IWL_TOF_BW_20_HT,
+	IWL_TOF_BW_40,
+	IWL_TOF_BW_80,
+};
+
+/**
+ * enum iwl_tof_location_query - values for query bitmap
+ */
+enum iwl_tof_location_query {
+	IWL_TOF_LOC_LCI = 0x01,
+	IWL_TOF_LOC_CIVIC = 0x02,
+};
+
+ /**
  * struct iwl_tof_range_req_ap_entry - AP configuration parameters
  * @channel_num: Current AP Channel
- * @bandwidth: Current AP Bandwidth: 0  20MHz, 1  40MHz, 2  80MHz
+ * @bandwidth: Current AP Bandwidth. One of iwl_tof_bandwidth.
  * @tsf_delta_direction: TSF relatively to the subject AP
  * @ctrl_ch_position: Coding of the control channel position relative to the
  *	     center frequency.
@@ -235,18 +254,18 @@ struct iwl_tof_range_req_ap_entry {
 
 /**
  * enum iwl_tof_response_mode
- * @IWL_MVM_TOF_RESPOSE_ASAP: report each AP measurement separately as soon as
- *			      possible (not supported for this release)
- * @IWL_MVM_TOF_RESPOSE_TIMEOUT: report all AP measurements as a batch upon
- *				 timeout expiration
- * @IWL_MVM_TOF_RESPOSE_COMPLETE: report all AP measurements as a batch at the
- *				  earlier of: measurements completion / timeout
- *				  expiration.
+ * @IWL_MVM_TOF_RESPONSE_ASAP: report each AP measurement separately as soon as
+ *			       possible (not supported for this release)
+ * @IWL_MVM_TOF_RESPONSE_TIMEOUT: report all AP measurements as a batch upon
+ *				  timeout expiration
+ * @IWL_MVM_TOF_RESPONSE_COMPLETE: report all AP measurements as a batch at the
+ *				   earlier of: measurements completion / timeout
+ *				   expiration.
  */
 enum iwl_tof_response_mode {
-	IWL_MVM_TOF_RESPOSE_ASAP = 1,
-	IWL_MVM_TOF_RESPOSE_TIMEOUT,
-	IWL_MVM_TOF_RESPOSE_COMPLETE,
+	IWL_MVM_TOF_RESPONSE_ASAP,
+	IWL_MVM_TOF_RESPONSE_TIMEOUT,
+	IWL_MVM_TOF_RESPONSE_COMPLETE,
 };
 
 /**

@@ -1182,6 +1182,60 @@ struct cfg80211_ftm_request {
 	u8 num_of_targets;
 	struct cfg80211_ftm_target *targets;
 };
+
+enum nl80211_ftm_response_status {
+	NL80211_FTM_RESP_SUCCESS,
+	NL80211_FTM_RESP_TARGET_INCAPAB,
+	NL80211_FTM_RESP_TARGET_BUSY,
+	NL80211_FTM_RESP_FAIL,
+};
+
+struct cfg80211_ftm_result {
+	enum nl80211_ftm_response_status status;
+	bool complete;
+	struct cfg80211_ftm_target *target;
+	u64 host_time;
+	u64 tsf;
+	u8 burst_index;
+	s8 rssi;
+	u8 rssi_spread;
+	struct rate_info rate_info;
+	u32 rtt;
+	u32 rtt_variance;
+	u32 rtt_spread;
+};
+
+struct cfg80211_ftm_results {
+	u8 num_of_entries;
+	struct cfg80211_ftm_result *entries;
+};
+
+enum nl80211_msrment_type {
+	NL80211_MSRMENT_TYPE_FTM,
+};
+
+enum nl80211_msrment_status {
+	NL80211_MSRMENT_STATUS_SUCCESS,
+	NL80211_MSRMENT_STATUS_REFUSED,
+	NL80211_MSRMENT_STATUS_FAIL,
+};
+
+struct cfg80211_msrment_response {
+	u64 cookie;
+	enum nl80211_msrment_type type;
+	enum nl80211_msrment_status status;
+	u32 nl_portid;
+	union {
+		struct cfg80211_ftm_results ftm;
+	} u;
+};
+
+static inline void
+cfg80211_measurement_response(struct wiphy *wiphy,
+			      struct cfg80211_msrment_response *resp,
+			      gfp_t gfp)
+{
+}
 #endif /* CFG80211_VERSION < KERNEL_VERSION(4,5,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0)

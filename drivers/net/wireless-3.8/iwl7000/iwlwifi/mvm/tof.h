@@ -88,7 +88,11 @@ struct iwl_mvm_tof_data {
 #endif
 	struct iwl_tof_range_rsp_ntfy range_resp;
 	u8 last_abort_id;
-	u16 active_range_request;
+#define IWL_MVM_TOF_RANGE_REQ_MAX_ID 256
+	u16 active_request_id;
+	u64 active_cookie;
+	struct cfg80211_ftm_request active_request;
+	u8 active_bssid_for_tsf[ETH_ALEN];
 #ifdef CPTCFG_IWLMVM_TOF_TSF_WA
 	struct rhashtable tsf_hash;
 	/* use this flag to minimize changes in mvm code needed for this WA */
@@ -99,13 +103,15 @@ struct iwl_mvm_tof_data {
 void iwl_mvm_tof_init(struct iwl_mvm *mvm);
 void iwl_mvm_tof_clean(struct iwl_mvm *mvm);
 int iwl_mvm_tof_config_cmd(struct iwl_mvm *mvm);
+int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
+			    struct ieee80211_vif *vif,
+			    struct cfg80211_ftm_request *req);
+int iwl_mvm_tof_abort_ftm(struct iwl_mvm *mvm, u64 cookie);
 int iwl_mvm_tof_range_abort_cmd(struct iwl_mvm *mvm, u8 id);
-int iwl_mvm_tof_range_request_cmd(struct iwl_mvm *mvm,
-				  struct ieee80211_vif *vif);
+int iwl_mvm_tof_range_request_cmd(struct iwl_mvm *mvm);
 void iwl_mvm_tof_resp_handler(struct iwl_mvm *mvm,
 			      struct iwl_rx_cmd_buffer *rxb);
-int iwl_mvm_tof_range_request_ext_cmd(struct iwl_mvm *mvm,
-				      struct ieee80211_vif *vif);
+int iwl_mvm_tof_range_request_ext_cmd(struct iwl_mvm *mvm);
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
 int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
 			      struct ieee80211_vif *vif);

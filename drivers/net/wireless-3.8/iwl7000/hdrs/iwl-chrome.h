@@ -11,6 +11,7 @@
 #include <linux/crypto.h>
 #include <linux/moduleparam.h>
 #include <linux/debugfs.h>
+#include <linux/hrtimer.h>
 #include <crypto/algapi.h>
 
 /* get the CPTCFG_* preprocessor symbols */
@@ -38,6 +39,10 @@
 /* things that may or may not be upstream depending on the version */
 #ifndef ETH_P_802_3_MIN
 #define ETH_P_802_3_MIN 0x0600
+#endif
+
+#ifndef U32_MAX
+#define U32_MAX		((u32)~0U)
 #endif
 
 #ifndef U8_MAX
@@ -135,6 +140,14 @@ _genl_register_family_with_ops_grps(struct genl_family *family,
 #define __genl_const const
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0)
+#define ether_addr_equal_unaligned __iwl7000_ether_addr_equal_unaligned
+static inline bool ether_addr_equal_unaligned(const u8 *addr1, const u8 *addr2)
+{
+	return memcmp(addr1, addr2, ETH_ALEN) == 0;
+}
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,17,0)
 #define kvfree __iwl7000_kvfree
 static inline void kvfree(const void *addr)
@@ -144,9 +157,12 @@ static inline void kvfree(const void *addr)
 	else
 		kfree(addr);
 }
-#endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,17,0)
+static inline u64 ktime_get_boot_ns(void)
+{
+	return ktime_to_ns(ktime_get_boottime());
+}
+
 /* interface name assignment types (sysfs name_assign_type attribute) */
 #define NET_NAME_UNKNOWN	0	/* unknown origin (not exposed to userspace) */
 #define NET_NAME_ENUM		1	/* enumerated by kernel */

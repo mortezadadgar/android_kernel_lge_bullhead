@@ -853,6 +853,14 @@ static ssize_t iwl_dbgfs_tof_range_request_write(struct ieee80211_vif *vif,
 
 	mutex_lock(&mvm->mutex);
 
+	/* nesting of range requests is not supported in FW */
+	if (mvm->tof_data.active_request_id != IWL_MVM_TOF_RANGE_REQ_MAX_ID) {
+		IWL_ERR(mvm, "Cannot send range req, already active req %d\n",
+			mvm->tof_data.active_request_id);
+		ret = -EBUSY;
+		goto out;
+	}
+
 	data = iwl_dbgfs_is_match("request_id=", buf);
 	if (data) {
 		ret = kstrtou32(data, 10, &value);
@@ -973,7 +981,7 @@ static ssize_t iwl_dbgfs_tof_range_request_write(struct ieee80211_vif *vif,
 	if (data) {
 		ret = kstrtou32(data, 10, &value);
 		if (ret == 0 && value)
-			ret = iwl_mvm_tof_range_request_cmd(mvm, vif);
+			ret = iwl_mvm_tof_range_request_cmd(mvm);
 		goto out;
 	}
 
@@ -1103,7 +1111,7 @@ static ssize_t iwl_dbgfs_tof_range_req_ext_write(struct ieee80211_vif *vif,
 	if (data) {
 		ret = kstrtou32(data, 10, &value);
 		if (ret == 0 && value)
-			ret = iwl_mvm_tof_range_request_ext_cmd(mvm, vif);
+			ret = iwl_mvm_tof_range_request_ext_cmd(mvm);
 		goto out;
 	}
 

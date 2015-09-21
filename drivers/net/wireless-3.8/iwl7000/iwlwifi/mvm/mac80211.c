@@ -91,6 +91,7 @@
 #include "iwl-dnt-cfg.h"
 #include "iwl-dnt-dispatch.h"
 #endif
+#include "tof.h"
 
 static const struct ieee80211_iface_limit iwl_mvm_limits[] = {
 	{
@@ -486,6 +487,18 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 			mvm->fw->cs[0].cipher;
 		hw->wiphy->n_cipher_suites++;
 	}
+
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	/* Basic support of FTM is limited to driver/FW, so this flag should be
+		 * set (depending on capbilities specified in TLV).
+		 */
+	if (fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT)) {
+		hw->wiphy->flags |= WIPHY_FLAG_SUPPORTS_FTM_INITIATOR;
+		hw->wiphy->max_total_ftm_targets = IWL_MVM_TOF_MAX_APS;
+		hw->wiphy->max_two_sided_ftm_targets =
+			IWL_MVM_TOF_MAX_TWO_SIDED_APS;
+	}
+#endif
 
 	ieee80211_hw_set(hw, SINGLE_SCAN_ON_ALL_BANDS);
 	hw->wiphy->features |=
@@ -3967,6 +3980,36 @@ static int iwl_mvm_mac_set_features(struct ieee80211_hw *hw,
 	return 0;
 }
 
+static int iwl_mvm_perform_ftm(struct ieee80211_hw *hw, u64 cookie,
+			       struct ieee80211_vif *vif,
+			       struct cfg80211_ftm_request *ftm_req)
+{
+	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
+	int ret;
+
+	mutex_lock(&mvm->mutex);
+
+	ret = iwl_mvm_tof_perform_ftm(mvm, cookie, vif, ftm_req);
+
+	mutex_unlock(&mvm->mutex);
+
+	return ret;
+}
+
+static int iwl_mvm_abort_ftm(struct ieee80211_hw *hw, u64 cookie)
+{
+	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
+	int ret;
+
+	mutex_lock(&mvm->mutex);
+
+	ret = iwl_mvm_tof_abort_ftm(mvm, cookie);
+
+	mutex_unlock(&mvm->mutex);
+
+	return ret;
+}
+
 const struct ieee80211_ops iwl_mvm_hw_ops = {
 	.tx = iwl_mvm_mac_tx,
 	.ampdu_action = iwl_mvm_mac_ampdu_action,
@@ -4039,4 +4082,6 @@ const struct ieee80211_ops iwl_mvm_hw_ops = {
 	.get_survey = iwl_mvm_mac_get_survey,
 	.sta_statistics = iwl_mvm_mac_sta_statistics,
 	.set_features = iwl_mvm_mac_set_features,
+	.perform_ftm = iwl_mvm_perform_ftm,
+	.abort_ftm = iwl_mvm_abort_ftm,
 };
