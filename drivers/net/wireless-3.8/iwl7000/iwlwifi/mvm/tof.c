@@ -419,16 +419,30 @@ int iwl_mvm_tof_start_responder(struct iwl_mvm *mvm,
 				struct ieee80211_vif *vif,
 				struct cfg80211_ftm_responder_params *params)
 {
-	struct ieee80211_chanctx_conf *pctx;
+	struct ieee80211_chanctx_conf ctx, *pctx;
+	u16 *phy_ctxt_id;
+	struct iwl_mvm_phy_ctxt *phy_ctxt;
 	int ret;
 
 	lockdep_assert_held(mvm->mutex);
 
 	rcu_read_lock();
 	pctx = rcu_dereference(vif->chanctx_conf);
-	iwl_mvm_tof_set_responder(mvm, vif, params, &pctx->def);
+	/* Copy the ctx to unlock the rcu and send the phy ctxt. We don't care
+	 * about changes in the ctx after releasing the lock because the driver
+	 * is still protected by the mutex. */
+	ctx = *pctx;
+	phy_ctxt_id  = (u16 *)pctx->drv_priv;
 	rcu_read_unlock();
 
+	phy_ctxt = &mvm->phy_ctxts[*phy_ctxt_id];
+	ret = iwl_mvm_phy_ctxt_changed(mvm, phy_ctxt, &ctx.def,
+				       ctx.rx_chains_static,
+				       ctx.rx_chains_dynamic);
+	if (ret)
+		return ret;
+
+	iwl_mvm_tof_set_responder(mvm, vif, params, &ctx.def);
 	ret = iwl_mvm_tof_responder_cmd(mvm, vif);
 	if (ret)
 		return ret;
