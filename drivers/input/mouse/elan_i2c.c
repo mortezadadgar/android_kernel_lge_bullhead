@@ -305,6 +305,9 @@ static int elan_check_fw(struct elan_tp_data *data,
 	static const u8 signature[] = {0xAA, 0x55, 0xCC, 0x33, 0xFF, 0xFF};
 	const u8 *fw_signature = &fw->data[data->fw_signature_address];
 
+	if (data->fw_vaildpage_count == 0)
+		return -EINVAL;
+
 	/* Firmware file must match signature data */
 	if (memcmp(fw_signature, signature, sizeof(signature)) != 0) {
 		dev_err(dev, "signature mismatch (expected %*ph, got %*ph)\n",
@@ -1783,10 +1786,11 @@ static int elan_input_dev_create(struct elan_tp_data *data)
 	min_width = min(data->width_x, data->width_y);
 	ret = elan_get_fwinfo(data->ic_type, &data->fw_vaildpage_count,
 			      &data->fw_signature_address);
-	if (ret) {
-		dev_err(&client->dev, "unknown ic type, %d\n", data->ic_type);
-		goto err_free_device;
-	}
+	if (ret)
+		dev_warn(&client->dev,
+			"unexpected ic type %#04x (iap version: %#04x), "
+			"firmware update will not work\n",
+			data->ic_type, data->iap_version);
 
 	input->id.bustype = BUS_I2C;
 	input->id.vendor = ELAN_VENDOR_ID;
