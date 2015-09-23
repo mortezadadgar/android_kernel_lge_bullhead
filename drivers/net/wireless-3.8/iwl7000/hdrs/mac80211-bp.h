@@ -65,7 +65,11 @@ static inline void netdev_attach_ops(struct net_device *dev,
 #define NL80211_FEATURE_TDLS_CHANNEL_SWITCH	0
 
 /* cfg80211 version specific backward compat code follows */
+#ifdef CONFIG_WIRELESS_38
 #define CFG80211_VERSION KERNEL_VERSION(3,8,0)
+#else
+#define CFG80211_VERSION LINUX_VERSION_CODE
+#endif
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,9,0)
 struct wiphy_wowlan_tcp_support {
