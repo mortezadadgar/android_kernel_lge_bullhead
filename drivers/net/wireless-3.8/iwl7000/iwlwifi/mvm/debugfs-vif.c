@@ -515,7 +515,8 @@ static ssize_t iwl_dbgfs_tof_enable_write(struct ieee80211_vif *vif,
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_mvm *mvm = mvmvif->mvm;
-	int value, ret = -EINVAL;
+	u32 value;
+	int ret = -EINVAL;
 	char *data;
 
 	mutex_lock(&mvm->mutex);
@@ -603,7 +604,8 @@ static ssize_t iwl_dbgfs_tof_responder_params_write(struct ieee80211_vif *vif,
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_mvm *mvm = mvmvif->mvm;
-	int value, ret = 0;
+	u32 value;
+	int ret = 0;
 	char *data;
 
 	mutex_lock(&mvm->mutex);
@@ -826,7 +828,8 @@ static ssize_t iwl_dbgfs_tof_range_request_write(struct ieee80211_vif *vif,
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_mvm *mvm = mvmvif->mvm;
-	int value, ret = 0;
+	u32 value;
+	int ret = 0;
 	char *data;
 
 	mutex_lock(&mvm->mutex);
@@ -1027,7 +1030,8 @@ static ssize_t iwl_dbgfs_tof_range_req_ext_write(struct ieee80211_vif *vif,
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_mvm *mvm = mvmvif->mvm;
-	int value, ret = 0;
+	u32 value;
+	int ret = 0;
 	char *data;
 
 	mutex_lock(&mvm->mutex);
@@ -1131,8 +1135,8 @@ static ssize_t iwl_dbgfs_tof_range_abort_write(struct ieee80211_vif *vif,
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_mvm *mvm = mvmvif->mvm;
-	int value, ret = 0;
-	int abort_id;
+	u32 value;
+	int abort_id, ret = 0;
 	char *data;
 
 	mutex_lock(&mvm->mutex);
