@@ -292,7 +292,7 @@ int iwl_xvt_user_cmd_execute(struct iwl_op_mode *op_mode, u32 cmd,
 			     struct iwl_tm_data *data_out);
 
 /* FW */
-int iwl_xvt_run_fw(struct iwl_xvt *xvt, u32 ucode_type);
+int iwl_xvt_run_fw(struct iwl_xvt *xvt, u32 ucode_type,  bool cont_run);
 
 /* NVM */
 int iwl_xvt_nvm_init(struct iwl_xvt *xvt);
