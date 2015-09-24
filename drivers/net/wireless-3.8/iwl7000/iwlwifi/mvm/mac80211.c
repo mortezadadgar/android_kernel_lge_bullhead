@@ -1484,6 +1484,7 @@ static void iwl_mvm_restart_complete(struct iwl_mvm *mvm)
 #endif
 
 	mutex_unlock(&mvm->mutex);
+
 }
 
 static void iwl_mvm_resume_complete(struct iwl_mvm *mvm)
