@@ -599,11 +599,11 @@ static int iwl_xvt_send_phy_cfg_cmd(struct iwl_xvt *xvt, u32 ucode_type)
 	return err;
 }
 
-static int iwl_xvt_run_runtime_fw(struct iwl_xvt *xvt)
+static int iwl_xvt_run_runtime_fw(struct iwl_xvt *xvt, bool cont_run)
 {
 	int err;
 
-	err = iwl_xvt_run_fw(xvt, IWL_UCODE_REGULAR);
+	err = iwl_xvt_run_fw(xvt, IWL_UCODE_REGULAR, cont_run);
 	if (err)
 		goto fw_error;
 
@@ -663,7 +663,7 @@ static int iwl_xvt_start_op_mode(struct iwl_xvt *xvt)
 	 */
 	if (!(xvt->sw_stack_cfg.load_mask & IWL_XVT_LOAD_MASK_INIT)) {
 		if (xvt->sw_stack_cfg.load_mask & IWL_XVT_LOAD_MASK_RUNTIME) {
-			err = iwl_xvt_run_runtime_fw(xvt);
+			err = iwl_xvt_run_runtime_fw(xvt, false);
 		} else {
 			if (xvt->state != IWL_XVT_STATE_UNINITIALIZED) {
 				xvt->fw_running = false;
@@ -681,7 +681,7 @@ static int iwl_xvt_start_op_mode(struct iwl_xvt *xvt)
 		return err;
 	}
 
-	err = iwl_xvt_run_fw(xvt, IWL_UCODE_INIT);
+	err = iwl_xvt_run_fw(xvt, IWL_UCODE_INIT, false);
 	if (err)
 		return err;
 
@@ -761,7 +761,7 @@ static int iwl_xvt_continue_init(struct iwl_xvt *xvt)
 
 	if (xvt->sw_stack_cfg.load_mask & IWL_XVT_LOAD_MASK_RUNTIME)
 		/* Run runtime FW stops the device by itself if error occurs */
-		err = iwl_xvt_run_runtime_fw(xvt);
+		err = iwl_xvt_run_runtime_fw(xvt, true);
 
 	goto cont_init_end;
 
