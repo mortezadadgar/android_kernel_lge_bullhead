@@ -417,7 +417,7 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 			iwl_mvm_sta_modify_disable_tx_ap(mvm, sta, false);
 	}
 
-	/* This is fine since we don't support multiple AP interfaces */
+	/* This is fine since we prevent two stations with the same address */
 	sta = ieee80211_find_sta_by_ifaddr(mvm->hw, hdr->addr2, NULL);
 	if (sta) {
 		struct iwl_mvm_sta *mvmsta = iwl_mvm_sta_from_mac80211(sta);
