@@ -1067,9 +1067,9 @@ static int iwl_xvt_get_chip_id(struct iwl_xvt *xvt,
 	if (!chip_id)
 		return -ENOMEM;
 
-	chip_id->registers[0] = ioread32((void __iomem *)XVT_SCU_SNUM1);
-	chip_id->registers[1] = ioread32((void __iomem *)XVT_SCU_SNUM2);
-	chip_id->registers[2] = ioread32((void __iomem *)XVT_SCU_SNUM3);
+	chip_id->registers[0] = ioread32((void __force __iomem *)XVT_SCU_SNUM1);
+	chip_id->registers[1] = ioread32((void __force __iomem *)XVT_SCU_SNUM2);
+	chip_id->registers[2] = ioread32((void __force __iomem *)XVT_SCU_SNUM3);
 
 
 	data_out->data = chip_id;
