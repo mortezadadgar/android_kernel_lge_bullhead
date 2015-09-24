@@ -87,6 +87,9 @@
 #include "iwl-dnt-cfg.h"
 #include "iwl-dnt-dispatch.h"
 #endif
+#ifdef CPTCFG_IWLMVM_WAKELOCK
+#include <linux/wakelock.h>
+#endif
 
 #define DRV_DESCRIPTION	"The new Intel(R) wireless AGN driver for Linux"
 MODULE_DESCRIPTION(DRV_DESCRIPTION);
@@ -462,6 +465,10 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 
 	mutex_init(&mvm->mutex);
 	mutex_init(&mvm->d0i3_suspend_mutex);
+#ifdef CPTCFG_IWLMVM_WAKELOCK
+	wake_lock_init(&mvm->recovery_wake_lock, WAKE_LOCK_SUSPEND,
+		       "iwlwifi_mvm_recovery_wakelock");
+#endif
 	spin_lock_init(&mvm->async_handlers_lock);
 	INIT_LIST_HEAD(&mvm->time_event_list);
 	INIT_LIST_HEAD(&mvm->aux_roc_te_list);
@@ -638,6 +645,10 @@ static void iwl_op_mode_mvm_stop(struct iwl_op_mode *op_mode)
 {
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
 	int i;
+
+#ifdef CPTCFG_IWLMVM_WAKELOCK
+	wake_lock_destroy(&mvm->recovery_wake_lock);
+#endif
 
 	iwl_mvm_leds_exit(mvm);
 
@@ -1006,6 +1017,9 @@ void iwl_mvm_nic_restart(struct iwl_mvm *mvm, bool fw_error)
 
 		if (fw_error && mvm->restart_fw > 0)
 			mvm->restart_fw--;
+#ifdef CPTCFG_IWLMVM_WAKELOCK
+		wake_lock(&mvm->recovery_wake_lock);
+#endif
 		ieee80211_restart_hw(mvm->hw);
 	}
 }

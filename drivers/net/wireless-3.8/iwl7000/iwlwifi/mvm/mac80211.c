@@ -1456,6 +1456,9 @@ static void iwl_mvm_restart_complete(struct iwl_mvm *mvm)
 	 * of packets the FW sent out, so we must reconnect.
 	 */
 	iwl_mvm_teardown_tdls_peers(mvm);
+#ifdef CPTCFG_IWLMVM_WAKELOCK
+	wake_unlock(&mvm->recovery_wake_lock);
+#endif
 
 	mutex_unlock(&mvm->mutex);
 }

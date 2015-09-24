@@ -86,6 +86,9 @@
 #ifdef CPTCFG_IWLMVM_TCM
 #include <linux/average.h>
 #endif
+#ifdef CPTCFG_IWLMVM_WAKELOCK
+#include <linux/wakelock.h>
+#endif
 
 #define IWL_INVALID_MAC80211_QUEUE	0xff
 #define IWL_MVM_MAX_ADDRESSES		5
@@ -919,6 +922,9 @@ struct iwl_mvm {
 
 	u32 ciphers[6];
 	struct iwl_mvm_tof_data tof_data;
+#ifdef CPTCFG_IWLMVM_WAKELOCK
+	struct wake_lock recovery_wake_lock;
+#endif
 };
 
 /* Extract MVM priv from op_mode and _hw */
