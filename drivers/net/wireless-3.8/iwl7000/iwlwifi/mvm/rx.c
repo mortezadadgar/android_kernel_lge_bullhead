@@ -294,7 +294,7 @@ static void iwl_mvm_rx_handle_tcm(struct iwl_mvm *mvm,
 		thr *= 1 + ((rate_n_flags & RATE_HT_MCS_NSS_MSK) >>
 					RATE_HT_MCS_NSS_POS);
 	} else {
-		if (WARN_ON((rate_n_flags & RATE_VHT_MCS_RATE_CODE_MSK) >
+		if (WARN_ON((rate_n_flags & RATE_VHT_MCS_RATE_CODE_MSK) >=
 				ARRAY_SIZE(thresh_tpt)))
 			return;
 		thr = thresh_tpt[rate_n_flags & RATE_VHT_MCS_RATE_CODE_MSK];
