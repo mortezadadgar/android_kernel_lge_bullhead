@@ -679,8 +679,8 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 		/* Create STA entry for the WDS peer */
 		sta = sta_info_alloc(sdata, sdata->u.wds.remote_addr,
 				     GFP_KERNEL);
-		if (!sta) {
-			res = -ENOMEM;
+		if (IS_ERR(sta)) {
+			res = PTR_ERR(sta);
 			goto err_del_interface;
 		}
 
