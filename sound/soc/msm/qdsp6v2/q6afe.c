@@ -4261,6 +4261,9 @@ int afe_spk_prot_get_calib_data(struct afe_spkr_prot_get_vi_calib *calib_resp)
 		pr_err("%s: wait_event timeout\n", __func__);
 		ret = -EINVAL;
 		goto fail_cmd;
+	} else {
+		/* set ret to 0 as no timeout happened */
+		ret = 0;
 	}
 	if (atomic_read(&this_afe.status) != 0) {
 		pr_err("%s: config cmd failed\n", __func__);
