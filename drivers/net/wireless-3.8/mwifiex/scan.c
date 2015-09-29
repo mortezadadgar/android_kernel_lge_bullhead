@@ -933,7 +933,7 @@ mwifiex_config_scan(struct mwifiex_private *priv,
 	   add tlv */
 	if (num_probes) {
 
-		mwifiex_dbg(adapter, INFO,
+		mwifiex_dbg(adapter, ERROR,
 			    "info: scan: num_probes = %d\n",
 			    num_probes);
 
