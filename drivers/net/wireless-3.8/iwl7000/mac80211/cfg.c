@@ -1286,8 +1286,8 @@ static int ieee80211_add_station(struct wiphy *wiphy, struct net_device *dev,
 		return -EINVAL;
 
 	sta = sta_info_alloc(sdata, mac, GFP_KERNEL);
-	if (IS_ERR(sta))
-		return PTR_ERR(sta);
+	if (!sta)
+		return -ENOMEM;
 
 	/*
 	 * defaults -- if userspace wants something else we'll
