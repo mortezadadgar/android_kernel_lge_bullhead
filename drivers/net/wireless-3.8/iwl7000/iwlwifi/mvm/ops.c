@@ -1502,14 +1502,14 @@ int iwl_mvm_exit_d0i3(struct iwl_op_mode *op_mode)
 		.send_cmd = iwl_mvm_testmode_send_cmd,		\
 		.valid_hw_addr = iwl_mvm_testmode_valid_hw_addr,\
 		.get_fw_ver = iwl_mvm_testmode_get_fw_ver,	\
-	}
+	},
 #else
 #define IWL_MVM_COMMON_TEST_OPS
 #endif
 
 static const struct iwl_op_mode_ops iwl_mvm_ops = {
 	IWL_MVM_COMMON_OPS,
-	IWL_MVM_COMMON_TEST_OPS,
+	IWL_MVM_COMMON_TEST_OPS
 	.rx = iwl_mvm_rx,
 };
 
@@ -1525,7 +1525,7 @@ static void iwl_mvm_rx_mq_rss(struct iwl_op_mode *op_mode,
 
 static const struct iwl_op_mode_ops iwl_mvm_ops_mq = {
 	IWL_MVM_COMMON_OPS,
-	IWL_MVM_COMMON_TEST_OPS,
+	IWL_MVM_COMMON_TEST_OPS
 	.rx = iwl_mvm_rx_mq,
 	.rx_rss = iwl_mvm_rx_mq_rss,
 };
