@@ -858,6 +858,7 @@ void inet_csk_listen_stop(struct sock *sk)
 
 		sk_acceptq_removed(sk);
 		__reqsk_free(req);
+		cond_resched();
 	}
 	if (queue->fastopenq != NULL) {
 		/* Free all the reqs queued in rskq_rst_head. */
