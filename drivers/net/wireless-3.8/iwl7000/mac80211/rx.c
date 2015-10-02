@@ -2401,7 +2401,6 @@ ieee80211_rx_h_data(struct ieee80211_rx_data *rx)
 	if (!ieee80211_frame_allowed(rx, fc))
 		return RX_DROP_MONITOR;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	/* directly handle TDLS channel switch requests/responses */
 	if (unlikely(((struct ethhdr *)rx->skb->data)->h_proto ==
 						cpu_to_be16(ETH_P_TDLS))) {
@@ -2421,7 +2420,6 @@ ieee80211_rx_h_data(struct ieee80211_rx_data *rx)
 			return RX_QUEUED;
 		}
 	}
-#endif
 
 	if (rx->sdata->vif.type == NL80211_IFTYPE_AP_VLAN &&
 	    unlikely(port_control) && sdata->bss) {
