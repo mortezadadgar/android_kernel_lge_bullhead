@@ -86,6 +86,7 @@ enum {
 };
 
 #ifndef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#define IWL_D0I3_DEBUG			0
 #ifdef CPTCFG_IWLMVM_WAKELOCK
 /* wakelock timeout to use when all the references were released */
 #define IWL_WAKELOCK_TIMEOUT_MS		1500
