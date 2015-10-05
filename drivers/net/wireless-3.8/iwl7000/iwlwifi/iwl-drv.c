@@ -428,8 +428,11 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 	 * here we always load the 'api_max' version, and once that
 	 * has returned we load the dbg-cfg file.
 	 */
-	if ((drv->fw_index != drv->cfg->ucode_api_max &&
-	     !drv->trans->dbg_cfg.load_old_fw) ||
+	if ((drv->fw_index != drv->cfg->ucode_api_max
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	     && !drv->trans->dbg_cfg.load_old_fw
+#endif
+	    ) ||
 	    drv->fw_index < drv->cfg->ucode_api_min) {
 #else
 	if (drv->fw_index < drv->cfg->ucode_api_min) {
