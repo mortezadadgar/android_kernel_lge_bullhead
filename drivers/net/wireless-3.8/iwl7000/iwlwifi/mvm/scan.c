@@ -750,8 +750,7 @@ static inline bool iwl_mvm_scan_fits(struct iwl_mvm *mvm, int n_ssids,
 }
 
 static inline bool iwl_mvm_scan_use_ebs(struct iwl_mvm *mvm,
-					struct ieee80211_vif *vif,
-					int n_iterations)
+					struct ieee80211_vif *vif)
 {
 	const struct iwl_ucode_capabilities *capa = &mvm->fw->ucode_capa;
 
@@ -764,16 +763,6 @@ static inline bool iwl_mvm_scan_use_ebs(struct iwl_mvm *mvm,
 	return ((capa->flags & IWL_UCODE_TLV_FLAGS_EBS_SUPPORT) &&
 		mvm->last_ebs_successful &&
 		vif->type != NL80211_IFTYPE_P2P_DEVICE);
-}
-
-static int iwl_mvm_scan_total_iterations(struct iwl_mvm_scan_params *params)
-{
-	int i, iterations = 0;
-
-	for (i = 0; i < params->n_scan_plans; i++)
-		iterations += params->scan_plans[i].iterations;
-
-	return iterations;
 }
 
 static int iwl_mvm_scan_lmac_flags(struct iwl_mvm *mvm,
@@ -814,7 +803,6 @@ static int iwl_mvm_scan_lmac(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		(void *)(cmd->data + sizeof(struct iwl_scan_channel_cfg_lmac) *
 			 mvm->fw->ucode_capa.n_scan_channels);
 	u32 ssid_bitmap = 0;
-	int n_iterations = iwl_mvm_scan_total_iterations(params);
 	int i;
 
 	lockdep_assert_held(&mvm->mutex);
@@ -862,7 +850,7 @@ static int iwl_mvm_scan_lmac(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	if (!cmd->schedule[i - 1].iterations)
 		cmd->schedule[i - 1].iterations = 0xff;
 
-	if (iwl_mvm_scan_use_ebs(mvm, vif, n_iterations)) {
+	if (iwl_mvm_scan_use_ebs(mvm, vif)) {
 		cmd->channel_opt[0].flags =
 			cpu_to_le16(IWL_SCAN_CHANNEL_FLAG_EBS |
 				    IWL_SCAN_CHANNEL_FLAG_EBS_ACCURATE |
@@ -1001,6 +989,12 @@ static int iwl_mvm_scan_uid_by_status(struct iwl_mvm *mvm, int status)
 	return -ENOENT;
 }
 
+static inline bool iwl_mvm_is_regular_scan(struct iwl_mvm_scan_params *params)
+{
+	return params->n_scan_plans == 1 &&
+		params->scan_plans[0].iterations == 1;
+}
+
 static void iwl_mvm_scan_umac_dwell(struct iwl_mvm *mvm,
 				    struct iwl_scan_req_umac *cmd,
 				    struct iwl_mvm_scan_params *params)
@@ -1013,7 +1007,7 @@ static void iwl_mvm_scan_umac_dwell(struct iwl_mvm *mvm,
 	cmd->scan_priority =
 		iwl_mvm_scan_priority(mvm, IWL_SCAN_PRIORITY_EXT_6);
 
-	if (iwl_mvm_scan_total_iterations(params) == 1)
+	if (iwl_mvm_is_regular_scan(params))
 		cmd->ooc_priority =
 			iwl_mvm_scan_priority(mvm, IWL_SCAN_PRIORITY_EXT_6);
 	else
@@ -1060,7 +1054,7 @@ static u32 iwl_mvm_scan_umac_flags(struct iwl_mvm *mvm,
 	else
 		flags |= IWL_UMAC_SCAN_GEN_FLAGS_MATCH;
 
-	if (iwl_mvm_scan_total_iterations(params) > 1)
+	if (!iwl_mvm_is_regular_scan(params))
 		flags |= IWL_UMAC_SCAN_GEN_FLAGS_PERIODIC;
 
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
@@ -1080,7 +1074,6 @@ static int iwl_mvm_scan_umac(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			mvm->fw->ucode_capa.n_scan_channels;
 	int uid, i;
 	u32 ssid_bitmap = 0;
-	int n_iterations = iwl_mvm_scan_total_iterations(params);
 
 	lockdep_assert_held(&mvm->mutex);
 
@@ -1103,7 +1096,7 @@ static int iwl_mvm_scan_umac(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	if (type == IWL_MVM_SCAN_SCHED)
 		cmd->flags = cpu_to_le32(IWL_UMAC_SCAN_FLAG_PREEMPTIVE);
 
-	if (iwl_mvm_scan_use_ebs(mvm, vif, n_iterations))
+	if (iwl_mvm_scan_use_ebs(mvm, vif))
 		cmd->channel_flags = IWL_SCAN_CHANNEL_FLAG_EBS |
 				     IWL_SCAN_CHANNEL_FLAG_EBS_ACCURATE |
 				     IWL_SCAN_CHANNEL_FLAG_CACHE_ADD;
