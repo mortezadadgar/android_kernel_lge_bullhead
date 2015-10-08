@@ -520,6 +520,7 @@ struct usb_gadget_ops {
  *		 Used in case of more then one core operates concurrently.
  * @streaming_enabled: Enable streaming mode with usb core.
  * @xfer_isr_count: UI (transfer complete) interrupts count
+ * @interrupt_num: Interrupt number for the underlying platform device.
  *
  * Gadgets have a mostly-portable "gadget driver" implementing device
  * functions, handling all usb configurations and interfaces.  Gadget
@@ -566,6 +567,7 @@ struct usb_gadget {
 	bool				remote_wakeup;
 	void				*private;
 	u32				xfer_isr_count;
+	int				interrupt_num;
 };
 #define work_to_gadget(w)	(container_of((w), struct usb_gadget, work))
 
