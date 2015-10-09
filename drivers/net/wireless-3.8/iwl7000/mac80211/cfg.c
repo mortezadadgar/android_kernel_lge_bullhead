@@ -1393,10 +1393,14 @@ static int ieee80211_change_station(struct wiphy *wiphy,
 		break;
 	case NL80211_IFTYPE_AP:
 	case NL80211_IFTYPE_AP_VLAN:
+#if CFG80211_VERSION >= KERNEL_VERSION(4,4,0)
 		if (test_sta_flag(sta, WLAN_STA_ASSOC))
 			statype = CFG80211_STA_AP_CLIENT;
 		else
 			statype = CFG80211_STA_AP_CLIENT_UNASSOC;
+#else
+		statype = CFG80211_STA_AP_CLIENT;
+#endif
 		break;
 	default:
 		err = -EOPNOTSUPP;
