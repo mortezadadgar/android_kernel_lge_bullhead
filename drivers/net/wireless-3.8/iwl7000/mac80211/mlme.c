@@ -4599,6 +4599,9 @@ static bool ieee80211_mgd_use_uapsd(struct ieee80211_sub_if_data *sdata,
 	bool result;
 	int i;
 
+	if (sdata->u.mgd.flags & IEEE80211_STA_NO_UAPSD_WORKAROUNDS)
+		return true;
+
 	rcu_read_lock();
 	ht_cap_ie = ieee80211_bss_get_ie(req->bss, WLAN_EID_HT_CAPABILITY);
 	if (ht_cap_ie && ht_cap_ie[1] >= sizeof(*ht_cap))
