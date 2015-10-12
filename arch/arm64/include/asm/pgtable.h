@@ -34,7 +34,13 @@
 /*
  * VMALLOC and SPARSEMEM_VMEMMAP ranges.
  */
+#ifndef CONFIG_KASAN
 #define VMALLOC_START		(VA_START)
+#else
+#include <asm/kasan.h>
+#define VMALLOC_START		(KASAN_SHADOW_END + SZ_64K)
+#endif
+
 #define VMALLOC_END		(PAGE_OFFSET - UL(0x400000000) - SZ_64K)
 
 #define vmemmap			((struct page *)(VMALLOC_END + SZ_64K))
