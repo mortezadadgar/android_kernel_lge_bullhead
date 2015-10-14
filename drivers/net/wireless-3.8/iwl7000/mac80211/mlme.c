@@ -4569,39 +4569,22 @@ int ieee80211_mgd_auth(struct ieee80211_sub_if_data *sdata,
 static bool ieee80211_mgd_use_uapsd(struct ieee80211_sub_if_data *sdata,
 				    struct cfg80211_assoc_request *req)
 {
-	const struct ieee80211_ht_cap *ht_cap = NULL;
-	const u8 *ht_cap_ie;
-	bool result;
-	int i;
+	const struct cfg80211_bss_ies *ies;
+	bool result = true;
 
 	if (sdata->u.mgd.flags & IEEE80211_STA_NO_UAPSD_WORKAROUNDS)
 		return true;
 
 	rcu_read_lock();
-	ht_cap_ie = ieee80211_bss_get_ie(req->bss, WLAN_EID_HT_CAPABILITY);
-	if (ht_cap_ie && ht_cap_ie[1] >= sizeof(*ht_cap))
-		ht_cap = (void *)(ht_cap_ie + 2);
-
-	/* iPhone workaround: if the AP does not advertise MIMO capabilities
-	 * or is SISO then disable U-APSD - this just tries to detect that an
-	 * AP actually is an iPhone since those don't support U-APSD well.
-	 */
-
-	/* iPhone 4/4s with this problem doesn't have ht_capa */
-	if (!ht_cap) {
-		result = false;
+	ies = rcu_dereference(req->bss->ies);
+	if (!ies)
 		goto out;
-	}
 
-	/* later ones don't have multiple streams */
-	for (i = 1; i < 4; i++) {
-		if (ht_cap->mcs.rx_mask[i]) {
-			result = true;
-			goto out;
-		}
-	}
-
-	result = false;
+	/* workaround - Broadcom devices (iPhones included) don't support
+	 * U-APSD well, use their vendor IE to detect them.
+	 */
+	if (cfg80211_find_vendor_ie(0x001018, 2, ies->data, ies->len))
+		result = false;
 
  out:
 	rcu_read_unlock();
