@@ -39,28 +39,6 @@ void ieee80211_rx_bss_put(struct ieee80211_local *local,
 			 container_of((void *)bss, struct cfg80211_bss, priv));
 }
 
-/*
- * An incompatible AP workaround:
- * if the AP does not advertise MIMO capabilities disable U-APSD.
- * iPhones, among others, advertise themselves as U-APSD capable when
- * they aren't. Avoid connecting to those devices in U-APSD enabled.
- */
-static bool broken_uapsd_workarounds(struct ieee802_11_elems *elems)
-{
-	int i;
-
-	/* iPhone 4/4s with this problem doesn't have ht_capa */
-	if (!elems->ht_cap_elem)
-		return true;
-
-	for (i = 1; i < 4; i++) {
-		if (elems->ht_cap_elem->mcs.rx_mask[i])
-			return false;
-	}
-
-	return true;
-}
-
 static bool is_uapsd_supported(struct ieee802_11_elems *elems)
 {
 	u8 qos_info;
@@ -73,9 +51,6 @@ static bool is_uapsd_supported(struct ieee802_11_elems *elems)
 		qos_info = elems->wmm_param[6];
 	else
 		/* no valid wmm information or parameter element found */
-		return false;
-
-	if (broken_uapsd_workarounds(elems))
 		return false;
 
 	return qos_info & IEEE80211_WMM_IE_AP_QOSINFO_UAPSD;

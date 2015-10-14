@@ -4601,6 +4601,45 @@ int ieee80211_mgd_auth(struct ieee80211_sub_if_data *sdata,
 	return err;
 }
 
+static bool ieee80211_mgd_use_uapsd(struct ieee80211_sub_if_data *sdata,
+				    struct cfg80211_assoc_request *req)
+{
+	const struct ieee80211_ht_cap *ht_cap = NULL;
+	const u8 *ht_cap_ie;
+	bool result;
+	int i;
+
+	rcu_read_lock();
+	ht_cap_ie = ieee80211_bss_get_ie(req->bss, WLAN_EID_HT_CAPABILITY);
+	if (ht_cap_ie && ht_cap_ie[1] >= sizeof(*ht_cap))
+		ht_cap = (void *)(ht_cap_ie + 2);
+
+	/* iPhone workaround: if the AP does not advertise MIMO capabilities
+	 * or is SISO then disable U-APSD - this just tries to detect that an
+	 * AP actually is an iPhone since those don't support U-APSD well.
+	 */
+
+	/* iPhone 4/4s with this problem doesn't have ht_capa */
+	if (!ht_cap) {
+		result = false;
+		goto out;
+	}
+
+	/* later ones don't have multiple streams */
+	for (i = 1; i < 4; i++) {
+		if (ht_cap->mcs.rx_mask[i]) {
+			result = true;
+			goto out;
+		}
+	}
+
+	result = false;
+
+ out:
+	rcu_read_unlock();
+	return result;
+}
+
 int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 			struct cfg80211_assoc_request *req)
 {
@@ -4757,6 +4796,7 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 		sdata->vif.driver_flags &= ~IEEE80211_VIF_SUPPORTS_UAPSD;
 
 	if (bss->wmm_used && bss->uapsd_supported &&
+	    ieee80211_mgd_use_uapsd(sdata, req) &&
 	    (sdata->vif.driver_flags & IEEE80211_VIF_SUPPORTS_UAPSD)) {
 		assoc_data->uapsd = true;
 		ifmgd->flags |= IEEE80211_STA_UAPSD_ENABLED;
