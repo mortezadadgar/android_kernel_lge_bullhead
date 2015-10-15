@@ -275,6 +275,9 @@ enum {
 	REPLY_MAX = 0xff,
 };
 
+/* Please keep this enum *SORTED* by hex value.
+ * Needed for binary search, otherwise a warning will be triggered.
+ */
 enum iwl_phy_ops_subcmd_ids {
 	CMD_DTS_MEASUREMENT_TRIGGER_WIDE = 0x0,
 	DTS_MEASUREMENT_NOTIF_WIDE = 0xFF,
@@ -286,6 +289,8 @@ enum iwl_data_path_subcmd_ids {
 
 /* command groups */
 enum {
+	LEGACY_GROUP = 0x0,
+	LONG_GROUP = 0x1,
 	PHY_OPS_GROUP = 0x4,
 	DATA_PATH_GROUP = 0x5,
 	SCAN_GROUP = 0x6,

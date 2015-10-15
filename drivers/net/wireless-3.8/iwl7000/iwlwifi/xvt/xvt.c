@@ -6,6 +6,7 @@
  * GPL LICENSE SUMMARY
  *
  * Copyright(c) 2007 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2015 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -97,19 +98,24 @@ static void __exit iwl_xvt_exit(void)
 }
 module_exit(iwl_xvt_exit);
 
-#define CMD(x) [x] = #x
-
-static const char *const iwl_xvt_cmd_strings[REPLY_MAX + 1] = {
-	CMD(XVT_ALIVE),
-	CMD(INIT_COMPLETE_NOTIF),
-	CMD(TX_CMD),
-	CMD(PHY_CONFIGURATION_CMD),
-	CMD(CALIB_RES_NOTIF_PHY_DB),
-	CMD(REPLY_RX_PHY_CMD),
-	CMD(REPLY_RX_MPDU_CMD),
-	CMD(REPLY_RX_DSP_EXT_INFO),
+/* Please keep this array *SORTED* by hex value.
+ * Access is done through binary search.
+ * A warning will be triggered on violation.
+ */
+static const struct iwl_hcmd_names iwl_xvt_cmd_names[] = {
+	HCMD_NAME(XVT_ALIVE),
+	HCMD_NAME(INIT_COMPLETE_NOTIF),
+	HCMD_NAME(TX_CMD),
+	HCMD_NAME(PHY_CONFIGURATION_CMD),
+	HCMD_NAME(CALIB_RES_NOTIF_PHY_DB),
+	HCMD_NAME(REPLY_RX_PHY_CMD),
+	HCMD_NAME(REPLY_RX_MPDU_CMD),
+	HCMD_NAME(REPLY_RX_DSP_EXT_INFO),
 };
-#undef CMD
+
+static const struct iwl_hcmd_arr iwl_xvt_cmd_groups[] = {
+	[0x0] = HCMD_ARR(iwl_xvt_cmd_names),
+};
 
 static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 					 const struct iwl_cfg *cfg,
@@ -145,7 +151,8 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 	trans_cfg.op_mode = op_mode;
 	trans_cfg.no_reclaim_cmds = no_reclaim_cmds;
 	trans_cfg.n_no_reclaim_cmds = ARRAY_SIZE(no_reclaim_cmds);
-	trans_cfg.command_names = iwl_xvt_cmd_strings;
+	trans_cfg.command_groups = iwl_xvt_cmd_groups;
+	trans_cfg.command_groups_size = ARRAY_SIZE(iwl_xvt_cmd_groups);
 
 	trans_cfg.cmd_queue = IWL_XVT_CMD_QUEUE;
 	trans_cfg.cmd_fifo = IWL_XVT_CMD_FIFO;
@@ -157,6 +164,8 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 
 	/* Configure transport layer */
 	iwl_trans_configure(xvt->trans, &trans_cfg);
+	trans->command_groups = trans_cfg.command_groups;
+	trans->command_groups_size = trans_cfg.command_groups_size;
 
 	/* set up notification wait support */
 	iwl_notification_wait_init(&xvt->notif_wait);
