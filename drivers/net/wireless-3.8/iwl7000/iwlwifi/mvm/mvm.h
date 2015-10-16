@@ -1371,6 +1371,7 @@ void iwl_mvm_ipv6_addr_change(struct ieee80211_hw *hw,
 			      struct inet6_dev *idev);
 void iwl_mvm_set_default_unicast_key(struct ieee80211_hw *hw,
 				     struct ieee80211_vif *vif, int idx);
+extern const struct file_operations iwl_dbgfs_d3_test_ops;
 #ifdef CONFIG_PM_SLEEP
 void iwl_mvm_set_last_nonqos_seq(struct iwl_mvm *mvm,
 				 struct ieee80211_vif *vif);

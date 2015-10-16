@@ -2013,3 +2013,103 @@ void iwl_mvm_set_wakeup(struct ieee80211_hw *hw, bool enabled)
 	device_set_wakeup_enable(mvm->trans->dev, enabled);
 }
 
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
+static int iwl_mvm_d3_test_open(struct inode *inode, struct file *file)
+{
+	struct iwl_mvm *mvm = inode->i_private;
+	int err;
+
+	if (mvm->d3_test_active)
+		return -EBUSY;
+
+	file->private_data = inode->i_private;
+
+	ieee80211_stop_queues(mvm->hw);
+	synchronize_net();
+
+	/* start pseudo D3 */
+	rtnl_lock();
+	err = __iwl_mvm_suspend(mvm->hw, mvm->hw->wiphy->wowlan_config, true);
+	rtnl_unlock();
+	if (err > 0)
+		err = -EINVAL;
+	if (err) {
+		ieee80211_wake_queues(mvm->hw);
+		return err;
+	}
+	mvm->d3_test_active = true;
+	mvm->keep_vif = NULL;
+	return 0;
+}
+
+static ssize_t iwl_mvm_d3_test_read(struct file *file, char __user *user_buf,
+				    size_t count, loff_t *ppos)
+{
+	struct iwl_mvm *mvm = file->private_data;
+	u32 pme_asserted;
+
+	while (true) {
+		/* read pme_ptr if available */
+		if (mvm->d3_test_pme_ptr) {
+			pme_asserted = iwl_trans_read_mem32(mvm->trans,
+						mvm->d3_test_pme_ptr);
+			if (pme_asserted)
+				break;
+		}
+
+		if (msleep_interruptible(100))
+			break;
+	}
+
+	return 0;
+}
+
+static void iwl_mvm_d3_test_disconn_work_iter(void *_data, u8 *mac,
+					      struct ieee80211_vif *vif)
+{
+	/* skip the one we keep connection on */
+	if (_data == vif)
+		return;
+
+	if (vif->type == NL80211_IFTYPE_STATION)
+		ieee80211_connection_loss(vif);
+}
+
+static int iwl_mvm_d3_test_release(struct inode *inode, struct file *file)
+{
+	struct iwl_mvm *mvm = inode->i_private;
+	int remaining_time = 10;
+
+	mvm->d3_test_active = false;
+	rtnl_lock();
+	__iwl_mvm_resume(mvm, true);
+	rtnl_unlock();
+	iwl_abort_notification_waits(&mvm->notif_wait);
+	ieee80211_restart_hw(mvm->hw);
+
+	/* wait for restart and disconnect all interfaces */
+	while (test_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status) &&
+	       remaining_time > 0) {
+		remaining_time--;
+		msleep(1000);
+	}
+
+	if (remaining_time == 0)
+		IWL_ERR(mvm, "Timed out waiting for HW restart to finish!\n");
+
+	ieee80211_iterate_active_interfaces_atomic(
+		mvm->hw, IEEE80211_IFACE_ITER_NORMAL,
+		iwl_mvm_d3_test_disconn_work_iter, mvm->keep_vif);
+
+	ieee80211_wake_queues(mvm->hw);
+
+	return 0;
+}
+
+const struct file_operations iwl_dbgfs_d3_test_ops = {
+	.llseek = no_llseek,
+	.open = iwl_mvm_d3_test_open,
+	.read = iwl_mvm_d3_test_read,
+	.release = iwl_mvm_d3_test_release,
+};
+#endif
