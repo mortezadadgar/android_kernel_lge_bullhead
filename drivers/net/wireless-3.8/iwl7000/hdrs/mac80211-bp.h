@@ -894,6 +894,7 @@ size_t ieee80211_ie_split(const u8 *ies, size_t ielen,
 
 #if CFG80211_VERSION < KERNEL_VERSION(4,4,0)
 #define CFG80211_STA_AP_CLIENT_UNASSOC CFG80211_STA_AP_CLIENT
+#define NL80211_FEATURE_FULL_AP_CLIENT_STATE 0
 
 struct cfg80211_sched_scan_plan {
 	u32 interval;
