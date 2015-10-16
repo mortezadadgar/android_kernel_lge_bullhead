@@ -2789,14 +2789,12 @@ u32 ieee80211_chandef_downgrade(struct cfg80211_chan_def *c)
 		c->width = NL80211_CHAN_WIDTH_20_NOHT;
 		ret = IEEE80211_STA_DISABLE_HT | IEEE80211_STA_DISABLE_VHT;
 		break;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 	case NL80211_CHAN_WIDTH_5:
 	case NL80211_CHAN_WIDTH_10:
 		WARN_ON_ONCE(1);
 		/* keep c->width */
 		ret = IEEE80211_STA_DISABLE_HT | IEEE80211_STA_DISABLE_VHT;
 		break;
-#endif
 	}
 
 	WARN_ON_ONCE(!cfg80211_chandef_valid(c));

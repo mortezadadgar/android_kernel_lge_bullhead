@@ -134,6 +134,9 @@ ieee80211_operating_class_to_band(u8 operating_class,
 #endif
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,11,0)
+#define NL80211_CHAN_WIDTH_5	6
+#define NL80211_CHAN_WIDTH_10	7
+
 #define IEEE80211_MAX_CHAINS 4
 
 #define MONITOR_FLAG_ACTIVE 0
@@ -211,6 +214,10 @@ ieee80211_chandef_rate_flags(struct cfg80211_chan_def *chandef)
 #endif
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,12,0)
+#define NL80211_BSS_CHAN_WIDTH_20	0
+#define NL80211_BSS_CHAN_WIDTH_10	1
+#define NL80211_BSS_CHAN_WIDTH_5	2
+
 static inline int
 ieee80211_chandef_max_power(struct cfg80211_chan_def *chandef)
 {

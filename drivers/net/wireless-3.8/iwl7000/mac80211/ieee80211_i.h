@@ -983,12 +983,10 @@ static inline int
 ieee80211_chandef_get_shift(struct cfg80211_chan_def *chandef)
 {
 	switch (chandef->width) {
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 	case NL80211_CHAN_WIDTH_5:
 		return 2;
 	case NL80211_CHAN_WIDTH_10:
 		return 1;
-#endif
 	default:
 		return 0;
 	}

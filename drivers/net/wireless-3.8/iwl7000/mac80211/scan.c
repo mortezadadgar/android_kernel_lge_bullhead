@@ -77,12 +77,10 @@ ieee80211_bss_info_update(struct ieee80211_local *local,
 		signal = (rx_status->signal * 100) / local->hw.max_signal;
 
 	scan_width = NL80211_BSS_CHAN_WIDTH_20;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 	if (rx_status->flag & RX_FLAG_5MHZ)
 		scan_width = NL80211_BSS_CHAN_WIDTH_5;
 	if (rx_status->flag & RX_FLAG_10MHZ)
 		scan_width = NL80211_BSS_CHAN_WIDTH_10;
-#endif
 
 	cbss = cfg80211_inform_bss_width_frame(local->hw.wiphy, channel,
 					       scan_width, mgmt, len, signal,
@@ -239,14 +237,12 @@ ieee80211_prepare_scan_chandef(struct cfg80211_chan_def *chandef,
 {
 	memset(chandef, 0, sizeof(*chandef));
 	switch (scan_width) {
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 	case NL80211_BSS_CHAN_WIDTH_5:
 		chandef->width = NL80211_CHAN_WIDTH_5;
 		break;
 	case NL80211_BSS_CHAN_WIDTH_10:
 		chandef->width = NL80211_CHAN_WIDTH_10;
 		break;
-#endif
 	default:
 		chandef->width = NL80211_CHAN_WIDTH_20_NOHT;
 		break;

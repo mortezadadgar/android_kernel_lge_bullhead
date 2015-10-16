@@ -317,11 +317,8 @@ void ieee80211_recalc_chanctx_min_def(struct ieee80211_local *local,
 	lockdep_assert_held(&local->chanctx_mtx);
 
 	/* don't optimize 5MHz, 10MHz, and radar_enabled confs */
-	if (
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
-	    ctx->conf.def.width == NL80211_CHAN_WIDTH_5 ||
+	if (ctx->conf.def.width == NL80211_CHAN_WIDTH_5 ||
 	    ctx->conf.def.width == NL80211_CHAN_WIDTH_10 ||
-#endif
 	    ctx->conf.radar_enabled) {
 		ctx->conf.min_def = ctx->conf.def;
 		return;

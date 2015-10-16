@@ -173,10 +173,8 @@ ieee80211_ibss_build_presp(struct ieee80211_sub_if_data *sdata,
 
 	/* add HT capability and information IEs */
 	if (chandef->width != NL80211_CHAN_WIDTH_20_NOHT &&
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 	    chandef->width != NL80211_CHAN_WIDTH_5 &&
 	    chandef->width != NL80211_CHAN_WIDTH_10 &&
-#endif
 	    sband->ht_cap.ht_supported) {
 		struct ieee80211_sta_ht_cap ht_cap;
 
@@ -267,11 +265,8 @@ static void __ieee80211_sta_join_ibss(struct ieee80211_sub_if_data *sdata,
 	chan = chandef.chan;
 	if (!cfg80211_reg_can_beacon(local->hw.wiphy, &chandef,
 				     NL80211_IFTYPE_ADHOC)) {
-		if (
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
-		    chandef.width == NL80211_CHAN_WIDTH_5 ||
+		if (chandef.width == NL80211_CHAN_WIDTH_5 ||
 		    chandef.width == NL80211_CHAN_WIDTH_10 ||
-#endif
 		    chandef.width == NL80211_CHAN_WIDTH_20_NOHT ||
 		    chandef.width == NL80211_CHAN_WIDTH_20) {
 			sdata_info(sdata,
@@ -425,14 +420,12 @@ static void ieee80211_sta_join_ibss(struct ieee80211_sub_if_data *sdata,
 		chan_type = cfg80211_get_chandef_type(&sdata->u.ibss.chandef);
 		cfg80211_chandef_create(&chandef, cbss->channel, chan_type);
 		break;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 	case NL80211_CHAN_WIDTH_5:
 	case NL80211_CHAN_WIDTH_10:
 		cfg80211_chandef_create(&chandef, cbss->channel,
 					NL80211_CHAN_WIDTH_20_NOHT);
 		chandef.width = sdata->u.ibss.chandef.width;
 		break;
-#endif
 	case NL80211_CHAN_WIDTH_80:
 	case NL80211_CHAN_WIDTH_160:
 		chandef = sdata->u.ibss.chandef;
@@ -798,10 +791,8 @@ ieee80211_ibss_process_chanswitch(struct ieee80211_sub_if_data *sdata,
 
 	sta_flags = IEEE80211_STA_DISABLE_VHT;
 	switch (ifibss->chandef.width) {
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 	case NL80211_CHAN_WIDTH_5:
 	case NL80211_CHAN_WIDTH_10:
-#endif
 	case NL80211_CHAN_WIDTH_20_NOHT:
 		sta_flags |= IEEE80211_STA_DISABLE_HT;
 		/* fall through */
@@ -847,7 +838,6 @@ ieee80211_ibss_process_chanswitch(struct ieee80211_sub_if_data *sdata,
 		cfg80211_chandef_create(&params.chandef, params.chandef.chan,
 					ch_type);
 		break;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 	case NL80211_CHAN_WIDTH_5:
 	case NL80211_CHAN_WIDTH_10:
 		if (params.chandef.width != ifibss->chandef.width) {
@@ -861,7 +851,6 @@ ieee80211_ibss_process_chanswitch(struct ieee80211_sub_if_data *sdata,
 			goto disconnect;
 		}
 		break;
-#endif
 	default:
 		/* should not happen, sta_flags should prevent VHT modes. */
 		WARN_ON(1);
@@ -1025,12 +1014,10 @@ static void ieee80211_update_sta_info(struct ieee80211_sub_if_data *sdata,
 			prev_rates = sta->sta.supp_rates[band];
 			/* make sure mandatory rates are always added */
 			scan_width = NL80211_BSS_CHAN_WIDTH_20;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 			if (rx_status->flag & RX_FLAG_5MHZ)
 				scan_width = NL80211_BSS_CHAN_WIDTH_5;
 			if (rx_status->flag & RX_FLAG_10MHZ)
 				scan_width = NL80211_BSS_CHAN_WIDTH_10;
-#endif
 
 			sta->sta.supp_rates[band] = supp_rates |
 				ieee80211_mandatory_rates(sband, scan_width);
@@ -1055,13 +1042,9 @@ static void ieee80211_update_sta_info(struct ieee80211_sub_if_data *sdata,
 	}
 
 	if (sta && elems->ht_operation && elems->ht_cap_elem &&
-	    sdata->u.ibss.chandef.width != NL80211_CHAN_WIDTH_20_NOHT
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
-	    &&
+	    sdata->u.ibss.chandef.width != NL80211_CHAN_WIDTH_20_NOHT &&
 	    sdata->u.ibss.chandef.width != NL80211_CHAN_WIDTH_5 &&
-	    sdata->u.ibss.chandef.width != NL80211_CHAN_WIDTH_10
-#endif
-	    ) {
+	    sdata->u.ibss.chandef.width != NL80211_CHAN_WIDTH_10) {
 		/* we both use HT */
 		struct ieee80211_ht_cap htcap_ie;
 		struct cfg80211_chan_def chandef;

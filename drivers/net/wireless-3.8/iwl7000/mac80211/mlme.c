@@ -4311,21 +4311,17 @@ static int ieee80211_prep_channel(struct ieee80211_sub_if_data *sdata,
 	ret = ieee80211_vif_use_channel(sdata, &chandef,
 					IEEE80211_CHANCTX_SHARED);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 	/* don't downgrade for 5 and 10 MHz channels, though. */
 	if (chandef.width == NL80211_CHAN_WIDTH_5 ||
 	    chandef.width == NL80211_CHAN_WIDTH_10)
 		goto out;
-#endif
 
 	while (ret && chandef.width != NL80211_CHAN_WIDTH_20_NOHT) {
 		ifmgd->flags |= ieee80211_chandef_downgrade(&chandef);
 		ret = ieee80211_vif_use_channel(sdata, &chandef,
 						IEEE80211_CHANCTX_SHARED);
 	}
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
  out:
-#endif
 	mutex_unlock(&local->mtx);
 	return ret;
 }
