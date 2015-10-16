@@ -745,15 +745,15 @@ static void ieee80211_scan_state_set_channel(struct ieee80211_local *local,
 	local->scan_chandef.center_freq2 = 0;
 #if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 	switch (scan_req->scan_width) {
+#else
+	switch (NL80211_BSS_CHAN_WIDTH_20) {
+#endif
 	case NL80211_BSS_CHAN_WIDTH_5:
 		local->scan_chandef.width = NL80211_CHAN_WIDTH_5;
 		break;
 	case NL80211_BSS_CHAN_WIDTH_10:
 		local->scan_chandef.width = NL80211_CHAN_WIDTH_10;
 		break;
-#else
-	switch (NL80211_BSS_CHAN_WIDTH_20) {
-#endif
 	case NL80211_BSS_CHAN_WIDTH_20:
 		/* If scanning on oper channel, use whatever channel-type
 		 * is currently in use.
