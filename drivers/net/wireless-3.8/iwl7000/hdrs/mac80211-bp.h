@@ -383,6 +383,28 @@ bp_cfg80211_classify8021d(struct sk_buff *skb,
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,15,0) */
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,16,0)
+#include <linux/utsname.h>
+
+static inline void
+cfg80211_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
+{
+	struct wireless_dev *wdev = dev->ieee80211_ptr;
+
+	strlcpy(info->driver, wiphy_dev(wdev->wiphy)->driver->name,
+		sizeof(info->driver));
+
+	strlcpy(info->version, init_utsname()->release, sizeof(info->version));
+
+	if (wdev->wiphy->fw_version[0])
+		strlcpy(info->fw_version, wdev->wiphy->fw_version,
+			sizeof(info->fw_version));
+	else
+		strlcpy(info->fw_version, "N/A", sizeof(info->fw_version));
+
+	strlcpy(info->bus_info, dev_name(wiphy_dev(wdev->wiphy)),
+		sizeof(info->bus_info));
+}
+
 #define REGULATORY_ENABLE_RELAX_NO_IR 0
 
 #define cfg80211_reg_can_beacon(wiphy, chandef, iftype) \
