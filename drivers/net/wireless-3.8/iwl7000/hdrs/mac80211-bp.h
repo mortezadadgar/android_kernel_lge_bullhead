@@ -568,6 +568,14 @@ cfg80211_ch_switch_started_notify(struct net_device *dev,
 #endif /* 3.19 */
 
 #if CFG80211_VERSION < KERNEL_VERSION(4,0,0)
+struct cfg80211_tid_stats {
+	u32 filled;
+	u64 rx_msdu;
+	u64 tx_msdu;
+	u64 tx_msdu_retries;
+	u64 tx_msdu_failed;
+};
+
 static inline void
 cfg80211_del_sta_sinfo(struct net_device *dev, const u8 *mac_addr,
 		       struct station_info *sinfo, gfp_t gfp)
@@ -841,3 +849,182 @@ struct cfg80211_sched_scan_plan {
 	u32 iterations;
 };
 #endif
+
+struct backport_sinfo {
+	u32 filled;
+	u32 connected_time;
+	u32 inactive_time;
+	u64 rx_bytes;
+	u64 tx_bytes;
+	u16 llid;
+	u16 plid;
+	u8 plink_state;
+	s8 signal;
+	s8 signal_avg;
+
+	u8 chains;
+	s8 chain_signal[IEEE80211_MAX_CHAINS];
+	s8 chain_signal_avg[IEEE80211_MAX_CHAINS];
+
+	struct rate_info txrate;
+	struct rate_info rxrate;
+	u32 rx_packets;
+	u32 tx_packets;
+	u32 tx_retries;
+	u32 tx_failed;
+	u32 rx_dropped_misc;
+	struct sta_bss_parameters bss_param;
+	struct nl80211_sta_flag_update sta_flags;
+
+	int generation;
+
+	const u8 *assoc_req_ies;
+	size_t assoc_req_ies_len;
+
+	u32 beacon_loss_count;
+	s64 t_offset;
+	enum nl80211_mesh_power_mode local_pm;
+	enum nl80211_mesh_power_mode peer_pm;
+	enum nl80211_mesh_power_mode nonpeer_pm;
+
+	u32 expected_throughput;
+
+	u64 rx_beacon;
+	u8 rx_beacon_signal_avg;
+	struct cfg80211_tid_stats pertid[IEEE80211_NUM_TIDS + 1];
+};
+
+/* these are constants in nl80211.h, so it's
+ * harmless to define them unconditionally
+ */
+#define NL80211_STA_INFO_RX_DROP_MISC		28
+#define NL80211_STA_INFO_BEACON_RX		29
+#define NL80211_STA_INFO_BEACON_SIGNAL_AVG	30
+#define NL80211_STA_INFO_TID_STATS		31
+#define NL80211_TID_STATS_RX_MSDU		1
+#define NL80211_TID_STATS_TX_MSDU		2
+#define NL80211_TID_STATS_TX_MSDU_RETRIES	3
+#define NL80211_TID_STATS_TX_MSDU_FAILED	4
+
+static inline void iwl7000_convert_sinfo(struct backport_sinfo *bpsinfo,
+					 struct station_info *sinfo)
+{
+	memset(sinfo, 0, sizeof(*sinfo));
+#define COPY(x)	sinfo->x = bpsinfo->x
+#define MCPY(x)	memcpy(&sinfo->x, &bpsinfo->x, sizeof(sinfo->x))
+	COPY(connected_time);
+	COPY(inactive_time);
+	COPY(rx_bytes);
+	COPY(tx_bytes);
+	COPY(llid);
+	COPY(plid);
+	COPY(plink_state);
+	COPY(signal);
+	COPY(signal_avg);
+#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
+	COPY(chains);
+	MCPY(chain_signal);
+	MCPY(chain_signal_avg);
+#endif
+	COPY(txrate);
+	COPY(rxrate);
+	COPY(rx_packets);
+	COPY(tx_packets);
+	COPY(tx_retries);
+	COPY(tx_failed);
+	COPY(rx_dropped_misc);
+	COPY(bss_param);
+	COPY(sta_flags);
+	COPY(generation);
+	COPY(assoc_req_ies);
+	COPY(assoc_req_ies_len);
+	COPY(beacon_loss_count);
+	COPY(t_offset);
+#if CFG80211_VERSION >= KERNEL_VERSION(3,9,0)
+	COPY(local_pm);
+	COPY(peer_pm);
+	COPY(nonpeer_pm);
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(3,16,0)
+	COPY(expected_throughput);
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(4,0,0)
+	COPY(rx_beacon);
+	COPY(rx_beacon_signal_avg);
+	MCPY(pertid);
+	COPY(filled);
+#else
+#define RENAMED_FLAG(n, o)						\
+	do {								\
+		if (bpsinfo->filled & BIT(NL80211_STA_INFO_ ## n))	\
+			sinfo->filled |= STATION_INFO_ ## o;		\
+	} while (0)
+#define FLAG(flg)	RENAMED_FLAG(flg, flg)
+	FLAG(INACTIVE_TIME);
+	FLAG(RX_BYTES);
+	FLAG(TX_BYTES);
+	FLAG(LLID);
+	FLAG(PLID);
+	FLAG(PLINK_STATE);
+	FLAG(SIGNAL);
+	FLAG(TX_BITRATE);
+	FLAG(RX_PACKETS);
+	FLAG(TX_PACKETS);
+	FLAG(TX_RETRIES);
+	FLAG(TX_FAILED);
+	FLAG(RX_DROP_MISC);
+	FLAG(SIGNAL_AVG);
+	FLAG(RX_BITRATE);
+	FLAG(BSS_PARAM);
+	FLAG(CONNECTED_TIME);
+	if (bpsinfo->assoc_req_ies_len)
+		sinfo->filled |= STATION_INFO_ASSOC_REQ_IES;
+	FLAG(STA_FLAGS);
+	RENAMED_FLAG(BEACON_LOSS, BEACON_LOSS_COUNT);
+	FLAG(T_OFFSET);
+#if CFG80211_VERSION >= KERNEL_VERSION(3,9,0)
+	FLAG(LOCAL_PM);
+	FLAG(PEER_PM);
+	FLAG(NONPEER_PM);
+	FLAG(RX_BYTES64);
+	FLAG(TX_BYTES64);
+#else
+	RENAMED_FLAG(RX_BYTES64, RX_BYTES);
+	RENAMED_FLAG(TX_BYTES64, RX_BYTES);
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
+	FLAG(CHAIN_SIGNAL);
+	FLAG(CHAIN_SIGNAL_AVG);
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(3,16,0)
+	FLAG(EXPECTED_THROUGHPUT);
+#endif
+#undef RENAMED_FLAG
+#undef FLAG
+#endif
+#undef COPY
+}
+typedef struct station_info cfg_station_info_t;
+#define station_info backport_sinfo
+
+static inline void
+backport_cfg80211_new_sta(struct net_device *dev, const u8 *mac_addr,
+			  struct station_info *sinfo, gfp_t gfp)
+{
+	cfg_station_info_t cfg_info;
+
+	iwl7000_convert_sinfo(sinfo, &cfg_info);
+	cfg80211_new_sta(dev, mac_addr, &cfg_info, gfp);
+}
+#define cfg80211_new_sta backport_cfg80211_new_sta
+
+static inline void
+backport_cfg80211_del_sta_sinfo(struct net_device *dev, const u8 *mac_addr,
+				struct station_info *sinfo, gfp_t gfp)
+{
+	cfg_station_info_t cfg_info;
+
+	iwl7000_convert_sinfo(sinfo, &cfg_info);
+	cfg80211_del_sta_sinfo(dev, mac_addr, &cfg_info, gfp);
+}
+#define cfg80211_del_sta_sinfo backport_cfg80211_del_sta_sinfo

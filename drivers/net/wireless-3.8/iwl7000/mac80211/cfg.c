@@ -536,12 +536,13 @@ void sta_set_rate_info_rx(struct sta_info *sta, struct rate_info *rinfo)
 }
 
 static int ieee80211_dump_station(struct wiphy *wiphy, struct net_device *dev,
-				  int idx, u8 *mac, struct station_info *sinfo)
+				  int idx, u8 *mac, cfg_station_info_t *cfginfo)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
 	struct ieee80211_local *local = sdata->local;
 	struct sta_info *sta;
 	int ret = -ENOENT;
+	struct station_info _sinfo = {}, *sinfo = &_sinfo;
 
 	mutex_lock(&local->sta_mtx);
 
@@ -553,6 +554,8 @@ static int ieee80211_dump_station(struct wiphy *wiphy, struct net_device *dev,
 	}
 
 	mutex_unlock(&local->sta_mtx);
+
+	iwl7000_convert_sinfo(sinfo, cfginfo);
 
 	return ret;
 }
@@ -567,12 +570,13 @@ static int ieee80211_dump_survey(struct wiphy *wiphy, struct net_device *dev,
 
 static int ieee80211_get_station(struct wiphy *wiphy, struct net_device *dev,
 				 const_since_3_16 u8 *mac,
-				 struct station_info *sinfo)
+				 cfg_station_info_t *cfginfo)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
 	struct ieee80211_local *local = sdata->local;
 	struct sta_info *sta;
 	int ret = -ENOENT;
+	struct station_info _sinfo = {}, *sinfo = &_sinfo;
 
 	mutex_lock(&local->sta_mtx);
 
@@ -583,6 +587,8 @@ static int ieee80211_get_station(struct wiphy *wiphy, struct net_device *dev,
 	}
 
 	mutex_unlock(&local->sta_mtx);
+
+	iwl7000_convert_sinfo(sinfo, cfginfo);
 
 	return ret;
 }
