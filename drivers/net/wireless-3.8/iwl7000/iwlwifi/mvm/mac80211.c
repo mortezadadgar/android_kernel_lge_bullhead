@@ -4094,7 +4094,15 @@ static void iwl_mvm_mac_sta_statistics(struct ieee80211_hw *hw,
 	if (iwl_mvm_request_statistics(mvm, false))
 		goto unlock;
 
-unlock:
+	sinfo->rx_beacon = mvmvif->beacon_stats.num_beacons +
+			   mvmvif->beacon_stats.accu_num_beacons;
+	sinfo->filled |= BIT(NL80211_STA_INFO_BEACON_RX);
+	if (mvmvif->beacon_stats.avg_signal) {
+		/* firmware only reports a value after RXing a few beacons */
+		sinfo->rx_beacon_signal_avg = mvmvif->beacon_stats.avg_signal;
+		sinfo->filled |= BIT(NL80211_STA_INFO_BEACON_SIGNAL_AVG);
+	}
+ unlock:
 	mutex_unlock(&mvm->mutex);
 }
 
