@@ -631,7 +631,7 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 		mvm->wowlan.pattern_min_len = IWL_WOWLAN_MIN_PATTERN_LEN;
 		mvm->wowlan.pattern_max_len = IWL_WOWLAN_MAX_PATTERN_LEN;
 		mvm->wowlan.max_nd_match_sets = IWL_SCAN_MAX_PROFILES;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,10,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(3,9,0)
 		mvm->wowlan.tcp = &iwl_mvm_wowlan_tcp_support;
 #endif
 #if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
