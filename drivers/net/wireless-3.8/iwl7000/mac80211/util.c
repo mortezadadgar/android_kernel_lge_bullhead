@@ -2598,10 +2598,11 @@ u64 ieee80211_calculate_rx_timestamp(struct ieee80211_local *local,
 	/* Fill cfg80211 rate info */
 	if (status->flag & RX_FLAG_HT) {
 		ri.mcs = status->rate_idx;
-#if CFG80211_VERSION < KERNEL_VERSION(3,20,0)
-		ri.flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
-#else
 		ri.flags |= RATE_INFO_FLAGS_MCS;
+#if CFG80211_VERSION < KERNEL_VERSION(3,20,0)
+		if (status->flag & RX_FLAG_40MHZ)
+			ri.flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
+#else
 		if (status->flag & RX_FLAG_40MHZ)
 			ri.bw = RATE_INFO_BW_40;
 		else
