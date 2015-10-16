@@ -2086,14 +2086,12 @@ int ieee80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *dev,
 int ieee80211_tdls_oper(struct wiphy *wiphy, struct net_device *dev,
 			const_since_3_16 u8 *peer, enum nl80211_tdls_operation oper);
 void ieee80211_tdls_peer_del_work(struct work_struct *wk);
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 int ieee80211_tdls_channel_switch(struct wiphy *wiphy, struct net_device *dev,
 				  const u8 *addr, u8 oper_class,
 				  struct cfg80211_chan_def *chandef);
 void ieee80211_tdls_cancel_channel_switch(struct wiphy *wiphy,
 					  struct net_device *dev,
 					  const u8 *addr);
-#endif
 void ieee80211_teardown_tdls_peers(struct ieee80211_sub_if_data *sdata);
 void ieee80211_tdls_chsw_work(struct work_struct *wk);
 
