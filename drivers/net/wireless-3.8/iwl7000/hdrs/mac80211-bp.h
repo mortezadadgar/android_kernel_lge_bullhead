@@ -536,6 +536,13 @@ cfg80211_check_combinations(struct wiphy *wiphy,
 #define const_since_3_16 const
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,16,0) */
 
+#if CFG80211_VERSION < KERNEL_VERSION(3,18,0)
+#define NL80211_FEATURE_QUIET 0
+#define NL80211_FEATURE_TX_POWER_INSERTION 0
+#define NL80211_FEATURE_DS_PARAM_SET_IE_IN_PROBES 0
+#define NL80211_FEATURE_WFA_TPC_IE_IN_PROBES 0
+#endif
+
 #if CFG80211_VERSION < KERNEL_VERSION(3,19,0)
 #define NL80211_IFTYPE_OCB 11 /* not used, but code is there */
 #define NL80211_FEATURE_MAC_ON_CREATE 0 /* cannot be used */
