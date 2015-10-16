@@ -4806,11 +4806,9 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 		ifmgd->flags &= ~IEEE80211_STA_MFP_ENABLED;
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,18,0)
 	if (req->flags & ASSOC_REQ_USE_RRM)
 		ifmgd->flags |= IEEE80211_STA_ENABLE_RRM;
 	else
-#endif
 		ifmgd->flags &= ~IEEE80211_STA_ENABLE_RRM;
 
 	if (req->crypto.control_port)
