@@ -511,11 +511,15 @@ static int ieee80211_dump_station(struct wiphy *wiphy, struct net_device *dev,
 }
 
 static int ieee80211_dump_survey(struct wiphy *wiphy, struct net_device *dev,
-				 int idx, struct survey_info *survey)
+				 int idx, cfg_survey_info_t *cfg)
 {
 	struct ieee80211_local *local = wdev_priv(dev->ieee80211_ptr);
+	struct survey_info survey = {};
+	int err;
 
-	return drv_get_survey(local, idx, survey);
+	err = drv_get_survey(local, idx, &survey);
+	iwl7000_convert_survey_info(&survey, cfg);
+	return err;
 }
 
 static int ieee80211_get_station(struct wiphy *wiphy, struct net_device *dev,

@@ -1042,3 +1042,43 @@ backport_cfg80211_del_sta_sinfo(struct net_device *dev, const u8 *mac_addr,
 	cfg80211_del_sta_sinfo(dev, mac_addr, &cfg_info, gfp);
 }
 #define cfg80211_del_sta_sinfo backport_cfg80211_del_sta_sinfo
+
+typedef struct survey_info cfg_survey_info_t;
+#if CFG80211_VERSION < KERNEL_VERSION(4,0,0)
+#define survey_info bp_survey_info
+struct survey_info {
+	struct ieee80211_channel *channel;
+	u64 time;
+	u64 time_busy;
+	u64 time_ext_busy;
+	u64 time_rx;
+	u64 time_tx;
+	u64 time_scan;
+	u32 filled;
+	s8 noise;
+};
+#define SURVEY_INFO_TIME SURVEY_INFO_CHANNEL_TIME
+#define SURVEY_INFO_TIME_BUSY SURVEY_INFO_CHANNEL_TIME_BUSY
+#define SURVEY_INFO_TIME_EXT_BUSY SURVEY_INFO_CHANNEL_TIME_EXT_BUSY
+#define SURVEY_INFO_TIME_RX SURVEY_INFO_CHANNEL_TIME_RX
+#define SURVEY_INFO_TIME_TX SURVEY_INFO_CHANNEL_TIME_TX
+#define SURVEY_INFO_TIME_SCAN 0
+static inline void iwl7000_convert_survey_info(struct survey_info *survey,
+					       cfg_survey_info_t *cfg)
+{
+	cfg->channel = survey->channel;
+	cfg->channel_time = survey->time;
+	cfg->channel_time_busy = survey->time_busy;
+	cfg->channel_time_ext_busy = survey->time_ext_busy;
+	cfg->channel_time_rx = survey->time_rx;
+	cfg->channel_time_tx = survey->time_tx;
+	cfg->noise = survey->noise;
+	cfg->filled = survey->filled;
+}
+#else
+static inline void iwl7000_convert_survey_info(struct survey_info *survey,
+					       cfg_survey_info_t *cfg)
+{
+	memcpy(cfg, survey, sizeof(*cfg));
+}
+#endif

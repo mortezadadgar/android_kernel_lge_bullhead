@@ -4061,20 +4061,25 @@ static int iwl_mvm_mac_get_survey(struct ieee80211_hw *hw, int idx,
 			goto out;
 	}
 
-	survey->filled = SURVEY_INFO_CHANNEL_TIME |
-			 SURVEY_INFO_CHANNEL_TIME_RX |
-			 SURVEY_INFO_CHANNEL_TIME_TX;
-	survey->channel_time = mvm->accu_radio_stats.on_time_rf +
+	survey->filled = SURVEY_INFO_TIME |
+			 SURVEY_INFO_TIME_RX |
+			 SURVEY_INFO_TIME_TX |
+			 SURVEY_INFO_TIME_SCAN;
+	survey->time = mvm->accu_radio_stats.on_time_rf +
 		       mvm->radio_stats.on_time_rf;
-	do_div(survey->channel_time, USEC_PER_MSEC);
+	do_div(survey->time, USEC_PER_MSEC);
 
-	survey->channel_time_rx = mvm->accu_radio_stats.rx_time +
+	survey->time_rx = mvm->accu_radio_stats.rx_time +
 			  mvm->radio_stats.rx_time;
-	do_div(survey->channel_time_rx, USEC_PER_MSEC);
+	do_div(survey->time_rx, USEC_PER_MSEC);
 
-	survey->channel_time_tx = mvm->accu_radio_stats.tx_time +
+	survey->time_tx = mvm->accu_radio_stats.tx_time +
 			  mvm->radio_stats.tx_time;
-	do_div(survey->channel_time_tx, USEC_PER_MSEC);
+	do_div(survey->time_tx, USEC_PER_MSEC);
+
+	survey->time_scan = mvm->accu_radio_stats.on_time_scan +
+			    mvm->radio_stats.on_time_scan;
+	do_div(survey->time_scan, USEC_PER_MSEC);
 
 	ret = 0;
  out:
