@@ -127,6 +127,25 @@ ieee80211_operating_class_to_band(u8 operating_class,
 }
 
 #define NL80211_FEATURE_USERSPACE_MPM 0
+
+enum cfg80211_station_type {
+	CFG80211_STA_AP_CLIENT,
+	CFG80211_STA_AP_MLME_CLIENT,
+	CFG80211_STA_AP_STA,
+	CFG80211_STA_IBSS,
+	CFG80211_STA_TDLS_PEER_SETUP,
+	CFG80211_STA_TDLS_PEER_ACTIVE,
+	CFG80211_STA_MESH_PEER_KERNEL,
+	CFG80211_STA_MESH_PEER_USER,
+};
+
+static inline int
+cfg80211_check_station_change(struct wiphy *wiphy,
+			      struct station_parameters *params,
+			      enum cfg80211_station_type type)
+{
+	return 0;
+}
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,10,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0)

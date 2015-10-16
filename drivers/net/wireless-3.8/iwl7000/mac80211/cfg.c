@@ -1317,9 +1317,7 @@ static int ieee80211_change_station(struct wiphy *wiphy,
 	struct ieee80211_local *local = wiphy_priv(wiphy);
 	struct sta_info *sta;
 	struct ieee80211_sub_if_data *vlansdata;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,10,0)
 	enum cfg80211_station_type statype;
-#endif
 	int err;
 
 	mutex_lock(&local->sta_mtx);
@@ -1330,7 +1328,6 @@ static int ieee80211_change_station(struct wiphy *wiphy,
 		goto out_err;
 	}
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,10,0)
 	switch (sdata->vif.type) {
 	case NL80211_IFTYPE_MESH_POINT:
 		if (sdata->u.mesh.user_mpm)
@@ -1366,7 +1363,6 @@ static int ieee80211_change_station(struct wiphy *wiphy,
 	err = cfg80211_check_station_change(wiphy, params, statype);
 	if (err)
 		goto out_err;
-#endif
 
 	if (params->vlan && params->vlan != sta->sdata->dev) {
 		bool prev_4addr = false;
