@@ -1115,15 +1115,6 @@ static int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 		goto out;
 	}
 
-#ifdef CPTCFG_IWLMVM_WAKELOCK
-	/* The ref wakelock is locked on init */
-	if (trans->dbg_cfg.wakelock_mode != IWL_WAKELOCK_MODE_OFF) {
-		struct iwl_trans_pcie *trans_pcie =
-			IWL_TRANS_GET_PCIE_TRANS(trans);
-
-		wake_lock(&trans_pcie->ref_wake_lock);
-	}
-#endif
 	/* make sure rfkill handshake bits are cleared */
 	iwl_write32(trans, CSR_UCODE_DRV_GP1_CLR, CSR_UCODE_SW_BIT_RFKILL);
 	iwl_write32(trans, CSR_UCODE_DRV_GP1_CLR,
@@ -1235,11 +1226,6 @@ static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans, bool low_power)
 		IWL_DEBUG_INFO(trans, "DEVICE_ENABLED bit was set and is now cleared\n");
 		iwl_pcie_tx_stop(trans);
 		iwl_pcie_rx_stop(trans);
-#ifdef CPTCFG_IWLMVM_WAKELOCK
-		/* release wake_lock while device is stopped */
-		if (trans->dbg_cfg.wakelock_mode != IWL_WAKELOCK_MODE_OFF)
-			wake_unlock(&trans_pcie->ref_wake_lock);
-#endif
 
 		/* Power-down device's busmaster DMA clocks */
 		if (!trans->cfg->apmg_not_supported) {
@@ -1623,11 +1609,6 @@ void iwl_trans_pcie_free(struct iwl_trans *trans)
 	if (trans_pcie->napi.poll)
 		netif_napi_del(&trans_pcie->napi);
 
-#ifdef CPTCFG_IWLMVM_WAKELOCK
-	wake_lock_destroy(&trans_pcie->ref_wake_lock);
-	wake_lock_destroy(&trans_pcie->timed_wake_lock);
-#endif
-
 	iwl_pcie_free_fw_monitor(trans);
 
 	iwl_trans_free(trans);
@@ -1934,12 +1915,6 @@ void iwl_trans_pcie_ref(struct iwl_trans *trans)
 	spin_lock_irqsave(&trans_pcie->ref_lock, flags);
 	IWL_DEBUG_RPM(trans, "ref_counter: %d\n", trans_pcie->ref_count);
 	trans_pcie->ref_count++;
-#ifdef CPTCFG_IWLMVM_WAKELOCK
-	/* take ref wakelock on first reference */
-	if (trans_pcie->ref_count == 1 &&
-	    trans->dbg_cfg.wakelock_mode == IWL_WAKELOCK_MODE_IDLE)
-		wake_lock(&trans_pcie->ref_wake_lock);
-#endif
 	spin_unlock_irqrestore(&trans_pcie->ref_lock, flags);
 }
 
@@ -1958,19 +1933,6 @@ void iwl_trans_pcie_unref(struct iwl_trans *trans)
 		return;
 	}
 	trans_pcie->ref_count--;
-
-#ifdef CPTCFG_IWLMVM_WAKELOCK
-	/*
-	 * release ref wake lock and take timed wake lock when
-	 * last reference is released.
-	 */
-	if (trans_pcie->ref_count == 0 &&
-	    trans->dbg_cfg.wakelock_mode == IWL_WAKELOCK_MODE_IDLE) {
-		wake_unlock(&trans_pcie->ref_wake_lock);
-		wake_lock_timeout(&trans_pcie->timed_wake_lock,
-				  msecs_to_jiffies(IWL_WAKELOCK_TIMEOUT_MS));
-	}
-#endif
 
 	spin_unlock_irqrestore(&trans_pcie->ref_lock, flags);
 }
@@ -2976,12 +2938,6 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	trans_pcie->inta_mask = CSR_INI_SET_MASK;
 
 	trans->d0i3_mode = IWL_D0I3_MODE_ON_SUSPEND;
-#ifdef CPTCFG_IWLMVM_WAKELOCK
-	wake_lock_init(&trans_pcie->ref_wake_lock, WAKE_LOCK_SUSPEND,
-		       "iwlwifi_pcie_ref_wakelock");
-	wake_lock_init(&trans_pcie->timed_wake_lock, WAKE_LOCK_SUSPEND,
-		       "iwlwifi_pcie_timed_wakelock");
-#endif
 
 	return trans;
 

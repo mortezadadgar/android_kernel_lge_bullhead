@@ -36,9 +36,6 @@
 #include <linux/wait.h>
 #include <linux/pci.h>
 #include <linux/timer.h>
-#ifdef CPTCFG_IWLMVM_WAKELOCK
-#include <linux/wakelock.h>
-#endif
 
 #ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
 #include <linux/platform_data/iwlwifi.h>
@@ -379,10 +376,6 @@ struct iwl_trans_pcie {
 	/* protect ref counter */
 	spinlock_t ref_lock;
 	u32 ref_count;
-#ifdef CPTCFG_IWLMVM_WAKELOCK
-	struct wake_lock ref_wake_lock;
-	struct wake_lock timed_wake_lock;
-#endif
 
 #ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
 	struct iwl_trans_platform_ops *platform_ops;
