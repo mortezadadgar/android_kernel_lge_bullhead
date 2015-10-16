@@ -241,7 +241,6 @@ static u32 iwl_get_channel_flags(u8 ch_num, int ch_idx, bool is_5ghz,
 	if (nvm_flags & NVM_CHANNEL_RADAR)
 		flags |= IEEE80211_CHAN_RADAR;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,16,0)
 	if (nvm_flags & NVM_CHANNEL_INDOOR_ONLY)
 		flags |= IEEE80211_CHAN_INDOOR_ONLY;
 
@@ -251,7 +250,6 @@ static u32 iwl_get_channel_flags(u8 ch_num, int ch_idx, bool is_5ghz,
 	if ((nvm_flags & NVM_CHANNEL_GO_CONCURRENT) &&
 	    (flags & IEEE80211_CHAN_NO_IR))
 		flags |= IEEE80211_CHAN_IR_CONCURRENT;
-#endif
 
 	return flags;
 }
@@ -722,14 +720,12 @@ static u32 iwl_nvm_get_regdom_bw_flags(const u8 *nvm_chan,
 	if (nvm_flags & NVM_CHANNEL_INDOOR_ONLY)
 		flags |= NL80211_RRF_NO_OUTDOOR;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	/* Set the GO concurrent flag only in case that NO_IR is set.
 	 * Otherwise it is meaningless
 	 */
 	if ((nvm_flags & NVM_CHANNEL_GO_CONCURRENT) &&
 	    (flags & NL80211_RRF_NO_IR))
 		flags |= NL80211_RRF_GO_CONCURRENT;
-#endif
 
 	return flags;
 }
