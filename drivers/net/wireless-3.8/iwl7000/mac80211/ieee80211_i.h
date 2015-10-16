@@ -799,12 +799,10 @@ struct ieee80211_chanctx {
 	struct ieee80211_chanctx_conf conf;
 };
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,14,0)
 struct mac80211_qos_map {
 	struct cfg80211_qos_map qos_map;
 	struct rcu_head rcu_head;
 };
-#endif
 
 enum txq_info_flags {
 	IEEE80211_TXQ_STOP,
@@ -863,9 +861,7 @@ struct ieee80211_sub_if_data {
 
 	atomic_t txqs_len[IEEE80211_NUM_ACS];
 	struct ieee80211_tx_queue_params tx_conf[IEEE80211_NUM_ACS];
-#if CFG80211_VERSION >= KERNEL_VERSION(3,14,0)
 	struct mac80211_qos_map __rcu *qos_map;
-#endif
 
 	struct work_struct csa_finalize_work;
 	bool csa_block_tx; /* write-protected by sdata_lock and local->mtx */

@@ -359,6 +359,18 @@ struct cfg80211_mgmt_tx_params {
 
 #define IEEE80211_CHAN_NO_IR (IEEE80211_CHAN_PASSIVE_SCAN |\
 			      IEEE80211_CHAN_NO_IBSS)
+
+struct cfg80211_qos_map {
+	u8 unused_dummy;
+};
+
+static inline unsigned int
+bp_cfg80211_classify8021d(struct sk_buff *skb,
+			  struct cfg80211_qos_map *qos_map)
+{
+	return cfg80211_classify8021d(skb);
+}
+#define cfg80211_classify8021d bp_cfg80211_classify8021d
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,14,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,15,0)
