@@ -465,7 +465,7 @@ void sta_set_rate_info_tx(struct sta_info *sta,
 		rinfo->legacy = DIV_ROUND_UP(brate, 1 << shift);
 	}
 #if CFG80211_VERSION < KERNEL_VERSION(3,20,0)
-        if (rate->flags & IEEE80211_TX_RC_40_MHZ_WIDTH)
+	if (rate->flags & IEEE80211_TX_RC_40_MHZ_WIDTH)
 		rinfo->flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
 	if (rate->flags & IEEE80211_TX_RC_80_MHZ_WIDTH)
 		rinfo->flags |= RATE_INFO_FLAGS_80_MHZ_WIDTH;
