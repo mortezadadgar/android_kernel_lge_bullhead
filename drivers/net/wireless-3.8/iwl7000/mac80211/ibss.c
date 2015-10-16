@@ -291,7 +291,7 @@ static void __ieee80211_sta_join_ibss(struct ieee80211_sub_if_data *sdata,
 			   "Failed to join IBSS, invalid chandef\n");
 		return;
 	}
-	if (err > 0) {
+	if (err > 0 && !ifibss->userspace_handles_dfs) {
 		sdata_info(sdata,
 			   "Failed to join IBSS, DFS channel without control program\n");
 		return;
@@ -872,7 +872,7 @@ ieee80211_ibss_process_chanswitch(struct ieee80211_sub_if_data *sdata,
 					    NL80211_IFTYPE_ADHOC);
 	if (err < 0)
 		goto disconnect;
-	if (err > 0) {
+	if (err > 0 && !ifibss->userspace_handles_dfs) {
 		/* IBSS-DFS only allowed with a control program */
 		goto disconnect;
 	}
@@ -1755,7 +1755,10 @@ int ieee80211_ibss_join(struct ieee80211_sub_if_data *sdata,
 		return ret;
 
 	if (ret > 0) {
-		return -EINVAL;
+#if CFG80211_VERSION >= KERNEL_VERSION(3,13,0)
+		if (!params->userspace_handles_dfs)
+#endif
+			return -EINVAL;
 		radar_detect_width = BIT(params->chandef.width);
 	}
 
@@ -1777,6 +1780,9 @@ int ieee80211_ibss_join(struct ieee80211_sub_if_data *sdata,
 
 	sdata->u.ibss.privacy = params->privacy;
 	sdata->u.ibss.control_port = params->control_port;
+#if CFG80211_VERSION >= KERNEL_VERSION(3,13,0)
+	sdata->u.ibss.userspace_handles_dfs = params->userspace_handles_dfs;
+#endif
 	sdata->u.ibss.basic_rates = params->basic_rates;
 	sdata->u.ibss.last_scan_completed = jiffies;
 
