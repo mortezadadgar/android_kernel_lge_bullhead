@@ -16,6 +16,9 @@
 #include <linux/sysfs.h>
 #include <linux/balloon_compaction.h>
 #include <linux/page-isolation.h>
+#ifdef CONFIG_STATE_NOTIFIER
+#include <linux/state_notifier.h>
+#endif
 #include "internal.h"
 
 #ifdef CONFIG_COMPACTION
@@ -1135,6 +1138,28 @@ unsigned long try_to_compact_pages(struct zonelist *zonelist,
 	return rc;
 }
 
+#ifdef CONFIG_STATE_NOTIFIER
+static void compact_nodes(void);
+
+static int state_notifier_callback(struct notifier_block *this,
+				unsigned long event, void *data)
+{
+	switch (event) {
+		case STATE_NOTIFIER_SUSPEND:
+			compact_nodes();
+			break;
+		default:
+			break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block compact_notifier_block = {
+	.notifier_call = state_notifier_callback,
+	.priority = -1,
+};
+#endif
 
 /* Compact all zones within a node */
 static void __compact_pgdat(pg_data_t *pgdat, struct compact_control *cc)
@@ -1254,4 +1279,12 @@ void compaction_unregister_node(struct node *node)
 }
 #endif /* CONFIG_SYSFS && CONFIG_NUMA */
 
+#ifdef CONFIG_STATE_NOTIFIER
+static int  __init mem_compaction_init(void)
+{
+	state_register_client(&compact_notifier_block);
+	return 0;
+}
+late_initcall(mem_compaction_init);
+#endif
 #endif /* CONFIG_COMPACTION */
