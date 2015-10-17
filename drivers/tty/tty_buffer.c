@@ -340,7 +340,7 @@ void tty_schedule_flip(struct tty_port *port)
 	if (buf->tail != NULL)
 		buf->tail->commit = buf->tail->used;
 	spin_unlock_irqrestore(&buf->lock, flags);
-	schedule_work(&buf->work);
+	queue_work(system_unbound_wq, &buf->work);
 }
 EXPORT_SYMBOL(tty_schedule_flip);
 
