@@ -119,6 +119,10 @@
 #define rhashtable_walk_next __iwl7000_rhashtable_walk_next
 #define rhashtable_walk_start __iwl7000_rhashtable_walk_start
 #define rhashtable_walk_stop __iwl7000_rhashtable_walk_stop
+#define tso_build_data __iwl7000_tso_build_data
+#define tso_build_hdr __iwl7000_tso_build_hdr
+#define tso_count_descs __iwl7000_tso_count_descs
+#define tso_start __iwl7000_tso_start
 #define wdev_to_ieee80211_vif __iwl7000_wdev_to_ieee80211_vif
 #define wiphy_to_ieee80211_hw __iwl7000_wiphy_to_ieee80211_hw
 #endif
