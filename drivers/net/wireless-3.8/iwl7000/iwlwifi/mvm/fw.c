@@ -531,6 +531,7 @@ static int iwl_mvm_load_ucode_wait_alive(struct iwl_mvm *mvm,
 	enum iwl_ucode_type old_type = mvm->cur_ucode;
 	static const u16 alive_cmd[] = { MVM_ALIVE };
 	struct iwl_sf_region st_fwrd_space;
+	unsigned int retries = 3;
 
 	if (ucode_type == IWL_UCODE_REGULAR &&
 	    iwl_fw_dbg_conf_usniffer(mvm->fw, FW_DBG_START_FROM_ALIVE))
@@ -542,29 +543,51 @@ static int iwl_mvm_load_ucode_wait_alive(struct iwl_mvm *mvm,
 	mvm->cur_ucode = ucode_type;
 	mvm->ucode_loaded = false;
 
-	iwl_init_notification_wait(&mvm->notif_wait, &alive_wait,
-				   alive_cmd, ARRAY_SIZE(alive_cmd),
-				   iwl_alive_fn, &alive_data);
-
-	ret = iwl_trans_start_fw(mvm->trans, fw, ucode_type == IWL_UCODE_INIT);
-	if (ret) {
-		mvm->cur_ucode = old_type;
-		iwl_remove_notification(&mvm->notif_wait, &alive_wait);
-		return ret;
-	}
-
 	/*
-	 * Some things may run in the background now, but we
-	 * just wait for the ALIVE notification here.
+	 * A temporary workaround to a SecBoot issue:
+	 * If we fail to load the firmware due to a SecBoot issue,
+	 * retry to load the firmware. This workaround should be
+	 * removed once the SecBoot issue is fixed.
 	 */
-	ret = iwl_wait_notification(&mvm->notif_wait, &alive_wait,
-				    MVM_UCODE_ALIVE_TIMEOUT);
-	if (ret) {
-		if (mvm->trans->cfg->device_family == IWL_DEVICE_FAMILY_8000)
+	while (retries > 0) {
+		iwl_init_notification_wait(&mvm->notif_wait, &alive_wait,
+					   alive_cmd, ARRAY_SIZE(alive_cmd),
+					   iwl_alive_fn, &alive_data);
+
+		ret = iwl_trans_start_fw(mvm->trans, fw,
+					 ucode_type == IWL_UCODE_INIT);
+		if (ret) {
+			mvm->cur_ucode = old_type;
+			iwl_remove_notification(&mvm->notif_wait, &alive_wait);
+			return ret;
+		}
+
+		/*
+		 * Some things may run in the background now, but we
+		 * just wait for the ALIVE notification here.
+		 */
+		ret = iwl_wait_notification(&mvm->notif_wait, &alive_wait,
+					    MVM_UCODE_ALIVE_TIMEOUT);
+		if (!ret)
+			break;
+
+		if (mvm->trans->cfg->device_family == IWL_DEVICE_FAMILY_8000) {
 			IWL_ERR(mvm,
 				"SecBoot CPU1 Status: 0x%x, CPU2 Status: 0x%x\n",
 				iwl_read_prph(mvm->trans, SB_CPU_1_STATUS),
 				iwl_read_prph(mvm->trans, SB_CPU_2_STATUS));
+			retries--;
+			if (retries > 0) {
+				_iwl_trans_stop_device(mvm->trans, false);
+				ret = _iwl_trans_start_hw(mvm->trans, false);
+				if (ret) {
+					IWL_ERR(mvm,
+						"Failed to start hardware.\n");
+					return ret;
+				}
+				continue; /* retry to load the fw */
+			}
+		}
 		mvm->cur_ucode = old_type;
 		return ret;
 	}
