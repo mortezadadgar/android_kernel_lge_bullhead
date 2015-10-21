@@ -133,6 +133,7 @@ int selinux_enabled = 1;
 #endif
 
 static struct kmem_cache *sel_inode_cache;
+static struct kmem_cache *file_security_cache;
 
 /**
  * selinux_secmark_enabled - Check to see if SECMARK is currently enabled
@@ -267,7 +268,7 @@ static int file_alloc_security(struct file *file)
 	struct file_security_struct *fsec;
 	u32 sid = current_sid();
 
-	fsec = kzalloc(sizeof(struct file_security_struct), GFP_KERNEL);
+	fsec = kmem_cache_zalloc(file_security_cache, GFP_KERNEL);
 	if (!fsec)
 		return -ENOMEM;
 
@@ -282,7 +283,7 @@ static void file_free_security(struct file *file)
 {
 	struct file_security_struct *fsec = file->f_security;
 	file->f_security = NULL;
-	kfree(fsec);
+	kmem_cache_free(file_security_cache, fsec);
 }
 
 static int superblock_alloc_security(struct super_block *sb)
@@ -6080,6 +6081,9 @@ static __init int selinux_init(void)
 
 	sel_inode_cache = kmem_cache_create("selinux_inode_security",
 					    sizeof(struct inode_security_struct),
+					    0, SLAB_PANIC, NULL);
+	file_security_cache = kmem_cache_create("selinux_file_security",
+					    sizeof(struct file_security_struct),
 					    0, SLAB_PANIC, NULL);
 	avc_init();
 
