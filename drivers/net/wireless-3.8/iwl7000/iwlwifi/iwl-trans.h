@@ -463,6 +463,7 @@ iwl_trans_get_rb_size_order(enum iwl_amsdu_size rb_size)
  *	in DWORD (as opposed to bytes)
  * @scd_set_active: should the transport configure the SCD for HCMD queue
  * @wide_cmd_header: firmware supports wide host command header
+ * @sw_csum_tx: transport should compute the TCP checksum
  * @command_names: array of command names, must be 256 entries
  *	(one for each command); for debugging only
  * @sdio_adma_addr: the default address to set for the ADMA in SDIO mode until
@@ -481,6 +482,7 @@ struct iwl_trans_config {
 	bool bc_table_dword;
 	bool scd_set_active;
 	bool wide_cmd_header;
+	bool sw_csum_tx;
 	const char *const *command_names;
 
 	u32 sdio_adma_addr;

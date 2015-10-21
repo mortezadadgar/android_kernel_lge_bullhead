@@ -1559,6 +1559,7 @@ static void iwl_trans_pcie_configure(struct iwl_trans *trans,
 	trans_pcie->command_names = trans_cfg->command_names;
 	trans_pcie->bc_table_dword = trans_cfg->bc_table_dword;
 	trans_pcie->scd_set_active = trans_cfg->scd_set_active;
+	trans_pcie->sw_csum_tx = trans_cfg->sw_csum_tx;
 
 	/* init ref_count to 1 (should be cleared when ucode is loaded) */
 	trans_pcie->ref_count = 1;
