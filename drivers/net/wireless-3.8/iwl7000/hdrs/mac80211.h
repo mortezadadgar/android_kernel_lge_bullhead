@@ -1247,11 +1247,6 @@ enum ieee80211_smps_mode {
  * @flags: configuration flags defined above
  *
  * @listen_interval: listen interval in units of beacon interval
- * @max_sleep_period: the maximum number of beacon intervals to sleep for
- *	before checking the beacon for a TIM bit (managed mode only); this
- *	value will be only achievable between DTIM frames, the hardware
- *	needs to check for the multicast traffic bit in DTIM beacons.
- *	This variable is valid only when the CONF_PS flag is set.
  * @ps_dtim_period: The DTIM period of the AP we're connected to, for use
  *	in power saving. Power saving will not be enabled until a beacon
  *	has been received and the DTIM period is known.
@@ -1281,7 +1276,6 @@ enum ieee80211_smps_mode {
 struct ieee80211_conf {
 	u32 flags;
 	int power_level, dynamic_ps_timeout;
-	int max_sleep_period;
 
 	u16 listen_interval;
 	u8 ps_dtim_period;
@@ -1508,10 +1502,8 @@ enum ieee80211_key_flags {
  * 	- Temporal Authenticator Rx MIC Key (64 bits)
  * @icv_len: The ICV length for this key type
  * @iv_len: The IV length for this key type
- * @drv_priv: pointer for driver use
  */
 struct ieee80211_key_conf {
-	void *drv_priv;
 	atomic64_t tx_pn;
 	u32 cipher;
 	u8 icv_len;
@@ -1694,6 +1686,7 @@ struct ieee80211_sta_rates {
  * @tdls: indicates whether the STA is a TDLS peer
  * @tdls_initiator: indicates the STA is an initiator of the TDLS link. Only
  *	valid if the STA is a TDLS peer in the first place.
+ * @mfp: indicates whether the STA uses management frame protection or not.
  * @txq: per-TID data TX queues (if driver uses the TXQ abstraction)
  */
 struct ieee80211_sta {
@@ -1711,6 +1704,7 @@ struct ieee80211_sta {
 	struct ieee80211_sta_rates __rcu *rates;
 	bool tdls;
 	bool tdls_initiator;
+	bool mfp;
 
 	struct ieee80211_txq *txq[IEEE80211_NUM_TIDS];
 
@@ -1908,13 +1902,15 @@ struct ieee80211_txq {
  * @IEEE80211_HW_TDLS_WIDER_BW: The device/driver supports wider bandwidth
  *	than then BSS bandwidth for a TDLS link on the base channel.
  *
+ * @IEEE80211_HW_SUPPORTS_AMSDU_IN_AMPDU: The driver supports receiving A-MSDUs
+ *	within A-MPDU.
+ *
+ * @IEEE80211_HW_BEACON_TX_STATUS: The device/driver provides TX status
+ *	for sent beacons.
  * @IEEE80211_HW_SUPPORTS_FTM_INITIATOR:
  *	Hardware supports 802.11 Fine Timing Measurement Initiator.
  *	This flag should be set only if the support can be provided without
  *	involvement of the stack; otherwise leave it to stack to decide.
- *
- * @IEEE80211_HW_SUPPORTS_AMSDU_IN_AMPDU:
- *	Hardware supports A-MSDU within A-MPDU.
  *
  * @IEEE80211_HW_NEEDS_UNIQUE_STA_ADDR: Hardware (or driver) requires that each
  *	station has a unique address, i.e. each station entry can be identified
@@ -1954,8 +1950,9 @@ enum ieee80211_hw_flags {
 	IEEE80211_HW_SUPPORTS_CLONED_SKBS,
 	IEEE80211_HW_SINGLE_SCAN_ON_ALL_BANDS,
 	IEEE80211_HW_TDLS_WIDER_BW,
-	IEEE80211_HW_SUPPORTS_FTM_INITIATOR,
 	IEEE80211_HW_SUPPORTS_AMSDU_IN_AMPDU,
+	IEEE80211_HW_BEACON_TX_STATUS,
+	IEEE80211_HW_SUPPORTS_FTM_INITIATOR,
 	IEEE80211_HW_NEEDS_UNIQUE_STA_ADDR,
 
 	/* keep last, obviously */
