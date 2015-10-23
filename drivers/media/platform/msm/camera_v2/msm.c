@@ -421,6 +421,7 @@ int msm_create_session(unsigned int session_id, struct video_device *vdev)
 	mutex_init(&session->lock);
 	rwlock_init(&session->stream_rwlock);
 	mutex_init(&session->lock_q);
+	mutex_init(&session->close_lock);
 	return 0;
 }
 
@@ -573,6 +574,7 @@ int msm_destroy_session(unsigned int session_id)
 	msm_remove_session_cmd_ack_q(session);
 	mutex_destroy(&session->lock);
 	mutex_destroy(&session->lock_q);
+	mutex_destroy(&session->close_lock);
 	msm_delete_entry(msm_session_q, struct msm_session,
 		list, session);
 	buf_mgr_subdev = msm_buf_mngr_get_subdev();
