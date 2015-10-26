@@ -1277,6 +1277,7 @@ struct ieee80211_local {
 	struct mutex chanctx_mtx;
 
 #ifdef CPTCFG_MAC80211_LEDS
+	int tx_led_counter, rx_led_counter;
 	struct led_trigger tx_led, rx_led, assoc_led, radio_led;
 	struct led_trigger tpt_led;
 	atomic_t tx_led_active, rx_led_active, assoc_led_active;
