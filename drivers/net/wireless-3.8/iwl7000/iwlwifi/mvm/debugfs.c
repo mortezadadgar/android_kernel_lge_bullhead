@@ -614,6 +614,13 @@ static ssize_t iwl_dbgfs_bt_notif_read(struct file *file, char __user *user_buf,
 				 notif->ttc_rrc_status & 0xF);
 	}
 
+	pos += scnprintf(buf + pos, bufsz - pos, "sync_sco = %d\n",
+			 IWL_MVM_BT_COEX_SYNC2SCO);
+	pos += scnprintf(buf + pos, bufsz - pos, "mplut = %d\n",
+			 IWL_MVM_BT_COEX_MPLUT);
+	pos += scnprintf(buf + pos, bufsz - pos, "corunning = %d\n",
+			 IWL_MVM_BT_COEX_CORUNNING);
+
 	mutex_unlock(&mvm->mutex);
 
 	ret = simple_read_from_buffer(user_buf, count, ppos, buf, pos);
