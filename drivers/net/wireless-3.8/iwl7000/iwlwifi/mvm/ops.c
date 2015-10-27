@@ -83,6 +83,7 @@
 #include "fw-api-scan.h"
 #include "iwl-tm-gnl.h"
 #include "time-event.h"
+#include "fw-dbg.h"
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 #include "iwl-dnt-cfg.h"
 #include "iwl-dnt-dispatch.h"
