@@ -76,6 +76,8 @@
 static inline int iwl_xvt_user_send_notif(struct iwl_xvt *xvt, u32 cmd,
 					  void *data, u32 size, gfp_t flags)
 {
+	IWL_DEBUG_INFO(xvt, "send user notification: cmd=0x%x, size=%d\n",
+		       cmd, size);
 	return iwl_tm_gnl_send_msg(xvt->trans, cmd, false, data, size, flags);
 }
 

@@ -101,6 +101,9 @@ void iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
 	void *data = pkt->data;
 	u32 size = iwl_rx_packet_payload_len(pkt);
 
+	IWL_DEBUG_INFO(xvt, "rx notification: group=0x%x, id=0x%x\n",
+		       pkt->hdr.group_id, pkt->hdr.cmd);
+
 	switch (WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd)) {
 	case GET_SET_PHY_DB_CMD:
 		iwl_xvt_user_send_notif(xvt, IWL_TM_USER_CMD_NOTIF_PHY_DB,
@@ -1278,8 +1281,8 @@ int iwl_xvt_user_cmd_execute(struct iwl_op_mode *op_mode, u32 cmd,
 	mutex_unlock(&xvt->mutex);
 
 	if (ret)
-		IWL_ERR(xvt, "%s ret=%d\n", __func__, ret);
+		IWL_ERR(xvt, "%s (cmd=0x%X) ret=%d\n", __func__, cmd, ret);
 	else
-		IWL_DEBUG_INFO(xvt, "%s ended Ok\n", __func__);
+		IWL_DEBUG_INFO(xvt, "%s (cmd=0x%X) ended Ok\n", __func__, cmd);
 	return ret;
 }
