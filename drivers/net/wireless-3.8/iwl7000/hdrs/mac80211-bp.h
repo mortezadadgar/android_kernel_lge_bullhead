@@ -1160,3 +1160,13 @@ cfg80211_inform_bss_frame_data(struct wiphy *wiphy,
 					       len, data->signal, gfp);
 }
 #endif /* CFG80211_VERSION < KERNEL_VERSION(4,4,0) */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0)
+static inline long ktime_get_seconds(void)
+{
+	struct timespec uptime;
+
+	ktime_get_ts(&uptime);
+	return uptime.tv_sec;
+}
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0) */
