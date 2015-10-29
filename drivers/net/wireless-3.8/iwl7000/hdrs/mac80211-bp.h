@@ -1139,3 +1139,24 @@ static inline void iwl7000_convert_survey_info(struct survey_info *survey,
 	memcpy(cfg, survey, sizeof(*cfg));
 }
 #endif
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,4,0)
+struct cfg80211_inform_bss {
+	struct ieee80211_channel *chan;
+	enum nl80211_bss_scan_width scan_width;
+	s32 signal;
+	u64 boottime_ns;
+};
+
+static inline struct cfg80211_bss *
+cfg80211_inform_bss_frame_data(struct wiphy *wiphy,
+			       struct cfg80211_inform_bss *data,
+			       struct ieee80211_mgmt *mgmt, size_t len,
+			       gfp_t gfp)
+
+{
+	return cfg80211_inform_bss_width_frame(wiphy, data->chan,
+					       data->scan_width, mgmt,
+					       len, data->signal, gfp);
+}
+#endif /* CFG80211_VERSION < KERNEL_VERSION(4,4,0) */
