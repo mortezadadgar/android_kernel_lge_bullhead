@@ -1937,6 +1937,7 @@ void ieee80211_if_remove(struct ieee80211_sub_if_data *sdata)
 	if (sdata->dev) {
 		unregister_netdevice(sdata->dev);
 	} else {
+		ieee80211_teardown_sdata(sdata);
 		cfg80211_unregister_wdev(&sdata->wdev);
 		kfree(sdata);
 	}
@@ -1947,7 +1948,6 @@ void ieee80211_sdata_stop(struct ieee80211_sub_if_data *sdata)
 	if (WARN_ON_ONCE(!test_bit(SDATA_STATE_RUNNING, &sdata->state)))
 		return;
 	ieee80211_do_stop(sdata, true);
-	ieee80211_teardown_sdata(sdata);
 }
 
 void ieee80211_remove_interfaces(struct ieee80211_local *local)
