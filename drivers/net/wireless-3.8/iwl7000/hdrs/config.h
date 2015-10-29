@@ -37,6 +37,4 @@
 #define CPTCFG_IWLXVT_MODULE 1
 #endif
 
-#define CPTCFG_IWLMVM_POWER_SCHEME 2
-
 #endif
