@@ -26,11 +26,9 @@
 })
 #endif /* netdev_alloc_pcpu_stats */
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,15,0)
-#include "u64_stats_sync.h"
-#endif
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0)
+#include "u64_stats_sync.h"
+
 struct pcpu_sw_netstats {
 	u64     rx_packets;
 	u64     rx_bytes;
