@@ -249,6 +249,20 @@ static inline int iwl7000_crypto_aead_decrypt(struct aead_request *req)
 }
 #define crypto_aead_decrypt iwl7000_crypto_aead_decrypt
 
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0) */
+
+/* Note: this stuff is included in in chromeos-3.14, but not in
+ * chromeos-3.18, so we check for !3.14 here.  Additionally, we check
+ * for <4.2, since that's when it was added upstream.
+ */
+#if (LINUX_VERSION_CODE != KERNEL_VERSION(3,14,0)) &&	\
+	(LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0))
+static inline void aead_request_set_ad(struct aead_request *req,
+				       unsigned int assoclen)
+{
+	req->assoclen = assoclen;
+}
+
 static inline void kernel_param_lock(struct module *mod)
 {
 	__kernel_param_lock();
@@ -258,21 +272,7 @@ static inline void kernel_param_unlock(struct module *mod)
 {
 	__kernel_param_unlock();
 }
-
-#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0) */
-
-/* Note: this is included in upstream 4.2 but Google also included it
- * in chromeos-3.14, but not in chromeos-3.18, so we also check for
- * !3.14 here.
- */
-#if ((LINUX_VERSION_CODE != KERNEL_VERSION(3,14,0)) &&	\
-     (LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0))
-static inline void aead_request_set_ad(struct aead_request *req,
-				       unsigned int assoclen)
-{
-	req->assoclen = assoclen;
-}
-#endif
+#endif /* !3.14 && <4.2 */
 
 #ifndef list_first_entry_or_null
 #define list_first_entry_or_null(ptr, type, member) \
