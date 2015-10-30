@@ -237,12 +237,6 @@ crypto_backport_convert(struct aead_request *req)
 	return &nreq->subreq;
 }
 
-static inline void aead_request_set_ad(struct aead_request *req,
-				       unsigned int assoclen)
-{
-	req->assoclen = assoclen;
-}
-
 static inline int iwl7000_crypto_aead_encrypt(struct aead_request *req)
 {
 	return crypto_aead_encrypt(crypto_backport_convert(req));
@@ -266,6 +260,19 @@ static inline void kernel_param_unlock(struct module *mod)
 }
 
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0) */
+
+/* Note: this is included in upstream 4.2 but Google also included it
+ * in chromeos-3.14, but not in chromeos-3.18, so we also check for
+ * !3.14 here.
+ */
+#if ((LINUX_VERSION_CODE != KERNEL_VERSION(3,14,0)) &&	\
+     (LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0))
+static inline void aead_request_set_ad(struct aead_request *req,
+				       unsigned int assoclen)
+{
+	req->assoclen = assoclen;
+}
+#endif
 
 #ifndef list_first_entry_or_null
 #define list_first_entry_or_null(ptr, type, member) \
