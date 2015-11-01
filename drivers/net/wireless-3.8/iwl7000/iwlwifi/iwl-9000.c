@@ -140,8 +140,18 @@ static const struct iwl_tt_params iwl9000_tt_params = {
 	.thermal_params = &iwl9000_tt_params,				\
 	.apmg_not_supported = true
 
-const struct iwl_cfg iwl9000_2ac_cfg = {
-		.name = "Intel(R) Dual Band Wireless AC 9000",
+const struct iwl_cfg iwl9260_2ac_cfg = {
+		.name = "Intel(R) Dual Band Wireless AC 9260",
+		.fw_name_pre = IWL9000_FW_PRE,
+		IWL_DEVICE_9000,
+		.ht_params = &iwl9000_ht_params,
+		.nvm_ver = IWL9000_NVM_VERSION,
+		.nvm_calib_ver = IWL9000_TX_POWER_VERSION,
+		.max_ht_ampdu_exponent = IEEE80211_HT_MAX_AMPDU_64K,
+};
+
+const struct iwl_cfg iwl5165_2ac_cfg = {
+		.name = "Intel(R) Dual Band Wireless AC 5165",
 		.fw_name_pre = IWL9000_FW_PRE,
 		IWL_DEVICE_9000,
 		.ht_params = &iwl9000_ht_params,
