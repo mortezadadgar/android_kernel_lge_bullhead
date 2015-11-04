@@ -142,8 +142,16 @@ int msm_comm_get_inst_load(struct msm_vidc_inst *inst,
 	}
 
 	if (is_non_realtime_session(inst) &&
-		(quirks & LOAD_CALC_IGNORE_NON_REALTIME_LOAD))
-		load = msm_comm_get_mbs_per_sec(inst) / inst->prop.fps;
+		(quirks & LOAD_CALC_IGNORE_NON_REALTIME_LOAD)) {
+		if (!inst->prop.fps) {
+			dprintk(VIDC_INFO, "%s: instance:%p prop->fps is set 0\n", __func__, inst);
+			load = 0;
+		} else {
+			load = msm_comm_get_mbs_per_sec(inst) / inst->prop.fps;
+			dprintk(VIDC_DBG, "%s: NON REALTIME Session so load is: %d\n", __func__, load);
+		}
+	} else
+		dprintk(VIDC_DBG, "%s: REALTIME Session so load is: %d\n", __func__, load);
 	return load;
 }
 
