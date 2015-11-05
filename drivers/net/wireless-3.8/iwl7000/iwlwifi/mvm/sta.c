@@ -1662,6 +1662,7 @@ void iwl_mvm_sta_modify_sleep_tx_count(struct iwl_mvm *mvm,
 	 */
 	if (agg) {
 		int remaining = cnt;
+		int sleep_tx_count;
 
 		spin_lock_bh(&mvmsta->lock);
 		for_each_set_bit(tid, &_tids, IWL_MAX_TID_COUNT) {
@@ -1686,9 +1687,12 @@ void iwl_mvm_sta_modify_sleep_tx_count(struct iwl_mvm *mvm,
 			}
 			remaining -= n_queued;
 		}
+		sleep_tx_count = cnt - remaining;
+		if (reason == IEEE80211_FRAME_RELEASE_UAPSD)
+			mvmsta->sleep_tx_count = sleep_tx_count;
 		spin_unlock_bh(&mvmsta->lock);
 
-		cmd.sleep_tx_count = cpu_to_le16(cnt - remaining);
+		cmd.sleep_tx_count = cpu_to_le16(sleep_tx_count);
 		if (WARN_ON(cnt - remaining == 0)) {
 			ieee80211_sta_eosp(sta);
 			return;
