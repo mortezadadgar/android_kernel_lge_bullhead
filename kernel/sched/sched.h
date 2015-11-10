@@ -1406,22 +1406,6 @@ unsigned long arch_scale_cpu_capacity(struct sched_domain *sd, int cpu)
 
 unsigned long capacity_orig_of(int cpu);
 
-extern struct static_key __sched_energy_freq;
-static inline bool sched_energy_freq(void)
-{
-	return static_key_false(&__sched_energy_freq);
-}
-
-#ifdef CONFIG_CPU_FREQ_GOV_SCHED
-void cpufreq_sched_set_cap(int cpu, unsigned long util);
-void cpufreq_sched_reset_cap(int cpu);
-#else
-static inline void cpufreq_sched_set_cap(int cpu, unsigned long util)
-{ }
-static inline void cpufreq_sched_reset_cap(int cpu)
-{ }
-#endif
-
 static inline void sched_rt_avg_update(struct rq *rq, u64 rt_delta)
 {
 	rq->rt_avg += rt_delta * arch_scale_freq_capacity(NULL, cpu_of(rq));
@@ -1431,6 +1415,27 @@ static inline void sched_rt_avg_update(struct rq *rq, u64 rt_delta)
 static inline void sched_rt_avg_update(struct rq *rq, u64 rt_delta) { }
 static inline void sched_avg_update(struct rq *rq) { }
 static inline void gov_cfs_update_cpu(int cpu) {}
+#endif
+
+#ifdef CONFIG_CPU_FREQ
+extern struct static_key __sched_energy_freq;
+static inline bool sched_energy_freq(void)
+{
+	return static_key_false(&__sched_energy_freq);
+}
+#ifdef CONFIG_CPU_FREQ_GOV_SCHED
+void cpufreq_sched_set_cap(int cpu, unsigned long util);
+void cpufreq_sched_reset_cap(int cpu);
+#else
+static inline void cpufreq_sched_set_cap(int cpu, unsigned long util)
+{ }
+static inline void cpufreq_sched_reset_cap(int cpu)
+{ }
+#endif
+#else
+static inline bool sched_energy_freq(void) { return 0; }
+static inline void cpufreq_sched_set_cap(int cpu, unsigned long util) { }
+static inline void cpufreq_sched_reset_cap(int cpu) { }
 #endif
 
 extern void start_bandwidth_timer(struct hrtimer *period_timer, ktime_t period);
