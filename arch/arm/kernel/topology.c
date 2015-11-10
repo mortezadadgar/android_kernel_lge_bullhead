@@ -151,6 +151,7 @@ static void update_cpu_capacity(unsigned int cpu)
 		cpu, arch_scale_cpu_capacity(NULL, cpu));
 }
 
+#ifdef CONFIG_CPU_FREQ
 /*
  * Scheduler load-tracking scale-invariance
  *
@@ -167,6 +168,12 @@ unsigned long arm_arch_scale_freq_capacity(int cpu)
 
 	return curr;
 }
+#else /* CONFIG_CPU_FREQ */
+unsigned long arm_arch_scale_freq_capacity(int cpu)
+{
+	return SCHED_CAPACITY_SCALE;
+}
+#endif /* CONFIG_CPU_FREQ */
 
 #else
 static inline void parse_dt_topology(void) {}
