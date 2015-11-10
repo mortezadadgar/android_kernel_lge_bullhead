@@ -2327,7 +2327,7 @@ static __always_inline int __update_entity_runnable_avg(u64 now, int cpu,
 	u64 delta, scaled_delta, periods;
 	u32 runnable_contrib, scaled_runnable_contrib;
 	int delta_w, scaled_delta_w, decayed = 0;
-	unsigned long scale_freq = arch_scale_freq_capacity(NULL, cpu);
+	unsigned long scale_freq = arch_scale_freq_capacity(cpu);
 	unsigned long scale_cpu = arch_scale_cpu_capacity(NULL, cpu);
 
 	trace_sched_contrib_scale_f(cpu, scale_freq, scale_cpu);
@@ -4238,6 +4238,17 @@ unsigned long capacity_orig_of(int cpu)
 	return cpu_rq(cpu)->cpu_capacity_orig;
 }
 
+/*
+ * Returns the current capacity of cpu after applying both
+ * cpu and freq scaling.
+ */
+unsigned long capacity_curr_of(int cpu)
+{
+	return cpu_rq(cpu)->cpu_capacity_orig *
+	       arch_scale_freq_capacity(cpu)
+	       >> SCHED_CAPACITY_SHIFT;
+}
+
 #ifdef CONFIG_SMP
 /* Used instead of source_load when we know the type == 0 */
 static unsigned long weighted_cpuload(const int cpu)
@@ -4450,17 +4461,6 @@ static long effective_load(struct task_group *tg, int cpu, long wl, long wg)
 }
 
 #endif
-
-/*
- * Returns the current capacity of cpu after applying both
- * cpu and freq scaling.
- */
-unsigned long capacity_curr_of(int cpu)
-{
-	return cpu_rq(cpu)->cpu_capacity_orig *
-	       arch_scale_freq_capacity(NULL, cpu)
-	       >> SCHED_CAPACITY_SHIFT;
-}
 
 /*
  * get_cpu_usage returns the amount of capacity of a CPU that is used by CFS
