@@ -4061,9 +4061,14 @@ static inline void hrtick_update(struct rq *rq)
 
 static unsigned int capacity_margin = 1280; /* ~20% margin */
 
+#ifdef CONFIG_SMP
 static bool cpu_overutilized(int cpu);
 static unsigned long get_cpu_usage(int cpu);
 static inline unsigned long get_boosted_cpu_usage(int cpu);
+#else /* !CONFIG_SMP */
+static unsigned long get_cpu_usage(int cpu) { return 0UL; }
+static inline unsigned long get_boosted_cpu_usage(int cpu) { return 0UL; }
+#endif /* CONFIG_SMP */
 struct static_key __sched_energy_freq __read_mostly = STATIC_KEY_INIT_FALSE;
 
 /*
@@ -4112,9 +4117,11 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	if (!se) {
 		update_rq_runnable_avg(rq, rq->nr_running);
 		add_nr_running(rq, 1);
+#ifdef CONFIG_SMP
 		if (!task_new && !rq->rd->overutilized &&
 		    cpu_overutilized(rq->cpu))
 			rq->rd->overutilized = true;
+#endif
 
 		schedtune_enqueue_task(p, cpu_of(rq));
 
@@ -5778,7 +5785,9 @@ simple:
 	if (hrtick_enabled(rq))
 		hrtick_start_fair(rq, p);
 
+#ifdef CONFIG_SMP
 	rq->misfit_task = !task_fits_capacity(p, rq->cpu);
+#endif
 
 	return p;
 
@@ -8561,10 +8570,12 @@ static void task_tick_fair(struct rq *rq, struct task_struct *curr, int queued)
 
 	update_rq_runnable_avg(rq, 1);
 
+#ifdef CONFIG_SMP
 	if (!rq->rd->overutilized && cpu_overutilized(task_cpu(curr)))
 		rq->rd->overutilized = true;
 
 	rq->misfit_task = !task_fits_capacity(curr, rq->cpu);
+#endif
 
 	/*
 	 * To make free room for a task that is building up its "real"
