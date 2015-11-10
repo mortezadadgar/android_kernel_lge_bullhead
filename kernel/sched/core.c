@@ -7292,7 +7292,7 @@ void __init sched_init(void)
 #ifdef CONFIG_SMP
 		rq->sd = NULL;
 		rq->rd = NULL;
-		rq->cpu_capacity = rq->cpu_capacity_orig = SCHED_CAPACITY_SCALE;
+		rq->cpu_capacity = SCHED_CAPACITY_SCALE;
 		rq->post_schedule = 0;
 		rq->active_balance = 0;
 		rq->next_balance = jiffies;
@@ -7313,6 +7313,7 @@ void __init sched_init(void)
 		rq->last_sched_tick = 0;
 #endif
 #endif
+		rq->cpu_capacity_orig = SCHED_CAPACITY_SCALE;
 		init_rq_hrtick(rq);
 		atomic_set(&rq->nr_iowait, 0);
 	}
