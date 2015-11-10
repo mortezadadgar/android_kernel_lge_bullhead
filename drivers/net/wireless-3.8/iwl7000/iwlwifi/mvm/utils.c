@@ -1156,6 +1156,7 @@ void iwl_mvm_tcm_work(struct work_struct *work)
 		.mvm = mvm,
 		.any_sent = false,
 	};
+	bool scan_fragmented;
 
 	mutex_lock(&mvm->mutex);
 
@@ -1166,6 +1167,11 @@ void iwl_mvm_tcm_work(struct work_struct *work)
 	/* send global only */
 	if (mvm->tcm.result.global_change && !data.any_sent)
 		iwl_mvm_send_tcm_event(mvm, NULL);
+
+	scan_fragmented = iwl_mvm_low_latency(mvm) ||
+		mvm->tcm.result.global_load == IWL_MVM_VENDOR_LOAD_HIGH;
+	if (scan_fragmented != mvm->scan_fragmented)
+		iwl_mvm_config_scan(mvm);
 
 	mutex_unlock(&mvm->mutex);
 }
