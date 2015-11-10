@@ -149,7 +149,6 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 
 	trans_cfg.cmd_queue = IWL_XVT_CMD_QUEUE;
 	trans_cfg.cmd_fifo = IWL_XVT_CMD_FIFO;
-	trans_cfg.rx_buf_size_8k = false;
 	if (xvt->fw->ucode_capa.flags & IWL_UCODE_TLV_FLAGS_DW_BC_TABLE)
 		trans_cfg.bc_table_dword = true;
 	trans_cfg.scd_set_active = true;

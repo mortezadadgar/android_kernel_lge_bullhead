@@ -247,7 +247,7 @@ struct iwl_dbg_cfg {
 	IWL_MOD_PARAM(int, ant_coupling)
 	IWL_MOD_PARAM(int, power_level)
 	IWL_MOD_PARAM(int, led_mode)
-	IWL_MOD_PARAM(int, amsdu_size_8K)
+	IWL_MOD_PARAM(int, amsdu_size)
 	IWL_MOD_PARAM(int, sw_crypto)
 	IWL_MOD_PARAM(uint, disable_11n)
 	IWL_MOD_PARAM(uint, d0i3_entry_delay)
