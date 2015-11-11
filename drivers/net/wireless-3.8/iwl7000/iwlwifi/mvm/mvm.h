@@ -728,7 +728,7 @@ struct iwl_mvm {
 	const struct iwl_fw_bcast_filter *bcast_filters;
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
 	struct {
-		u32 override; /* u32 for debugfs_create_bool */
+		bool override;
 		struct iwl_bcast_filter_cmd cmd;
 	} dbgfs_bcast_filtering;
 #endif
@@ -752,7 +752,7 @@ struct iwl_mvm {
 	bool disable_power_off;
 	bool disable_power_off_d3;
 
-	u32 scan_iter_notif_enabled; /* must be u32 for debugfs_create_bool */
+	bool scan_iter_notif_enabled;
 
 	struct debugfs_blob_wrapper nvm_hw_blob;
 	struct debugfs_blob_wrapper nvm_sw_blob;
@@ -807,7 +807,7 @@ struct iwl_mvm {
 	int n_nd_channels;
 	bool net_detect;
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
-	u32 d3_wake_sysassert; /* must be u32 for debugfs_create_bool */
+	bool d3_wake_sysassert;
 	bool d3_test_active;
 	bool store_d3_resume_sram;
 	void *d3_resume_sram;
