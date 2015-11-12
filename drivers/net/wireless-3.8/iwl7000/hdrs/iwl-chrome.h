@@ -10,6 +10,7 @@
 #include <net/genetlink.h>
 #include <linux/crypto.h>
 #include <linux/moduleparam.h>
+#include <linux/debugfs.h>
 #include <crypto/algapi.h>
 
 /* get the CPTCFG_* preprocessor symbols */
@@ -278,5 +279,20 @@ static inline void kernel_param_unlock(struct module *mod)
 #define list_first_entry_or_null(ptr, type, member) \
 	(!list_empty(ptr) ? list_first_entry(ptr, type, member) : NULL)
 #endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
+#ifdef CONFIG_DEBUG_FS
+struct dentry *iwl_debugfs_create_bool(const char *name, umode_t mode,
+				       struct dentry *parent, bool *value);
+#else
+static inline struct dentry *
+iwl_debugfs_create_bool(const char *name, umode_t mode,
+			struct dentry *parent, bool *value)
+{
+	return ERR_PTR(-ENODEV);
+}
+#endif /* CONFIG_DEBUG_FS */
+#define debugfs_create_bool iwl_debugfs_create_bool
+#endif /* < 4.4.0 */
 
 #endif /* __IWL_CHROME */
