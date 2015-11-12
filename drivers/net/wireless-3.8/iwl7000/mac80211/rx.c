@@ -2742,6 +2742,11 @@ ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
 						    false);
 			goto handled;
 		}
+		case WLAN_VHT_ACTION_GROUPID_MGMT: {
+			if (len < IEEE80211_MIN_ACTION_SIZE + 25)
+				goto invalid;
+			goto queue;
+		}
 		default:
 			break;
 		}
