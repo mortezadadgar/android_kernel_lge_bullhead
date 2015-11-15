@@ -1170,7 +1170,8 @@ void iwl_mvm_tcm_work(struct work_struct *work)
 
 	scan_fragmented = iwl_mvm_low_latency(mvm) ||
 		mvm->tcm.result.global_load == IWL_MVM_VENDOR_LOAD_HIGH;
-	if (scan_fragmented != mvm->scan_fragmented)
+	if (scan_fragmented != mvm->scan_fragmented &&
+	    fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_UMAC_SCAN))
 		iwl_mvm_config_scan(mvm);
 
 	mutex_unlock(&mvm->mutex);
