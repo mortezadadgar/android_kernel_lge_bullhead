@@ -33,8 +33,6 @@
 
 #include "selftest.h"
 
-#define VERSION "2.20"
-
 /* Bluetooth sockets */
 #define BT_MAX_PROTO	8
 static const struct net_proto_family *bt_proto[BT_MAX_PROTO];
@@ -221,15 +219,14 @@ int bt_sock_recvmsg(struct kiocb *iocb, struct socket *sock,
 
 	BT_DBG("sock %p sk %p len %zu", sock, sk, len);
 
-	if (flags & (MSG_OOB))
+	if (flags & MSG_OOB)
 		return -EOPNOTSUPP;
 
 	skb = skb_recv_datagram(sk, flags, noblock, &err);
 	if (!skb) {
-		if (sk->sk_shutdown & RCV_SHUTDOWN) {
-			msg->msg_namelen = 0;
+		if (sk->sk_shutdown & RCV_SHUTDOWN)
 			return 0;
-		}
+
 		return err;
 	}
 
@@ -247,8 +244,6 @@ int bt_sock_recvmsg(struct kiocb *iocb, struct socket *sock,
 		if (bt_sk(sk)->skb_msg_name)
 			bt_sk(sk)->skb_msg_name(skb, msg->msg_name,
 						&msg->msg_namelen);
-		else
-			msg->msg_namelen = 0;
 	}
 
 	skb_free_datagram(sk, skb);
@@ -287,7 +282,7 @@ static long bt_sock_data_wait(struct sock *sk, long timeo)
 }
 
 int bt_sock_stream_recvmsg(struct kiocb *iocb, struct socket *sock,
-			       struct msghdr *msg, size_t size, int flags)
+			   struct msghdr *msg, size_t size, int flags)
 {
 	struct sock *sk = sock->sk;
 	int err = 0;
@@ -719,7 +714,7 @@ static int __init bt_init(void)
 
 	BUILD_BUG_ON(sizeof(struct bt_skb_cb) > sizeof(skb->cb));
 
-	BT_INFO("Core ver %s", VERSION);
+	BT_INFO("Core ver %s", BT_SUBSYS_VERSION);
 
 	err = bt_selftest();
 	if (err < 0)
@@ -793,7 +788,7 @@ subsys_initcall(bt_init);
 module_exit(bt_exit);
 
 MODULE_AUTHOR("Marcel Holtmann <marcel@holtmann.org>");
-MODULE_DESCRIPTION("Bluetooth Core ver " VERSION);
-MODULE_VERSION(VERSION);
+MODULE_DESCRIPTION("Bluetooth Core ver " BT_SUBSYS_VERSION);
+MODULE_VERSION(BT_SUBSYS_VERSION);
 MODULE_LICENSE("GPL");
 MODULE_ALIAS_NETPROTO(PF_BLUETOOTH);
