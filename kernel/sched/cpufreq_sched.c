@@ -343,7 +343,11 @@ static void __exit cpufreq_sched_exit(void)
 	cpufreq_unregister_governor(&cpufreq_gov_sched);
 }
 
-/* Try to make this the default governor */
-fs_initcall(cpufreq_sched_init);
-
 MODULE_LICENSE("GPL v2");
+
+#ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_SCHED
+fs_initcall(cpufreq_sched_init);
+#else
+module_init(cpufreq_sched_init);
+#endif
+module_exit(cpufreq_sched_exit);

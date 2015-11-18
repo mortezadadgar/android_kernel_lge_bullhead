@@ -1423,7 +1423,7 @@ static inline bool sched_energy_freq(void)
 {
 	return static_key_false(&__sched_energy_freq);
 }
-#ifdef CONFIG_CPU_FREQ_GOV_SCHED
+#if IS_ENABLED(CONFIG_CPU_FREQ_GOV_SCHED)
 void cpufreq_sched_set_cap(int cpu, unsigned long util);
 void cpufreq_sched_reset_cap(int cpu);
 #else
