@@ -252,12 +252,13 @@ static inline int iwl7000_crypto_aead_decrypt(struct aead_request *req)
 
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0) */
 
-/* Note: this stuff is included in in chromeos-3.14, but not in
- * chromeos-3.18, so we check for !3.14 here.  Additionally, we check
- * for <4.2, since that's when it was added upstream.
+/* Note: this stuff is included in in chromeos-3.14 and 3.18.
+ * Additionally, we check for <4.2, since that's when it was
+ * added upstream.
  */
 #if (LINUX_VERSION_CODE != KERNEL_VERSION(3,14,0)) &&	\
-	(LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0))
+    (LINUX_VERSION_CODE != KERNEL_VERSION(3,18,0)) &&	\
+    (LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0))
 static inline void aead_request_set_ad(struct aead_request *req,
 				       unsigned int assoclen)
 {
