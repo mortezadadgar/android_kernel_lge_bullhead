@@ -4007,10 +4007,10 @@ int valleyview_rps_max_freq(struct drm_i915_private *dev_priv)
 	/* Clamp to max */
 	rp0 = min_t(u32, rp0, 0xea);
 
-	/* Clamp to 587 MHz on AOpen baytrail chromeboxes */
+	/* Clamp to 650 MHz on AOpen baytrail chromeboxes */
 	if (dmi_check_system(intel_broken_gpupower_dmi)) {
-		DRM_INFO("AOPEN chromebox: clamping GPU clock to 587 MHz\n");
-		rp0 = min_t(u32, rp0, vlv_freq_opcode(dev_priv->mem_freq, 587));
+		DRM_INFO("AOPEN chromebox: clamping GPU clock to 650 MHz\n");
+		rp0 = min_t(u32, rp0, vlv_freq_opcode(dev_priv->mem_freq, 650));
 	}
 
 	return rp0;
