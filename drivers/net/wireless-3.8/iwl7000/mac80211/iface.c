@@ -1948,8 +1948,8 @@ void ieee80211_if_remove(struct ieee80211_sub_if_data *sdata)
 	if (sdata->dev) {
 		unregister_netdevice(sdata->dev);
 	} else {
-		ieee80211_teardown_sdata(sdata);
 		cfg80211_unregister_wdev(&sdata->wdev);
+		ieee80211_teardown_sdata(sdata);
 		kfree(sdata);
 	}
 }
