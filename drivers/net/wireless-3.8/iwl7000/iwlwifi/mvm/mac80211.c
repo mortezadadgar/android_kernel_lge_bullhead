@@ -1055,6 +1055,7 @@ static void iwl_mvm_restart_cleanup(struct iwl_mvm *mvm)
 
 	/* keep statistics ticking */
 	iwl_mvm_accu_radio_stats(mvm);
+
 }
 
 int __iwl_mvm_mac_start(struct iwl_mvm *mvm)
