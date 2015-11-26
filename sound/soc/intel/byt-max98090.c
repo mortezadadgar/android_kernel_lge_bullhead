@@ -269,37 +269,23 @@ static struct snd_soc_ops byt_aif1_ops = {
 	.hw_params = byt_aif1_hw_params,
 };
 
-static struct snd_soc_dai_link byt_dailink[] = {
-	{
-		.name = "Baytrail Audio",
-		.stream_name = "Audio",
-		.cpu_dai_name = "Front-cpu-dai",
-		.codec_dai_name = "HiFi",
-		.codec_name = "max98090.1-0010",
-		.platform_name = "baytrail-pcm-audio",
-		.init = byt_init,
-		.ops = &byt_aif1_ops,
-		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
-			SND_SOC_DAIFMT_CBS_CFS,
-	},
-	{
-		.name = "Baytrail Voice",
-		.stream_name = "Voice",
-		.cpu_dai_name = "Front-cpu-dai",
-		.codec_dai_name = "HiFi",
-		.codec_name = "max98090.1-0010",
-		.platform_name = "baytrail-pcm-audio",
-		.init = NULL,
-		.ops = &byt_aif1_ops,
-		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
-			SND_SOC_DAIFMT_CBS_CFS,
-	},
+static struct snd_soc_dai_link byt_dailink = {
+	.name = "Baytrail Audio",
+	.stream_name = "Primary",
+	.cpu_dai_name = "Front-cpu-dai",
+	.codec_dai_name = "HiFi",
+	.codec_name = "max98090.1-0010",
+	.platform_name = "baytrail-pcm-audio",
+	.init = byt_init,
+	.ops = &byt_aif1_ops,
+	.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+		SND_SOC_DAIFMT_CBS_CFS,
 };
 
 static struct snd_soc_card snd_soc_card_byt = {
 	.name = "byt-max98090",
-	.dai_link = byt_dailink,
-	.num_links = ARRAY_SIZE(byt_dailink),
+	.dai_link = &byt_dailink,
+	.num_links = 1,
 	.dapm_widgets = byt_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(byt_dapm_widgets),
 	.dapm_routes = byt_audio_map,
