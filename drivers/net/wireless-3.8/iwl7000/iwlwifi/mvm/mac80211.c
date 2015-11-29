@@ -95,7 +95,7 @@
 
 static const struct ieee80211_iface_limit iwl_mvm_limits[] = {
 	{
-		.max = 1,
+		.max = CPTCFG_IWLWIFI_NUM_STA_INTERFACES,
 		.types = BIT(NL80211_IFTYPE_STATION),
 	},
 	{
@@ -113,7 +113,7 @@ static const struct ieee80211_iface_limit iwl_mvm_limits[] = {
 static const struct ieee80211_iface_combination iwl_mvm_iface_combinations[] = {
 	{
 		.num_different_channels = CPTCFG_IWLWIFI_NUM_CHANNELS,
-		.max_interfaces = 3,
+		.max_interfaces = CPTCFG_IWLWIFI_NUM_STA_INTERFACES + 2,
 		.limits = iwl_mvm_limits,
 		.n_limits = ARRAY_SIZE(iwl_mvm_limits),
 	},
