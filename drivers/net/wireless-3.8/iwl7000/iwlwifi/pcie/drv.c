@@ -642,6 +642,7 @@ static int iwl_pci_runtime_resume(struct device *device)
 
 	return 0;
 }
+
 #endif /* CPTCFG_IWLWIFI_PCIE_RTPM */
 
 static const struct dev_pm_ops iwl_dev_pm_ops = {
