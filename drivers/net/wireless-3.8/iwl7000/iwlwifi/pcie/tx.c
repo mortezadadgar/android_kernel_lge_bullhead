@@ -584,12 +584,12 @@ static void iwl_pcie_free_tso_page(struct sk_buff *skb)
 {
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
 
-	if (info->driver_data[IWL_FIRST_DRIVER_DATA]) {
+	if (info->driver_data[IWL_TRANS_FIRST_DRIVER_DATA]) {
 		struct page *page =
-			info->driver_data[IWL_FIRST_DRIVER_DATA];
+			info->driver_data[IWL_TRANS_FIRST_DRIVER_DATA];
 
 		__free_page(page);
-		info->driver_data[IWL_FIRST_DRIVER_DATA] = NULL;
+		info->driver_data[IWL_TRANS_FIRST_DRIVER_DATA] = NULL;
 	}
 }
 
@@ -1976,7 +1976,7 @@ static int iwl_fill_data_tbs_amsdu(struct iwl_trans *trans, struct sk_buff *skb,
 
 	get_page(hdr_page->page);
 	start_hdr = hdr_page->pos;
-	info->driver_data[IWL_FIRST_DRIVER_DATA] = hdr_page->page;
+	info->driver_data[IWL_TRANS_FIRST_DRIVER_DATA] = hdr_page->page;
 	memcpy(hdr_page->pos, skb->data, iv_len);
 	hdr_page->pos += iv_len;
 

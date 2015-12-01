@@ -384,7 +384,7 @@ static inline void iwl_free_rxb(struct iwl_rx_cmd_buffer *r)
  * The first entry in driver_data array in ieee80211_tx_info
  * that can be used by the transport.
  */
-#define IWL_FIRST_DRIVER_DATA 2
+#define IWL_TRANS_FIRST_DRIVER_DATA 2
 #define IWL_MASK(lo, hi) ((1 << (hi)) | ((1 << (hi)) - (1 << (lo))))
 
 /*
