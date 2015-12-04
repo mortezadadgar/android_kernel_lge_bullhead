@@ -263,10 +263,10 @@ static int ieee80211_check_concurrent_iface(struct ieee80211_sub_if_data *sdata,
 			/*
 			 * Only OCB and monitor mode may coexist
 			 */
-			if ((sdata->vif.type == NL80211_IFTYPE_OCB &&
+			if ((ieee80211_viftype_ocb(sdata->vif.type) &&
 			     nsdata->vif.type != NL80211_IFTYPE_MONITOR) ||
 			    (sdata->vif.type != NL80211_IFTYPE_MONITOR &&
-			     nsdata->vif.type == NL80211_IFTYPE_OCB))
+			     ieee80211_viftype_ocb(nsdata->vif.type)))
 				return -EBUSY;
 
 			/*
@@ -541,6 +541,7 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 	case NL80211_IFTYPE_P2P_DEVICE:
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
 #endif
 		/* no special treatment */
 		break;
@@ -652,7 +653,10 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 		case NL80211_IFTYPE_ADHOC:
 		case NL80211_IFTYPE_AP:
 		case NL80211_IFTYPE_MESH_POINT:
+#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 		case NL80211_IFTYPE_OCB:
+			/* keep code in case of fall-through (spatch generated) */
+#endif
 			netif_carrier_off(dev);
 			break;
 		case NL80211_IFTYPE_WDS:
@@ -1371,9 +1375,10 @@ static void ieee80211_iface_work(struct work_struct *work)
 		break;
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
 		ieee80211_ocb_work(sdata);
 		break;
-#endif
 	default:
 		break;
 	}
@@ -1393,10 +1398,8 @@ static void ieee80211_recalc_smps_work(struct work_struct *work)
 static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 				  enum nl80211_iftype type)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	static const u8 bssid_wildcard[ETH_ALEN] = {0xff, 0xff, 0xff,
 						    0xff, 0xff, 0xff};
-#endif
 
 	/* clear type-dependent union */
 	memset(&sdata->u, 0, sizeof(sdata->u));
@@ -1453,10 +1456,11 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 		break;
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
 		sdata->vif.bss_conf.bssid = bssid_wildcard;
 		ieee80211_ocb_setup_sdata(sdata);
 		break;
-#endif
 	case NL80211_IFTYPE_ADHOC:
 		sdata->vif.bss_conf.bssid = sdata->u.ibss.bssid;
 		ieee80211_ibss_setup_sdata(sdata);
@@ -1506,6 +1510,7 @@ static int ieee80211_runtime_change_iftype(struct ieee80211_sub_if_data *sdata,
 	case NL80211_IFTYPE_ADHOC:
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
 #endif
 		/*
 		 * Could maybe also all others here?
@@ -1524,6 +1529,7 @@ static int ieee80211_runtime_change_iftype(struct ieee80211_sub_if_data *sdata,
 	case NL80211_IFTYPE_ADHOC:
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
 #endif
 		/*
 		 * Could probably support everything

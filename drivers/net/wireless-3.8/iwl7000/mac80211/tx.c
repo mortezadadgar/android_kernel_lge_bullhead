@@ -305,10 +305,8 @@ ieee80211_tx_h_check_assoc(struct ieee80211_tx_data *tx)
 		 */
 		return TX_DROP;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
-	if (tx->sdata->vif.type == NL80211_IFTYPE_OCB)
+	if (ieee80211_viftype_ocb(tx->sdata->vif.type))
 		return TX_CONTINUE;
-#endif
 
 	if (tx->sdata->vif.type == NL80211_IFTYPE_WDS)
 		return TX_CONTINUE;
@@ -689,7 +687,7 @@ ieee80211_tx_h_rate_ctrl(struct ieee80211_tx_data *tx)
 	txrc.bss = (tx->sdata->vif.type == NL80211_IFTYPE_AP ||
 		    tx->sdata->vif.type == NL80211_IFTYPE_MESH_POINT ||
 		    tx->sdata->vif.type == NL80211_IFTYPE_ADHOC ||
-		    tx->sdata->vif.type == NL80211_IFTYPE_OCB);
+		    ieee80211_viftype_ocb(tx->sdata->vif.type));
 
 	/* set up RTS protection if desired */
 	if (len > tx->local->hw.wiphy->rts_threshold) {
@@ -1923,7 +1921,10 @@ static int ieee80211_lookup_ra_sta(struct ieee80211_sub_if_data *sdata,
 		}
 		/* fall through */
 	case NL80211_IFTYPE_AP:
+#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
 	case NL80211_IFTYPE_ADHOC:
 		if (is_multicast_ether_addr(skb->data)) {
 			*sta_out = ERR_PTR(-ENOENT);
@@ -2193,6 +2194,8 @@ static struct sk_buff *ieee80211_build_hdr(struct ieee80211_sub_if_data *sdata,
 		break;
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
 		/* DA SA BSSID */
 		memcpy(hdr.addr1, skb->data, ETH_ALEN);
 		memcpy(hdr.addr2, skb->data + ETH_ALEN, ETH_ALEN);
@@ -2205,7 +2208,6 @@ static struct sk_buff *ieee80211_build_hdr(struct ieee80211_sub_if_data *sdata,
 		}
 		band = chanctx_conf->def.chan->band;
 		break;
-#endif
 	case NL80211_IFTYPE_ADHOC:
 		/* DA SA BSSID */
 		memcpy(hdr.addr1, skb->data, ETH_ALEN);
@@ -2246,9 +2248,7 @@ static struct sk_buff *ieee80211_build_hdr(struct ieee80211_sub_if_data *sdata,
 	 * EAPOL frames from the local station.
 	 */
 	if (unlikely(!ieee80211_vif_is_mesh(&sdata->vif) &&
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
-		     (sdata->vif.type != NL80211_IFTYPE_OCB) &&
-#endif
+		     (!ieee80211_viftype_ocb(sdata->vif.type)) &&
 		     !multicast && !authorized &&
 		     (cpu_to_be16(ethertype) != sdata->control_port_protocol ||
 		      !ether_addr_equal(sdata->vif.addr, skb->data + ETH_ALEN)))) {

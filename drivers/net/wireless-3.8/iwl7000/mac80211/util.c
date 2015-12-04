@@ -1133,7 +1133,7 @@ void ieee80211_set_wmm_default(struct ieee80211_sub_if_data *sdata,
 		 !(sdata->flags & IEEE80211_SDATA_OPERATING_GMODE);
 	rcu_read_unlock();
 
-	is_ocb = (sdata->vif.type == NL80211_IFTYPE_OCB);
+	is_ocb = (ieee80211_viftype_ocb(sdata->vif.type));
 
 	/* Set defaults according to 802.11-2007 Table 7-37 */
 	aCWmax = 1023;
@@ -1947,10 +1947,11 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 			break;
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 		case NL80211_IFTYPE_OCB:
+			/* keep code in case of fall-through (spatch generated) */
+#endif
 			changed |= BSS_CHANGED_OCB;
 			ieee80211_bss_info_change_notify(sdata, changed);
 			break;
-#endif
 		case NL80211_IFTYPE_ADHOC:
 			changed |= BSS_CHANGED_IBSS;
 			/* fall through */

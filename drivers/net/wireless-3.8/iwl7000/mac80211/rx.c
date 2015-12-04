@@ -1151,7 +1151,7 @@ ieee80211_rx_h_check(struct ieee80211_rx_data *rx)
 		      ieee80211_is_pspoll(hdr->frame_control)) &&
 		     rx->sdata->vif.type != NL80211_IFTYPE_ADHOC &&
 		     rx->sdata->vif.type != NL80211_IFTYPE_WDS &&
-		     rx->sdata->vif.type != NL80211_IFTYPE_OCB &&
+		     !ieee80211_viftype_ocb(rx->sdata->vif.type) &&
 		     (!rx->sta || !test_sta_flag(rx->sta, WLAN_STA_ASSOC)))) {
 		/*
 		 * accept port control frames from the AP even when it's not
@@ -1411,10 +1411,8 @@ ieee80211_rx_h_sta_process(struct ieee80211_rx_data *rx)
 					status->vht_nss;
 			}
 		}
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
-	} else if (rx->sdata->vif.type == NL80211_IFTYPE_OCB) {
+	} else if (ieee80211_viftype_ocb(rx->sdata->vif.type)) {
 		sta->rx_stats.last_rx = jiffies;
-#endif
 	} else if (!is_multicast_ether_addr(hdr->addr1)) {
 		/*
 		 * Mesh beacons will update last_rx when if they are found to
@@ -3006,7 +3004,7 @@ ieee80211_rx_h_mgmt(struct ieee80211_rx_data *rx)
 
 	if (!ieee80211_vif_is_mesh(&sdata->vif) &&
 	    sdata->vif.type != NL80211_IFTYPE_ADHOC &&
-	    sdata->vif.type != NL80211_IFTYPE_OCB &&
+	    !ieee80211_viftype_ocb(sdata->vif.type) &&
 	    sdata->vif.type != NL80211_IFTYPE_STATION)
 		return RX_DROP_MONITOR;
 
@@ -3328,6 +3326,8 @@ static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
 		return true;
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
 		if (!bssid)
 			return false;
 		if (!ieee80211_is_data_present(hdr->frame_control))
@@ -3347,7 +3347,6 @@ static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
 						BIT(rate_idx));
 		}
 		return true;
-#endif
 	case NL80211_IFTYPE_MESH_POINT:
 		if (multicast)
 			return true;

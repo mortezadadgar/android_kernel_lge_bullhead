@@ -1,3 +1,7 @@
+/*
+ * ChromeOS backport definitions
+ * Copyright (C) 2015 Intel Deutschland GmbH
+ */
 #include <linux/if_ether.h>
 #include <net/cfg80211.h>
 #include <linux/errqueue.h>
@@ -596,8 +600,16 @@ cfg80211_check_combinations(struct wiphy *wiphy,
 #endif
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,19,0)
-#define NL80211_IFTYPE_OCB 11 /* not used, but code is there */
 #define NL80211_FEATURE_MAC_ON_CREATE 0 /* cannot be used */
+
+struct ocb_setup {
+	struct cfg80211_chan_def chandef;
+};
+
+static inline bool ieee80211_viftype_ocb(unsigned int iftype)
+{
+	return false;
+}
 
 static inline struct wiphy *
 wiphy_new_nm(const struct cfg80211_ops *ops, int sizeof_priv,
@@ -630,6 +642,11 @@ cfg80211_ch_switch_started_notify(struct net_device *dev,
 				  struct cfg80211_chan_def *chandef,
 				  u8 count)
 {
+}
+#else
+static inline bool ieee80211_viftype_ocb(unsigned int iftype)
+{
+	return iftype == NL80211_IFTYPE_OCB;
 }
 #endif /* 3.19 */
 

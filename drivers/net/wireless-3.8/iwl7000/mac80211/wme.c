@@ -189,10 +189,11 @@ u16 ieee80211_select_queue(struct ieee80211_sub_if_data *sdata,
 		break;
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
 		/* all stations are required to support WME */
 		qos = true;
 		break;
-#endif
 	default:
 		break;
 	}

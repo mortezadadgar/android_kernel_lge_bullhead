@@ -1546,7 +1546,6 @@ int ieee80211_ibss_csa_beacon(struct ieee80211_sub_if_data *sdata,
 int ieee80211_ibss_finish_csa(struct ieee80211_sub_if_data *sdata);
 void ieee80211_ibss_stop(struct ieee80211_sub_if_data *sdata);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 /* OCB code */
 void ieee80211_ocb_work(struct ieee80211_sub_if_data *sdata);
 void ieee80211_ocb_rx_no_sta(struct ieee80211_sub_if_data *sdata,
@@ -1555,7 +1554,6 @@ void ieee80211_ocb_setup_sdata(struct ieee80211_sub_if_data *sdata);
 int ieee80211_ocb_join(struct ieee80211_sub_if_data *sdata,
 		       struct ocb_setup *setup);
 int ieee80211_ocb_leave(struct ieee80211_sub_if_data *sdata);
-#endif
 
 /* mesh code */
 void ieee80211_mesh_work(struct ieee80211_sub_if_data *sdata);

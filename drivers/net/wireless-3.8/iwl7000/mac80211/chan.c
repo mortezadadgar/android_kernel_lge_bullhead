@@ -280,6 +280,7 @@ ieee80211_get_chanctx_max_required_bw(struct ieee80211_local *local,
 		case NL80211_IFTYPE_MESH_POINT:
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 		case NL80211_IFTYPE_OCB:
+			/* keep code in case of fall-through (spatch generated) */
 #endif
 			width = vif->bss_conf.chandef.width;
 			break;
@@ -731,6 +732,7 @@ void ieee80211_recalc_smps_chanctx(struct ieee80211_local *local,
 		case NL80211_IFTYPE_MESH_POINT:
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 		case NL80211_IFTYPE_OCB:
+			/* keep code in case of fall-through (spatch generated) */
 #endif
 			break;
 		default:
@@ -969,6 +971,7 @@ ieee80211_vif_chanctx_reservation_complete(struct ieee80211_sub_if_data *sdata)
 	case NL80211_IFTYPE_MESH_POINT:
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
 #endif
 #if CFG80211_VERSION >= KERNEL_VERSION(3,12,0)
 		ieee80211_queue_work(&sdata->local->hw,
