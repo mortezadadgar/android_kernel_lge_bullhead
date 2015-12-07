@@ -2053,10 +2053,12 @@ static int ieee80211_scan(struct wiphy *wiphy,
 	return ieee80211_request_scan(sdata, req);
 }
 
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 static void ieee80211_abort_scan(struct wiphy *wiphy, struct wireless_dev *wdev)
 {
 	ieee80211_scan_cancel(wiphy_priv(wiphy));
 }
+#endif
 
 static int
 ieee80211_sched_scan_start(struct wiphy *wiphy,
@@ -3517,7 +3519,9 @@ const struct cfg80211_ops mac80211_config_ops = {
 	.suspend = ieee80211_suspend,
 	.resume = ieee80211_resume,
 	.scan = ieee80211_scan,
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 	.abort_scan = ieee80211_abort_scan,
+#endif
 	.sched_scan_start = ieee80211_sched_scan_start,
 	.sched_scan_stop = ieee80211_sched_scan_stop,
 	.auth = ieee80211_auth,
