@@ -1230,8 +1230,7 @@ static int sta_apply_parameters(struct ieee80211_local *local,
 		 * rc isn't initialized here yet, so ignore it
 		 */
 		__ieee80211_vht_handle_opmode(sdata, sta,
-					      params->opmode_notif,
-					      band, false);
+					      params->opmode_notif, band);
 	}
 #endif
 
