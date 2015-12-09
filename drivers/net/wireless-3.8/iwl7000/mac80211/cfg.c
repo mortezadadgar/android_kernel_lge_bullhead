@@ -1319,14 +1319,24 @@ static int ieee80211_add_station(struct wiphy *wiphy, struct net_device *dev,
 }
 
 static int ieee80211_del_station(struct wiphy *wiphy, struct net_device *dev,
+#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
+				 struct station_del_parameters *params)
+{
+#else
 				 const_since_3_16 u8 *mac)
 {
+	struct {
+		const_since_3_16 u8 *mac;
+	} _params = {
+		.mac = mac,
+	}, *params = &_params;
+#endif
 	struct ieee80211_sub_if_data *sdata;
 
 	sdata = IEEE80211_DEV_TO_SUB_IF(dev);
 
-	if (mac)
-		return sta_info_destroy_addr_bss(sdata, mac);
+	if (params->mac)
+		return sta_info_destroy_addr_bss(sdata, params->mac);
 
 	sta_info_flush(sdata);
 	return 0;
