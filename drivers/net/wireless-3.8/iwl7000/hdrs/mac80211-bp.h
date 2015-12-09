@@ -1254,7 +1254,7 @@ struct cfg80211_ftm_target {
 	bool asap;
 	bool lci;
 	bool civic;
-	u16 num_of_bursts;
+	u8 num_of_bursts_exp;
 	u16 burst_period;
 	u8 samples_per_burst;
 	u8 retries;
@@ -1285,10 +1285,10 @@ struct cfg80211_ftm_result {
 	u8 burst_index;
 	s8 rssi;
 	u8 rssi_spread;
-	struct rate_info rate_info;
-	u32 rtt;
-	u32 rtt_variance;
-	u32 rtt_spread;
+	struct rate_info tx_rate_info;
+	u64 rtt;
+	u64 rtt_variance;
+	u64 rtt_spread;
 };
 
 struct cfg80211_ftm_results {
