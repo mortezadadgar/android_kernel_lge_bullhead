@@ -4371,7 +4371,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 	if (evdata && evdata->data && rmi4_data && rmi4_data->i2c_client) {
 		if (event == FB_EARLY_EVENT_BLANK) {
 #ifdef CONFIG_WAKE_GESTURES
-			gestures_enabled = (s2w_switch > 0) || (dt2w_switch > 0);
+			gestures_enabled = ((s2w_switch > 0) || (dt2w_switch > 0)) && (!pwrkey_pressed);
 #endif
 			synaptics_secure_touch_stop(rmi4_data, 0);
 		} else if (event == FB_EVENT_BLANK) {
@@ -4763,6 +4763,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
 #ifdef CONFIG_WAKE_GESTURES
+	pwrkey_pressed = 0;
 	if (gestures_enabled) {
 		s2w_enable(rmi4_data, false);
 		goto out;

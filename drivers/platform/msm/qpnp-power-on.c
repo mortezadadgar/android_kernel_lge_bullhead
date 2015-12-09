@@ -133,6 +133,13 @@
 
 #define QPNP_POFF_REASON_UVLO			13
 
+#ifdef CONFIG_WAKE_GESTURES
+bool pwrkey_pressed = false;
+bool pwrkey_suspend = false;
+static int cnt = 0;
+module_param(pwrkey_suspend, bool, 0755);
+#endif
+
 enum pon_type {
 	PON_KPDPWR,
 	PON_RESIN,
@@ -658,6 +665,17 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	default:
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_WAKE_GESTURES
+	if (pwrkey_suspend) {
+		if (cfg->key_code == KEY_POWER && cnt == 0 && !scr_suspended()) {
+			pwrkey_pressed = true;
+			cnt++;
+		} else {
+			cnt = 0;
+		}
+	}
+#endif
 
 	pr_debug("PMIC input: code=%d, sts=0x%hhx\n",
 					cfg->key_code, pon_rt_sts);
