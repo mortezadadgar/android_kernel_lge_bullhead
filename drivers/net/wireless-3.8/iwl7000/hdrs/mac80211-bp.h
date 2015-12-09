@@ -1258,6 +1258,9 @@ struct cfg80211_ftm_target {
 	u16 burst_period;
 	u8 samples_per_burst;
 	u8 retries;
+	u8 burst_duration;
+	u8 ftm_preamble;
+	u8 ftm_bw;
 };
 
 struct cfg80211_ftm_request {
