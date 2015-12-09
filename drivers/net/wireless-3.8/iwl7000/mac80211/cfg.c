@@ -839,7 +839,7 @@ static int ieee80211_stop_ap(struct wiphy *wiphy, struct net_device *dev)
 	struct ieee80211_local *local = sdata->local;
 	struct beacon_data *old_beacon;
 	struct probe_resp *old_probe_resp;
-	struct cfg80211_chan_def __maybe_unused chandef;
+	struct cfg80211_chan_def chandef;
 
 	sdata_assert_lock(sdata);
 
@@ -883,15 +883,13 @@ static int ieee80211_stop_ap(struct wiphy *wiphy, struct net_device *dev)
 	clear_bit(SDATA_STATE_OFFCHANNEL_BEACON_STOPPED, &sdata->state);
 	ieee80211_bss_info_change_notify(sdata, BSS_CHANGED_BEACON_ENABLED);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,15,0)
-	if (sdata->wdev.cac_started) {
+	if (wdev_cac_started(&sdata->wdev)) {
 		chandef = sdata->vif.bss_conf.chandef;
 		cancel_delayed_work_sync(&sdata->dfs_cac_timer_work);
 		cfg80211_cac_event(sdata->dev, &chandef,
 				   NL80211_RADAR_CAC_ABORTED,
 				   GFP_KERNEL);
 	}
-#endif
 
 	drv_stop_ap(sdata->local, sdata);
 
@@ -2970,7 +2968,7 @@ __ieee80211_channel_switch(struct wiphy *wiphy, struct net_device *dev,
 	if (!list_empty(&local->roc_list) || local->scanning)
 		return -EBUSY;
 
-	if (sdata->wdev.cac_started)
+	if (wdev_cac_started(&sdata->wdev))
 		return -EBUSY;
 
 	if (cfg80211_chandef_identical(&params->chandef,

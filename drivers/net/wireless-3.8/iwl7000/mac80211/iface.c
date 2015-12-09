@@ -790,7 +790,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 	u32 hw_reconf_flags = 0;
 	int i, flushed;
 	struct ps_data *ps;
-	struct cfg80211_chan_def __maybe_unused chandef;
+	struct cfg80211_chan_def chandef;
 	bool cancel_scan;
 
 	clear_bit(SDATA_STATE_RUNNING, &sdata->state);
@@ -882,8 +882,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 
 	cancel_delayed_work_sync(&sdata->dfs_cac_timer_work);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,15,0)
-	if (sdata->wdev.cac_started) {
+	if (wdev_cac_started(&sdata->wdev)) {
 		chandef = sdata->vif.bss_conf.chandef;
 		WARN_ON(local->suspended);
 		mutex_lock(&local->mtx);
@@ -893,7 +892,6 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 				   NL80211_RADAR_CAC_ABORTED,
 				   GFP_KERNEL);
 	}
-#endif
 
 	/* APs need special treatment */
 	if (sdata->vif.type == NL80211_IFTYPE_AP) {

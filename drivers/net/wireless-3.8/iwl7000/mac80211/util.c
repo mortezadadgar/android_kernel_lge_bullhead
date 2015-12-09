@@ -2711,7 +2711,6 @@ u64 ieee80211_calculate_rx_timestamp(struct ieee80211_local *local,
 
 void ieee80211_dfs_cac_cancel(struct ieee80211_local *local)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(3,15,0)
 	struct ieee80211_sub_if_data *sdata;
 	struct cfg80211_chan_def chandef;
 
@@ -2724,7 +2723,7 @@ void ieee80211_dfs_cac_cancel(struct ieee80211_local *local)
 		 */
 		cancel_delayed_work(&sdata->dfs_cac_timer_work);
 
-		if (sdata->wdev.cac_started) {
+		if (wdev_cac_started(&sdata->wdev)) {
 			chandef = sdata->vif.bss_conf.chandef;
 			ieee80211_vif_release_channel(sdata);
 			cfg80211_cac_event(sdata->dev,
@@ -2735,12 +2734,10 @@ void ieee80211_dfs_cac_cancel(struct ieee80211_local *local)
 	}
 	mutex_unlock(&local->iflist_mtx);
 	mutex_unlock(&local->mtx);
-#endif
 }
 
 void ieee80211_dfs_radar_detected_work(struct work_struct *work)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(3,15,0)
 	struct ieee80211_local *local =
 		container_of(work, struct ieee80211_local, radar_detected_work);
 	struct cfg80211_chan_def chandef = local->hw.conf.chandef;
@@ -2764,7 +2761,6 @@ void ieee80211_dfs_radar_detected_work(struct work_struct *work)
 		WARN_ON(1);
 	else
 		cfg80211_radar_event(local->hw.wiphy, &chandef, GFP_KERNEL);
-#endif
 }
 
 void ieee80211_radar_detected(struct ieee80211_hw *hw)

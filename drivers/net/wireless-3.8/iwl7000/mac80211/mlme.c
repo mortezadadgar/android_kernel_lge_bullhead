@@ -1618,7 +1618,6 @@ void ieee80211_dynamic_ps_timer(unsigned long data)
 
 void ieee80211_dfs_cac_timer_work(struct work_struct *work)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(3,15,0)
 	struct delayed_work *delayed_work =
 		container_of(work, struct delayed_work, work);
 	struct ieee80211_sub_if_data *sdata =
@@ -1627,14 +1626,13 @@ void ieee80211_dfs_cac_timer_work(struct work_struct *work)
 	struct cfg80211_chan_def chandef = sdata->vif.bss_conf.chandef;
 
 	mutex_lock(&sdata->local->mtx);
-	if (sdata->wdev.cac_started) {
+	if (wdev_cac_started(&sdata->wdev)) {
 		ieee80211_vif_release_channel(sdata);
 		cfg80211_cac_event(sdata->dev, &chandef,
 				   NL80211_RADAR_CAC_FINISHED,
 				   GFP_KERNEL);
 	}
 	mutex_unlock(&sdata->local->mtx);
-#endif
 }
 
 static bool

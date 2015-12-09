@@ -401,6 +401,23 @@ bp_cfg80211_classify8021d(struct sk_buff *skb,
 #if CFG80211_VERSION < KERNEL_VERSION(3,15,0)
 #define cfg80211_ibss_joined(dev, bssid, chan, gfp) \
 	cfg80211_ibss_joined(dev, bssid, gfp)
+
+static inline bool wdev_cac_started(struct wireless_dev *wdev)
+{
+	return false;
+}
+
+static inline void
+cfg80211_cac_event(struct net_device *netdev,
+		   const struct cfg80211_chan_def *chandef,
+		   enum nl80211_radar_event event, gfp_t gfp)
+{
+}
+#else
+static inline bool wdev_cac_started(struct wireless_dev *wdev)
+{
+	return wdev->cac_started;
+}
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,15,0) */
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,16,0)
