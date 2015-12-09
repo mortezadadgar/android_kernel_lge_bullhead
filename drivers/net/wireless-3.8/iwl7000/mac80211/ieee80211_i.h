@@ -1610,13 +1610,7 @@ int ieee80211_remain_on_channel(struct wiphy *wiphy, struct wireless_dev *wdev,
 int ieee80211_cancel_remain_on_channel(struct wiphy *wiphy,
 				       struct wireless_dev *wdev, u64 cookie);
 int ieee80211_mgmt_tx(struct wiphy *wiphy, struct wireless_dev *wdev,
-#if CFG80211_VERSION >= KERNEL_VERSION(3,14,0)
 		      struct cfg80211_mgmt_tx_params *params, u64 *cookie);
-#else
-		      struct ieee80211_channel *chan, bool offchan,
-		      unsigned int wait, const u8 *buf, size_t len,
-		      bool no_cck, bool dont_wait_for_ack, u64 *cookie);
-#endif
 int ieee80211_mgmt_tx_cancel_wait(struct wiphy *wiphy,
 				  struct wireless_dev *wdev, u64 cookie);
 

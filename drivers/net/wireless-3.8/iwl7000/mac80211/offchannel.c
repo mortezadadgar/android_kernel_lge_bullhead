@@ -769,24 +769,8 @@ int ieee80211_cancel_remain_on_channel(struct wiphy *wiphy,
 }
 
 int ieee80211_mgmt_tx(struct wiphy *wiphy, struct wireless_dev *wdev,
-#if CFG80211_VERSION >= KERNEL_VERSION(3,14,0)
 		      struct cfg80211_mgmt_tx_params *params, u64 *cookie)
 {
-#else
-			     struct ieee80211_channel *chan, bool offchan,
-			     unsigned int wait, const u8 *buf, size_t len,
-			     bool no_cck, bool dont_wait_for_ack, u64 *cookie)
-{
-	struct cfg80211_mgmt_tx_params _params = {
-		.chan = chan,
-		.offchan = offchan,
-		.wait = wait,
-		.buf = buf,
-		.len = len,
-		.no_cck = no_cck,
-		.dont_wait_for_ack = dont_wait_for_ack,
-	}, *params = &_params;
-#endif
 	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
 	struct ieee80211_local *local = sdata->local;
 	struct sk_buff *skb;

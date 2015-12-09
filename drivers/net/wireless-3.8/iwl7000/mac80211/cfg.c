@@ -3473,6 +3473,23 @@ static int ieee80211_abort_msrment(struct wiphy *wiphy,
 }
 #endif
 
+#if CFG80211_VERSION < KERNEL_VERSION(3,14,0)
+static int _wrap_mgmt_tx(struct wiphy *wiphy, struct wireless_dev *wdev, struct ieee80211_channel *chan, bool offchan, unsigned int wait, const u8 *buf, size_t len, bool no_cck, bool dont_wait_for_ack, u64 *cookie)
+{
+	struct cfg80211_mgmt_tx_params params = {
+		.chan = chan,
+		.offchan = offchan,
+		.wait = wait,
+		.buf = buf,
+		.len = len,
+		.no_cck = no_cck,
+		.dont_wait_for_ack = dont_wait_for_ack,
+	};
+
+	return ieee80211_mgmt_tx(wiphy, wdev, &params, cookie);
+}
+#endif
+
 const struct cfg80211_ops mac80211_config_ops = {
 	.add_virtual_intf = ieee80211_add_iface,
 	.del_virtual_intf = ieee80211_del_iface,
@@ -3547,7 +3564,11 @@ const struct cfg80211_ops mac80211_config_ops = {
 	.set_bitrate_mask = ieee80211_set_bitrate_mask,
 	.remain_on_channel = ieee80211_remain_on_channel,
 	.cancel_remain_on_channel = ieee80211_cancel_remain_on_channel,
+#if CFG80211_VERSION >= KERNEL_VERSION(3,14,0)
 	.mgmt_tx = ieee80211_mgmt_tx,
+#else
+	.mgmt_tx = _wrap_mgmt_tx,
+#endif
 	.mgmt_tx_cancel_wait = ieee80211_mgmt_tx_cancel_wait,
 	.set_cqm_rssi_config = ieee80211_set_cqm_rssi_config,
 	.mgmt_frame_register = ieee80211_mgmt_frame_register,
