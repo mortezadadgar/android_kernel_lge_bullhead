@@ -79,6 +79,4 @@ static inline int uncache_firmware(const char *name)
 }
 #endif
 
-#define request_firmware_direct        request_firmware
-
 #endif

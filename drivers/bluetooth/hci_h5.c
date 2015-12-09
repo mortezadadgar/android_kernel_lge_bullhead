@@ -75,7 +75,7 @@ struct h5 {
 	size_t			rx_pending;	/* Expecting more bytes */
 	u8			rx_ack;		/* Last ack number received */
 
-	int			(*rx_func)(struct hci_uart *hu, u8 c);
+	int			(*rx_func) (struct hci_uart *hu, u8 c);
 
 	struct timer_list	timer;		/* Retransmission timer */
 
@@ -107,7 +107,7 @@ static void h5_link_control(struct hci_uart *hu, const void *data, size_t len)
 	if (!nskb)
 		return;
 
-	hci_skb_pkt_type(nskb) = HCI_3WIRE_LINK_PKT;
+	bt_cb(nskb)->pkt_type = HCI_3WIRE_LINK_PKT;
 
 	memcpy(skb_put(nskb, len), data, len);
 
@@ -128,7 +128,7 @@ static void h5_timed_event(unsigned long arg)
 {
 	const unsigned char sync_req[] = { 0x01, 0x7e };
 	unsigned char conf_req[] = { 0x03, 0xfc, 0x01 };
-	struct hci_uart *hu = (struct hci_uart *)arg;
+	struct hci_uart *hu = (struct hci_uart *) arg;
 	struct h5 *h5 = hu->priv;
 	struct sk_buff *skb;
 	unsigned long flags;
@@ -210,7 +210,7 @@ static int h5_open(struct hci_uart *hu)
 
 	init_timer(&h5->timer);
 	h5->timer.function = h5_timed_event;
-	h5->timer.data = (unsigned long)hu;
+	h5->timer.data = (unsigned long) hu;
 
 	h5->tx_win = H5_TX_WIN_MAX;
 
@@ -360,7 +360,7 @@ static void h5_complete_rx_pkt(struct hci_uart *hu)
 	case HCI_EVENT_PKT:
 	case HCI_ACLDATA_PKT:
 	case HCI_SCODATA_PKT:
-		hci_skb_pkt_type(h5->rx_skb) = H5_HDR_PKT_TYPE(hdr);
+		bt_cb(h5->rx_skb)->pkt_type = H5_HDR_PKT_TYPE(hdr);
 
 		/* Remove Three-wire header */
 		skb_pull(h5->rx_skb, 4);
@@ -453,7 +453,7 @@ static int h5_rx_pkt_start(struct hci_uart *hu, unsigned char c)
 		return -ENOMEM;
 	}
 
-	h5->rx_skb->dev = (void *)hu->hdev;
+	h5->rx_skb->dev = (void *) hu->hdev;
 
 	return 0;
 }
@@ -562,7 +562,7 @@ static int h5_enqueue(struct hci_uart *hu, struct sk_buff *skb)
 		return 0;
 	}
 
-	switch (hci_skb_pkt_type(skb)) {
+	switch (bt_cb(skb)->pkt_type) {
 	case HCI_ACLDATA_PKT:
 	case HCI_COMMAND_PKT:
 		skb_queue_tail(&h5->rel, skb);
@@ -573,7 +573,7 @@ static int h5_enqueue(struct hci_uart *hu, struct sk_buff *skb)
 		break;
 
 	default:
-		BT_ERR("Unknown packet type %u", hci_skb_pkt_type(skb));
+		BT_ERR("Unknown packet type %u", bt_cb(skb)->pkt_type);
 		kfree_skb(skb);
 		break;
 	}
@@ -642,7 +642,7 @@ static struct sk_buff *h5_prepare_pkt(struct hci_uart *hu, u8 pkt_type,
 	if (!nskb)
 		return NULL;
 
-	hci_skb_pkt_type(nskb) = pkt_type;
+	bt_cb(nskb)->pkt_type = pkt_type;
 
 	h5_slip_delim(nskb);
 
@@ -696,8 +696,8 @@ static struct sk_buff *h5_dequeue(struct hci_uart *hu)
 	}
 
 	skb = skb_dequeue(&h5->unrel);
-	if (skb) {
-		nskb = h5_prepare_pkt(hu, hci_skb_pkt_type(skb),
+	if (skb != NULL) {
+		nskb = h5_prepare_pkt(hu, bt_cb(skb)->pkt_type,
 				      skb->data, skb->len);
 		if (nskb) {
 			kfree_skb(skb);
@@ -714,8 +714,8 @@ static struct sk_buff *h5_dequeue(struct hci_uart *hu)
 		goto unlock;
 
 	skb = skb_dequeue(&h5->rel);
-	if (skb) {
-		nskb = h5_prepare_pkt(hu, hci_skb_pkt_type(skb),
+	if (skb != NULL) {
+		nskb = h5_prepare_pkt(hu, bt_cb(skb)->pkt_type,
 				      skb->data, skb->len);
 		if (nskb) {
 			__skb_queue_tail(&h5->unack, skb);

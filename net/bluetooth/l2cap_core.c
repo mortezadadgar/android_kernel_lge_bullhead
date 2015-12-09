@@ -213,7 +213,6 @@ done:
 	write_unlock(&chan_list_lock);
 	return err;
 }
-EXPORT_SYMBOL_GPL(l2cap_add_psm);
 
 int l2cap_add_scid(struct l2cap_chan *chan,  __u16 scid)
 {
@@ -239,7 +238,7 @@ static u16 l2cap_alloc_cid(struct l2cap_conn *conn)
 	else
 		dyn_end = L2CAP_CID_DYN_END;
 
-	for (cid = L2CAP_CID_DYN_START; cid <= dyn_end; cid++) {
+	for (cid = L2CAP_CID_DYN_START; cid < dyn_end; cid++) {
 		if (!__l2cap_get_chan_by_scid(conn, cid))
 			return cid;
 	}
@@ -453,7 +452,6 @@ struct l2cap_chan *l2cap_chan_create(void)
 
 	return chan;
 }
-EXPORT_SYMBOL_GPL(l2cap_chan_create);
 
 static void l2cap_chan_destroy(struct kref *kref)
 {
@@ -481,7 +479,6 @@ void l2cap_chan_put(struct l2cap_chan *c)
 
 	kref_put(&c->kref, l2cap_chan_destroy);
 }
-EXPORT_SYMBOL_GPL(l2cap_chan_put);
 
 void l2cap_chan_set_defaults(struct l2cap_chan *chan)
 {
@@ -500,7 +497,6 @@ void l2cap_chan_set_defaults(struct l2cap_chan *chan)
 
 	set_bit(FLAG_FORCE_ACTIVE, &chan->flags);
 }
-EXPORT_SYMBOL_GPL(l2cap_chan_set_defaults);
 
 static void l2cap_le_flowctl_init(struct l2cap_chan *chan)
 {
@@ -642,7 +638,6 @@ void l2cap_chan_del(struct l2cap_chan *chan, int err)
 
 	return;
 }
-EXPORT_SYMBOL_GPL(l2cap_chan_del);
 
 static void l2cap_conn_update_id_addr(struct work_struct *work)
 {
@@ -748,7 +743,6 @@ void l2cap_chan_close(struct l2cap_chan *chan, int reason)
 		break;
 	}
 }
-EXPORT_SYMBOL(l2cap_chan_close);
 
 static inline u8 l2cap_get_auth_type(struct l2cap_chan *chan)
 {
@@ -1601,7 +1595,7 @@ int l2cap_register_user(struct l2cap_conn *conn, struct l2cap_user *user)
 
 	hci_dev_lock(hdev);
 
-	if (!list_empty(&user->list)) {
+	if (user->list.next || user->list.prev) {
 		ret = -EINVAL;
 		goto out_unlock;
 	}
@@ -1631,10 +1625,12 @@ void l2cap_unregister_user(struct l2cap_conn *conn, struct l2cap_user *user)
 
 	hci_dev_lock(hdev);
 
-	if (list_empty(&user->list))
+	if (!user->list.next || !user->list.prev)
 		goto out_unlock;
 
-	list_del_init(&user->list);
+	list_del(&user->list);
+	user->list.next = NULL;
+	user->list.prev = NULL;
 	user->remove(conn, user);
 
 out_unlock:
@@ -1648,7 +1644,9 @@ static void l2cap_unregister_all_users(struct l2cap_conn *conn)
 
 	while (!list_empty(&conn->users)) {
 		user = list_first_entry(&conn->users, struct l2cap_user, list);
-		list_del_init(&user->list);
+		list_del(&user->list);
+		user->list.next = NULL;
+		user->list.prev = NULL;
 		user->remove(conn, user);
 	}
 }
@@ -2546,7 +2544,6 @@ int l2cap_chan_send(struct l2cap_chan *chan, struct msghdr *msg, size_t len)
 
 	return err;
 }
-EXPORT_SYMBOL_GPL(l2cap_chan_send);
 
 static void l2cap_send_srej(struct l2cap_chan *chan, u16 txseq)
 {
@@ -5251,9 +5248,7 @@ static int l2cap_le_connect_rsp(struct l2cap_conn *conn,
 	credits = __le16_to_cpu(rsp->credits);
 	result  = __le16_to_cpu(rsp->result);
 
-	if (result == L2CAP_CR_SUCCESS && (mtu < 23 || mps < 23 ||
-					   dcid < L2CAP_CID_DYN_START ||
-					   dcid > L2CAP_CID_LE_DYN_END))
+	if (result == L2CAP_CR_SUCCESS && (mtu < 23 || mps < 23))
 		return -EPROTO;
 
 	BT_DBG("dcid 0x%4.4x mtu %u mps %u credits %u result 0x%2.2x",
@@ -5273,11 +5268,6 @@ static int l2cap_le_connect_rsp(struct l2cap_conn *conn,
 
 	switch (result) {
 	case L2CAP_CR_SUCCESS:
-		if (__l2cap_get_chan_by_dcid(conn, dcid)) {
-			err = -EBADSLT;
-			break;
-		}
-
 		chan->ident = 0;
 		chan->dcid = dcid;
 		chan->omtu = mtu;
@@ -5445,16 +5435,9 @@ static int l2cap_le_connect_req(struct l2cap_conn *conn,
 		goto response_unlock;
 	}
 
-	/* Check for valid dynamic CID range */
-	if (scid < L2CAP_CID_DYN_START || scid > L2CAP_CID_LE_DYN_END) {
-		result = L2CAP_CR_INVALID_SCID;
-		chan = NULL;
-		goto response_unlock;
-	}
-
 	/* Check if we already have channel with that dcid */
 	if (__l2cap_get_chan_by_dcid(conn, scid)) {
-		result = L2CAP_CR_SCID_IN_USE;
+		result = L2CAP_CR_NO_MEM;
 		chan = NULL;
 		goto response_unlock;
 	}
@@ -7114,6 +7097,8 @@ int l2cap_chan_connect(struct l2cap_chan *chan, __le16 psm, u16 cid,
 	chan->dcid = cid;
 
 	if (bdaddr_type_is_le(dst_type)) {
+		u8 role;
+
 		/* Convert from L2CAP channel address type to HCI address type
 		 */
 		if (dst_type == BDADDR_LE_PUBLIC)
@@ -7122,15 +7107,14 @@ int l2cap_chan_connect(struct l2cap_chan *chan, __le16 psm, u16 cid,
 			dst_type = ADDR_LE_DEV_RANDOM;
 
 		if (hci_dev_test_flag(hdev, HCI_ADVERTISING))
-			hcon = hci_connect_le(hdev, dst, dst_type,
-					      chan->sec_level,
-					      HCI_LE_CONN_TIMEOUT,
-					      HCI_ROLE_SLAVE);
+			role = HCI_ROLE_SLAVE;
 		else
-			hcon = hci_connect_le_scan(hdev, dst, dst_type,
-						   chan->sec_level,
-						   HCI_LE_CONN_TIMEOUT);
+			role = HCI_ROLE_MASTER;
 
+		hcon = hci_connect_le_scan(hdev, dst, dst_type,
+					   chan->sec_level,
+					   HCI_LE_CONN_TIMEOUT,
+					   role);
 	} else {
 		u8 auth_type = l2cap_get_auth_type(chan);
 		hcon = hci_connect_acl(hdev, dst, chan->sec_level, auth_type);
@@ -7195,7 +7179,6 @@ done:
 	hci_dev_put(hdev);
 	return err;
 }
-EXPORT_SYMBOL_GPL(l2cap_chan_connect);
 
 /* ---- L2CAP interface with lower layer (HCI) ---- */
 
@@ -7240,7 +7223,7 @@ static struct l2cap_chan *l2cap_global_fixed_chan(struct l2cap_chan *c,
 	read_lock(&chan_list_lock);
 
 	if (c)
-		c = list_next_entry(c, global_l);
+		c = list_entry(c->global_l.next, typeof(*c), global_l);
 	else
 		c = list_entry(chan_list.next, typeof(*c), global_l);
 
@@ -7454,7 +7437,7 @@ static void l2cap_security_cfm(struct hci_conn *hcon, u8 status, u8 encrypt)
 	mutex_unlock(&conn->chan_lock);
 }
 
-void l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)
+int l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)
 {
 	struct l2cap_conn *conn = hcon->l2cap_data;
 	struct l2cap_hdr *hdr;
@@ -7497,7 +7480,7 @@ void l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)
 		if (len == skb->len) {
 			/* Complete frame received */
 			l2cap_recv_frame(conn, skb);
-			return;
+			return 0;
 		}
 
 		BT_DBG("Start: total len %d, frag len %d", len, skb->len);
@@ -7556,6 +7539,7 @@ void l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)
 
 drop:
 	kfree_skb(skb);
+	return 0;
 }
 
 static struct hci_cb l2cap_cb = {
