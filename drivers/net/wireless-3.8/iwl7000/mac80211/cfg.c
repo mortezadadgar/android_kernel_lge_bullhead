@@ -2124,7 +2124,9 @@ static int ieee80211_join_ocb(struct wiphy *wiphy, struct net_device *dev,
 {
 	return ieee80211_ocb_join(IEEE80211_DEV_TO_SUB_IF(dev), setup);
 }
+#endif
 
+#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 static int ieee80211_leave_ocb(struct wiphy *wiphy, struct net_device *dev)
 {
 	return ieee80211_ocb_leave(IEEE80211_DEV_TO_SUB_IF(dev));
@@ -3363,7 +3365,9 @@ static int ieee80211_add_tx_ts(struct wiphy *wiphy, struct net_device *dev,
 
 	return 0;
 }
+#endif
 
+#if CFG80211_VERSION >= KERNEL_VERSION(3,18,0)
 static int ieee80211_del_tx_ts(struct wiphy *wiphy, struct net_device *dev,
 			       u8 tsid, const u8 *peer)
 {
@@ -3421,7 +3425,9 @@ static u64 ieee80211_msrment_cookie(struct ieee80211_local *local,
 
 	return ((u64)type << 48) | local->msrment_cookie_counter;
 }
+#endif
 
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 static int ieee80211_perform_msrment(struct wiphy *wiphy,
 				     struct wireless_dev *wdev,
 				     struct cfg80211_msrment_request *request,
@@ -3444,7 +3450,9 @@ static int ieee80211_perform_msrment(struct wiphy *wiphy,
 
 	return -EOPNOTSUPP;
 }
+#endif
 
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 static int ieee80211_abort_msrment(struct wiphy *wiphy,
 				   struct wireless_dev *wdev, u64 cookie)
 {
@@ -3463,7 +3471,7 @@ static int ieee80211_abort_msrment(struct wiphy *wiphy,
 
 	return -EOPNOTSUPP;
 }
-#endif /* CFG80211_VERSION >= KERNEL_VERSION(4,5,0) */
+#endif
 
 const struct cfg80211_ops mac80211_config_ops = {
 	.add_virtual_intf = ieee80211_add_iface,
@@ -3487,8 +3495,10 @@ const struct cfg80211_ops mac80211_config_ops = {
 	.dump_survey = ieee80211_dump_survey,
 #if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 	.perform_msrment = ieee80211_perform_msrment,
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 	.abort_msrment = ieee80211_abort_msrment,
-#endif /* CFG80211_VERSION >= KERNEL_VERSION(4,5,0) */
+#endif
 #ifdef CPTCFG_MAC80211_MESH
 	.add_mpath = ieee80211_add_mpath,
 	.del_mpath = ieee80211_del_mpath,
@@ -3504,6 +3514,8 @@ const struct cfg80211_ops mac80211_config_ops = {
 #endif
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	.join_ocb = ieee80211_join_ocb,
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	.leave_ocb = ieee80211_leave_ocb,
 #endif
 	.change_bss = ieee80211_change_bss,
@@ -3546,6 +3558,8 @@ const struct cfg80211_ops mac80211_config_ops = {
 	.tdls_mgmt = ieee80211_tdls_mgmt,
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	.tdls_channel_switch = ieee80211_tdls_channel_switch,
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	.tdls_cancel_channel_switch = ieee80211_tdls_cancel_channel_switch,
 #endif
 	.probe_client = ieee80211_probe_client,
@@ -3568,6 +3582,8 @@ const struct cfg80211_ops mac80211_config_ops = {
 #endif
 #if CFG80211_VERSION >= KERNEL_VERSION(3,18,0)
 	.add_tx_ts = ieee80211_add_tx_ts,
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(3,18,0)
 	.del_tx_ts = ieee80211_del_tx_ts,
 #endif
 };
