@@ -82,6 +82,9 @@ enum {
 	INIT_COMPLETE_NOTIF = 0x4,
 	APMG_PD_SV_CMD = 0x43,
 
+	/* ToF */
+	LOCATION_GROUP_NOTIFICATION = 0x11,
+
 	/* Tx */
 	TX_CMD = 0x1C,
 
@@ -116,6 +119,11 @@ enum {
 
 enum iwl_phy_ops_subcmd_ids {
 	DTS_MEASUREMENT_NOTIF_WIDE = WIDE_ID(PHY_OPS_GROUP, 0xFF),
+};
+
+enum iwl_location_ops_subcmd_ids {
+	LOCATION_MCSI_NOTIFICATION = 0xFB,
+	LOCATION_RANGE_RESPONSE_NOTIFICATION = 0xFE
 };
 
 /*
