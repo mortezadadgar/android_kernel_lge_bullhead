@@ -2618,7 +2618,6 @@ static int ieee80211_start_radar_detection(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,12,0)
 static struct cfg80211_beacon_data *
 cfg80211_beacon_dup(struct cfg80211_beacon_data *beacon)
 {
@@ -2674,20 +2673,16 @@ cfg80211_beacon_dup(struct cfg80211_beacon_data *beacon)
 
 	return new_beacon;
 }
-#endif
 
 void ieee80211_csa_finish(struct ieee80211_vif *vif)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(3,12,0)
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
 
 	ieee80211_queue_work(&sdata->local->hw,
 			     &sdata->csa_finalize_work);
-#endif
 }
 EXPORT_SYMBOL(ieee80211_csa_finish);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,12,0)
 static int ieee80211_set_after_csa_beacon(struct ieee80211_sub_if_data *sdata,
 					  u32 *changed)
 {
@@ -2850,16 +2845,16 @@ static int ieee80211_set_csa_beacon(struct ieee80211_sub_if_data *sdata,
 		if (params->count <= 1)
 			break;
 
-		if ((params->n_counter_offsets_beacon >
+		if ((csa_n_counter_offsets_beacon(params) >
 		     IEEE80211_MAX_CSA_COUNTERS_NUM) ||
-		    (params->n_counter_offsets_presp >
+		    (csa_n_counter_offsets_presp(params) >
 		     IEEE80211_MAX_CSA_COUNTERS_NUM))
 			return -EINVAL;
 
-		csa.counter_offsets_beacon = params->counter_offsets_beacon;
-		csa.counter_offsets_presp = params->counter_offsets_presp;
-		csa.n_counter_offsets_beacon = params->n_counter_offsets_beacon;
-		csa.n_counter_offsets_presp = params->n_counter_offsets_presp;
+		csa.counter_offsets_beacon = csa_counter_offsets_beacon(params);
+		csa.counter_offsets_presp = csa_counter_offsets_presp(params);
+		csa.n_counter_offsets_beacon = csa_n_counter_offsets_beacon(params);
+		csa.n_counter_offsets_presp = csa_n_counter_offsets_presp(params);
 		csa.count = params->count;
 
 		err = ieee80211_assign_beacon(sdata, &params->beacon_csa, &csa);
@@ -3059,7 +3054,6 @@ int ieee80211_channel_switch(struct wiphy *wiphy, struct net_device *dev,
 
 	return err;
 }
-#endif
 
 u64 ieee80211_mgmt_tx_cookie(struct ieee80211_local *local)
 {

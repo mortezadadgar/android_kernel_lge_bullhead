@@ -1423,9 +1423,7 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 	skb_queue_head_init(&sdata->skb_queue);
 	INIT_WORK(&sdata->work, ieee80211_iface_work);
 	INIT_WORK(&sdata->recalc_smps, ieee80211_recalc_smps_work);
-#if CFG80211_VERSION >= KERNEL_VERSION(3,12,0)
 	INIT_WORK(&sdata->csa_finalize_work, ieee80211_csa_finalize_work);
-#endif
 	INIT_LIST_HEAD(&sdata->assigned_chanctx_list);
 	INIT_LIST_HEAD(&sdata->reserved_chanctx_list);
 

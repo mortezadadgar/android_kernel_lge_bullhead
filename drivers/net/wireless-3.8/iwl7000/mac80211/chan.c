@@ -973,10 +973,8 @@ ieee80211_vif_chanctx_reservation_complete(struct ieee80211_sub_if_data *sdata)
 	case NL80211_IFTYPE_OCB:
 		/* keep code in case of fall-through (spatch generated) */
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(3,12,0)
 		ieee80211_queue_work(&sdata->local->hw,
 				     &sdata->csa_finalize_work);
-#endif
 		break;
 	case NL80211_IFTYPE_STATION:
 		ieee80211_queue_work(&sdata->local->hw,

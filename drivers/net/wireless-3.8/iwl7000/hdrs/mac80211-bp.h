@@ -604,8 +604,56 @@ cfg80211_check_combinations(struct wiphy *wiphy,
 }
 
 #define const_since_3_16
+
+static inline unsigned int
+csa_n_counter_offsets_beacon(struct cfg80211_csa_settings *s)
+{
+	return 0;
+}
+
+static inline unsigned int
+csa_n_counter_offsets_presp(struct cfg80211_csa_settings *s)
+{
+	return 0;
+}
+
+static inline const u16 *
+csa_counter_offsets_beacon(struct cfg80211_csa_settings *s)
+{
+	return NULL;
+}
+
+static inline const u16 *
+csa_counter_offsets_presp(struct cfg80211_csa_settings *s)
+{
+	return NULL;
+}
 #else
 #define const_since_3_16 const
+
+static inline unsigned int
+csa_n_counter_offsets_beacon(struct cfg80211_csa_settings *s)
+{
+	return s->n_counter_offsets_beacon;
+}
+
+static inline unsigned int
+csa_n_counter_offsets_presp(struct cfg80211_csa_settings *s)
+{
+	return s->n_counter_offsets_presp;
+}
+
+static inline const u16 *
+csa_counter_offsets_beacon(struct cfg80211_csa_settings *s)
+{
+	return s->counter_offsets_beacon;
+}
+
+static inline const u16 *
+csa_counter_offsets_presp(struct cfg80211_csa_settings *s)
+{
+	return s->counter_offsets_presp;
+}
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,16,0) */
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,18,0)
