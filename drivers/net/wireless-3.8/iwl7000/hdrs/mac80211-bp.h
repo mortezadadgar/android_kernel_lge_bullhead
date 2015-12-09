@@ -238,6 +238,8 @@ ieee80211_chandef_rate_flags(struct cfg80211_chan_def *chandef)
 #define NL80211_BSS_CHAN_WIDTH_20	0
 #define NL80211_BSS_CHAN_WIDTH_10	1
 #define NL80211_BSS_CHAN_WIDTH_5	2
+/* use a macro to be compatible with scan_request and sched_scan_request */
+#define cfg_scan_req_width(req) NL80211_BSS_CHAN_WIDTH_20
 
 static inline int
 ieee80211_chandef_max_power(struct cfg80211_chan_def *chandef)
@@ -304,6 +306,8 @@ ieee80211_mandatory_rates(struct ieee80211_supported_band *sband)
 }
 
 #define ieee80211_mandatory_rates(sband, width) ieee80211_mandatory_rates(sband)
+#else
+#define cfg_scan_req_width(req) ((req)->scan_width)
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,12,0) */
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,13,0)

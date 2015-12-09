@@ -290,12 +290,7 @@ static bool ieee80211_prep_hw_scan(struct ieee80211_local *local)
 	}
 
 	local->hw_scan_req->req.n_channels = n_chans;
-	ieee80211_prepare_scan_chandef(&chandef,
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
-				       req->scan_width);
-#else
-				       NL80211_BSS_CHAN_WIDTH_20);
-#endif
+	ieee80211_prepare_scan_chandef(&chandef, cfg_scan_req_width(req));
 
 	ielen = ieee80211_build_preq_ies(local,
 					 (u8 *)local->hw_scan_req->req.ie,
@@ -741,11 +736,7 @@ static void ieee80211_scan_state_set_channel(struct ieee80211_local *local,
 	local->scan_chandef.chan = chan;
 	local->scan_chandef.center_freq1 = chan->center_freq;
 	local->scan_chandef.center_freq2 = 0;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
-	switch (scan_req->scan_width) {
-#else
-	switch (NL80211_BSS_CHAN_WIDTH_20) {
-#endif
+	switch (cfg_scan_req_width(scan_req)) {
 	case NL80211_BSS_CHAN_WIDTH_5:
 		local->scan_chandef.width = NL80211_CHAN_WIDTH_5;
 		break;
@@ -759,11 +750,7 @@ static void ieee80211_scan_state_set_channel(struct ieee80211_local *local,
 		oper_scan_width = cfg80211_chandef_to_scan_width(
 					&local->_oper_chandef);
 		if (chan == local->_oper_chandef.chan &&
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
-		    oper_scan_width == scan_req->scan_width)
-#else
-		    oper_scan_width == NL80211_BSS_CHAN_WIDTH_20)
-#endif
+		    oper_scan_width == cfg_scan_req_width(scan_req))
 			local->scan_chandef = local->_oper_chandef;
 		else
 			local->scan_chandef.width = NL80211_CHAN_WIDTH_20_NOHT;
@@ -1114,12 +1101,7 @@ int __ieee80211_request_sched_scan_start(struct ieee80211_sub_if_data *sdata,
 		goto out;
 	}
 
-	ieee80211_prepare_scan_chandef(&chandef,
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
-				       req->scan_width);
-#else
-				       NL80211_BSS_CHAN_WIDTH_20);
-#endif
+	ieee80211_prepare_scan_chandef(&chandef, cfg_scan_req_width(req));
 
 	len = ieee80211_build_preq_ies(local, ie, num_bands * iebufsz,
 				       &sched_scan_ies, req->ie,
