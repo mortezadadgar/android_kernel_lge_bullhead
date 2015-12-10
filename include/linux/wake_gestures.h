@@ -35,6 +35,7 @@ extern bool pwrkey_pressed;
 bool scr_suspended(void);
 void wg_setdev(struct input_dev *);
 void set_vibrate(int value);
+void timeout_pwrtrigger(void);
 
 #endif	/* _LINUX_WAKE_GESTURES_H */
 

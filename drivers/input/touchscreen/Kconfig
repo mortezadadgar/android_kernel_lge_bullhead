@@ -1075,4 +1075,10 @@ config INPUT_MT_WRAPPER
 config WAKE_GESTURES
         bool "Wake Gestures"
 
+config WAKE_TIMEOUT
+	tristate "Disable screen wake functions after timeout"
+	default y
+	help
+	 Disable screen wake functions after timeout
+
 endif

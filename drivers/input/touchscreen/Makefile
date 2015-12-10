@@ -84,3 +84,4 @@ obj-$(CONFIG_TOUCHSCREEN_GT9XX)		+= gt9xx/
 obj-$(CONFIG_TOUCHSCREEN_BU21150)	+= bu21150.o
 obj-$(CONFIG_INPUT_MT_WRAPPER)		+= input_mt_wrapper.o
 obj-$(CONFIG_WAKE_GESTURES)		+= wake_gestures.o
+obj-$(CONFIG_WAKE_TIMEOUT) 		+= wake_timeout.o

@@ -570,6 +570,10 @@ static ssize_t sweep2wake_dump(struct device *dev,
 	else
 		s2w_switch_changed = true;
 
+	if (scr_suspended() && (!dt2w_switch || !dt2w_switch_temp) && !s2w_switch_temp) {
+		timeout_pwrtrigger();
+	}
+
 	return count;
 }
 
@@ -618,6 +622,10 @@ static ssize_t doubletap2wake_dump(struct device *dev,
 		dt2w_switch = dt2w_switch_temp;
 	else
 		dt2w_switch_changed = true;
+
+	if (scr_suspended() && (!s2w_switch || !s2w_switch_temp) && !dt2w_switch_temp) {
+		timeout_pwrtrigger();
+	}
 
 	return count;
 }
