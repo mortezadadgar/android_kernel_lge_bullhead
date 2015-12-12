@@ -4371,7 +4371,8 @@ static int fb_notifier_callback(struct notifier_block *self,
 	if (evdata && evdata->data && rmi4_data && rmi4_data->i2c_client) {
 		if (event == FB_EARLY_EVENT_BLANK) {
 #ifdef CONFIG_WAKE_GESTURES
-			gestures_enabled = ((s2w_switch > 0) || (dt2w_switch > 0)) && (!pwrkey_pressed);
+			gestures_enabled = ((s2w_switch > 0) || (dt2w_switch > 0) ||
+				(camera_switch > 0)) && (!pwrkey_pressed);
 #endif
 			synaptics_secure_touch_stop(rmi4_data, 0);
 		} else if (event == FB_EVENT_BLANK) {
@@ -4790,6 +4791,10 @@ out:
 	if (s2w_switch_changed) {
 		s2w_switch = s2w_switch_temp;
 		s2w_switch_changed = false;
+	}
+	if (camera_switch_changed) {
+		camera_switch = camera_switch_temp;
+		camera_switch_changed = false;
 	}
 #endif
 	return 0;
