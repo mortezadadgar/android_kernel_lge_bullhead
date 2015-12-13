@@ -545,7 +545,7 @@ static int iwl_pci_runtime_suspend(struct device *device)
 	if (test_bit(STATUS_DEVICE_ENABLED, &trans->status))
 		return -EBUSY;
 
-	trans->wowlan_d0i3 = true;
+	trans->system_pm_mode = IWL_PLAT_PM_MODE_D0I3;
 
 	iwl_trans_d3_suspend(trans, false);
 
@@ -562,7 +562,7 @@ static int iwl_pci_runtime_resume(struct device *device)
 
 	iwl_trans_d3_resume(trans, &d3_status, false);
 
-	trans->wowlan_d0i3 = false;
+	trans->system_pm_mode = IWL_PLAT_PM_MODE_D3;
 
 	return 0;
 }
