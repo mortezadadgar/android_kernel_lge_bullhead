@@ -1186,7 +1186,7 @@ static int sta_apply_parameters(struct ieee80211_local *local,
 			break;
 		default:
 			sta->sta.max_amsdu_subframes = 0;
-		};
+		}
 	}
 
 	/*
