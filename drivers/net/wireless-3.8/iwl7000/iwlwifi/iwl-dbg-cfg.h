@@ -182,7 +182,6 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG(u16, MVM_RS_TPC_SR_FORCE_INCREASE)
 	IWL_DBG_CFG(u16, MVM_RS_TPC_SR_NO_INCREASE)
 	IWL_DBG_CFG(u8, MVM_RS_TPC_TX_POWER_STEP)
-	IWL_DBG_CFG_STR(fw_dbg_conf)
 #endif /* CPTCFG_IWLMVM */
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	IWL_DBG_CFG_NODEF(u32, dnt_out_mode)
@@ -236,6 +235,7 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(u32, dbg_mon_buff_end_addr_reg_addr_b_step)
 	IWL_DBG_CFG_NODEF(u32, dbg_mon_wr_ptr_addr_b_step)
 #endif /* CPTCFG_IWLWIFI_DEVICE_TESTMODE */
+	IWL_DBG_CFG_STR(fw_dbg_conf)
 	IWL_DBG_CFG_NODEF(u8, wakelock_mode)
 	IWL_DBG_CFG_NODEF(u32, d0i3_debug)
 	IWL_DBG_CFG_NODEF(u32, valid_ants)
