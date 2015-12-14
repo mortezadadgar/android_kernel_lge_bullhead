@@ -1958,15 +1958,9 @@ static int iwl_fill_data_tbs_amsdu(struct iwl_trans *trans, struct sk_buff *skb,
 			     &dev_cmd->hdr, IWL_HCMD_SCRATCHBUF_SIZE + tb1_len,
 			     NULL, 0);
 
-	/*
-	 * Pull the ieee80211 header + IV to be able to use TSO core,
-	 * we will restore it for the tx_status flow.
-	 */
-	skb_pull(skb, hdr_len + iv_len);
 	ip_hdrlen = skb_transport_header(skb) - skb_network_header(skb);
-	snap_ip_tcp_hdrlen =
-		IEEE80211_CCMP_HDR_LEN + ip_hdrlen + tcp_hdrlen(skb);
-	total_len = skb->len - snap_ip_tcp_hdrlen;
+	snap_ip_tcp_hdrlen = 8 + ip_hdrlen + tcp_hdrlen(skb);
+	total_len = skb->len - snap_ip_tcp_hdrlen - hdr_len - iv_len;
 	amsdu_pad = 0;
 
 	/* total amount of header we may need for this A-MSDU */
@@ -1981,8 +1975,14 @@ static int iwl_fill_data_tbs_amsdu(struct iwl_trans *trans, struct sk_buff *skb,
 	get_page(hdr_page->page);
 	start_hdr = hdr_page->pos;
 	info->driver_data[IWL_TRANS_FIRST_DRIVER_DATA] = hdr_page->page;
-	memcpy(hdr_page->pos, skb->data, iv_len);
+	memcpy(hdr_page->pos, skb->data + hdr_len, iv_len);
 	hdr_page->pos += iv_len;
+
+	/*
+	 * Pull the ieee80211 header + IV to be able to use TSO core,
+	 * we will restore it for the tx_status flow.
+	 */
+	skb_pull(skb, hdr_len + iv_len);
 
 	tso_start(skb, &tso);
 
