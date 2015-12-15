@@ -116,6 +116,7 @@ enum {
 	IWL_TM_USER_CMD_GET_DRIVER_BUILD_INFO,
 	IWL_TM_USER_CMD_GET_FW_INFO,
 	IWL_TM_USER_CMD_BUS_DATA_ACCESS,
+	IWL_TM_USER_CMD_GET_SIL_TYPE,
 
 	IWL_TM_USER_CMD_NOTIF_UCODE_RX_PKT = TM_CMD_NOTIF_BASE,
 	IWL_TM_USER_CMD_NOTIF_DRIVER,
@@ -319,6 +320,14 @@ struct iwl_switch_op_mode {
  */
 struct iwl_sil_step {
 	__u32 silicon_step;
+} __packed __aligned(4);
+
+/**
+ * struct iwl_sil_type - holds the silicon type
+ * @silicon_type: the device silicon type
+ */
+struct iwl_tm_sil_type {
+	__u32 silicon_type;
 } __packed __aligned(4);
 
 #define MAX_DRIVER_VERSION_LEN	256
