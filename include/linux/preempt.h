@@ -25,7 +25,7 @@ static __always_inline void preempt_count_set(int pc)
 	*preempt_count_ptr() = pc;
 }
 
-#if 1 && (defined(CONFIG_DEBUG_PREEMPT) || defined(CONFIG_PREEMPT_TRACER))
+#if 0 && (defined(CONFIG_DEBUG_PREEMPT) || defined(CONFIG_PREEMPT_TRACER))
   extern void add_preempt_count(int val);
   extern void sub_preempt_count(int val);
 #else
