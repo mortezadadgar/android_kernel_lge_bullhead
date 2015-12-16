@@ -6,6 +6,7 @@
  * GPL LICENSE SUMMARY
  *
  * Copyright(c) 2007 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2015 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -95,6 +96,8 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 	struct xvt_alive_resp_ver2 *palive2;
 	struct xvt_alive_resp_ver3 *palive3;
 
+	xvt->support_umac_log = false;
+
 	if (iwl_rx_packet_payload_len(pkt) == sizeof(*palive)) {
 		palive = (void *)pkt->data;
 		xvt->error_event_table = le32_to_cpu(
@@ -123,6 +126,10 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 				    IWL_ALIVE_STATUS_OK;
 		xvt->fw_major_ver = palive2->ucode_major;
 		xvt->fw_minor_ver = palive2->ucode_minor;
+		xvt->umac_error_event_table =
+			le32_to_cpu(palive2->error_info_addr);
+		if (xvt->umac_error_event_table)
+			xvt->support_umac_log = true;
 
 		IWL_DEBUG_FW(xvt,
 			     "Alive VER2 ucode status 0x%04x revision 0x%01X "
@@ -146,6 +153,10 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 				    IWL_ALIVE_STATUS_OK;
 		xvt->fw_major_ver = le32_to_cpu(palive3->ucode_major);
 		xvt->fw_minor_ver = le32_to_cpu(palive3->ucode_minor);
+		xvt->umac_error_event_table =
+			le32_to_cpu(palive3->error_info_addr);
+		if (xvt->umac_error_event_table)
+			xvt->support_umac_log = true;
 
 		IWL_DEBUG_FW(xvt,
 			     "Alive VER3 ucode status 0x%04x revision 0x%01X 0x%01X flags 0x%01X\n",

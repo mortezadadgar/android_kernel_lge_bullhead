@@ -215,6 +215,30 @@ struct iwl_error_event_table_v2 {
 	u32 flow_handler;	/* FH read/write pointers, RX credit */
 } __packed;
 
+/* UMAC error struct - relevant starting from family 8000 chip.
+ * Note: This structure is read from the device with IO accesses,
+ * and the reading already does the endian conversion. As it is
+ * read with u32-sized accesses, any members with a different size
+ * need to be ordered correctly though!
+ */
+struct iwl_umac_error_event_table {
+	u32 valid;		/* (nonzero) valid, (0) log is empty */
+	u32 error_id;		/* type of error */
+	u32 blink1;		/* branch link */
+	u32 blink2;		/* branch link */
+	u32 ilink1;		/* interrupt link */
+	u32 ilink2;		/* interrupt link */
+	u32 data1;		/* error-specific data */
+	u32 data2;		/* error-specific data */
+	u32 data3;		/* error-specific data */
+	u32 umac_major;
+	u32 umac_minor;
+	u32 frame_pointer;	/* core register 27*/
+	u32 stack_pointer;	/* core register 28 */
+	u32 cmd_header;		/* latest host cmd sent to UMAC */
+	u32 nic_isr_pref;	/* ISR status register */
+} __packed;
+
 /**
  * struct iwl_xvt - the xvt op_mode
  *
@@ -243,6 +267,8 @@ struct iwl_xvt {
 	struct iwl_sf_region sf_space;
 	u32 fw_major_ver;
 	u32 fw_minor_ver;
+	u32 umac_error_event_table;
+	bool support_umac_log;
 
 	struct iwl_sw_stack_config sw_stack_cfg;
 	bool rx_hdr_enabled;
@@ -285,6 +311,7 @@ void iwl_xvt_get_nic_error_log_v2(struct iwl_xvt *xvt,
 				  struct iwl_error_event_table_v2 *table);
 void iwl_xvt_dump_nic_error_log_v2(struct iwl_xvt *xvt,
 				   struct iwl_error_event_table_v2 *table);
+void iwl_xvt_dump_umac_error_log(struct iwl_xvt *xvt);
 
 /* User interface */
 int iwl_xvt_user_cmd_execute(struct iwl_op_mode *op_mode, u32 cmd,
