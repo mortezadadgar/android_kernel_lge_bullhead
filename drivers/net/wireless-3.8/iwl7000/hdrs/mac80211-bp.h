@@ -1572,3 +1572,12 @@ static inline long ktime_get_seconds(void)
 #if CFG80211_VERSION < KERNEL_VERSION(4,6,0)
 #define NL80211_EXT_FEATURE_RRM -1
 #endif
+
+static inline int
+cfg80211_sta_support_p2p_ps(struct station_parameters *params, bool p2p_go)
+{
+#if CFG80211_VERSION >= KERNEL_VERSION(4,6,0)
+	return params->support_p2p_ps;
+#endif
+	return p2p_go;
+}
