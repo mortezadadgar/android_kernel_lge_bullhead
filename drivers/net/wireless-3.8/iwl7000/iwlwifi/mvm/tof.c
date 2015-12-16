@@ -424,7 +424,7 @@ int iwl_mvm_tof_start_responder(struct iwl_mvm *mvm,
 	struct iwl_mvm_phy_ctxt *phy_ctxt;
 	int ret;
 
-	lockdep_assert_held(mvm->mutex);
+	lockdep_assert_held(&mvm->mutex);
 
 	rcu_read_lock();
 	pctx = rcu_dereference(vif->chanctx_conf);
