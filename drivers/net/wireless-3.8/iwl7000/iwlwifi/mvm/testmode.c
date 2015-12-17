@@ -213,7 +213,7 @@ static int iwl_mvm_tm_reg_ops(struct iwl_trans *trans,
 		return -ENOMEM;
 	result->num = read_idx;
 	if (is_grab_nic_access_required) {
-		if (!iwl_trans_grab_nic_access(trans, false, &flags)) {
+		if (!iwl_trans_grab_nic_access(trans, &flags)) {
 			kfree(result);
 			return -EBUSY;
 		}
@@ -284,7 +284,7 @@ static int iwl_tm_indirect_read(struct iwl_mvm *mvm,
 	/* Hard-coded periphery absolute address */
 	if (IWL_ABS_PRPH_START <= addr &&
 	    addr < IWL_ABS_PRPH_START + PRPH_END) {
-		if (!iwl_trans_grab_nic_access(trans, false, &flags)) {
+		if (!iwl_trans_grab_nic_access(trans, &flags)) {
 			mutex_unlock(&mvm->mutex);
 			return -EBUSY;
 		}
@@ -319,7 +319,7 @@ static int iwl_tm_indirect_write(struct iwl_mvm *mvm,
 		/* Periphery writes can be 1-3 bytes long, or DWORDs */
 		if (size < 4) {
 			memcpy(&val, buf, size);
-			if (!iwl_trans_grab_nic_access(trans, false, &flags)) {
+			if (!iwl_trans_grab_nic_access(trans, &flags)) {
 				mutex_unlock(&mvm->mutex);
 				return -EBUSY;
 			}

@@ -644,7 +644,7 @@ int iwl_dnt_dev_if_read_rx(struct iwl_dnt *dnt, struct iwl_trans *trans)
 
 	buf32 = (u32 *)crash->rx;
 
-	if (!iwl_trans_grab_nic_access(trans, false, &flags)) {
+	if (!iwl_trans_grab_nic_access(trans, &flags)) {
 		vfree(crash->rx);
 		return -EBUSY;
 	}

@@ -291,7 +291,7 @@ static int iwl_xvt_reg_ops(struct iwl_trans *trans,
 		return -ENOMEM;
 	result->num = read_idx;
 	if (is_grab_nic_access_required) {
-		if (!iwl_trans_grab_nic_access(trans, false, &flags)) {
+		if (!iwl_trans_grab_nic_access(trans, &flags)) {
 			kfree(result);
 			return -EBUSY;
 		}
@@ -424,7 +424,7 @@ static int iwl_xvt_indirect_read(struct iwl_xvt *xvt,
 	/* Hard-coded periphery absolute address */
 	if (IWL_ABS_PRPH_START <= addr &&
 	    addr < IWL_ABS_PRPH_START + PRPH_END) {
-		if (!iwl_trans_grab_nic_access(trans, false, &flags))
+		if (!iwl_trans_grab_nic_access(trans, &flags))
 			return -EBUSY;
 		for (i = 0; i < size32; i++)
 			buf32[i] = iwl_trans_read_prph(trans,
@@ -455,7 +455,7 @@ static int iwl_xvt_indirect_write(struct iwl_xvt *xvt,
 		/* Periphery writes can be 1-3 bytes long, or DWORDs */
 		if (size < 4) {
 			memcpy(&val, buf, size);
-			if (!iwl_trans_grab_nic_access(trans, false, &flags))
+			if (!iwl_trans_grab_nic_access(trans, &flags))
 				return -EBUSY;
 			iwl_write32(trans, HBUS_TARG_PRPH_WADDR,
 				    (addr & 0x0000FFFF) | ((size - 1) << 24));
