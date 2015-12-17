@@ -13,6 +13,7 @@
 #include <linux/debugfs.h>
 #include <linux/hrtimer.h>
 #include <crypto/algapi.h>
+#include <linux/pci.h>
 
 /* get the CPTCFG_* preprocessor symbols */
 #include <hdrs/config.h>
@@ -352,6 +353,15 @@ skb_ensure_writable(struct sk_buff *skb, int write_len)
 
 #ifndef NETIF_F_CSUM_MASK
 #define NETIF_F_CSUM_MASK (NETIF_F_V4_CSUM | NETIF_F_V6_CSUM)
+#endif
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0))
+static inline int
+pci_enable_msix_range(struct pci_dev *dev, struct msix_entry *entries,
+		      int minvec, int maxvec)
+{
+	return -EOPNOTSUPP;
+}
 #endif
 
 #endif /* __IWL_CHROME */
