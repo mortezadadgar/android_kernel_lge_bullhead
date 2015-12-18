@@ -1196,13 +1196,22 @@ static int __maybe_unused elants_i2c_suspend(struct device *dev)
 
 	disable_irq(client->irq);
 
-	for (retry_cnt = 0; retry_cnt < MAX_RETRIES; retry_cnt++) {
-		error = elants_i2c_send(client, set_sleep_cmd,
-					sizeof(set_sleep_cmd));
-		if (!error)
-			break;
+	if (device_may_wakeup(dev)) {
+		/*
+		 * The device will automatically enter idle mode
+		 * that has reduced power consumption.
+		 */
+		ts->wake_irq_enabled = (enable_irq_wake(client->irq) == 0);
+	} else {
+		for (retry_cnt = 0; retry_cnt < MAX_RETRIES; retry_cnt++) {
+			error = elants_i2c_send(client, set_sleep_cmd,
+						sizeof(set_sleep_cmd));
+			if (!error)
+				break;
 
-		dev_err(&client->dev, "suspend command failed: %d\n", error);
+			dev_err(&client->dev,
+				"suspend command failed: %d\n", error);
+		}
 	}
 
 	if (device_may_wakeup(dev))
@@ -1219,16 +1228,20 @@ static int __maybe_unused elants_i2c_resume(struct device *dev)
 	int retry_cnt;
 	int error;
 
-	if (device_may_wakeup(dev) && ts->wake_irq_enabled)
-		disable_irq_wake(client->irq);
+	if (device_may_wakeup(dev)) {
+		if (ts->wake_irq_enabled)
+			disable_irq_wake(client->irq);
+		elants_i2c_sw_reset(client);
+	} else {
+		for (retry_cnt = 0; retry_cnt < MAX_RETRIES; retry_cnt++) {
+			error = elants_i2c_send(client, set_active_cmd,
+						sizeof(set_active_cmd));
+			if (!error)
+				break;
 
-	for (retry_cnt = 0; retry_cnt < MAX_RETRIES; retry_cnt++) {
-		error = elants_i2c_send(client, set_active_cmd,
-					sizeof(set_active_cmd));
-		if (!error)
-			break;
-
-		dev_err(&client->dev, "resume command failed: %d\n", error);
+			dev_err(&client->dev,
+				"resume command failed: %d\n", error);
+		}
 	}
 
 	ts->state = ELAN_STATE_NORMAL;
