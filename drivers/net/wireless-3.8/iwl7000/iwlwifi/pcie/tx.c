@@ -1888,6 +1888,7 @@ static int iwl_fill_data_tbs(struct iwl_trans *trans, struct sk_buff *skb,
 	return 0;
 }
 
+#ifdef CONFIG_INET
 static struct iwl_tso_hdr_page *
 get_page_hdr(struct iwl_trans *trans, size_t len)
 {
@@ -2113,6 +2114,18 @@ out_unmap:
 	iwl_pcie_tfd_unmap(trans, out_meta, &txq->tfds[q->write_ptr]);
 	return ret;
 }
+#else /* CONFIG_INET */
+static int iwl_fill_data_tbs_amsdu(struct iwl_trans *trans, struct sk_buff *skb,
+				   struct iwl_txq *txq, u8 hdr_len,
+				   struct iwl_cmd_meta *out_meta,
+				   struct iwl_device_cmd *dev_cmd, u16 tb1_len)
+{
+	/* No A-MSDU without CONFIG_INET */
+	WARN_ON(1);
+
+	return -1;
+}
+#endif /* CONFIG_INET */
 
 int iwl_trans_pcie_tx(struct iwl_trans *trans, struct sk_buff *skb,
 		      struct iwl_device_cmd *dev_cmd, int txq_id)
