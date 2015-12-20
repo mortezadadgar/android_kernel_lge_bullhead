@@ -7,7 +7,7 @@ iwlmvm-y += tt.o offloading.o tdls.o
 iwlmvm-y += tof.o fw-dbg.o
 iwlmvm-$(CPTCFG_IWLWIFI_DEBUGFS) += debugfs.o debugfs-vif.o
 iwlmvm-$(CPTCFG_IWLWIFI_LEDS) += led.o
-iwlmvm-$(CONFIG_PM_SLEEP) += d3.o
+iwlmvm-$(CONFIG_PM) += d3.o
 
 ccflags-y += -D__CHECK_ENDIAN__ -I$(src)/../
 
