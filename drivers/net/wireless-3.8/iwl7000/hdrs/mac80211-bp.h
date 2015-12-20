@@ -1410,6 +1410,16 @@ static inline void cfg80211_free_nan_func_members(struct cfg80211_nan_func *f)
 {
 }
 
+struct cfg80211_nan_match_params {
+	enum nl80211_nan_function_type type;
+	u8 inst_id;
+	u8 peer_inst_id;
+	const u8 *addr;
+	u8 info_len;
+	const u8 *info;
+	u64 cookie;
+};
+
 #endif /* CFG80211_VERSION < KERNEL_VERSION(4,5,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0)

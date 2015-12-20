@@ -5666,4 +5666,18 @@ void ieee80211_nan_func_terminated(struct ieee80211_vif *vif,
 				   enum nl80211_nan_func_term_reason reason,
 				   gfp_t gfp);
 
+/**
+ * ieee80211_nan_func_match - notify about NAN function match event.
+ *
+ * This function is used to notify mac80211 about nan function match. The
+ * cookie inside the match struct will be assigned by mac80211.
+ *
+ * @vif: &struct ieee80211_vif pointer from the add_interface callback.
+ * @match: match event information
+ * @gfp: allocation flags
+ */
+void ieee80211_nan_func_match(struct ieee80211_vif *vif,
+			      struct cfg80211_nan_match_params *match,
+			      gfp_t gfp);
+
 #endif /* MAC80211_H */
