@@ -665,6 +665,30 @@ csa_counter_offsets_presp(struct cfg80211_csa_settings *s)
 #define ASSOC_REQ_USE_RRM 0
 #endif
 
+/* Note: this stuff is included in in chromeos-3.18.
+ * Additionally, we check for <4.0, since that's when it was
+ * added upstream.
+ */
+#if (LINUX_VERSION_CODE != KERNEL_VERSION(3,18,0)) &&	\
+    (LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0))
+enum nl80211_ext_feature_index {
+	NL80211_EXT_FEATURE_VHT_IBSS,
+	NL80211_EXT_FEATURE_RRM,
+
+	/* add new features before the definition below */
+	NUM_NL80211_EXT_FEATURES,
+	MAX_NL80211_EXT_FEATURES = NUM_NL80211_EXT_FEATURES - 1
+};
+#endif
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,0,0)
+static inline void wiphy_ext_feature_set(struct wiphy *wiphy,
+					 enum nl80211_ext_feature_index ftidx)
+{
+}
+#define NL80211_EXT_FEATURE_RRM 0
+#endif
+
 #if CFG80211_VERSION < KERNEL_VERSION(3,19,0)
 #define NL80211_FEATURE_MAC_ON_CREATE 0 /* cannot be used */
 
