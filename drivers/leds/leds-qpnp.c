@@ -1751,27 +1751,37 @@ static int rgb_duration_config(struct qpnp_led_data *led)
 	if (!on_ms) {
 		return -EINVAL;
 	} else if (!off_ms) {
-		/* implement always on
-		 * note:
-		 * rgb_on_off_ms_store() bumps on_ms=0 up to RGB_LED_MIN_MS
-		 * so setting ms on/off to 0/0 in /sys results in seeing
-		 * 50/0 by the time we get here
-		 */
-		ramp_step_ms = 1000;
-		num_duty_pcts = 1;
-		pwm_cfg->duty_cycles->duty_pcts[0] =
-			(led->cdev.brightness *
-			100) / RGB_MAX_LEVEL;
+		ramp_step_ms = 70;
+		num_duty_pcts = RGB_LED_RAMP_STEP_COUNT * 10 + 3;
+
+		// Lighter
+		for (i = 0; i < num_duty_pcts - 3; i++) {
+			pwm_cfg->duty_cycles->duty_pcts[i] =
+				(led->cdev.brightness * 2 *
+				(i + 1)) / RGB_MAX_LEVEL;
+		}
+
+		// Max
+		for (i = num_duty_pcts - 3; i < num_duty_pcts; i++) {
+			pwm_cfg->duty_cycles->duty_pcts[i] =
+				(led->cdev.brightness *
+				100) / RGB_MAX_LEVEL;
+		}
+
+		pwm_cfg->lut_params.lut_pause_lo = 90;
 	} else {
 		ramp_step_ms = on_ms / 20;
 		ramp_step_ms = (ramp_step_ms < 5)? 5 : ramp_step_ms;
-		num_duty_pcts = RGB_LED_RAMP_STEP_COUNT;
+		num_duty_pcts = RGB_LED_RAMP_STEP_COUNT * 2 + 1;
 
 		for (i = 0; i < num_duty_pcts; i++) {
 			pwm_cfg->duty_cycles->duty_pcts[i] =
-				(led->cdev.brightness * 25 *
+				(led->cdev.brightness * 10 *
 				(num_duty_pcts-i-1)) / RGB_MAX_LEVEL;
 		}
+
+		pwm_cfg->lut_params.lut_pause_lo =
+			(on_ms - (ramp_step_ms * num_duty_pcts * 2)) * 4;
 	}
 
 	pwm_cfg->duty_cycles->num_duty_pcts = num_duty_pcts;
@@ -1792,18 +1802,10 @@ static int rgb_duration_config(struct qpnp_led_data *led)
 	}
 
 	pwm_cfg->lut_params.idx_len = pwm_cfg->duty_cycles->num_duty_pcts;
-	if (on_ms > (ramp_step_ms*num_duty_pcts * 2))
-		pwm_cfg->lut_params.lut_pause_lo =
-				on_ms - (ramp_step_ms * num_duty_pcts * 2);
-	else
-		pwm_cfg->lut_params.lut_pause_lo = 0;
 	pwm_cfg->lut_params.lut_pause_hi = off_ms;
-	pwm_cfg->lut_params.flags = PM_PWM_LUT_RAMP_UP;
-	if (pwm_cfg->lut_params.lut_pause_lo)
-		pwm_cfg->lut_params.flags |= PM_PWM_LUT_PAUSE_LO_EN;
-	if (pwm_cfg->lut_params.lut_pause_hi)
-		pwm_cfg->lut_params.flags |= PM_PWM_LUT_PAUSE_HI_EN |
-				PM_PWM_LUT_LOOP | PM_PWM_LUT_REVERSE;
+	pwm_cfg->lut_params.flags = PM_PWM_LUT_RAMP_UP |
+		PM_PWM_LUT_PAUSE_HI_EN |
+		PM_PWM_LUT_LOOP | PM_PWM_LUT_REVERSE;
 
 	rc = pwm_lut_config(pwm_cfg->pwm_dev,
 				pwm_cfg->pwm_period_us,
