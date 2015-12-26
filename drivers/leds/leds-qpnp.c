@@ -1739,6 +1739,12 @@ static int qpnp_kpdbl_set(struct qpnp_led_data *led)
 	return 0;
 }
 
+static int charging_led_duty_pcts[] = {
+	1, 4, 8, 12, 16, 20, 24, 28, 32, 36,
+	40, 44, 46, 52, 56, 60, 64, 68, 72, 76,
+	80, 84, 88, 92, 96, 100, 100, 100
+};
+
 static int rgb_duration_config(struct qpnp_led_data *led)
 {
 	int rc = 0;
@@ -1750,29 +1756,21 @@ static int rgb_duration_config(struct qpnp_led_data *led)
 
 	if (!on_ms) {
 		return -EINVAL;
-	} else if (!off_ms) {
-		ramp_step_ms = 70;
-		num_duty_pcts = RGB_LED_RAMP_STEP_COUNT * 10 + 3;
+	} else if (!off_ms) { // Charging
+		ramp_step_ms = 85;
+		num_duty_pcts = ARRAY_SIZE(charging_led_duty_pcts);
 
-		// Lighter
-		for (i = 0; i < num_duty_pcts - 3; i++) {
-			pwm_cfg->duty_cycles->duty_pcts[i] =
-				(led->cdev.brightness * 2 *
-				(i + 1)) / RGB_MAX_LEVEL;
-		}
-
-		// Max
-		for (i = num_duty_pcts - 3; i < num_duty_pcts; i++) {
+		for (i = 0; i < num_duty_pcts; i++) {
 			pwm_cfg->duty_cycles->duty_pcts[i] =
 				(led->cdev.brightness *
-				100) / RGB_MAX_LEVEL;
+				charging_led_duty_pcts[i]) / RGB_MAX_LEVEL;
 		}
 
-		pwm_cfg->lut_params.lut_pause_lo = 90;
-	} else {
+		pwm_cfg->lut_params.lut_pause_lo = 0;
+	} else { // Notification
 		ramp_step_ms = on_ms / 20;
 		ramp_step_ms = (ramp_step_ms < 5)? 5 : ramp_step_ms;
-		num_duty_pcts = RGB_LED_RAMP_STEP_COUNT * 2 + 1;
+		num_duty_pcts = RGB_LED_RAMP_STEP_COUNT * 2 + 1; // 21 steps
 
 		for (i = 0; i < num_duty_pcts; i++) {
 			pwm_cfg->duty_cycles->duty_pcts[i] =
