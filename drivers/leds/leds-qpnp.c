@@ -1740,9 +1740,9 @@ static int qpnp_kpdbl_set(struct qpnp_led_data *led)
 }
 
 static int charging_led_duty_pcts[] = {
-	1, 4, 8, 12, 16, 20, 24, 28, 32, 36,
+	1, 1, 4, 8, 12, 16, 20, 24, 28, 32, 36,
 	40, 44, 46, 52, 56, 60, 64, 68, 72, 76,
-	80, 84, 88, 92, 96, 100, 100, 100
+	80, 84, 88, 92, 96, 100, 100
 };
 
 static int rgb_duration_config(struct qpnp_led_data *led)
