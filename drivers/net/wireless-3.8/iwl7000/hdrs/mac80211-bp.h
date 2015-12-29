@@ -1,6 +1,6 @@
 /*
  * ChromeOS backport definitions
- * Copyright (C) 2015 Intel Deutschland GmbH
+ * Copyright (C) 2015-2016 Intel Deutschland GmbH
  */
 #include <linux/if_ether.h>
 #include <net/cfg80211.h>
@@ -1439,3 +1439,14 @@ static inline long ktime_get_seconds(void)
 	return uptime.tv_sec;
 }
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0) */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+#define thermal_notify_framework notify_thermal_framework
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0) */
+
+#ifndef S16_MAX
+#define S16_MAX		((s16)(U16_MAX>>1))
+#endif
+#ifndef S16_MIN
+#define S16_MIN		((s16)(-S16_MAX - 1))
+#endif
