@@ -289,6 +289,10 @@ enum iwl_data_path_subcmd_ids {
 	UPDATE_MU_GROUPS_CMD = 0x1,
 };
 
+enum iwl_prot_offload_subcmd_ids {
+	STORED_BEACON_NTF = 0xFF,
+};
+
 /* command groups */
 enum {
 	LEGACY_GROUP = 0x0,
@@ -297,6 +301,7 @@ enum {
 	DATA_PATH_GROUP = 0x5,
 	SCAN_GROUP = 0x6,
 	NAN_GROUP = 0x7,
+	PROT_OFFLOAD_GROUP = 0xb,
 };
 
 /**
@@ -1875,5 +1880,29 @@ struct iwl_mu_group_mgmt_cmd {
 	__le32 membership_status[2];
 	__le32 user_position[4];
 } __packed; /* MU_GROUP_ID_MNG_TABLE_API_S_VER_1 */
+
+#define MAX_STORED_BEACON_SIZE 600
+
+/**
+ * Stored beacon notification
+ *
+ * @system_time: system time on air rise
+ * @tsf: TSF on air rise
+ * @beacon_timestamp: beacon on air rise
+ * @phy_flags: general phy flags: band, modulation, etc.
+ * @channel: channel this beacon was received on
+ * @rates: rate in ucode internal format
+ * @byte_count: frame's byte count
+ */
+struct iwl_stored_beacon_notif {
+	__le32 system_time;
+	__le64 tsf;
+	__le32 beacon_timestamp;
+	__le16 phy_flags;
+	__le16 channel;
+	__le32 rates;
+	__le32 byte_count;
+	u8 data[MAX_STORED_BEACON_SIZE];
+} __packed; /* WOWLAN_STROED_BEACON_INFO_S_VER_1 */
 
 #endif /* __fw_api_h__ */
