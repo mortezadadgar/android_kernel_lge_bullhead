@@ -1115,8 +1115,8 @@ static inline bool iwl_mvm_is_p2p_standalone_uapsd(struct iwl_mvm *mvm)
 
 static inline bool iwl_mvm_has_new_rx_api(struct iwl_mvm *mvm)
 {
-	/* firmware flag isn't defined yet */
-	return false;
+	return fw_has_capa(&mvm->fw->ucode_capa,
+			   IWL_UCODE_TLV_CAPA_MULTI_QUEUE_RX_SUPPORT);
 }
 
 extern const u8 iwl_mvm_ac_to_tx_fifo[];
