@@ -1323,6 +1323,7 @@ void iwl_trans_pcie_rf_kill(struct iwl_trans *trans, bool state)
 static void iwl_trans_pcie_d3_suspend(struct iwl_trans *trans, bool test)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+	bool unified_image = trans->unified_image;
 
 	if (trans->system_pm_mode == IWL_PLAT_PM_MODE_D0I3) {
 		/* Enable persistence mode to avoid reset */
@@ -1348,7 +1349,7 @@ static void iwl_trans_pcie_d3_suspend(struct iwl_trans *trans, bool test)
 	iwl_clear_bit(trans, CSR_GP_CNTRL,
 		      CSR_GP_CNTRL_REG_FLAG_INIT_DONE);
 
-	if (trans->system_pm_mode == IWL_PLAT_PM_MODE_D3) {
+	if (trans->system_pm_mode == IWL_PLAT_PM_MODE_D3 && !unified_image) {
 		/*
 		 * reset TX queues -- some of their registers reset during S3
 		 * so if we don't reset everything here the D3 image would try
@@ -1366,6 +1367,7 @@ static int iwl_trans_pcie_d3_resume(struct iwl_trans *trans,
 {
 	u32 val;
 	int ret;
+	bool unified_image = trans->unified_image;
 
 	if (test) {
 		iwl_enable_interrupts(trans);
@@ -1400,7 +1402,7 @@ static int iwl_trans_pcie_d3_resume(struct iwl_trans *trans,
 	if (trans->system_pm_mode == IWL_PLAT_PM_MODE_D0I3) {
 		iwl_clear_bit(trans, CSR_GP_CNTRL,
 			      CSR_GP_CNTRL_REG_FLAG_MAC_ACCESS_REQ);
-	} else {
+	} else if (!unified_image) {
 		iwl_trans_pcie_tx_reset(trans);
 
 		ret = iwl_pcie_rx_init(trans);

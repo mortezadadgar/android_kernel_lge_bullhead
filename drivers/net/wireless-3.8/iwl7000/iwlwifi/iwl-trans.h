@@ -844,6 +844,9 @@ struct iwl_trans {
 	struct iwl_fw_paging *paging_db;
 	void *paging_download_buf;
 
+	/* Consolidated D0-D3 images*/
+	bool unified_image;
+
 	enum iwl_plat_pm_mode system_pm_mode;
 	enum iwl_plat_pm_mode runtime_pm_mode;
 

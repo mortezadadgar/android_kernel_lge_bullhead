@@ -956,6 +956,9 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 		goto error;
 	}
 
+	mvm->trans->unified_image = fw_has_capa(&mvm->fw->ucode_capa,
+					IWL_UCODE_TLV_CAPA_CNSLDTD_D3_D0_IMG);
+
 	iwl_mvm_get_shared_mem_conf(mvm);
 
 	ret = iwl_mvm_sf_update(mvm, NULL, false);

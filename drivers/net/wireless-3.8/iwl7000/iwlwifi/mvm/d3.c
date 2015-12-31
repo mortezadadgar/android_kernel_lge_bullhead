@@ -1027,14 +1027,18 @@ iwl_mvm_wowlan_config(struct iwl_mvm *mvm,
 		      struct ieee80211_sta *ap_sta)
 {
 	int ret;
+	bool unified_image = fw_has_capa(&mvm->fw->ucode_capa,
+					IWL_UCODE_TLV_CAPA_CNSLDTD_D3_D0_IMG);
 
-	ret = iwl_mvm_switch_to_d3(mvm);
-	if (ret)
-		return ret;
+	if (!unified_image) {
+		ret = iwl_mvm_switch_to_d3(mvm);
+		if (ret)
+			return ret;
 
-	ret = iwl_mvm_d3_reprogram(mvm, vif, ap_sta);
-	if (ret)
-		return ret;
+		ret = iwl_mvm_d3_reprogram(mvm, vif, ap_sta);
+		if (ret)
+			return ret;
+	}
 
 	if (!iwlwifi_mod_params.sw_crypto) {
 		/*
@@ -1081,10 +1085,14 @@ iwl_mvm_netdetect_config(struct iwl_mvm *mvm,
 {
 	struct iwl_wowlan_config_cmd wowlan_config_cmd = {};
 	int ret;
+	bool unified_image = fw_has_capa(&mvm->fw->ucode_capa,
+					IWL_UCODE_TLV_CAPA_CNSLDTD_D3_D0_IMG);
 
-	ret = iwl_mvm_switch_to_d3(mvm);
-	if (ret)
-		return ret;
+	if (!unified_image) {
+		ret = iwl_mvm_switch_to_d3(mvm);
+		if (ret)
+			return ret;
+	}
 
 	/* rfkill release can be either for wowlan or netdetect */
 	if (wowlan->rfkill_release)
@@ -2055,6 +2063,11 @@ static int __iwl_mvm_resume(struct iwl_mvm *mvm, bool test)
 	int ret;
 	enum iwl_d3_status d3_status;
 	bool keep = false;
+	bool unified_image = fw_has_capa(&mvm->fw->ucode_capa,
+					IWL_UCODE_TLV_CAPA_CNSLDTD_D3_D0_IMG);
+
+	u32 flags = CMD_ASYNC | CMD_HIGH_PRIO | CMD_SEND_IN_IDLE |
+				    CMD_WAKE_UP_TRANS;
 
 	mutex_lock(&mvm->mutex);
 
@@ -2106,9 +2119,14 @@ out_iterate:
 			iwl_mvm_d3_disconnect_iter, keep ? vif : NULL);
 
 out:
-	/* return 1 to reconfigure the device */
-	set_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status);
-	set_bit(IWL_MVM_STATUS_D3_RECONFIG, &mvm->status);
+	if (!unified_image) {
+		/* return 1 to reconfigure the device */
+		set_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status);
+		set_bit(IWL_MVM_STATUS_D3_RECONFIG, &mvm->status);
+	} else {
+		ret = iwl_mvm_send_cmd_pdu(mvm, D0I3_END_CMD, flags, 0, NULL);
+	}
+
 
 	/* We always return 1, which causes mac80211 to do a reconfig
 	 * with IEEE80211_RECONFIG_TYPE_RESTART.  This type of
@@ -2117,7 +2135,7 @@ out:
 	 * reference here.
 	 */
 	iwl_mvm_ref(mvm, IWL_MVM_REF_UCODE_DOWN);
-	return 1;
+	return unified_image ? 0 : 1;
 }
 
 static int iwl_mvm_resume_d3(struct iwl_mvm *mvm)
