@@ -123,14 +123,15 @@ iwl_fw_dbg_no_trig_window(struct iwl_mvm *mvm,
 {
 	unsigned long wind_jiff =
 		msecs_to_jiffies(le16_to_cpu(trig->trig_dis_ms));
+	u32 id = le32_to_cpu(trig->id);
 
 	/* If this is the first event checked, jump to update start ts */
-	if (mvm->fw_dbg_non_collect_ts_start[trig->id] &&
-	    (time_after(mvm->fw_dbg_non_collect_ts_start[trig->id] + wind_jiff,
+	if (mvm->fw_dbg_non_collect_ts_start[id] &&
+	    (time_after(mvm->fw_dbg_non_collect_ts_start[id] + wind_jiff,
 			jiffies)))
 		return true;
 
-	mvm->fw_dbg_non_collect_ts_start[trig->id] = jiffies;
+	mvm->fw_dbg_non_collect_ts_start[id] = jiffies;
 	return false;
 }
 
