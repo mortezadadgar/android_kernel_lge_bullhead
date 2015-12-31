@@ -255,10 +255,10 @@ static void iwl_pcie_rxq_mq_restock(struct iwl_trans *trans,
 				       list);
 		list_del(&rxb->list);
 
-		/* 12 first bits expected to be empty */
-		WARN_ON(rxb->page_dma & !0xFFF);
+		/* 12 first bits are expected to be empty */
+		WARN_ON(rxb->page_dma & DMA_BIT_MASK(12));
 		/* Point to Rx buffer via next RBD in circular buffer */
-		bd[rxq->write] = rxb->page_dma | rxb->vid;
+		bd[rxq->write] = cpu_to_le64(rxb->page_dma | rxb->vid);
 		rxq->write = (rxq->write + 1) & MQ_RX_TABLE_MASK;
 		rxq->free_count--;
 	}
@@ -1176,7 +1176,11 @@ restart:
 			emergency = true;
 
 		if (trans->cfg->mq_rx_supported) {
-			u16 vid = rxq->used_bd[i];
+			/*
+			 * used_bd is a 32 bit but only 12 are used to retrieve
+			 * the vid
+			 */
+			u16 vid = (u16)le32_to_cpu(rxq->used_bd[i]);
 
 			rxb = trans_pcie->global_table[vid];
 		} else {
