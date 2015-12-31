@@ -812,6 +812,8 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 		result->tx_rate_info.bw =
 			iwl_mvm_tof_fw_bw_to_rate_info_bw(fw_ap->measure_bw);
 #endif
+		/* TODO: FW to investigate */
+		result->rx_rate_info = result->tx_rate_info;
 		result->rtt = le32_to_cpu(fw_ap->rtt);
 		result->rtt_variance = le32_to_cpu(fw_ap->rtt_variance);
 		result->rtt_spread = le32_to_cpu(fw_ap->rtt_spread);

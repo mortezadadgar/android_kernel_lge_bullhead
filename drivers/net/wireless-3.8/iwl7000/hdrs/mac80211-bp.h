@@ -1289,6 +1289,7 @@ struct cfg80211_ftm_result {
 	s8 rssi;
 	u8 rssi_spread;
 	struct rate_info tx_rate_info;
+	struct rate_info rx_rate_info;
 	u64 rtt;
 	u64 rtt_variance;
 	u64 rtt_spread;
