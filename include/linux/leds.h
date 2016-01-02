@@ -167,6 +167,8 @@ struct led_trigger {
 /* Registration functions for complex triggers */
 extern int led_trigger_register(struct led_trigger *trigger);
 extern void led_trigger_unregister(struct led_trigger *trigger);
+extern int devm_led_trigger_register(struct device *dev,
+				     struct led_trigger *trigger);
 
 extern void led_trigger_register_simple(const char *name,
 				struct led_trigger **trigger);
