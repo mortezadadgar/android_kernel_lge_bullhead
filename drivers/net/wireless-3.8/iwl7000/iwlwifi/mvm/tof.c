@@ -340,6 +340,9 @@ iwl_mvm_tof_set_responder(struct iwl_mvm *mvm,
 	default:
 		WARN_ON(1);
 	}
+
+	/* By default it's 0 - IWL_TOF_ALGO_TYPE_MAX_LIKE */
+	cmd->algo_type = mvm->tof_data.tof_algo_type;
 }
 
 int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
@@ -553,6 +556,9 @@ int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
 			cmd_target->location_req |= IWL_TOF_LOC_LCI;
 		if (req_target->civic)
 			cmd_target->location_req |= IWL_TOF_LOC_CIVIC;
+
+		/* By default it's 0 - IWL_TOF_ALGO_TYPE_MAX_LIKE */
+		cmd_target->algo_type = mvm->tof_data.tof_algo_type;
 	}
 
 	mvm->tof_data.active_cookie = cookie;

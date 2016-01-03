@@ -107,6 +107,17 @@ enum iwl_tof_bandwidth {
 	IWL_TOF_BW_80,
 };
 
+/*
+ * enum iwl_tof_algo_type - Algorithym type for range measurement request
+ */
+enum iwl_tof_algo_type {
+	IWL_TOF_ALGO_TYPE_MAX_LIKE	= 0,
+	IWL_TOF_ALGO_TYPE_LINEAR_REG	= 1,
+
+	/* Keep last */
+	IWL_TOF_ALGO_TYPE_INVALID,
+}; /* ALGO_TYPE_E */
+
 /**
  * struct iwl_tof_responder_config_cmd - ToF AP mode (for debug)
  * @burst_period: future use: (currently hard coded in the LMAC)
@@ -145,6 +156,8 @@ enum iwl_tof_bandwidth {
  *		purposes, simulating station movement by adding various values
  *		to this field
  * @bssid: Current AP BSSID
+ * @algo_type: &enum iwl_tof_algo_type
+ * @reserved: For alignment and future use
  */
 struct iwl_tof_responder_config_cmd {
 	__le32 sub_grp_cmd_id;
@@ -166,7 +179,9 @@ struct iwl_tof_responder_config_cmd {
 	__le16 tsf_timer_offset_msecs;
 	__le16 toa_offset;
 	u8 bssid[ETH_ALEN];
-} __packed;
+	u8 algo_type;
+	u8 reserved;
+} __packed; /* TOF_RESPONDER_CONFIG_CMD_API_S_VER_4 */
 
 /**
  * struct iwl_tof_responder_dyn_config_cmd - Dynamic responder settings
@@ -251,6 +266,8 @@ enum iwl_tof_location_query {
  *	    configure the opposite machine to be Responder).
  * @rssi: Last received value
  *	  leagal values: -128-0 (0x7f). above 0x0 indicating an invalid value.
+ * @algo_type: &enum iwl_tof_algo_type
+ * @reserved: For alignment and future use
  */
 struct iwl_tof_range_req_ap_entry {
 	u8 channel_num;
@@ -268,7 +285,9 @@ struct iwl_tof_range_req_ap_entry {
 	u8 asap_mode;
 	u8 enable_dyn_ack;
 	s8 rssi;
-} __packed;
+	u8 algo_type;
+	u8 reserved[3];
+} __packed; /* LOCATION_RANGE_REQ_AP_ENTRY_CMD_API_S_VER_2 */
 
 /**
  * enum iwl_tof_response_mode

@@ -1270,6 +1270,42 @@ static ssize_t iwl_dbgfs_tof_range_response_read(struct file *file,
 	return ret;
 }
 
+static ssize_t iwl_dbgfs_tof_algo_type_write(struct ieee80211_vif *vif,
+					     char *buf, size_t count,
+					     loff_t *ppos)
+{
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm *mvm = mvmvif->mvm;
+	u8 algo_type;
+	int ret;
+
+	ret = kstrtou8(buf, 0, &algo_type);
+	if (ret)
+		return ret;
+
+	if (algo_type >= IWL_TOF_ALGO_TYPE_INVALID)
+		return -EINVAL;
+
+	mvm->tof_data.tof_algo_type = algo_type;
+
+	return count;
+}
+
+static ssize_t iwl_dbgfs_tof_algo_type_read(struct file *file,
+					    char __user *user_buf,
+					    size_t count, loff_t *ppos)
+{
+	struct ieee80211_vif *vif = file->private_data;
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm *mvm = mvmvif->mvm;
+	char buf[10];
+	int ret;
+
+	ret = snprintf(buf, sizeof(buf), "%d\n", mvm->tof_data.tof_algo_type);
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
+}
+
 static ssize_t iwl_dbgfs_low_latency_write(struct ieee80211_vif *vif, char *buf,
 					   size_t count, loff_t *ppos)
 {
@@ -1462,6 +1498,7 @@ MVM_DEBUGFS_READ_WRITE_FILE_OPS(uapsd_misbehaving, 20);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(rx_phyinfo, 10);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_enable, 32);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_range_request, 512);
+MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_algo_type, 10);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_range_req_ext, 32);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_range_abort, 32);
 MVM_DEBUGFS_READ_FILE_OPS(tof_range_response);
@@ -1530,6 +1567,8 @@ void iwl_mvm_vif_dbgfs_register(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 					 S_IRUSR | S_IWUSR);
 		MVM_DEBUGFS_ADD_FILE_VIF(tof_range_response, mvmvif->dbgfs_dir,
 					 S_IRUSR);
+		MVM_DEBUGFS_ADD_FILE_VIF(tof_algo_type, mvmvif->dbgfs_dir,
+					 S_IRUSR | S_IWUSR);
 	}
 
 	/*
