@@ -95,7 +95,7 @@ static struct iwl_mvm_scan_timing_params scan_timing[] = {
 		.dwell_active = 10,
 		.dwell_passive = 110,
 		.dwell_fragmented = 44,
-		.dwell_extended = 100,
+		.dwell_extended = 90,
 		.suspend_time = 0,
 		.max_out_time = 0,
 	},
@@ -103,7 +103,7 @@ static struct iwl_mvm_scan_timing_params scan_timing[] = {
 		.dwell_active = 10,
 		.dwell_passive = 110,
 		.dwell_fragmented = 44,
-		.dwell_extended = 100,
+		.dwell_extended = 90,
 		.suspend_time = 30,
 		.max_out_time = 120,
 	},
@@ -111,7 +111,7 @@ static struct iwl_mvm_scan_timing_params scan_timing[] = {
 		.dwell_active = 10,
 		.dwell_passive = 110,
 		.dwell_fragmented = 44,
-		.dwell_extended = 100,
+		.dwell_extended = 90,
 		.suspend_time = 120,
 		.max_out_time = 120,
 	},
@@ -119,7 +119,6 @@ static struct iwl_mvm_scan_timing_params scan_timing[] = {
 		.dwell_active = 10,
 		.dwell_passive = 110,
 		.dwell_fragmented = 44,
-		.dwell_extended = 44,
 		.suspend_time = 95,
 		.max_out_time = 44,
 	},
@@ -803,7 +802,8 @@ static int iwl_mvm_scan_lmac_flags(struct iwl_mvm *mvm,
 #endif
 
 	if (iwl_mvm_is_regular_scan(params) &&
-	    vif->type != NL80211_IFTYPE_P2P_DEVICE)
+	    vif->type != NL80211_IFTYPE_P2P_DEVICE &&
+	    params->type != IWL_SCAN_TYPE_FRAGMENTED)
 		flags |= IWL_MVM_LMAC_SCAN_FLAG_EXTENDED_DWELL;
 
 	return flags;
@@ -1085,7 +1085,8 @@ static u32 iwl_mvm_scan_umac_flags(struct iwl_mvm *mvm,
 #endif
 
 	if (iwl_mvm_is_regular_scan(params) &&
-	    vif->type != NL80211_IFTYPE_P2P_DEVICE)
+	    vif->type != NL80211_IFTYPE_P2P_DEVICE &&
+	    params->type != IWL_SCAN_TYPE_FRAGMENTED)
 		flags |= IWL_UMAC_SCAN_GEN_FLAGS_EXTENDED_DWELL;
 
 	return flags;
