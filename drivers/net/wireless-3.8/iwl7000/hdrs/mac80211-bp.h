@@ -48,6 +48,10 @@ struct pcpu_sw_netstats {
 #define netdev_assign_tstats(dev, e)	dev->tstats = (e);
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0) */
 
+#ifndef BIT_ULL
+#define BIT_ULL(nr) (1ULL << (nr))
+#endif
+
 static inline void netdev_attach_ops(struct net_device *dev,
 				     const struct net_device_ops *ops)
 {
