@@ -731,7 +731,7 @@ iwl_mvm_update_mcc(struct iwl_mvm *mvm, const char *alpha2,
 		resp_cp->source_id = mcc_resp_v1->source_id;
 		resp_cp->n_channels = mcc_resp_v1->n_channels;
 		memcpy(resp_cp->channels, mcc_resp_v1->channels,
-		       sizeof(n_channels * sizeof(__le32)));
+		       n_channels * sizeof(__le32));
 	}
 
 	status = le32_to_cpu(resp_cp->status);
