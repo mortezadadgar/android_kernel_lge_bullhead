@@ -6,7 +6,7 @@
  * GPL LICENSE SUMMARY
  *
  * Copyright(c) 2007 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -272,8 +272,10 @@ static void iwl_xvt_nic_error(struct iwl_op_mode *op_mode)
 {
 	struct iwl_xvt *xvt = IWL_OP_MODE_GET_XVT(op_mode);
 	void *p_table;
+	void *p_table_umac = NULL;
 	struct iwl_error_event_table_v1 table_v1;
 	struct iwl_error_event_table_v2 table_v2;
+	struct iwl_umac_error_event_table table_umac;
 	int err, table_size;
 
 	xvt->fw_error = true;
@@ -291,8 +293,12 @@ static void iwl_xvt_nic_error(struct iwl_op_mode *op_mode)
 		table_size = sizeof(table_v1);
 	}
 
-	if (xvt->support_umac_log)
-		iwl_xvt_dump_umac_error_log(xvt);
+	if (xvt->support_umac_log) {
+		iwl_xvt_get_umac_error_log(xvt, &table_umac);
+		iwl_xvt_dump_umac_error_log(xvt, &table_umac);
+		p_table_umac = kmemdup(&table_umac, sizeof(table_umac),
+				       GFP_ATOMIC);
+	}
 
 	if (p_table) {
 		err = iwl_xvt_user_send_notif(xvt, IWL_XVT_CMD_SEND_NIC_ERROR,
@@ -303,6 +309,18 @@ static void iwl_xvt_nic_error(struct iwl_op_mode *op_mode)
 				 "Error %d sending NIC error notification\n",
 				 err);
 	}
+
+	if (p_table_umac) {
+		err = iwl_xvt_user_send_notif(xvt,
+					      IWL_XVT_CMD_SEND_NIC_UMAC_ERROR,
+					      (void *)p_table_umac,
+					      sizeof(table_umac), GFP_ATOMIC);
+		if (err)
+			IWL_WARN(xvt,
+				 "Error %d sending NIC umac error notification\n",
+				 err);
+	}
+
 }
 
 static bool iwl_xvt_set_hw_rfkill_state(struct iwl_op_mode *op_mode, bool state)

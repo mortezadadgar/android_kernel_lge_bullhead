@@ -311,7 +311,10 @@ void iwl_xvt_get_nic_error_log_v2(struct iwl_xvt *xvt,
 				  struct iwl_error_event_table_v2 *table);
 void iwl_xvt_dump_nic_error_log_v2(struct iwl_xvt *xvt,
 				   struct iwl_error_event_table_v2 *table);
-void iwl_xvt_dump_umac_error_log(struct iwl_xvt *xvt);
+void iwl_xvt_get_umac_error_log(struct iwl_xvt *xvt,
+				struct iwl_umac_error_event_table *table);
+void iwl_xvt_dump_umac_error_log(struct iwl_xvt *xvt,
+				 struct iwl_umac_error_event_table *table);
 
 /* User interface */
 int iwl_xvt_user_cmd_execute(struct iwl_op_mode *op_mode, u32 cmd,
