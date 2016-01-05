@@ -351,7 +351,7 @@ struct iwl_mvm_sta {
 	struct iwl_mvm_tid_data tid_data[IWL_MAX_TID_COUNT];
 	struct iwl_lq_sta lq_sta;
 	struct ieee80211_vif *vif;
-	struct iwl_mvm_key_pn *ptk_pn[4] __rcu;
+	struct iwl_mvm_key_pn __rcu *ptk_pn[4];
 	struct iwl_mvm_rxq_dup_data *dup_data;
 
 	/* Temporary, until the new TLC will control the Tx protection */
