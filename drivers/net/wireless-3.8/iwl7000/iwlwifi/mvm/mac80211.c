@@ -4166,8 +4166,10 @@ iwl_mvm_mac_start_ftm_responder(struct ieee80211_hw *hw,
 	mutex_lock(&mvm->mutex);
 
 	if (vif->p2p || vif->type != NL80211_IFTYPE_AP ||
-	    !mvmvif->ap_ibss_active)
+	    !mvmvif->ap_ibss_active) {
+		mutex_unlock(&mvm->mutex);
 		return -EINVAL;
+	}
 
 	mvmvif->ftm_responder = true;
 
