@@ -83,6 +83,13 @@
 		_val |= 2;				\
 } while (0)
 
+//custom thermal
+#define DEF_TEMP_THRESHOLD 46
+#define HOTPLUG_SENSOR_ID 18
+#define HOTPLUG_HYSTERESIS 2
+unsigned int temp_threshold = DEF_TEMP_THRESHOLD;
+module_param(temp_threshold, int, 0644);
+
 static struct msm_thermal_data msm_thermal_info;
 static struct delayed_work check_temp_work;
 static bool core_control_enabled;
@@ -2382,8 +2389,10 @@ static void __ref do_core_control(long temp)
 
 	mutex_lock(&core_control_mutex);
 	if (msm_thermal_info.core_control_mask &&
-		temp >= msm_thermal_info.core_limit_temp_degC) {
+		temp >= temp_threshold) {
 		for (i = num_possible_cpus(); i > 0; i--) {
+			if (i < 4 && !polling_enabled)
+				continue;
 			if (!(msm_thermal_info.core_control_mask & BIT(i)))
 				continue;
 			if (cpus_offlined & BIT(i) && !cpu_online(i))
@@ -2403,8 +2412,7 @@ static void __ref do_core_control(long temp)
 			break;
 		}
 	} else if (msm_thermal_info.core_control_mask && cpus_offlined &&
-		temp <= (msm_thermal_info.core_limit_temp_degC -
-			msm_thermal_info.core_temp_hysteresis_degC)) {
+		temp <= (temp_threshold - HOTPLUG_HYSTERESIS)) {
 		for (i = 0; i < num_possible_cpus(); i++) {
 			if (!(cpus_offlined & BIT(i)))
 				continue;
@@ -2938,6 +2946,18 @@ static void check_temp(struct work_struct *work)
 
 	do_therm_reset();
 
+	if (!polling_enabled) {
+		ret = therm_get_temp(HOTPLUG_SENSOR_ID, THERM_ZONE_ID, &temp);
+		if (ret) {
+			pr_err("Unable to read sensor:%d. err:%d\n",
+				HOTPLUG_SENSOR_ID, ret);
+			goto reschedule;
+		}
+		do_core_control(temp);
+
+		goto reschedule;
+	}
+
 	ret = therm_get_temp(msm_thermal_info.sensor_id, THERM_TSENS_ID, &temp);
 	if (ret) {
 		pr_err("Unable to read TSENS sensor:%d. err:%d\n",
@@ -2963,7 +2983,7 @@ static void check_temp(struct work_struct *work)
 	do_freq_control(temp);
 
 reschedule:
-	if (polling_enabled)
+	//if (polling_enabled)
 		schedule_delayed_work(&check_temp_work,
 				msecs_to_jiffies(msm_thermal_info.poll_ms));
 }
@@ -4093,6 +4113,7 @@ cx_node_exit:
 	return ret;
 }
 
+#if 0
 /*
  * We will reset the cpu frequencies limits here. The core online/offline
  * status will be carried over to the process stopping the msm_thermal, as
@@ -4119,6 +4140,7 @@ static void __ref disable_msm_thermal(void)
 	update_cluster_freq();
 	put_online_cpus();
 }
+#endif
 
 static void interrupt_mode_init(void)
 {
@@ -4129,7 +4151,7 @@ static void interrupt_mode_init(void)
 	if (polling_enabled) {
 		pr_info("Interrupt mode init\n");
 		polling_enabled = 0;
-		disable_msm_thermal();
+		//disable_msm_thermal();
 		hotplug_init();
 		freq_mitigation_init();
 		thermal_monitor_init();
@@ -4234,6 +4256,9 @@ static ssize_t __ref store_cpus_offlined(struct kobject *kobj,
 		pr_err("Invalid input %s. err:%d\n", buf, ret);
 		goto done_cc;
 	}
+
+	//return early
+	goto done_cc;
 
 	if (polling_enabled) {
 		pr_err("Ignoring request; polling thread is enabled.\n");
