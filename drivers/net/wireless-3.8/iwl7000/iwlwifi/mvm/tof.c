@@ -280,8 +280,13 @@ int iwl_mvm_tof_range_abort_cmd(struct iwl_mvm *mvm, u8 id)
 
 	lockdep_assert_held(&mvm->mutex);
 
-	if (!fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT))
+	IWL_DEBUG_INFO(mvm, "Sending ToF abort command\n");
+
+	if (!fw_has_capa(&mvm->fw->ucode_capa,
+			 IWL_UCODE_TLV_CAPA_TOF_SUPPORT)) {
+		IWL_ERR(mvm, "%s: ToF is not supported!\n", __func__);
 		return -EINVAL;
+	}
 
 	if (id != mvm->tof_data.active_request_id) {
 		IWL_ERR(mvm, "Invalid range request id %d (active %d)\n",
@@ -580,6 +585,45 @@ int iwl_mvm_tof_abort_ftm(struct iwl_mvm *mvm, u64 cookie)
 					   mvm->tof_data.active_request_id);
 }
 
+static void iwl_mvm_debug_range_req(struct iwl_mvm *mvm)
+{
+	struct iwl_tof_range_req_cmd *req = &mvm->tof_data.range_req;
+	int i;
+
+	IWL_DEBUG_INFO(mvm,
+		       "Sending FTM request, params:\n  request id: %hhx\n"
+		       "  initiator: %hhx\n  OSLD: %hhx\n  TO: %hhx\n"
+		       "  report policy: %hhx\n  LDD: %hhx\n"
+		       "  num of aps: %hhx\n  mac rand: %hhx\n"
+		       "  mac temp: %pM\n  mac mask: %pM\n",
+		       req->request_id, req->initiator,
+		       req->one_sided_los_disable, req->req_timeout,
+		       req->report_policy, req->los_det_disable, req->num_of_ap,
+		       req->macaddr_random, req->macaddr_template,
+		       req->macaddr_mask);
+
+	for (i = 0; i < req->num_of_ap; i++) {
+		struct iwl_tof_range_req_ap_entry ap = req->ap[i];
+
+		IWL_DEBUG_INFO(mvm,
+			       "  ap[%d]:\n    channel: %hhx\n    bw: %hhx\n"
+			       "    tsf delta direction: %hhx\n"
+			       "    ctrl channel: %hhx\n    bssid: %pM\n"
+			       "    one sided: %hhx\n    num of bursts: %hhx\n"
+			       "    burst period: %hx\n"
+			       "    samples/burst: %hhx\n"
+			       "    retries/sample: %hhx\n    tsf delta: %x\n"
+			       "    location: %hhx\n    asap: %hhx\n"
+			       "    dyn ack: %hhx\n    rssi: %hhd\n",
+			       i, ap.channel_num, ap.bandwidth, ap.tsf_delta,
+			       ap.ctrl_ch_position, ap.bssid, ap.measure_type,
+			       ap.num_of_bursts, le16_to_cpu(ap.burst_period),
+			       ap.samples_per_burst, ap.retries_per_sample,
+			       le32_to_cpu(ap.tsf_delta), ap.location_req,
+			       ap.asap_mode, ap.enable_dyn_ack, ap.rssi);
+	}
+}
+
 int iwl_mvm_tof_range_request_cmd(struct iwl_mvm *mvm)
 {
 	int err;
@@ -601,9 +645,14 @@ int iwl_mvm_tof_range_request_cmd(struct iwl_mvm *mvm)
 	mvm->tof_data.active_request_id = mvm->tof_data.range_req.request_id;
 
 	cmd.data[0] = &mvm->tof_data.range_req;
+
+	iwl_mvm_debug_range_req(mvm);
+
 	err = iwl_mvm_send_cmd(mvm, &cmd);
-	if (err)
+	if (err) {
+		IWL_ERR(mvm, "Failed to send ToF cmd!\n");
 		iwl_mvm_tof_reset_active(mvm);
+	}
 
 	return err;
 }
@@ -612,8 +661,11 @@ int iwl_mvm_tof_range_request_ext_cmd(struct iwl_mvm *mvm)
 {
 	lockdep_assert_held(&mvm->mutex);
 
-	if (!fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT))
+	if (!fw_has_capa(&mvm->fw->ucode_capa,
+			 IWL_UCODE_TLV_CAPA_TOF_SUPPORT)) {
+		IWL_ERR(mvm, "%s: ToF is not supported!\n", __func__);
 		return -EINVAL;
+	}
 
 	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CMD,
 						    IWL_ALWAYS_LONG_GROUP, 0),
@@ -718,6 +770,40 @@ static inline int iwl_mvm_tof_is_vht(struct iwl_mvm *mvm, u8 fw_bw)
 	return 0;
 }
 
+static void iwl_mvm_debug_range_resp(struct iwl_mvm *mvm,
+				     struct cfg80211_msrment_response *resp)
+{
+	u8 num_of_entries = resp->u.ftm.num_of_entries;
+	int i;
+
+	IWL_DEBUG_INFO(mvm,
+		       "Range response received. status: %d, cookie: %lld, num of entries: %hhx\n",
+		       resp->status, resp->cookie, num_of_entries);
+
+	for (i = 0; i < num_of_entries; i++) {
+		struct cfg80211_ftm_result *res = &resp->u.ftm.entries[i];
+
+		IWL_DEBUG_INFO(mvm,
+			       "  entry %d\n  status: %d\n  complete: %s\n"
+			       "  BSSID: %pM\n  host time: %llx\n  tsf: %llx\n"
+			       "  burst index: %hhx\n  measurement num: %x\n"
+			       "  success num: %x\n  num per burst: %hhx\n"
+			       "  retry after duration: %x\n"
+			       "  burst duration: %x\n  negotiated burst: %x\n"
+			       "  rssi: %hhd\n  rssi spread: %hhx\n"
+			       "  rtt: %llx\n  rtt var: %llx\n"
+			       "  rtt spread: %llx\n\n",
+			       i, res->status, res->complete ? "true" : "false",
+			       res->target->bssid, res->host_time, res->tsf,
+			       res->burst_index, res->measurement_num,
+			       res->success_num, res->num_per_burst,
+			       res->retry_after_duration, res->burst_duration,
+			       res->negotiated_burst_num, res->rssi,
+			       res->rssi_spread, res->rtt, res->rtt_variance,
+			       res->rtt_spread);
+	}
+}
+
 static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 {
 	struct iwl_tof_range_rsp_ntfy *fw_resp = (void *)data;
@@ -813,6 +899,8 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 		result->rtt_variance = le32_to_cpu(fw_ap->rtt_variance);
 		result->rtt_spread = le32_to_cpu(fw_ap->rtt_spread);
 	}
+
+	iwl_mvm_debug_range_resp(mvm, &user_resp);
 
 	cfg80211_measurement_response(mvm->hw->wiphy, &user_resp, GFP_KERNEL);
 	kfree(user_resp.u.ftm.entries);

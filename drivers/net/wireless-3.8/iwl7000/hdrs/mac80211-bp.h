@@ -1311,6 +1311,12 @@ struct cfg80211_ftm_result {
 	u64 host_time;
 	u64 tsf;
 	u8 burst_index;
+	u32 measurement_num;
+	u32 success_num;
+	u8 num_per_burst;
+	u8 retry_after_duration;
+	u32 burst_duration;
+	u32 negotiated_burst_num;
 	s8 rssi;
 	u8 rssi_spread;
 	struct rate_info tx_rate_info;
