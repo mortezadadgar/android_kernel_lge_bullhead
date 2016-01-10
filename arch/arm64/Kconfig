@@ -219,6 +219,7 @@ config ARCH_MSM
 	select PINCTRL
 	select SOC_BUS
 	select PCI
+	select ARCH_SUPPORTS_MSI
 	select ARCH_HAS_CPUFREQ
 	select CPU_FREQ_MSM
 	select PM_OPP
