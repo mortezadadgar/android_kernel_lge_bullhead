@@ -382,10 +382,10 @@ iwl_mvm_tof_set_responder_dyn(struct iwl_mvm *mvm,
 
 	cmd->lci_civic[0] = WLAN_EID_MEASURE_REPORT;
 	cmd->lci_civic[1] = params->lci_len;
-	memcpy(cmd->lci_civic, params->lci, params->lci_len);
+	memcpy(cmd->lci_civic + 2, params->lci, params->lci_len);
 
 	cmd->lci_civic[aligned] = WLAN_EID_MEASURE_REPORT;
-	cmd->lci_civic[aligned + 1] = params->lci_len;
+	cmd->lci_civic[aligned + 1] = params->civic_len;
 	memcpy(cmd->lci_civic + aligned + 2, params->civic, params->civic_len);
 }
 
