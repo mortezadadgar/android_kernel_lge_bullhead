@@ -3633,6 +3633,9 @@ struct ieee80211_ops {
 	int (*start_ftm_responder)(struct ieee80211_hw *hw,
 				   struct ieee80211_vif *vif,
 				   struct cfg80211_ftm_responder_params *params);
+	int (*get_ftm_responder_stats)(struct ieee80211_hw *hw,
+				       struct ieee80211_vif *vif,
+				struct cfg80211_ftm_responder_stats *ftm_stats);
 
 	int (*start_nan)(struct ieee80211_hw *hw,
 			 struct ieee80211_vif *vif,

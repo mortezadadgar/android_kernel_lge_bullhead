@@ -1352,6 +1352,19 @@ struct cfg80211_ftm_responder_params {
 	size_t civic_len;
 };
 
+struct cfg80211_ftm_responder_stats {
+	u32 filled;
+	u32 success_num;
+	u32 partial_num;
+	u32 failed_num;
+	u32 asap_num;
+	u32 non_asap_num;
+	u64 total_duration_ms;
+	u32 unknown_triggers_num;
+	u32 reschedule_requests_num;
+	u32 out_of_window_triggers_num;
+};
+
 static inline void
 cfg80211_measurement_response(struct wiphy *wiphy,
 			      struct cfg80211_msrment_response *resp,

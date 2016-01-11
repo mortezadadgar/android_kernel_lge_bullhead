@@ -3686,6 +3686,18 @@ static int ieee80211_start_ftm_responder(struct wiphy *wiphy,
 }
 #endif
 
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+static int ieee80211_get_ftm_responder_stats(struct wiphy *wiphy,
+					    struct net_device *dev,
+			       struct cfg80211_ftm_responder_stats *ftm_stats)
+{
+	struct ieee80211_local *local = wiphy_priv(wiphy);
+	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
+
+	return drv_get_ftm_responder_stats(local, sdata, ftm_stats);
+}
+#endif
+
 #if CFG80211_VERSION < KERNEL_VERSION(4,5,0)
 void ieee80211_nan_func_terminated(struct ieee80211_vif *vif, u8 inst_id, enum nl80211_nan_func_term_reason reason, gfp_t gfp)
 {
@@ -3810,6 +3822,9 @@ const struct cfg80211_ops mac80211_config_ops = {
 #endif
 #if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 	.start_ftm_responder = ieee80211_start_ftm_responder,
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	.get_ftm_responder_stats = ieee80211_get_ftm_responder_stats,
 #endif
 #ifdef CPTCFG_MAC80211_MESH
 	.add_mpath = ieee80211_add_mpath,
