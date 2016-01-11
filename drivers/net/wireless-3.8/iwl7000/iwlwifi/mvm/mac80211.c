@@ -34,6 +34,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -4215,6 +4216,37 @@ iwl_mvm_mac_start_ftm_responder(struct ieee80211_hw *hw,
 	return ret;
 }
 
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+static int
+iwl_mvm_mac_get_ftm_responder_stats(struct ieee80211_hw *hw,
+				    struct ieee80211_vif *vif,
+				struct cfg80211_ftm_responder_stats *ftm_stats)
+{
+	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+
+	if (!fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT))
+		return -EOPNOTSUPP;
+
+	if (vif->p2p || vif->type != NL80211_IFTYPE_AP ||
+	    !mvmvif->ap_ibss_active || !mvmvif->ftm_responder)
+		return -EINVAL;
+
+	memcpy(ftm_stats, &mvm->tof_data.resp_stats, sizeof(*ftm_stats));
+	ftm_stats->filled = BIT(NL80211_FTM_STATS_SUCCESS_NUM) |
+			BIT(NL80211_FTM_STATS_PARTIAL_NUM) |
+			BIT(NL80211_FTM_STATS_FAILED_NUM) |
+			BIT(NL80211_FTM_STATS_ASAP_NUM) |
+			BIT(NL80211_FTM_STATS_NON_ASAP_NUM) |
+			BIT(NL80211_FTM_STATS_TOTAL_DURATION_MSEC) |
+			BIT(NL80211_FTM_STATS_UNKNOWN_TRIGGERS_NUM) |
+			BIT(NL80211_FTM_STATS_RESCHEDULE_REQUESTS_NUM) |
+			BIT(NL80211_FTM_STATS_OUT_OF_WINDOW_TRIGGERS_NUM);
+
+	return 0;
+}
+#endif
+
 const struct ieee80211_ops iwl_mvm_hw_ops = {
 	.tx = iwl_mvm_mac_tx,
 	.ampdu_action = iwl_mvm_mac_ampdu_action,
@@ -4289,6 +4321,9 @@ const struct ieee80211_ops iwl_mvm_hw_ops = {
 	.perform_ftm = iwl_mvm_perform_ftm,
 	.abort_ftm = iwl_mvm_abort_ftm,
 	.start_ftm_responder = iwl_mvm_mac_start_ftm_responder,
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	.get_ftm_responder_stats = iwl_mvm_mac_get_ftm_responder_stats,
+#endif
 
 	.start_nan = iwl_mvm_start_nan,
 	.stop_nan = iwl_mvm_stop_nan,

@@ -99,6 +99,7 @@ struct iwl_mvm_tof_data {
 	/* use this flag to minimize changes in mvm code needed for this WA */
 	bool tsf_hash_valid;
 #endif
+	struct cfg80211_ftm_responder_stats resp_stats;
 };
 
 void iwl_mvm_tof_init(struct iwl_mvm *mvm);

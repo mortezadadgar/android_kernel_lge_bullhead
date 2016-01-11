@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -30,7 +30,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -835,6 +835,42 @@ static int iwl_mvm_tof_mcsi_notif(struct iwl_mvm *mvm, void *data)
 	return 0;
 }
 
+static int iwl_mvm_tof_responder_stats(struct iwl_mvm *mvm, void *data)
+{
+	struct iwl_tof_responder_stats *resp = (void *)data;
+	struct cfg80211_ftm_responder_stats *stats = &mvm->tof_data.resp_stats;
+	unsigned flags = le32_to_cpu(resp->flags);
+
+	IWL_DEBUG_INFO(mvm, "Responder statistics info\n");
+
+	if (resp->success_ftm == resp->ftm_per_burst)
+		stats->success_num++;
+	else if (resp->success_ftm >= 2)
+		stats->partial_num++;
+	else
+		stats->failed_num++;
+
+	if (flags & FTM_RESP_STAT_ASAP_REQ &&
+	    flags & FTM_RESP_STAT_ASAP_RESP)
+		stats->asap_num++;
+
+	if (flags & FTM_RESP_STAT_NON_ASAP_RESP)
+		stats->non_asap_num++;
+
+	stats->total_duration_ms += le32_to_cpu(resp->duration) / USEC_PER_MSEC;
+
+	if (flags & FTM_RESP_STAT_TRIGGER_UNKNOWN)
+		stats->unknown_triggers_num++;
+
+	if (flags & FTM_RESP_STAT_DUP)
+		stats->reschedule_requests_num++;
+
+	if (flags & FTM_RESP_STAT_NON_ASAP_OUT_WIN)
+		stats->out_of_window_triggers_num++;
+
+	return 0;
+}
+
 static int iwl_mvm_tof_nb_report_notif(struct iwl_mvm *mvm, void *data)
 {
 	struct iwl_tof_neighbor_report *report =
@@ -859,6 +895,9 @@ void iwl_mvm_tof_resp_handler(struct iwl_mvm *mvm,
 		break;
 	case TOF_MCSI_DEBUG_NOTIF:
 		iwl_mvm_tof_mcsi_notif(mvm, resp->data);
+		break;
+	case TOF_RESPONDER_STATS:
+		iwl_mvm_tof_responder_stats(mvm, resp->data);
 		break;
 	case TOF_NEIGHBOR_REPORT_RSP_NOTIF:
 		iwl_mvm_tof_nb_report_notif(mvm, resp->data);

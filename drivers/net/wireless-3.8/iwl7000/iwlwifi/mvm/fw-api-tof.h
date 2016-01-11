@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -30,7 +30,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -75,6 +75,7 @@ enum iwl_mvm_tof_sub_grp_ids {
 	TOF_NW_INITIATED_RES_SEND_CMD = 0x6,
 	TOF_NEIGHBOR_REPORT_REQ_CMD = 0x7,
 	TOF_RESPONDER_DYN_CONFIG_CMD = 0x8,
+	TOF_RESPONDER_STATS = 0x9,
 	TOF_NEIGHBOR_REPORT_RSP_NOTIF = 0xFC,
 	TOF_NW_INITIATED_REQ_RCVD_NOTIF = 0xFD,
 	TOF_RANGE_RESPONSE_NOTIF = 0xFE,
@@ -420,5 +421,60 @@ struct iwl_tof_range_abort_cmd {
 	u8 request_id;
 	u8 reserved[3];
 } __packed;
+
+enum ftm_responder_stats_flags {
+	FTM_RESP_STAT_NON_ASAP_STARTED = BIT(0),
+	FTM_RESP_STAT_NON_ASAP_IN_WIN = BIT(1),
+	FTM_RESP_STAT_NON_ASAP_OUT_WIN = BIT(2),
+	FTM_RESP_STAT_TRIGGER_DUP = BIT(3),
+	FTM_RESP_STAT_DUP = BIT(4),
+	FTM_RESP_STAT_DUP_IN_WIN = BIT(5),
+	FTM_RESP_STAT_DUP_OUT_WIN = BIT(6),
+	FTM_RESP_STAT_SCHED_SUCCESS = BIT(7),
+	FTM_RESP_STAT_ASAP_REQ = BIT(8),
+	FTM_RESP_STAT_NON_ASAP_REQ = BIT(9),
+	FTM_RESP_STAT_ASAP_RESP = BIT(10),
+	FTM_RESP_STAT_NON_ASAP_RESP = BIT(11),
+	FTM_RESP_STAT_FAIL_INITIATOR_INACTIVE = BIT(12),
+	FTM_RESP_STAT_FAIL_INITIATOR_OUT_WIN = BIT(13),
+	FTM_RESP_STAT_FAIL_INITIATOR_RETRY_LIM = BIT(14),
+	FTM_RESP_STAT_FAIL_NEXT_SERVED = BIT(15),
+	FTM_RESP_STAT_FAIL_TRIGGER_ERR = BIT(16),
+	FTM_RESP_STAT_FAIL_GC = BIT(17),
+	FTM_RESP_STAT_SUCCESS = BIT(18),
+	FTM_RESP_STAT_INTEL_IE = BIT(19),
+	FTM_RESP_STAT_TRIGGER_UNKNOWN = BIT(20),
+	FTM_RESP_STAT_PROCESS_FAIL = BIT(21),
+	FTM_RESP_STAT_ACK = BIT(22),
+	FTM_RESP_STAT_NACK = BIT(23),
+	FTM_RESP_STAT_INVALID_INITIATOR_ID = BIT(24),
+	FTM_RESP_STAT_TIMER_MIN_DELTA = BIT(25),
+	FTM_RESP_STAT_INITIATOR_REMOVED = BIT(26),
+	FTM_RESP_STAT_INITIATOR_ADDED = BIT(27),
+}; /* RESP_IND_E */
+
+/**
+ * struct iwl_tof_responder_stats - FTM responder statistics
+ * @addr: initiator address
+ * @success_ftm: number of successful ftm frames
+ * @ftm_per_burst: num of FTM frames that were received
+ * @flags: &enum ftm_responder_stats_flags
+ * @duration: actual duration of FTM
+ * @allocated_duration: time that was allocated for this FTM session
+ * @bw: FTM request bandwidth
+ * @rate: FTM request rate
+ * @reserved: for alingment and future use
+ */
+struct iwl_tof_responder_stats {
+	u8 addr[ETH_ALEN];
+	u8 success_ftm;
+	u8 ftm_per_burst;
+	__le32 flags;
+	__le32 duration;
+	__le32 allocated_duration;
+	u8 bw;
+	u8 rate;
+	__le16 reserved;
+} __packed; /* TOF_RESPONDER_STATISTICS_NTFY_S_VER_1 */
 
 #endif
