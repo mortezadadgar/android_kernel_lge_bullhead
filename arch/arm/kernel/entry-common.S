@@ -434,6 +434,7 @@ local_restart:
 
 	cmp	scno, #NR_syscalls		@ check upper syscall limit
 	adr	lr, BSYM(ret_fast_syscall)	@ return address
+	str	scno, [tsk, #TI_SYSCALL]	@ store syscall number
 	ldrcc	pc, [tbl, scno, lsl #2]		@ call sys_* routine
 
 	add	r1, sp, #S_OFF
@@ -510,6 +511,7 @@ sys_syscall:
 		movlo	r1, r2
 		movlo	r2, r3
 		movlo	r3, r4
+		str	scno, [tsk, #TI_SYSCALL]	@ store syscall number
 		ldrlo	pc, [tbl, scno, lsl #2]
 		b	sys_ni_syscall
 ENDPROC(sys_syscall)
