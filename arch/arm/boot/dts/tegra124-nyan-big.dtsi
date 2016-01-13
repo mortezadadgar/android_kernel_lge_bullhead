@@ -5,7 +5,7 @@
 / {
 	compatible = "google,nyan-big", "google,nyan", "nvidia,tegra124";
 
-	backlight {
+	backlight: backlight {
 		panel@0 {
 			compatible = "pwm-backlight-alt-brightness-levels";
 			identifier = "AUO-132c-0";
@@ -108,6 +108,8 @@
 
 		panel: panel {
 			compatible = "auo,b133xtn01.2", "simple-panel";
+			backlight = <&backlight>;
+			ddc-i2c-bus = <&dpaux>;
 		};
 
 		dpaux: dpaux@545c0000 {
