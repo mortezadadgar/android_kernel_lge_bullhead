@@ -649,20 +649,8 @@ static u64 iwl_mvm_tof_get_host_time(struct iwl_mvm *mvm, u32 msrment_gp2_ts)
 {
 	u32 curr_gp2, diff;
 	u64 now_from_boot_ns;
-	bool ps_disabled = mvm->ps_disabled;
 
-	if (!ps_disabled) {
-		mvm->ps_disabled = true;
-		iwl_mvm_power_update_device(mvm);
-	}
-
-	curr_gp2 = iwl_read_prph(mvm->trans, DEVICE_SYSTEM_TIME_REG);
-	now_from_boot_ns = ktime_get_boot_ns();
-
-	if (!ps_disabled) {
-		mvm->ps_disabled = ps_disabled;
-		iwl_mvm_power_update_device(mvm);
-	}
+	iwl_mvm_get_sync_time(mvm, &curr_gp2, &now_from_boot_ns);
 
 	if (curr_gp2 >= msrment_gp2_ts)
 		diff = curr_gp2 - msrment_gp2_ts;

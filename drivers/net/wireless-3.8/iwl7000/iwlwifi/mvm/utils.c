@@ -7,7 +7,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
- * Copyright (C) 2015 Intel Deutschland GmbH
+ * Copyright (C) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -34,6 +34,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright (C) 2015 - 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1396,3 +1397,25 @@ void iwl_mvm_tcm_rm_vif(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 	cancel_delayed_work_sync(&mvmvif->uapsd_nonagg_detected_wk);
 }
 #endif
+
+void iwl_mvm_get_sync_time(struct iwl_mvm *mvm, u32 *gp2, u64 *boottime)
+{
+	bool ps_disabled;
+
+	lockdep_assert_held(&mvm->mutex);
+
+	/* Disable power save when reading GP2 */
+	ps_disabled = mvm->ps_disabled;
+	if (!ps_disabled) {
+		mvm->ps_disabled = true;
+		iwl_mvm_power_update_device(mvm);
+	}
+
+	*gp2 = iwl_read_prph(mvm->trans, DEVICE_SYSTEM_TIME_REG);
+	*boottime = ktime_get_boot_ns();
+
+	if (!ps_disabled) {
+		mvm->ps_disabled = ps_disabled;
+		iwl_mvm_power_update_device(mvm);
+	}
+}
