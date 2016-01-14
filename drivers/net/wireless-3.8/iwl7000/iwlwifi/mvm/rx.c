@@ -548,6 +548,10 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 		iwl_mvm_tof_update_tsf(mvm, pkt);
 #endif
 
+	if (unlikely(ieee80211_is_beacon(hdr->frame_control) ||
+		     ieee80211_is_probe_resp(hdr->frame_control)))
+		rx_status->boottime_ns = ktime_get_boot_ns();
+
 	iwl_mvm_pass_packet_to_mac80211(mvm, napi, skb, hdr, len, ampdu_status,
 					crypt_len, rxb);
 }

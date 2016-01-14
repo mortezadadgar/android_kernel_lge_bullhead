@@ -583,6 +583,10 @@ void iwl_mvm_rx_mpdu_mq(struct iwl_mvm *mvm, struct napi_struct *napi,
 	/* TODO: PHY info - update ampdu queue statistics (for debugfs) */
 	/* TODO: PHY info - gscan */
 
+	if (unlikely(ieee80211_is_beacon(hdr->frame_control) ||
+		     ieee80211_is_probe_resp(hdr->frame_control)))
+		rx_status->boottime_ns = ktime_get_boot_ns();
+
 	iwl_mvm_create_skb(skb, hdr, len, crypt_len, rxb);
 	iwl_mvm_pass_packet_to_mac80211(mvm, napi, skb, queue, sta);
 	rcu_read_unlock();
