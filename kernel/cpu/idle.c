@@ -94,6 +94,7 @@ static void cpu_idle_loop(void)
 	int cpu = smp_processor_id();
 
 	while (1) {
+		quiet_vmstat();
 		tick_nohz_idle_enter();
 
 		while (!need_resched()) {
