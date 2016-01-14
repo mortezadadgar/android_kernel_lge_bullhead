@@ -513,11 +513,8 @@ static int iwl_mvm_tx_tso(struct iwl_mvm *mvm, struct sk_buff *skb,
 	 * N * subf_len + (N - 1) * pad.
 	 */
 	num_subframes = (max_amsdu_len + pad) / (subf_len + pad);
-	if (num_subframes > 1) {
-		u8 *qc = ieee80211_get_qos_ctl((void *)skb->data);
-
+	if (num_subframes > 1)
 		*qc |= IEEE80211_QOS_CTL_A_MSDU_PRESENT;
-	}
 
 	tcp_payload_len = skb_tail_pointer(skb) - skb_transport_header(skb) -
 		tcp_hdrlen(skb) + skb->data_len;
@@ -594,7 +591,7 @@ segment:
 			info->driver_data[0] = (void *)(uintptr_t)amsdu_add;
 			skb_shinfo(tmp)->gso_size = mss;
 		} else {
-			u8 *qc = ieee80211_get_qos_ctl((void *)tmp->data);
+			qc = ieee80211_get_qos_ctl((void *)tmp->data);
 
 			if (ipv4)
 				ip_send_check(ip_hdr(tmp));
@@ -760,7 +757,7 @@ int iwl_mvm_tx_skb(struct iwl_mvm *mvm, struct sk_buff *skb,
 		return ret;
 
 	while (!skb_queue_empty(&mpdus_skbs)) {
-		struct sk_buff *skb = __skb_dequeue(&mpdus_skbs);
+		skb = __skb_dequeue(&mpdus_skbs);
 
 		ret = iwl_mvm_tx_mpdu(mvm, skb, sta);
 		if (ret) {
