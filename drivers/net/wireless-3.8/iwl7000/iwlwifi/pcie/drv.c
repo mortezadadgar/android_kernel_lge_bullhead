@@ -67,9 +67,6 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/module.h>
-#ifdef CPTCFG_IWLWIFI_RTPM_WIFI_OFF
-#include <linux/pm_runtime.h>
-#endif /* CPTCFG_IWLWIFI_RTPM_WIFI_OFF */
 #include <linux/pci.h>
 #include <linux/pci-aspm.h>
 #include <linux/acpi.h>
@@ -460,14 +457,6 @@ static int iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 		}
 	}
 #endif /* CPTCFG_IWLWIFI_PLATFORM_DATA */
-
-#ifdef CPTCFG_IWLWIFI_RTPM_WIFI_OFF
-	pm_runtime_set_active(&pdev->dev);
-	pm_runtime_set_autosuspend_delay(&pdev->dev,
-					 iwlwifi_mod_params.d0i3_entry_delay);
-	pm_runtime_use_autosuspend(&pdev->dev);
-	pm_runtime_allow(&pdev->dev);
-#endif
 	return 0;
 
 out_free_drv:
@@ -534,58 +523,15 @@ static int iwl_pci_resume(struct device *device)
 	return 0;
 }
 
-#ifdef CPTCFG_IWLWIFI_RTPM_WIFI_OFF
-static int iwl_pci_runtime_suspend(struct device *device)
-{
-	struct pci_dev *pdev = to_pci_dev(device);
-	struct iwl_trans *trans = pci_get_drvdata(pdev);
-
-	IWL_DEBUG_RPM(trans, "entering runtime suspend\n");
-
-	/* For now we only allow D0I3 if the device is off */
-	if (test_bit(STATUS_DEVICE_ENABLED, &trans->status))
-		return -EBUSY;
-
-	trans->system_pm_mode = IWL_PLAT_PM_MODE_D0I3;
-
-	iwl_trans_d3_suspend(trans, false);
-
-	return 0;
-}
-
-static int iwl_pci_runtime_resume(struct device *device)
-{
-	struct pci_dev *pdev = to_pci_dev(device);
-	struct iwl_trans *trans = pci_get_drvdata(pdev);
-	enum iwl_d3_status d3_status;
-
-	IWL_DEBUG_RPM(trans, "exiting runtime suspend (resume)\n");
-
-	iwl_trans_d3_resume(trans, &d3_status, false);
-
-	trans->system_pm_mode = IWL_PLAT_PM_MODE_D3;
-
-	return 0;
-}
-#endif /* CPTCFG_IWLWIFI_RTPM_WIFI_OFF */
-
-static const struct dev_pm_ops iwl_dev_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(iwl_pci_suspend,
-				iwl_pci_resume)
-#ifdef CPTCFG_IWLWIFI_RTPM_WIFI_OFF
-	SET_RUNTIME_PM_OPS(iwl_pci_runtime_suspend,
-			   iwl_pci_runtime_resume,
-			   NULL)
-#endif /* CPTCFG_IWLWIFI_RTPM_WIFI_OFF */
-};
+static SIMPLE_DEV_PM_OPS(iwl_dev_pm_ops, iwl_pci_suspend, iwl_pci_resume);
 
 #define IWL_PM_OPS	(&iwl_dev_pm_ops)
 
-#else /* CONFIG_PM_SLEEP */
+#else
 
 #define IWL_PM_OPS	NULL
 
-#endif /* CONFIG_PM_SLEEP */
+#endif
 
 static struct pci_driver iwl_pci_driver = {
 	.name = DRV_NAME,

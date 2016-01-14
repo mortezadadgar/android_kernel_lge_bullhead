@@ -72,9 +72,6 @@
 #include <linux/bitops.h>
 #include <linux/gfp.h>
 #include <linux/vmalloc.h>
-#ifdef CPTCFG_IWLWIFI_RTPM_WIFI_OFF
-#include <linux/pm_runtime.h>
-#endif /* CPTCFG_IWLWIFI_RTPM_WIFI_OFF */
 
 #include "iwl-drv.h"
 #include "iwl-trans.h"
@@ -1296,9 +1293,6 @@ static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans, bool low_power)
 	if (hw_rfkill != was_hw_rfkill)
 		iwl_trans_pcie_rf_kill(trans, hw_rfkill);
 
-#ifdef CPTCFG_IWLWIFI_RTPM_WIFI_OFF
-	pm_runtime_put_sync(trans->dev);
-#endif /* CPTCFG_IWLWIFI_RTPM_WIFI_OFF */
 #ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
 	if (low_power && !iwl_trans_pcie_power_device_off(trans_pcie)) {
 		/* card is off, no need to re-take ownership */
@@ -1477,9 +1471,6 @@ static int _iwl_trans_pcie_start_hw(struct iwl_trans *trans, bool low_power)
 	/* ... rfkill can call stop_device and set it false if needed */
 	iwl_trans_pcie_rf_kill(trans, hw_rfkill);
 
-#ifdef CPTCFG_IWLWIFI_RTPM_WIFI_OFF
-	pm_runtime_get_sync(trans->dev);
-#endif /* CPTCFG_IWLWIFI_RTPM_WIFI_OFF */
 	return 0;
 }
 
@@ -1604,10 +1595,6 @@ void iwl_trans_pcie_free(struct iwl_trans *trans)
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	int i;
 
-#ifdef CPTCFG_IWLWIFI_RTPM_WIFI_OFF
-	/* TODO: check if this is really needed */
-	pm_runtime_disable(trans->dev);
-#endif /* CPTCFG_IWLWIFI_RTPM_WIFI_OFF */
 #ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
 	/* Make sure the device is on before calling pci functions again.
 	 * This also ensures that the saved_state structure is freed.
@@ -1969,9 +1956,6 @@ void iwl_trans_pcie_ref(struct iwl_trans *trans)
 	spin_lock_irqsave(&trans_pcie->ref_lock, flags);
 	IWL_DEBUG_RPM(trans, "ref_counter: %d\n", trans_pcie->ref_count);
 	trans_pcie->ref_count++;
-#ifdef CPTCFG_IWLWIFI_RTPM_WIFI_OFF
-	pm_runtime_get(&trans_pcie->pci_dev->dev);
-#endif /* CPTCFG_IWLWIFI_RTPM_WIFI_OFF */
 	spin_unlock_irqrestore(&trans_pcie->ref_lock, flags);
 }
 
@@ -1990,11 +1974,6 @@ void iwl_trans_pcie_unref(struct iwl_trans *trans)
 		return;
 	}
 	trans_pcie->ref_count--;
-
-#ifdef CPTCFG_IWLWIFI_RTPM_WIFI_OFF
-	pm_runtime_mark_last_busy(&trans_pcie->pci_dev->dev);
-	pm_runtime_put_autosuspend(&trans_pcie->pci_dev->dev);
-#endif /* CPTCFG_IWLWIFI_RTPM_WIFI_OFF */
 
 	spin_unlock_irqrestore(&trans_pcie->ref_lock, flags);
 }
