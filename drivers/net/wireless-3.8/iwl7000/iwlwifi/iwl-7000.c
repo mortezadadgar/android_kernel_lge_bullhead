@@ -74,16 +74,19 @@
 #define IWL7260_UCODE_API_MAX	17
 #define IWL7265_UCODE_API_MAX	17
 #define IWL7265D_UCODE_API_MAX	21
+#define IWL3168_UCODE_API_MAX	21
 
 /* Oldest version we won't warn about */
 #define IWL7260_UCODE_API_OK	13
 #define IWL7265_UCODE_API_OK	13
 #define IWL7265D_UCODE_API_OK	13
+#define IWL3168_UCODE_API_OK	20
 
 /* Lowest firmware API version supported */
 #define IWL7260_UCODE_API_MIN	13
 #define IWL7265_UCODE_API_MIN	13
 #define IWL7265D_UCODE_API_MIN	13
+#define IWL3168_UCODE_API_MIN	20
 
 /* NVM versions */
 #define IWL7260_NVM_VERSION		0x0a1d
@@ -108,6 +111,9 @@
 
 #define IWL3160_FW_PRE "iwlwifi-3160-"
 #define IWL3160_MODULE_FIRMWARE(api) IWL3160_FW_PRE __stringify(api) ".ucode"
+
+#define IWL3168_FW_PRE "iwlwifi-3168-"
+#define IWL3168_MODULE_FIRMWARE(api) IWL3168_FW_PRE __stringify(api) ".ucode"
 
 #define IWL7265_FW_PRE "iwlwifi-7265-"
 #define IWL7265_MODULE_FIRMWARE(api) IWL7265_FW_PRE __stringify(api) ".ucode"
@@ -179,6 +185,12 @@ static const struct iwl_ht_params iwl7000_ht_params = {
 	.ucode_api_max = IWL7265_UCODE_API_MAX,			\
 	.ucode_api_ok = IWL7265_UCODE_API_OK,			\
 	.ucode_api_min = IWL7265_UCODE_API_MIN
+
+#define IWL_DEVICE_3008						\
+	IWL_DEVICE_7000_COMMON,					\
+	.ucode_api_max = IWL3168_UCODE_API_MAX,			\
+	.ucode_api_ok = IWL3168_UCODE_API_OK,			\
+	.ucode_api_min = IWL3168_UCODE_API_MIN
 
 #define IWL_DEVICE_7005D					\
 	IWL_DEVICE_7000_COMMON,					\
@@ -299,8 +311,8 @@ const struct iwl_cfg iwl3165_2ac_cfg = {
 
 const struct iwl_cfg iwl3168_2ac_cfg = {
 	.name = "Intel(R) Dual Band Wireless AC 3168",
-	.fw_name_pre = IWL7265D_FW_PRE,
-	IWL_DEVICE_7005D,
+	.fw_name_pre = IWL3168_FW_PRE,
+	IWL_DEVICE_3008,
 	.ht_params = &iwl7000_ht_params,
 	.nvm_ver = IWL3165_NVM_VERSION,
 	.nvm_calib_ver = IWL3165_TX_POWER_VERSION,
