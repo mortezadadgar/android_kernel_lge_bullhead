@@ -147,7 +147,7 @@ static int __replace_page(struct vm_area_struct *vma, unsigned long addr,
 	page_add_new_anon_rmap(kpage, vma, addr);
 
 	if (!PageAnon(page)) {
-		dec_mm_counter(mm, MM_FILEPAGES);
+		dec_mm_counter(mm, mm_counter_file(page));
 		inc_mm_counter(mm, MM_ANONPAGES);
 	}
 
