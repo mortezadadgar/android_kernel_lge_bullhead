@@ -95,6 +95,8 @@
 #define IWL3160_TX_POWER_VERSION	0xffff /* meaningless */
 #define IWL3165_NVM_VERSION		0x709
 #define IWL3165_TX_POWER_VERSION	0xffff /* meaningless */
+#define IWL3168_NVM_VERSION		0xd01
+#define IWL3168_TX_POWER_VERSION	0xffff /* meaningless */
 #define IWL7265_NVM_VERSION		0x0a1d
 #define IWL7265_TX_POWER_VERSION	0xffff /* meaningless */
 #define IWL7265D_NVM_VERSION		0x0c11
@@ -314,8 +316,8 @@ const struct iwl_cfg iwl3168_2ac_cfg = {
 	.fw_name_pre = IWL3168_FW_PRE,
 	IWL_DEVICE_3008,
 	.ht_params = &iwl7000_ht_params,
-	.nvm_ver = IWL3165_NVM_VERSION,
-	.nvm_calib_ver = IWL3165_TX_POWER_VERSION,
+	.nvm_ver = IWL3168_NVM_VERSION,
+	.nvm_calib_ver = IWL3168_TX_POWER_VERSION,
 	.pwr_tx_backoffs = iwl7265_pwr_tx_backoffs,
 	.dccm_len = IWL7265_DCCM_LEN,
 };
