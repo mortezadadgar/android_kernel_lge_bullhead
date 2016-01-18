@@ -126,6 +126,7 @@ void ieee80211_sta_reset_conn_monitor(struct ieee80211_sub_if_data *sdata)
 		return;
 
 	ifmgd->probe_send_count = 0;
+	sdata->u.mgd.flags &= ~IEEE80211_STA_BEACON_LOSS_REPORTED;
 
 	if (ieee80211_hw_check(&sdata->local->hw, CONNECTION_MONITOR))
 		return;
@@ -1906,6 +1907,7 @@ static void ieee80211_set_associated(struct ieee80211_sub_if_data *sdata,
 
 	/* just to be sure */
 	ieee80211_stop_poll(sdata);
+	sdata->u.mgd.flags &= ~IEEE80211_STA_BEACON_LOSS_REPORTED;
 
 	ieee80211_led_assoc(local, 1);
 
@@ -1964,6 +1966,7 @@ static void ieee80211_set_disassoc(struct ieee80211_sub_if_data *sdata,
 		return;
 
 	ieee80211_stop_poll(sdata);
+	ifmgd->flags &= ~IEEE80211_STA_BEACON_LOSS_REPORTED;
 
 	ifmgd->associated = NULL;
 	netif_carrier_off(sdata->dev);
@@ -2402,8 +2405,12 @@ static void ieee80211_beacon_connection_loss_work(struct work_struct *work)
 		sdata_info(sdata, "Connection to AP %pM lost\n",
 			   ifmgd->bssid);
 		__ieee80211_disconnect(sdata);
-	} else {
+	} else if (!(ifmgd->flags & IEEE80211_STA_BEACON_LOSS_DO_NOT_DISCONNECT)) {
 		ieee80211_mgd_probe_ap(sdata, true);
+	} else if (!(ifmgd->flags & IEEE80211_STA_BEACON_LOSS_REPORTED)) {
+		ieee80211_cqm_beacon_loss_notify(&sdata->vif,
+						 GFP_KERNEL);
+		ifmgd->flags |= IEEE80211_STA_BEACON_LOSS_REPORTED;
 	}
 }
 
@@ -4723,6 +4730,11 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 	sdata->control_port_no_encrypt = req->crypto.control_port_no_encrypt;
 	sdata->encrypt_headroom = ieee80211_cs_headroom(local, &req->crypto,
 							sdata->vif.type);
+
+	if (req->flags & ASSOC_REQ_BEACON_LOSS_DO_NOT_DISCONNECT)
+		ifmgd->flags |= IEEE80211_STA_BEACON_LOSS_DO_NOT_DISCONNECT;
+	else
+		ifmgd->flags &= ~IEEE80211_STA_BEACON_LOSS_DO_NOT_DISCONNECT;
 
 	/* kick off associate process */
 
