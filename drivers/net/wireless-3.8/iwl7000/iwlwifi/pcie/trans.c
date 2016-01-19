@@ -2654,12 +2654,16 @@ static struct iwl_trans_dump_data
 
 static int iwl_trans_pcie_suspend(struct iwl_trans *trans)
 {
-	return iwl_pci_fw_enter_d0i3(trans);
+	if (trans->runtime_pm_mode == IWL_PLAT_PM_MODE_D0I3)
+		return iwl_pci_fw_enter_d0i3(trans);
+
+	return 0;
 }
 
 static void iwl_trans_pcie_resume(struct iwl_trans *trans)
 {
-	iwl_pci_fw_exit_d0i3(trans);
+	if (trans->runtime_pm_mode == IWL_PLAT_PM_MODE_D0I3)
+		iwl_pci_fw_exit_d0i3(trans);
 }
 
 static const struct iwl_trans_ops trans_ops_pcie = {
