@@ -33,7 +33,7 @@
 #include <linux/slab.h>
 #include <linux/sched.h>
 #include <net/ip6_checksum.h>
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
 #include <net/tso.h>
 #endif
 
