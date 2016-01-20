@@ -1191,7 +1191,7 @@ restart:
 		IWL_DEBUG_RX(trans, "rxbuf: HW = %d, SW = %d\n", r, i);
 		iwl_pcie_rx_handle_rb(trans, rxq, rxb, emergency);
 
-		i = (i + 1) & RX_QUEUE_MASK;
+		i = (i + 1) & (rxq->queue_size - 1);
 
 		/* If we have RX_CLAIM_REQ_ALLOC released rx buffers -
 		 * try to claim the pre-allocated buffers from the allocator */
