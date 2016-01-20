@@ -1436,10 +1436,11 @@ static ssize_t iwl_dbgfs_quota_min_read(struct file *file,
 	struct ieee80211_vif *vif = file->private_data;
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	char buf[10];
+	int len;
 
-	snprintf(buf, sizeof(buf), "%d\n", mvmvif->dbgfs_quota_min);
+	len = snprintf(buf, sizeof(buf), "%d\n", mvmvif->dbgfs_quota_min);
 
-	return simple_read_from_buffer(user_buf, count, ppos, buf, sizeof(buf));
+	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
 }
 
 #define MVM_DEBUGFS_WRITE_FILE_OPS(name, bufsz) \
