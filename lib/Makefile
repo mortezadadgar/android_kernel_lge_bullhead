@@ -135,7 +135,7 @@ obj-$(CONFIG_DQL) += dynamic_queue_limits.o
 obj-$(CONFIG_MPILIB) += mpi/
 obj-$(CONFIG_SIGNATURE) += digsig.o
 
-obj-$(CONFIG_CLZ_TAB) += clz_tab.o
+lib-$(CONFIG_CLZ_TAB) += clz_tab.o
 
 obj-$(CONFIG_QMI_ENCDEC) += qmi_encdec.o
 
