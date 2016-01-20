@@ -17,6 +17,13 @@
 /* get the CPTCFG_* preprocessor symbols */
 #include <hdrs/config.h>
 
+/* cfg80211 version specific backward compat code follows */
+#ifdef CONFIG_WIRELESS_38
+#define CFG80211_VERSION KERNEL_VERSION(3,8,0)
+#else
+#define CFG80211_VERSION LINUX_VERSION_CODE
+#endif
+
 /* mac80211 & backport */
 #include <hdrs/mac80211-exp.h>
 #include <hdrs/ieee80211.h>
