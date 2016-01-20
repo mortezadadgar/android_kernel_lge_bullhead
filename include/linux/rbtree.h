@@ -65,7 +65,7 @@ struct rb_root_cached {
 #define RB_ROOT_CACHED (struct rb_root_cached) { {NULL, }, NULL }
 #define	rb_entry(ptr, type, member) container_of(ptr, type, member)
 
-#define RB_EMPTY_ROOT(root)  ((root)->rb_node == NULL)
+#define RB_EMPTY_ROOT(root)  (READ_ONCE((root)->rb_node) == NULL)
 
 /* 'empty' nodes are nodes that are known not to be inserted in an rbree */
 #define RB_EMPTY_NODE(node)  \
