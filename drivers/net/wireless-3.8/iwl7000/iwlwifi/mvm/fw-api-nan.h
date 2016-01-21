@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015-2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -25,7 +25,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015-2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -69,6 +69,7 @@ enum iwl_nan_subcmd_ids {
 	/* NaN commands */
 	NAN_CONFIG_CMD = 0,
 	NAN_DISCOVERY_FUNC_CMD = 0x1,
+	NAN_FAW_CONFIG_CMD = 0x2,
 	NAN_DISCOVERY_EVENT_NOTIF = 0xFD,
 	NAN_DISCOVERY_TERMINATE_NOTIF = 0xFE,
 	NAN_FAW_START_NOTIF = 0xFF,
@@ -243,5 +244,36 @@ struct iwl_nan_de_term {
 	u8 reason;
 	u8 reserved1;
 } __packed; /* NAN_DISCO_TERM_NTFY_API_S_VER_1 */
+
+enum iwl_fw_post_nan_type {
+	NAN_POST_NAN_ATTR_WLAN = 0,
+	NAN_POST_NAN_ATTR_P2P,
+	NAN_POST_NAN_ATTR_IBSS,
+	NAN_POST_NAN_ATTR_MESH,
+	NAN_POST_NAN_ATTR_FURTHER_NAN,
+};
+
+enum iwl_fw_config_flags {
+	NAN_FAW_FLAG_NOTIFY_HOST = BIT(0),
+};
+
+/**
+ * NAN further availability configuration command
+ *
+ * @id_n_color: id and color of the mac used for further availability
+ * @faw_ci: channel to be available on
+ * @type: type of post nan availability (enum %iwl_fw_post_nan_type)
+ * @slots: number of 16TU slots to be available on (should be < 32)
+ * @flags: NAN_FAW_FLAG_*
+ * @op_class: operating class which corresponds to faw_ci
+ */
+struct iwl_nan_faw_config {
+	__le32 id_n_color;
+	struct iwl_fw_channel_info faw_ci;
+	u8 type;
+	u8 slots;
+	u8 flags;
+	u8 op_class;
+} __packed; /* _NAN_DISCO_FAW_CMD_API_S_VER_1 */
 
 #endif

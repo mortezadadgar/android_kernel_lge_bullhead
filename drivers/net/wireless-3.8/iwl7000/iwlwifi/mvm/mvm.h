@@ -1728,5 +1728,8 @@ int iwl_mvm_add_nan_func(struct ieee80211_hw *hw,
 void iwl_mvm_rm_nan_func(struct ieee80211_hw *hw,
 			 struct ieee80211_vif *vif,
 			 u8 instance_id);
+int iwl_mvm_nan_config_nan_faw_cmd(struct iwl_mvm *mvm,
+				   struct cfg80211_chan_def *chandef,
+				   u8 slots);
 
 #endif /* __IWL_MVM_H__ */

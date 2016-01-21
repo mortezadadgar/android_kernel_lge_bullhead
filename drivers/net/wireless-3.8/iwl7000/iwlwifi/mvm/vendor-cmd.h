@@ -119,6 +119,7 @@
  *	beacon/probe response. This event is sent for buckets with report mode
  *	set to %IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE_RESULTS.
  * @IWL_MVM_VENDOR_CMD_DBG_COLLECT: collect debug data
+ * @IWL_MVM_VENDOR_CMD_NAN_FAW_CONF: Configure post NAN further availability.
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -148,6 +149,7 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_RXFILTER,
 	IWL_MVM_VENDOR_CMD_GSCAN_BEACON_EVENT,
 	IWL_MVM_VENDOR_CMD_DBG_COLLECT,
+	IWL_MVM_VENDOR_CMD_NAN_FAW_CONF,
 };
 
 /**
@@ -433,6 +435,10 @@ enum iwl_mvm_vendor_rxfilter_op {
  * @IWL_MVM_VENDOR_ATTR_GSCAN_SIG_CHANGE_RESULTS: array of significant
  *	change results. Each result is a nested attribute of &enum
  *	iwl_mvm_vendor_significant_change_result.
+ * @IWL_MVM_VENDOR_ATTR_NAN_FAW_FREQ: u32 attribute. Frequency (in MHz) to be
+ *	used for NAN further availability.
+ * @IWL_MVM_VENDOR_ATTR_NAN_FAW_SLOTS: u8 attribute. Number of 16TU slots
+ *	the NAN device will be available on it's FAW between DWs.
  *
  * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
  * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
@@ -485,6 +491,8 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_RXFILTER,
 	IWL_MVM_VENDOR_ATTR_RXFILTER_OP,
 	IWL_MVM_VENDOR_ATTR_DBG_COLLECT_TRIGGER,
+	IWL_MVM_VENDOR_ATTR_NAN_FAW_FREQ,
+	IWL_MVM_VENDOR_ATTR_NAN_FAW_SLOTS,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,

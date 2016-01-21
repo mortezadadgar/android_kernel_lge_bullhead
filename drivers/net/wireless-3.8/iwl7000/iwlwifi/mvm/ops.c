@@ -445,6 +445,7 @@ static const struct iwl_hcmd_names iwl_mvm_scan_names[] = {
 static const struct iwl_hcmd_names iwl_mvm_nan_names[] = {
 	HCMD_NAME(NAN_CONFIG_CMD),
 	HCMD_NAME(NAN_DISCOVERY_FUNC_CMD),
+	HCMD_NAME(NAN_FAW_CONFIG_CMD),
 	HCMD_NAME(NAN_DISCOVERY_EVENT_NOTIF),
 	HCMD_NAME(NAN_DISCOVERY_TERMINATE_NOTIF),
 	HCMD_NAME(NAN_FAW_START_NOTIF),

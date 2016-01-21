@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015-2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -25,7 +25,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015-2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -510,4 +510,40 @@ void iwl_mvm_nan_de_term_notif(struct iwl_mvm *mvm,
 
 	ieee80211_nan_func_terminated(mvm->nan_vif, ev->instance_id, nl_reason,
 				      GFP_ATOMIC);
+}
+
+int iwl_mvm_nan_config_nan_faw_cmd(struct iwl_mvm *mvm,
+				   struct cfg80211_chan_def *chandef, u8 slots)
+{
+	struct iwl_nan_faw_config cmd = {};
+	struct iwl_mvm_vif *mvmvif;
+	int ret;
+
+	if (WARN_ON(!mvm->nan_vif))
+		return -EINVAL;
+
+	mutex_lock(&mvm->mutex);
+
+	mvmvif = iwl_mvm_vif_from_mac80211(mvm->nan_vif);
+
+	/* Set the channel info data */
+	cmd.faw_ci.band = (chandef->chan->band == IEEE80211_BAND_2GHZ ?
+	      PHY_BAND_24 : PHY_BAND_5);
+
+	cmd.faw_ci.channel = chandef->chan->hw_value;
+	cmd.faw_ci.width = iwl_mvm_get_channel_width(chandef);
+	cmd.faw_ci.ctrl_pos = iwl_mvm_get_ctrl_pos(chandef);
+	ieee80211_chandef_to_operating_class(chandef, &cmd.op_class);
+	cmd.slots = slots;
+	cmd.type = NAN_POST_NAN_ATTR_FURTHER_NAN;
+	cmd.id_n_color = cpu_to_le32(FW_CMD_ID_AND_COLOR(mvmvif->id,
+							 mvmvif->color));
+
+	ret = iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(NAN_FAW_CONFIG_CMD,
+						   NAN_GROUP, 0),
+				   0, sizeof(cmd), &cmd);
+
+	mutex_unlock(&mvm->mutex);
+
+	return ret;
 }
