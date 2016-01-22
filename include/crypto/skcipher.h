@@ -1,11 +1,11 @@
 /*
  * Symmetric key ciphers.
- * 
+ *
  * Copyright (c) 2007-2015 Herbert Xu <herbert@gondor.apana.org.au>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 of the License, or (at your option) 
+ * Software Foundation; either version 2 of the License, or (at your option)
  * any later version.
  *
  */
@@ -431,6 +431,14 @@ static inline struct skcipher_request *skcipher_request_alloc(
 static inline void skcipher_request_free(struct skcipher_request *req)
 {
 	kzfree(req);
+}
+
+static inline void skcipher_request_zero(struct skcipher_request *req)
+{
+	struct crypto_skcipher *tfm = crypto_skcipher_reqtfm(req);
+
+	memset(req, 0, sizeof(*req) + crypto_skcipher_reqsize(tfm));
+	barrier();
 }
 
 /**
