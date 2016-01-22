@@ -1,11 +1,11 @@
 /*
  * Hash: Hash algorithms under the crypto API
- * 
+ *
  * Copyright (c) 2008 Herbert Xu <herbert@gondor.apana.org.au>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 of the License, or (at your option) 
+ * Software Foundation; either version 2 of the License, or (at your option)
  * any later version.
  *
  */
@@ -14,6 +14,7 @@
 #define _CRYPTO_HASH_H
 
 #include <linux/crypto.h>
+#include <linux/string.h>
 
 struct crypto_ahash;
 
@@ -230,6 +231,13 @@ static inline void ahash_request_free(struct ahash_request *req)
 	kzfree(req);
 }
 
+static inline void ahash_request_zero(struct ahash_request *req)
+{
+	memset(req, 0,
+		sizeof(*req) + crypto_ahash_reqsize(crypto_ahash_reqtfm(req)));
+	barrier();
+}
+
 static inline struct ahash_request *ahash_request_cast(
 	struct crypto_async_request *req)
 {
@@ -349,5 +357,11 @@ int crypto_shash_update(struct shash_desc *desc, const u8 *data,
 int crypto_shash_final(struct shash_desc *desc, u8 *out);
 int crypto_shash_finup(struct shash_desc *desc, const u8 *data,
 		       unsigned int len, u8 *out);
+
+static inline void shash_desc_zero(struct shash_desc *desc)
+{
+	memset(desc, 0, sizeof(*desc) + crypto_shash_descsize(desc->tfm));
+	barrier();
+}
 
 #endif	/* _CRYPTO_HASH_H */
