@@ -19,6 +19,7 @@ KBUILD_DEFCONFIG := defconfig
 
 KBUILD_CFLAGS	+= -mgeneral-regs-only
 KBUILD_CFLAGS	+= -mcpu=cortex-a57.cortex-a53
+KBUILD_CFLAGS	+= -fno-asynchronous-unwind-tables
 
 ifeq ($(CONFIG_CPU_BIG_ENDIAN), y)
 KBUILD_CPPFLAGS	+= -mbig-endian
