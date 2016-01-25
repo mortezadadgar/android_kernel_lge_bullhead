@@ -350,4 +350,8 @@ skb_ensure_writable(struct sk_buff *skb, int write_len)
 }
 #endif
 
+#ifndef NETIF_F_CSUM_MASK
+#define NETIF_F_CSUM_MASK (NETIF_F_V4_CSUM | NETIF_F_V6_CSUM)
+#endif
+
 #endif /* __IWL_CHROME */

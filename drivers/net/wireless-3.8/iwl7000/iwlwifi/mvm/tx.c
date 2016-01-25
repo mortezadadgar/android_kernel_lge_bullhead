@@ -558,7 +558,7 @@ segment:
 	skb_shinfo(skb)->gso_size = num_subframes * mss;
 	memcpy(cb, skb->cb, sizeof(cb));
 
-	next = skb_gso_segment(skb, NETIF_F_ALL_CSUM | NETIF_F_SG);
+	next = skb_gso_segment(skb, NETIF_F_CSUM_MASK | NETIF_F_SG);
 	skb_shinfo(skb)->gso_size = mss;
 	if (WARN_ON_ONCE(IS_ERR(next)))
 		return -EINVAL;
