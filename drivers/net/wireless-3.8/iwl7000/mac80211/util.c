@@ -2465,13 +2465,17 @@ u8 *ieee80211_ie_build_vht_oper(u8 *pos, struct ieee80211_sta_vht_cap *vht_cap,
 	return pos + sizeof(struct ieee80211_vht_operation);
 }
 
-bool ieee80211_chandef_ht_oper(const struct ieee80211_ht_operation *ht_oper,
-			       struct cfg80211_chan_def *chandef)
+void ieee80211_ht_oper_to_chandef(struct ieee80211_channel *control_chan,
+				  const struct ieee80211_ht_operation *ht_oper,
+				  struct cfg80211_chan_def *chandef)
 {
 	enum nl80211_channel_type channel_type;
 
-	if (!ht_oper)
-		return false;
+	if (!ht_oper) {
+		cfg80211_chandef_create(chandef, control_chan,
+					NL80211_CHAN_NO_HT);
+		return;
+	}
 
 	switch (ht_oper->ht_param & IEEE80211_HT_PARAM_CHA_SEC_OFFSET) {
 	case IEEE80211_HT_PARAM_CHA_SEC_NONE:
@@ -2485,52 +2489,42 @@ bool ieee80211_chandef_ht_oper(const struct ieee80211_ht_operation *ht_oper,
 		break;
 	default:
 		channel_type = NL80211_CHAN_NO_HT;
-		return false;
 	}
 
-	cfg80211_chandef_create(chandef, chandef->chan, channel_type);
-	return true;
+	cfg80211_chandef_create(chandef, control_chan, channel_type);
 }
 
-bool ieee80211_chandef_vht_oper(const struct ieee80211_vht_operation *oper,
-				struct cfg80211_chan_def *chandef)
+void ieee80211_vht_oper_to_chandef(struct ieee80211_channel *control_chan,
+				   const struct ieee80211_vht_operation *oper,
+				   struct cfg80211_chan_def *chandef)
 {
-	struct cfg80211_chan_def new = *chandef;
-	int cf1, cf2;
-
 	if (!oper)
-		return false;
+		return;
 
-	cf1 = ieee80211_channel_to_frequency(oper->center_freq_seg1_idx,
-					     chandef->chan->band);
-	cf2 = ieee80211_channel_to_frequency(oper->center_freq_seg2_idx,
-					     chandef->chan->band);
+	chandef->chan = control_chan;
 
 	switch (oper->chan_width) {
 	case IEEE80211_VHT_CHANWIDTH_USE_HT:
 		break;
 	case IEEE80211_VHT_CHANWIDTH_80MHZ:
-		new.width = NL80211_CHAN_WIDTH_80;
-		new.center_freq1 = cf1;
+		chandef->width = NL80211_CHAN_WIDTH_80;
 		break;
 	case IEEE80211_VHT_CHANWIDTH_160MHZ:
-		new.width = NL80211_CHAN_WIDTH_160;
-		new.center_freq1 = cf1;
+		chandef->width = NL80211_CHAN_WIDTH_160;
 		break;
 	case IEEE80211_VHT_CHANWIDTH_80P80MHZ:
-		new.width = NL80211_CHAN_WIDTH_80P80;
-		new.center_freq1 = cf1;
-		new.center_freq2 = cf2;
+		chandef->width = NL80211_CHAN_WIDTH_80P80;
 		break;
 	default:
-		return false;
+		break;
 	}
 
-	if (!cfg80211_chandef_valid(&new))
-		return false;
-
-	*chandef = new;
-	return true;
+	chandef->center_freq1 =
+		ieee80211_channel_to_frequency(oper->center_freq_seg1_idx,
+					       control_chan->band);
+	chandef->center_freq2 =
+		ieee80211_channel_to_frequency(oper->center_freq_seg2_idx,
+					       control_chan->band);
 }
 
 int ieee80211_parse_bitrates(struct cfg80211_chan_def *chandef,
