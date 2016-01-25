@@ -2651,6 +2651,7 @@ static struct iwl_trans_dump_data
 	return dump_data;
 }
 
+#ifdef CONFIG_PM_SLEEP
 static int iwl_trans_pcie_suspend(struct iwl_trans *trans)
 {
 	if (trans->runtime_pm_mode == IWL_PLAT_PM_MODE_D0I3)
@@ -2664,6 +2665,7 @@ static void iwl_trans_pcie_resume(struct iwl_trans *trans)
 	if (trans->runtime_pm_mode == IWL_PLAT_PM_MODE_D0I3)
 		iwl_pci_fw_exit_d0i3(trans);
 }
+#endif /* CONFIG_PM_SLEEP */
 
 static const struct iwl_trans_ops trans_ops_pcie = {
 	.start_hw = iwl_trans_pcie_start_hw,
@@ -2675,8 +2677,10 @@ static const struct iwl_trans_ops trans_ops_pcie = {
 	.d3_suspend = iwl_trans_pcie_d3_suspend,
 	.d3_resume = iwl_trans_pcie_d3_resume,
 
+#ifdef CONFIG_PM_SLEEP
 	.suspend = iwl_trans_pcie_suspend,
 	.resume = iwl_trans_pcie_resume,
+#endif /* CONFIG_PM_SLEEP */
 
 	.send_cmd = iwl_trans_pcie_send_hcmd,
 
