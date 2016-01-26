@@ -493,11 +493,21 @@ static int rmi_event(struct hid_device *hdev, struct hid_field *field,
 #ifdef CONFIG_PM
 static int rmi_post_reset(struct hid_device *hdev)
 {
+	struct rmi_data *data = hid_get_drvdata(hdev);
+
+	if (!(data->device_flags & RMI_DEVICE))
+		return 0;
+
 	return rmi_set_mode(hdev, RMI_MODE_ATTN_REPORTS);
 }
 
 static int rmi_post_resume(struct hid_device *hdev)
 {
+	struct rmi_data *data = hid_get_drvdata(hdev);
+
+	if (!(data->device_flags & RMI_DEVICE))
+		return 0;
+
 	return rmi_set_mode(hdev, RMI_MODE_ATTN_REPORTS);
 }
 #endif /* CONFIG_PM */
