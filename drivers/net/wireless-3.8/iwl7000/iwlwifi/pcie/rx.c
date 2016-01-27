@@ -373,13 +373,11 @@ static struct page *iwl_pcie_rx_alloc_page(struct iwl_trans *trans,
  * allocated buffers.
  */
 static void iwl_pcie_rxq_alloc_rbs(struct iwl_trans *trans, gfp_t priority,
-				   struct iwl_rxq *rxq,
-				   bool init)
+				   struct iwl_rxq *rxq)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_rx_mem_buffer *rxb;
 	struct page *page;
-	int i = 0;
 
 	while (1) {
 		spin_lock(&rxq->lock);
@@ -426,11 +424,6 @@ static void iwl_pcie_rxq_alloc_rbs(struct iwl_trans *trans, gfp_t priority,
 
 		list_add_tail(&rxb->list, &rxq->rx_free);
 		rxq->free_count++;
-		if (init) {
-			trans_pcie->global_table[i] = rxb;
-			rxb->vid = i;
-			i++;
-		}
 
 		spin_unlock(&rxq->lock);
 	}
@@ -816,38 +809,6 @@ static void iwl_pcie_rx_init_rxb_lists(struct iwl_rxq *rxq)
 	rxq->used_count = 0;
 }
 
-static void iwl_pcie_rx_init_rba(struct iwl_rb_allocator *rba)
-{
-	int i;
-
-	lockdep_assert_held(&rba->lock);
-
-	INIT_LIST_HEAD(&rba->rbd_allocated);
-	INIT_LIST_HEAD(&rba->rbd_empty);
-
-	for (i = 0; i < RX_POOL_SIZE; i++)
-		list_add(&rba->pool[i].list, &rba->rbd_empty);
-}
-
-static void iwl_pcie_rx_free_rba(struct iwl_trans *trans)
-{
-	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
-	struct iwl_rb_allocator *rba = &trans_pcie->rba;
-	int i;
-
-	lockdep_assert_held(&rba->lock);
-
-	for (i = 0; i < RX_POOL_SIZE; i++) {
-		if (!rba->pool[i].page)
-			continue;
-		dma_unmap_page(trans->dev, rba->pool[i].page_dma,
-			       PAGE_SIZE << trans_pcie->rx_page_order,
-			       DMA_FROM_DEVICE);
-		__free_pages(rba->pool[i].page, trans_pcie->rx_page_order);
-		rba->pool[i].page = NULL;
-	}
-}
-
 static int iwl_pcie_dummy_napi_poll(struct napi_struct *napi, int budget)
 {
 	WARN_ON(1);
@@ -859,7 +820,7 @@ int iwl_pcie_rx_init(struct iwl_trans *trans)
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_rxq *def_rxq;
 	struct iwl_rb_allocator *rba = &trans_pcie->rba;
-	int i, err, alloc_size;
+	int i, err, num_rbds, allocator_pool_size;
 
 	if (!trans_pcie->rxq) {
 		err = iwl_pcie_rx_alloc(trans);
@@ -875,10 +836,8 @@ int iwl_pcie_rx_init(struct iwl_trans *trans)
 	spin_lock(&rba->lock);
 	atomic_set(&rba->req_pending, 0);
 	atomic_set(&rba->req_ready, 0);
-
-	/* free all first - we might be reconfigured for a different size */
-	iwl_pcie_rx_free_rba(trans);
-	iwl_pcie_rx_init_rba(rba);
+	INIT_LIST_HEAD(&rba->rbd_allocated);
+	INIT_LIST_HEAD(&rba->rbd_empty);
 	spin_unlock(&rba->lock);
 
 	/* free all first - we might be reconfigured for a different size */
@@ -912,13 +871,23 @@ int iwl_pcie_rx_init(struct iwl_trans *trans)
 		spin_unlock(&rxq->lock);
 	}
 
-	/* move the pool to the default queue ownership */
-	alloc_size = trans->cfg->mq_rx_supported ?
+	/* move the pool to the default queue and allocator ownerships */
+	num_rbds = trans->cfg->mq_rx_supported ?
 		     MQ_RX_POOL_SIZE : RX_QUEUE_SIZE;
-	for (i = 0; i < alloc_size; i++)
-		list_add(&trans_pcie->rx_pool[i].list, &def_rxq->rx_used);
+	allocator_pool_size = trans->num_rx_queues *
+		(RX_CLAIM_REQ_ALLOC - RX_POST_REQ_ALLOC);
+	for (i = 0; i < num_rbds; i++) {
+		struct iwl_rx_mem_buffer *rxb = &trans_pcie->rx_pool[i];
 
-	iwl_pcie_rxq_alloc_rbs(trans, GFP_KERNEL, def_rxq, true);
+		if (i < allocator_pool_size)
+			list_add(&rxb->list, &rba->rbd_empty);
+		else
+			list_add(&rxb->list, &def_rxq->rx_used);
+		trans_pcie->global_table[i] = rxb;
+		rxb->vid = (u16)i;
+	}
+
+	iwl_pcie_rxq_alloc_rbs(trans, GFP_KERNEL, def_rxq);
 	if (trans->cfg->mq_rx_supported) {
 		iwl_pcie_rx_mq_hw_init(trans);
 	} else {
@@ -955,10 +924,6 @@ void iwl_pcie_rx_free(struct iwl_trans *trans)
 		destroy_workqueue(rba->alloc_wq);
 		rba->alloc_wq = NULL;
 	}
-
-	spin_lock(&rba->lock);
-	iwl_pcie_rx_free_rba(trans);
-	spin_unlock(&rba->lock);
 
 	iwl_pcie_free_rbs_pool(trans);
 
@@ -1251,8 +1216,7 @@ restart:
 				if (rxq->used_count < rxq->queue_size / 3)
 					emergency = false;
 				spin_unlock(&rxq->lock);
-				iwl_pcie_rxq_alloc_rbs(trans, GFP_ATOMIC, rxq,
-						       false);
+				iwl_pcie_rxq_alloc_rbs(trans, GFP_ATOMIC, rxq);
 				spin_lock(&rxq->lock);
 			}
 		}
@@ -1289,7 +1253,7 @@ restart:
 	 * will be restocked by the next call of iwl_pcie_rxq_restock.
 	 */
 	if (unlikely(emergency && count))
-		iwl_pcie_rxq_alloc_rbs(trans, GFP_ATOMIC, rxq, false);
+		iwl_pcie_rxq_alloc_rbs(trans, GFP_ATOMIC, rxq);
 
 	if (rxq->napi.poll)
 		napi_gro_flush(&rxq->napi, false);

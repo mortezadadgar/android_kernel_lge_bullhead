@@ -61,8 +61,6 @@
 #define RX_NUM_QUEUES 1
 #define RX_POST_REQ_ALLOC 2
 #define RX_CLAIM_REQ_ALLOC 8
-#define RX_POOL_SIZE ((RX_CLAIM_REQ_ALLOC - RX_POST_REQ_ALLOC) *	\
-		      IWL_MAX_RX_HW_QUEUES)
 #define RX_PENDING_WATERMARK 16
 
 struct iwl_host_cmd;
@@ -148,7 +146,6 @@ struct iwl_rxq {
 
 /**
  * struct iwl_rb_allocator - Rx allocator
- * @pool: initial pool of allocator
  * @req_pending: number of requests the allcator had not processed yet
  * @req_ready: number of requests honored and ready for claiming
  * @rbd_allocated: RBDs with pages allocated and ready to be handled to
@@ -160,7 +157,6 @@ struct iwl_rxq {
  * @rx_alloc: work struct for background calls
  */
 struct iwl_rb_allocator {
-	struct iwl_rx_mem_buffer pool[RX_POOL_SIZE];
 	atomic_t req_pending;
 	atomic_t req_ready;
 	struct list_head rbd_allocated;
