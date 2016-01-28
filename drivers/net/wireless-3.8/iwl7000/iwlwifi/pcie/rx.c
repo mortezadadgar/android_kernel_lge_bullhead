@@ -903,7 +903,7 @@ int iwl_pcie_rx_init(struct iwl_trans *trans)
 
 	/* move the pool to the default queue ownership */
 	alloc_size = trans->cfg->mq_rx_supported ?
-		     MQ_RX_POOL_SIZE : RX_POOL_SIZE;
+		     MQ_RX_POOL_SIZE : RX_QUEUE_SIZE;
 	for (i = 0; i < alloc_size; i++)
 		list_add(&trans_pcie->rx_pool[i].list, &def_rxq->rx_used);
 
