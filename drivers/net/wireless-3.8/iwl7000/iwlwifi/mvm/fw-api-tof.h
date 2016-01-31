@@ -315,8 +315,10 @@ struct iwl_tof_range_req_cmd {
 	u8 los_det_disable;
 	u8 num_of_ap;
 	u8 macaddr_random;
+	u8 range_req_bssid[ETH_ALEN];
 	u8 macaddr_template[ETH_ALEN];
 	u8 macaddr_mask[ETH_ALEN];
+	u16 reserved;
 	struct iwl_tof_range_req_ap_entry ap[IWL_MVM_TOF_MAX_APS];
 } __packed;
 

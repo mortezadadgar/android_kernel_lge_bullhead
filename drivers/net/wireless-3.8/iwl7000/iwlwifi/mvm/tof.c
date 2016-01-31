@@ -555,6 +555,11 @@ int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
 		memcpy(&mvm->tof_data.active_bssid_for_tsf,
 		       &vif->bss_conf.bssid, ETH_ALEN);
 
+	if (vif->bss_conf.assoc)
+		memcpy(cmd->range_req_bssid, vif->bss_conf.bssid, ETH_ALEN);
+	else
+		eth_broadcast_addr(cmd->range_req_bssid);
+
 	return iwl_mvm_tof_range_request_cmd(mvm);
 
 err:
