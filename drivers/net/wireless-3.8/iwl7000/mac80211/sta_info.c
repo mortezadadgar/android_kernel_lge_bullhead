@@ -1451,6 +1451,10 @@ ieee80211_sta_ps_deliver_response(struct sta_info *sta,
 
 	more_data = ieee80211_sta_ps_more_data(sta, ignored_acs, reason, driver_release_tids);
 
+	if (driver_release_tids && reason == IEEE80211_FRAME_RELEASE_PSPOLL)
+		driver_release_tids =
+			BIT(find_highest_prio_tid(driver_release_tids));
+
 	if (skb_queue_empty(&frames) && !driver_release_tids) {
 		int tid;
 
@@ -1577,14 +1581,8 @@ ieee80211_sta_ps_deliver_response(struct sta_info *sta,
 
 		sta_info_recalc_tim(sta);
 	} else {
-		unsigned long tids;
+		unsigned long tids = sta->txq_buffered_tids & driver_release_tids;
 		int tid;
-
-		if (reason == IEEE80211_FRAME_RELEASE_PSPOLL)
-			driver_release_tids =
-				BIT(find_highest_prio_tid(driver_release_tids));
-
-		tids = sta->txq_buffered_tids & driver_release_tids;
 
 		/*
 		 * We need to release a frame that is buffered somewhere in the
