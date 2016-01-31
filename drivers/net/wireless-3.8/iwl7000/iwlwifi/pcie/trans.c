@@ -1073,22 +1073,119 @@ static int iwl_pcie_load_given_ucode_8000(struct iwl_trans *trans,
 					       &first_ucode_section);
 }
 
+static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans, bool low_power)
+{
+	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+	bool hw_rfkill, was_hw_rfkill;
+
+	lockdep_assert_held(&trans_pcie->mutex);
+
+	if (trans_pcie->is_down)
+		return;
+
+	trans_pcie->is_down = true;
+
+	was_hw_rfkill = iwl_is_rfkill_set(trans);
+
+	/* tell the device to stop sending interrupts */
+	spin_lock(&trans_pcie->irq_lock);
+	iwl_disable_interrupts(trans);
+	spin_unlock(&trans_pcie->irq_lock);
+
+	/* device going down, Stop using ICT table */
+	iwl_pcie_disable_ict(trans);
+
+	/*
+	 * If a HW restart happens during firmware loading,
+	 * then the firmware loading might call this function
+	 * and later it might be called again due to the
+	 * restart. So don't process again if the device is
+	 * already dead.
+	 */
+	if (test_and_clear_bit(STATUS_DEVICE_ENABLED, &trans->status)) {
+		IWL_DEBUG_INFO(trans,
+			       "DEVICE_ENABLED bit was set and is now cleared\n");
+		iwl_pcie_tx_stop(trans);
+		iwl_pcie_rx_stop(trans);
+
+		/* Power-down device's busmaster DMA clocks */
+		if (!trans->cfg->apmg_not_supported) {
+			iwl_write_prph(trans, APMG_CLK_DIS_REG,
+				       APMG_CLK_VAL_DMA_CLK_RQT);
+			udelay(5);
+		}
+	}
+
+	/* Make sure (redundant) we've released our request to stay awake */
+	iwl_clear_bit(trans, CSR_GP_CNTRL,
+		      CSR_GP_CNTRL_REG_FLAG_MAC_ACCESS_REQ);
+
+	/* Stop the device, and put it in low power state */
+	iwl_pcie_apm_stop(trans, false);
+
+	/* stop and reset the on-board processor */
+	iwl_write32(trans, CSR_RESET, CSR_RESET_REG_FLAG_SW_RESET);
+	udelay(20);
+
+	/*
+	 * Upon stop, the APM issues an interrupt if HW RF kill is set.
+	 * This is a bug in certain verions of the hardware.
+	 * Certain devices also keep sending HW RF kill interrupt all
+	 * the time, unless the interrupt is ACKed even if the interrupt
+	 * should be masked. Re-ACK all the interrupts here.
+	 */
+	spin_lock(&trans_pcie->irq_lock);
+	iwl_disable_interrupts(trans);
+	spin_unlock(&trans_pcie->irq_lock);
+
+	/* clear all status bits */
+	clear_bit(STATUS_SYNC_HCMD_ACTIVE, &trans->status);
+	clear_bit(STATUS_INT_ENABLED, &trans->status);
+	clear_bit(STATUS_TPOWER_PMI, &trans->status);
+	clear_bit(STATUS_RFKILL, &trans->status);
+
+	/*
+	 * Even if we stop the HW, we still want the RF kill
+	 * interrupt
+	 */
+	iwl_enable_rfkill_int(trans);
+
+	/*
+	 * Check again since the RF kill state may have changed while
+	 * all the interrupts were disabled, in this case we couldn't
+	 * receive the RF kill interrupt and update the state in the
+	 * op_mode.
+	 * Don't call the op_mode if the rkfill state hasn't changed.
+	 * This allows the op_mode to call stop_device from the rfkill
+	 * notification without endless recursion. Under very rare
+	 * circumstances, we might have a small recursion if the rfkill
+	 * state changed exactly now while we were called from stop_device.
+	 * This is very unlikely but can happen and is supported.
+	 */
+	hw_rfkill = iwl_is_rfkill_set(trans);
+	if (hw_rfkill)
+		set_bit(STATUS_RFKILL, &trans->status);
+	else
+		clear_bit(STATUS_RFKILL, &trans->status);
+	if (hw_rfkill != was_hw_rfkill)
+		iwl_trans_pcie_rf_kill(trans, hw_rfkill);
+
+#ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
+	if (low_power && !iwl_trans_pcie_power_device_off(trans_pcie)) {
+		/* card is off, no need to re-take ownership */
+		return;
+	}
+#endif /* CPTCFG_IWLWIFI_PLATFORM_DATA */
+	/* re-take ownership to prevent other users from stealing the device */
+	iwl_pcie_prepare_card_hw(trans);
+}
+
 static int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 				   const struct fw_img *fw, bool run_in_rfkill)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	bool hw_rfkill;
 	int ret;
-
-	mutex_lock(&trans_pcie->mutex);
-
-	/* Someone called stop_device, don't try to start_fw */
-	if (trans_pcie->is_down) {
-		IWL_WARN(trans,
-			 "Can't start_fw since the HW hasn't been started\n");
-		ret = EIO;
-		goto out;
-	}
 
 	/* This may fail if AMT took ownership of the device */
 	if (iwl_pcie_prepare_card_hw(trans)) {
@@ -1113,9 +1210,23 @@ static int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 
 	iwl_write32(trans, CSR_INT, 0xFFFFFFFF);
 
-	ret = iwl_pcie_nic_init(trans);
-	if (ret) {
-		IWL_ERR(trans, "Unable to init nic\n");
+	/*
+	 * We enabled the RF-Kill interrupt and the handler may very
+	 * well be running. Disable the interrupts to make sure no other
+	 * interrupt can be fired.
+	 */
+	iwl_disable_interrupts(trans);
+
+	/* Make sure it finished running */
+	synchronize_irq(trans_pcie->pci_dev->irq);
+
+	mutex_lock(&trans_pcie->mutex);
+
+	/* Someone called stop_device, don't try to start_fw */
+	if (trans_pcie->is_down) {
+		IWL_WARN(trans,
+			 "Can't start_fw since the HW hasn't been started\n");
+		ret = EIO;
 		goto out;
 	}
 
@@ -1126,7 +1237,21 @@ static int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 
 	/* clear (again), then enable host interrupts */
 	iwl_write32(trans, CSR_INT, 0xFFFFFFFF);
-	iwl_enable_interrupts(trans);
+
+	ret = iwl_pcie_nic_init(trans);
+	if (ret) {
+		IWL_ERR(trans, "Unable to init nic\n");
+		goto out;
+	}
+
+	/*
+	 * Now, we load the firmware and don't want to be interrupted, even
+	 * by the RF-Kill interrupt (hence mask all the interrupt besides the
+	 * FH_TX interrupt which is needed to load the firmware). If the
+	 * RF-Kill switch is toggled, we will find out after having loaded
+	 * the firmware and return the proper value to the caller.
+	 */
+	iwl_enable_fw_load_int(trans);
 
 	/* really make sure rfkill handshake bits are cleared */
 	iwl_write32(trans, CSR_UCODE_DRV_GP1_CLR, CSR_UCODE_SW_BIT_RFKILL);
@@ -1137,6 +1262,18 @@ static int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 		ret = iwl_pcie_load_given_ucode_8000(trans, fw);
 	else
 		ret = iwl_pcie_load_given_ucode(trans, fw);
+	iwl_enable_interrupts(trans);
+
+	/* re-check RF-Kill state since we may have missed the interrupt */
+	hw_rfkill = iwl_is_rfkill_set(trans);
+	if (hw_rfkill)
+		set_bit(STATUS_RFKILL, &trans->status);
+	else
+		clear_bit(STATUS_RFKILL, &trans->status);
+
+	iwl_trans_pcie_rf_kill(trans, hw_rfkill);
+	if (hw_rfkill && !run_in_rfkill)
+		ret = -ERFKILL;
 
 out:
 	mutex_unlock(&trans_pcie->mutex);
@@ -1196,113 +1333,6 @@ static int iwl_trans_pcie_power_device_off(struct iwl_trans_pcie *trans_pcie)
 	return 0;
 }
 #endif /* CPTCFG_IWLWIFI_PLATFORM_DATA */
-
-static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans, bool low_power)
-{
-	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
-	bool hw_rfkill, was_hw_rfkill;
-
-	lockdep_assert_held(&trans_pcie->mutex);
-
-	if (trans_pcie->is_down)
-		return;
-
-	trans_pcie->is_down = true;
-
-	was_hw_rfkill = iwl_is_rfkill_set(trans);
-
-	/* tell the device to stop sending interrupts */
-	spin_lock(&trans_pcie->irq_lock);
-	iwl_disable_interrupts(trans);
-	spin_unlock(&trans_pcie->irq_lock);
-
-	/* device going down, Stop using ICT table */
-	iwl_pcie_disable_ict(trans);
-
-	/*
-	 * If a HW restart happens during firmware loading,
-	 * then the firmware loading might call this function
-	 * and later it might be called again due to the
-	 * restart. So don't process again if the device is
-	 * already dead.
-	 */
-	if (test_and_clear_bit(STATUS_DEVICE_ENABLED, &trans->status)) {
-		IWL_DEBUG_INFO(trans, "DEVICE_ENABLED bit was set and is now cleared\n");
-		iwl_pcie_tx_stop(trans);
-		iwl_pcie_rx_stop(trans);
-
-		/* Power-down device's busmaster DMA clocks */
-		if (!trans->cfg->apmg_not_supported) {
-			iwl_write_prph(trans, APMG_CLK_DIS_REG,
-				       APMG_CLK_VAL_DMA_CLK_RQT);
-			udelay(5);
-		}
-	}
-
-	/* Make sure (redundant) we've released our request to stay awake */
-	iwl_clear_bit(trans, CSR_GP_CNTRL,
-		      CSR_GP_CNTRL_REG_FLAG_MAC_ACCESS_REQ);
-
-	/* Stop the device, and put it in low power state */
-	iwl_pcie_apm_stop(trans, false);
-
-	/* stop and reset the on-board processor */
-	iwl_write32(trans, CSR_RESET, CSR_RESET_REG_FLAG_SW_RESET);
-	udelay(20);
-
-	/*
-	 * Upon stop, the APM issues an interrupt if HW RF kill is set.
-	 * This is a bug in certain verions of the hardware.
-	 * Certain devices also keep sending HW RF kill interrupt all
-	 * the time, unless the interrupt is ACKed even if the interrupt
-	 * should be masked. Re-ACK all the interrupts here.
-	 */
-	spin_lock(&trans_pcie->irq_lock);
-	iwl_disable_interrupts(trans);
-	spin_unlock(&trans_pcie->irq_lock);
-
-
-	/* clear all status bits */
-	clear_bit(STATUS_SYNC_HCMD_ACTIVE, &trans->status);
-	clear_bit(STATUS_INT_ENABLED, &trans->status);
-	clear_bit(STATUS_TPOWER_PMI, &trans->status);
-	clear_bit(STATUS_RFKILL, &trans->status);
-
-	/*
-	 * Even if we stop the HW, we still want the RF kill
-	 * interrupt
-	 */
-	iwl_enable_rfkill_int(trans);
-
-	/*
-	 * Check again since the RF kill state may have changed while
-	 * all the interrupts were disabled, in this case we couldn't
-	 * receive the RF kill interrupt and update the state in the
-	 * op_mode.
-	 * Don't call the op_mode if the rkfill state hasn't changed.
-	 * This allows the op_mode to call stop_device from the rfkill
-	 * notification without endless recursion. Under very rare
-	 * circumstances, we might have a small recursion if the rfkill
-	 * state changed exactly now while we were called from stop_device.
-	 * This is very unlikely but can happen and is supported.
-	 */
-	hw_rfkill = iwl_is_rfkill_set(trans);
-	if (hw_rfkill)
-		set_bit(STATUS_RFKILL, &trans->status);
-	else
-		clear_bit(STATUS_RFKILL, &trans->status);
-	if (hw_rfkill != was_hw_rfkill)
-		iwl_trans_pcie_rf_kill(trans, hw_rfkill);
-
-#ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
-	if (low_power && !iwl_trans_pcie_power_device_off(trans_pcie)) {
-		/* card is off, no need to re-take ownership */
-		return;
-	}
-#endif /* CPTCFG_IWLWIFI_PLATFORM_DATA */
-	/* re-take ownership to prevent other users from stealing the deivce */
-	iwl_pcie_prepare_card_hw(trans);
-}
 
 static void iwl_trans_pcie_stop_device(struct iwl_trans *trans, bool low_power)
 {
