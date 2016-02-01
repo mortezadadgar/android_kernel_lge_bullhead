@@ -3071,7 +3071,6 @@
 		reg = <0xfc4b8000 0x1000>;
 		qcom,low-hyst-temp = <10>;
 		qcom,high-hyst-temp = <5>;
-		qcom,polling-interval = <50>;
 
 		qcom,core-mapping {
 			qcom,cpu0-chars {
