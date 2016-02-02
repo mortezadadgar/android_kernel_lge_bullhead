@@ -158,11 +158,12 @@ static void iwl_mvm_create_skb(struct sk_buff *skb, struct ieee80211_hdr *hdr,
 {
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_rx_mpdu_desc *desc = (void *)pkt->data;
-	unsigned int headlen, fraglen;
+	unsigned int headlen, fraglen, pad_len = 0;
 	unsigned int hdrlen = ieee80211_hdrlen(hdr->frame_control);
 
 	if (desc->mac_flags2 & IWL_RX_MPDU_MFLG2_PAD)
-		len -= 2;
+		pad_len = 2;
+	len -= pad_len;
 
 	/* If frame is small enough to fit in skb->head, pull it completely.
 	 * If not, only pull ieee80211_hdr (including crypto if present, and
@@ -179,24 +180,20 @@ static void iwl_mvm_create_skb(struct sk_buff *skb, struct ieee80211_hdr *hdr,
 	headlen = (len <= skb_tailroom(skb)) ? len :
 					       hdrlen + crypt_len + 8;
 
-	if (desc->mac_flags2 & IWL_RX_MPDU_MFLG2_PAD) {
-		/* The firmware may align the packet to DWORD.
-		 * The padding is inserted after the IV.
-		 * After copying the header + IV skip the padding if
-		 * present before copying packet data.
-		 */
-		hdrlen += crypt_len;
-		memcpy(skb_put(skb, hdrlen), hdr, hdrlen);
-		memcpy(skb_put(skb, headlen - hdrlen), (u8 *)hdr + hdrlen + 2,
-		       headlen - hdrlen);
-	} else {
-		memcpy(skb_put(skb, headlen), hdr, headlen);
-	}
+	/* The firmware may align the packet to DWORD.
+	 * The padding is inserted after the IV.
+	 * After copying the header + IV skip the padding if
+	 * present before copying packet data.
+	 */
+	hdrlen += crypt_len;
+	memcpy(skb_put(skb, hdrlen), hdr, hdrlen);
+	memcpy(skb_put(skb, headlen - hdrlen), (u8 *)hdr + hdrlen + pad_len,
+	       headlen - hdrlen);
 
 	fraglen = len - headlen;
 
 	if (fraglen) {
-		int offset = (void *)hdr + headlen -
+		int offset = (void *)hdr + headlen + pad_len -
 			     rxb_addr(rxb) + rxb_offset(rxb);
 
 		skb_add_rx_frag(skb, 0, rxb_steal_page(rxb), offset,
