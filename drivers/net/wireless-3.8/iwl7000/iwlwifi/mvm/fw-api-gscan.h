@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -25,7 +25,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -105,10 +105,22 @@ enum iwl_gscan_band {
 
 /**
  * struct iwl_gscan_bucket_spec - gscan bucket specification
- * @scan_interval: scan interval for this bucket. In milliseconds.
+ * @scan_period: scan period for this bucket. In milliseconds.
+ * @max_scan_period: for exponential back off bucket: scan_period
+ *	may not exceed this value. In milliseconds.
+ * @exponent: for exponential back off backet - scan period calculation should
+ *	be done according to the following:
+ *	new_period = old_period * exponent
+ * @step_count: for exponential back off bucket: number of scans to perform
+ *	at a given period until the exponent is applied.
+ *	For example: for scan_period=5000ms, max_scan_period=20000ms,
+ *	exponent=2, step_count=3 - we will have:
+ *	3 scan iterations with period=5000ms.
+ *	3 scan iterations with period=10000ms, and so on till it reaches
+ *	the max_scan_period.
  * @band: the band to scan as specified in &enum iwl_gscan_band.
  *	If %IWL_GSCAN_BAND_UNSPECIFIED, use the channel list.
- * @report_policy: report policy for this bucket as specified in
+ * @report_policy: report policy for this bucket
  *	&enum iwl_mvm_vendor_gscan_report_mode.
  * @index: bucket index.
  * @channel_count: number of channels in channels array.
@@ -116,7 +128,10 @@ enum iwl_gscan_band {
  * @channels: array of channels to scan.
  */
 struct iwl_gscan_bucket_spec {
-	__le32 scan_interval;
+	__le32 scan_period;
+	__le32 max_scan_period;
+	__le32 exponent;
+	__le32 step_count;
 	__le32 band;
 	__le32 report_policy;
 	u8 index;
@@ -140,7 +155,10 @@ enum iwl_gscan_start_flags {
  * @max_scan_aps: number of AP's to store in each scan in the BSSID/RSSI history
  *	buffer (keep the highest RSSI AP's).
  * @flags: bitmap - enum iwl_gscan_start_flags.
- * @report_threshold: in percentage. When buffer is this much full, wake up AP.
+ * @report_threshold: in percentage. Wake up the host when buffer is this much
+ *	full.
+ * @report_threshold_num_scans: in num of scans. Wake up the host when this
+ *	number of scan iterations is reached.
  * @bucket_count: number of bucket in this gscan start command.
  * @mac_addr_template: sets the fixed part of a randomized MAC address: For any
  *	mask bit below, set to 0 to copy the value from the template.
@@ -153,6 +171,7 @@ struct iwl_gscan_start_cmd {
 	__le32 max_scan_aps;
 	__le32 flags;
 	__le32 report_threshold;
+	__le32 report_threshold_num_scans;
 	__le32 bucket_count;
 	u8 mac_addr_template[ETH_ALEN];
 	u8 mac_addr_mask[ETH_ALEN];

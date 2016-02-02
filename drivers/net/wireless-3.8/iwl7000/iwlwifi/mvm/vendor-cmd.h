@@ -175,22 +175,23 @@ enum iwl_mvm_vendor_load {
 
 /**
  * enum iwl_mvm_vendor_gscan_report_mode - gscan scan results report modes
- * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER: report that scan results are
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_FULL: report that scan results are
  *	available only when the scan results buffer reaches the report
- *	threshold. The report threshold is set for each bucket. See
- *	%IWL_MVM_VENDOR_ATTR_GSCAN_START_REPORT_THRESHOLD.
- * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE: like
- *	%IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER + report that scan results are
+ *	threshold. The report threshold is set for each bucket.
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_EACH_SCAN: report that scan results are
  *	available when scanning of this bucket is complete.
- * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE_RESULTS: like
- *	%IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE + forward scan results
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_FULL_RESULTS: forward scan results
  *	(beacons/probe responses) in real time to userspace.
- * @NUM_IWL_MVM_VENDOR_GSCAN_REPORT: number of defined report modes for gscan.
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_HISTORY_RESERVED: reserved.
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_NO_BATCH: do not fill scan history buffer.
+ * @NUM_IWL_MVM_VENDOR_GSCAN_REPORT: number of report mode attributes.
  */
 enum iwl_mvm_vendor_gscan_report_mode {
-	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER,
-	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE,
-	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE_RESULTS,
+	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_FULL,
+	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_EACH_SCAN,
+	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_FULL_RESULTS,
+	IWL_MVM_VENDOR_GSCAN_REPORT_HISTORY_RESERVED,
+	IWL_MVM_VENDOR_GSCAN_REPORT_NO_BATCH,
 	NUM_IWL_MVM_VENDOR_GSCAN_REPORT,
 };
 
@@ -230,6 +231,15 @@ enum iwl_mvm_vendor_gscan_channel_spec {
  *	%IWL_MVM_VENDOR_CHANNEL_SPEC. This channel list is used when
  *	%IWL_MVM_VENDOR_BUCKET_SPEC_BAND is set to
  *	%IWL_MVM_VENDOR_BAND_UNSPECIFIED.
+ * @IWL_MVM_VENDOR_BUCKET_SPEC_MAX_PERIOD: maximum scan interval. If it's
+ *	non zero or different than period, then this bucket is an exponential
+ *	back off bucket and the scan period will grow exponentially.
+ * @IWL_MVM_VENDOR_BUCKET_SPEC_EXPONENT: for exponential back off bucket,
+ *	scan period calculation should be done according to the following:
+ *	new_period = old_period * exponent
+ * @IWL_MVM_VENDOR_BUCKET_SPEC_STEP_CNT: for exponential back off bucket:
+ *	number of scans to perform at a given period and until the exponent
+ *	is applied.
  * @NUM_IWL_MVM_VENDOR_BUCKET_SPEC: number of bucket spec attributes.
  * @MAX_IWL_MVM_VENDOR_BUCKET_SPEC: highest bucket spec attribute number.
  */
@@ -240,6 +250,9 @@ enum iwl_mvm_vendor_gscan_bucket_spec {
 	IWL_MVM_VENDOR_BUCKET_SPEC_PERIOD,
 	IWL_MVM_VENDOR_BUCKET_SPEC_REPORT_MODE,
 	IWL_MVM_VENDOR_BUCKET_SPEC_CHANNELS,
+	IWL_MVM_VENDOR_BUCKET_SPEC_MAX_PERIOD,
+	IWL_MVM_VENDOR_BUCKET_SPEC_EXPONENT,
+	IWL_MVM_VENDOR_BUCKET_SPEC_STEP_CNT,
 	NUM_IWL_MVM_VENDOR_BUCKET_SPEC,
 	MAX_IWL_MVM_VENDOR_BUCKET_SPEC =
 		NUM_IWL_MVM_VENDOR_BUCKET_SPEC - 1,
@@ -530,6 +543,9 @@ enum iwl_mvm_vendor_lqm_result {
  *	&IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS. This is a u32.
  * @IWL_MVM_VENDOR_ATTR_LQM_RESULT: result of the measurement. Nested attribute
  *	see %enum iwl_mvm_vendor_lqm_result.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM: report that scan results
+ *	are available when buffer is that much full. In number of scans.
+ *
  */
 enum iwl_mvm_vendor_attr {
 	__IWL_MVM_VENDOR_ATTR_INVALID,
@@ -587,6 +603,7 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_LQM_DURATION,
 	IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT,
 	IWL_MVM_VENDOR_ATTR_LQM_RESULT,
+	IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,
