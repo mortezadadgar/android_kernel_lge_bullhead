@@ -435,19 +435,28 @@ enum iwl_mvm_vendor_rxfilter_op {
  * @IWL_MVM_VENDOR_ATTR_GSCAN_SIG_CHANGE_RESULTS: array of significant
  *	change results. Each result is a nested attribute of &enum
  *	iwl_mvm_vendor_significant_change_result.
- * @IWL_MVM_VENDOR_ATTR_NAN_FAW_FREQ: u32 attribute. Frequency (in MHz) to be
- *	used for NAN further availability.
- * @IWL_MVM_VENDOR_ATTR_NAN_FAW_SLOTS: u8 attribute. Number of 16TU slots
- *	the NAN device will be available on it's FAW between DWs.
- *
- * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
- * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
  * @IWL_MVM_VENDOR_ATTR_RXFILTER: u32 attribute.
  *      See %iwl_mvm_vendor_rxfilter_flags.
  * @IWL_MVM_VENDOR_ATTR_RXFILTER_OP: u32 attribute.
  *      See %iwl_mvm_vendor_rxfilter_op.
  * @IWL_MVM_VENDOR_ATTR_DBG_COLLECT_TRIGGER: description of collect debug data
-	trigger.
+ *	trigger.
+ * @IWL_MVM_VENDOR_ATTR_NAN_FAW_FREQ: u32 attribute. Frequency (in MHz) to be
+ *	used for NAN further availability.
+ * @IWL_MVM_VENDOR_ATTR_NAN_FAW_SLOTS: u8 attribute. Number of 16TU slots
+ *	the NAN device will be available on it's FAW between DWs.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_HOTLIST_SSIDS: maximum number of entries for
+ *	hotlist SSID's
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS: max number of epno entries
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS_BY_SSID: max number of epno
+ *	entries if ssid is specified
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_WHITE_LISTED_SSID: max number of white
+ *	listed SSIDs
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_BLACK_LISTED_SSID: max number of black
+ *	listed SSIDs
+ *
+ * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
+ * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
  */
 enum iwl_mvm_vendor_attr {
 	__IWL_MVM_VENDOR_ATTR_INVALID,
@@ -493,6 +502,11 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_DBG_COLLECT_TRIGGER,
 	IWL_MVM_VENDOR_ATTR_NAN_FAW_FREQ,
 	IWL_MVM_VENDOR_ATTR_NAN_FAW_SLOTS,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_HOTLIST_SSIDS,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS_BY_SSID,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_WHITE_LISTED_SSID,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_BLACK_LISTED_SSID,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,

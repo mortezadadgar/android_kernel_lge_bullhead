@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2007 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -33,6 +34,7 @@
  *
  * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -582,14 +584,11 @@ static int iwl_store_cscheme(struct iwl_fw *fw, const u8 *data, const u32 len)
 	return 0;
 }
 
-static int iwl_store_gscan_capa(struct iwl_fw *fw, const u8 *data,
-				const u32 len)
+static void iwl_store_gscan_capa(struct iwl_fw *fw, const u8 *data,
+				 const u32 len)
 {
 	struct iwl_fw_gscan_capabilities *fw_capa = (void *)data;
 	struct iwl_gscan_capabilities *capa = &fw->gscan_capa;
-
-	if (len < sizeof(*fw_capa))
-		return -EINVAL;
 
 	capa->max_scan_cache_size = le32_to_cpu(fw_capa->max_scan_cache_size);
 	capa->max_scan_buckets = le32_to_cpu(fw_capa->max_scan_buckets);
@@ -603,7 +602,15 @@ static int iwl_store_gscan_capa(struct iwl_fw *fw, const u8 *data,
 		le32_to_cpu(fw_capa->max_significant_change_aps);
 	capa->max_bssid_history_entries =
 		le32_to_cpu(fw_capa->max_bssid_history_entries);
-	return 0;
+	capa->max_hotlist_ssids = le32_to_cpu(fw_capa->max_hotlist_ssids);
+	capa->max_number_epno_networks =
+		le32_to_cpu(fw_capa->max_number_epno_networks);
+	capa->max_number_epno_networks_by_ssid =
+		le32_to_cpu(fw_capa->max_number_epno_networks_by_ssid);
+	capa->max_number_of_white_listed_ssid =
+		le32_to_cpu(fw_capa->max_number_of_white_listed_ssid);
+	capa->max_number_of_black_listed_ssid =
+		le32_to_cpu(fw_capa->max_number_of_black_listed_ssid);
 }
 
 /*
@@ -1277,8 +1284,15 @@ fw_dbg_conf:
 				le32_to_cpup((__le32 *)tlv_data);
 			break;
 		case IWL_UCODE_TLV_FW_GSCAN_CAPA:
-			if (iwl_store_gscan_capa(&drv->fw, tlv_data, tlv_len))
-				goto invalid_tlv_len;
+			/*
+			 * Don't return an error in case of a shorter tlv_len
+			 * to enable loading of FW that has an old format
+			 * of GSCAN capabilities TLV.
+			 */
+			if (tlv_len < sizeof(struct iwl_fw_gscan_capabilities))
+				break;
+
+			iwl_store_gscan_capa(&drv->fw, tlv_data, tlv_len);
 			gscan_capa = true;
 			break;
 		default:
@@ -1302,7 +1316,8 @@ fw_dbg_conf:
 
 	/*
 	 * If ucode advertises that it supports GSCAN but GSCAN
-	 * capabilities TLV is not present, warn and continue without GSCAN.
+	 * capabilities TLV is not present, or if it has an old format,
+	 * warn and continue without GSCAN.
 	 * Check capa since parse_tlv is called one time with capa NULL.
 	 */
 	if (capa && fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
