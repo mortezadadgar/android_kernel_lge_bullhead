@@ -136,4 +136,5 @@
 #define ieee80211_radar_detected __iwl7000_ieee80211_radar_detected
 #define ieee80211_update_p2p_noa __iwl7000_ieee80211_update_p2p_noa
 #define ieee80211_parse_p2p_noa __iwl7000_ieee80211_parse_p2p_noa
+#define ieee80211_update_mu_groups __iwl7000_ieee80211_update_mu_groups
 #endif
