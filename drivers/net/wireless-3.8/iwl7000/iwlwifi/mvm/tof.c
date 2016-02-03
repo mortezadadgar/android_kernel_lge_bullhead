@@ -499,6 +499,8 @@ int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
 	for (i = 0; i < ETH_ALEN; i++)
 		cmd->macaddr_mask[i] = ~req->macaddr_mask[i];
 
+	memset(cmd->ap, 0, sizeof(cmd->ap));
+
 	for (i = 0; i < cmd->num_of_ap; i++) {
 		struct cfg80211_ftm_target *req_target = &req->targets[i];
 		struct iwl_tof_range_req_ap_entry *cmd_target = &cmd->ap[i];
