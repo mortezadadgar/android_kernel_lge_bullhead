@@ -729,6 +729,9 @@ static void iwl_xvt_stop_op_mode(struct iwl_xvt *xvt)
 		xvt->fw_running = false;
 	}
 	iwl_trans_stop_device(xvt->trans);
+
+	iwl_xvt_free_fw_paging(xvt);
+
 	xvt->state = IWL_XVT_STATE_UNINITIALIZED;
 }
 
