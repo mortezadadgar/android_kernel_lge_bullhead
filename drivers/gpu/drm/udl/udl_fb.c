@@ -334,12 +334,6 @@ static void udl_fb_imageblit(struct fb_info *info, const struct fb_image *image)
 static int udl_fb_open(struct fb_info *info, int user)
 {
 	struct udl_fbdev *ufbdev = info->par;
-	struct drm_device *dev = ufbdev->ufb.base.dev;
-	struct udl_device *udl = dev->dev_private;
-
-	/* If the USB device is gone, we don't accept new opens */
-	if (drm_device_is_unplugged(udl->ddev))
-		return -ENODEV;
 
 	ufbdev->fb_count++;
 
