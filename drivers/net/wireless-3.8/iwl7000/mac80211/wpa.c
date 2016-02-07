@@ -224,7 +224,7 @@ static int tkip_encrypt_skb(struct ieee80211_tx_data *tx, struct sk_buff *skb)
 
 	/* Increase IV for the frame */
 	pn = atomic64_inc_return(&key->conf.tx_pn);
-	ieee80211_tkip_add_iv(pos, &key->conf, pn);
+	pos = ieee80211_tkip_add_iv(pos, &key->conf, pn);
 
 	/* hwaccel - with software IV */
 	if (info->control.hw_key)
