@@ -32,7 +32,7 @@
 extern struct snd_soc_codec *fauxsound_codec_ptr;
 extern int wcd9xxx_hw_revision;
 
-static int snd_ctrl_locked = 1;
+static int snd_ctrl_locked = 2;
 static int snd_rec_ctrl_locked = 0;
 
 unsigned int tomtom_read(struct snd_soc_codec *codec, unsigned int reg);
@@ -193,7 +193,7 @@ EXPORT_SYMBOL(snd_hax_reg_access);
 static ssize_t cam_mic_gain_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
-        return sprintf(buf, "%u",
+        return sprintf(buf, "%u\n",
 		tomtom_read(fauxsound_codec_ptr,
 			TOMTOM_A_CDC_TX7_VOL_CTL_GAIN));
 
@@ -206,8 +206,10 @@ static ssize_t cam_mic_gain_store(struct kobject *kobj,
 
 	sscanf(buf, "%u", &lval);
 
+	snd_ctrl_locked = 0;
 	tomtom_write(fauxsound_codec_ptr,
 		TOMTOM_A_CDC_TX7_VOL_CTL_GAIN, lval);
+	snd_ctrl_locked = 2;
 
 	return count;
 }
@@ -215,7 +217,7 @@ static ssize_t cam_mic_gain_store(struct kobject *kobj,
 static ssize_t mic_gain_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%u",
+	return sprintf(buf, "%u\n",
 		tomtom_read(fauxsound_codec_ptr,
 			TOMTOM_A_CDC_TX6_VOL_CTL_GAIN));
 }
@@ -227,8 +229,10 @@ static ssize_t mic_gain_store(struct kobject *kobj,
 
 	sscanf(buf, "%u", &lval);
 
+	snd_ctrl_locked = 0;
 	tomtom_write(fauxsound_codec_ptr,
 		TOMTOM_A_CDC_TX6_VOL_CTL_GAIN, lval);
+	snd_ctrl_locked = 2;
 
 	return count;
 
@@ -237,7 +241,7 @@ static ssize_t mic_gain_store(struct kobject *kobj,
 static ssize_t speaker_gain_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
-        return sprintf(buf, "%u %u",
+        return sprintf(buf, "%u %u\n",
 			tomtom_read(fauxsound_codec_ptr,
 				TOMTOM_A_CDC_RX7_VOL_CTL_B2_CTL),
 			tomtom_read(fauxsound_codec_ptr,
@@ -252,10 +256,12 @@ static ssize_t speaker_gain_store(struct kobject *kobj,
 
 	sscanf(buf, "%u %u", &lval, &rval);
 
+	snd_ctrl_locked = 0;
 	tomtom_write(fauxsound_codec_ptr,
 		TOMTOM_A_CDC_RX7_VOL_CTL_B2_CTL, lval);
 	tomtom_write(fauxsound_codec_ptr,
                 TOMTOM_A_CDC_RX7_VOL_CTL_B2_CTL, rval);
+	snd_ctrl_locked = 2;
 
 	return count;
 }
@@ -263,7 +269,7 @@ static ssize_t speaker_gain_store(struct kobject *kobj,
 static ssize_t headphone_gain_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%u %u",
+	return sprintf(buf, "%u %u\n",
 			tomtom_read(fauxsound_codec_ptr,
 				TOMTOM_A_CDC_RX1_VOL_CTL_B2_CTL),
 			tomtom_read(fauxsound_codec_ptr,
@@ -277,10 +283,12 @@ static ssize_t headphone_gain_store(struct kobject *kobj,
 
 	sscanf(buf, "%u %u", &lval, &rval);
 
+	snd_ctrl_locked = 0;
 	tomtom_write(fauxsound_codec_ptr,
 		TOMTOM_A_CDC_RX1_VOL_CTL_B2_CTL, lval);
 	tomtom_write(fauxsound_codec_ptr,
 		TOMTOM_A_CDC_RX2_VOL_CTL_B2_CTL, rval);
+	snd_ctrl_locked = 2;
 
 	return count;
 }
@@ -316,56 +324,6 @@ static ssize_t sound_reg_write_store(struct kobject *kobj,
 		tomtom_write(fauxsound_codec_ptr, selected_reg, out);
 
 	return count;
-}
-
-static ssize_t sound_control_hw_revision_show (struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	return sprintf(buf, "hw_revision: %i\n", wcd9xxx_hw_revision);
-}
-
-static ssize_t sound_control_version_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	return sprintf(buf, "version: %u.%u\n",
-			SOUND_CONTROL_MAJOR_VERSION,
-			SOUND_CONTROL_MINOR_VERSION);
-}
-
-static ssize_t sound_control_locked_store(struct kobject *kobj,
-                struct kobj_attribute *attr, const char *buf, size_t count)
-{
-	int inp;
-
-	sscanf(buf, "%d", &inp);
-
-	snd_ctrl_locked = inp;
-
-	return count;
-}
-
-static ssize_t sound_control_locked_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-        return sprintf(buf, "%d\n", snd_ctrl_locked);
-}
-
-static ssize_t sound_control_rec_locked_store(struct kobject *kobj,
-                struct kobj_attribute *attr, const char *buf, size_t count)
-{
-	int inp;
-
-	sscanf(buf, "%d", &inp);
-
-	snd_rec_ctrl_locked = inp;
-
-	return count;
-}
-
-static ssize_t sound_control_rec_locked_show(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-        return sprintf(buf, "%d\n", snd_rec_ctrl_locked);
 }
 
 static struct kobj_attribute sound_reg_sel_attribute =
@@ -410,41 +368,15 @@ static struct kobj_attribute headphone_gain_attribute =
 		headphone_gain_show,
 		headphone_gain_store);
 
-static struct kobj_attribute sound_control_locked_attribute =
-	__ATTR(gpl_sound_control_locked,
-		0666,
-		sound_control_locked_show,
-		sound_control_locked_store);
-
-static struct kobj_attribute sound_control_rec_locked_attribute =
-	__ATTR(gpl_sound_control_rec_locked,
-		0666,
-		sound_control_rec_locked_show,
-		sound_control_rec_locked_store);
-
-static struct kobj_attribute sound_control_version_attribute =
-	__ATTR(gpl_sound_control_version,
-		0444,
-		sound_control_version_show, NULL);
-
-static struct kobj_attribute sound_hw_revision_attribute =
-	__ATTR(gpl_sound_control_hw_revision,
-		0444,
-		sound_control_hw_revision_show, NULL);
-
 static struct attribute *sound_control_attrs[] =
 	{
 		&cam_mic_gain_attribute.attr,
 		&mic_gain_attribute.attr,
 		&speaker_gain_attribute.attr,
 		&headphone_gain_attribute.attr,
-		&sound_control_locked_attribute.attr,
-		&sound_control_rec_locked_attribute.attr,
 		&sound_reg_sel_attribute.attr,
 		&sound_reg_read_attribute.attr,
 		&sound_reg_write_attribute.attr,
-		&sound_hw_revision_attribute.attr,
-		&sound_control_version_attribute.attr,
 		NULL,
 	};
 
