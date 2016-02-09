@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -33,6 +34,7 @@
  *
  * Copyright(c) 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -207,7 +209,7 @@ static int iwl_dnt_dispatch_collect_data(struct iwl_dnt *dnt,
 		 * since we overrun oldest data we should update read
 		 * ptr to the next oldest data
 		 */
-		db->read_ptr = (db->read_ptr + 1) % IWL_DNT_ARRAY_SIZE;
+		db->read_ptr = (db->wr_ptr + 1) % IWL_DNT_ARRAY_SIZE;
 		kfree(wr_entry->data);
 		wr_entry->data = NULL;
 	}
