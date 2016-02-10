@@ -1340,6 +1340,26 @@ TRACE_EVENT(sched_tune_config,
 		__entry->pc_nrg_gain, __entry->pc_cap_gain)
 );
 
+/*
+ * Tracepoint for system overutilized flag
+ */
+TRACE_EVENT(sched_overutilized,
+
+	TP_PROTO(bool overutilized),
+
+	TP_ARGS(overutilized),
+
+	TP_STRUCT__entry(
+		__field( bool,	overutilized	)
+	),
+
+	TP_fast_assign(
+		__entry->overutilized	= overutilized;
+	),
+
+	TP_printk("overutilized=%d",
+		__entry->overutilized ? 1 : 0)
+);
 #ifdef CONFIG_SCHED_WALT
 struct rq;
 
