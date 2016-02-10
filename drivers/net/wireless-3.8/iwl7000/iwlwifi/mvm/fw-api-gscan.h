@@ -192,15 +192,11 @@ struct iwl_gscan_results_event {
  * struct iwl_gscan_ap_threshold_params - RSSI tracking parameters
  * @low_threshold: low RSSI threshold.
  * @high_threshold: high RSSI threshold.
- * @channel: operating channel number of the tracked AP.
- * @reserved: reserved
  * @bssid: BSSID of the AP to track.
  */
 struct iwl_gscan_ap_threshold_params {
 	u8 low_threshold;
 	u8 high_threshold;
-	u8 channel;
-	u8 reserved;
 	u8 bssid[ETH_ALEN];
 } __packed; /* AP_THRESHOLD_PARAMS_S_VER_1 */
 

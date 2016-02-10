@@ -293,8 +293,6 @@ enum iwl_mvm_vendor_gscan_result {
  * @IWL_MVM_VENDOR_AP_BSSID: BSSID of the BSS (6 octets)
  * @IWL_MVM_VENDOR_AP_LOW_RSSI_THRESHOLD: low RSSI threshold. in dB.
  * @IWL_MVM_VENDOR_AP_HIGH_RSSI_THRESHOLD: high RSSI threshold. in dB.
- * @IWL_MVM_VENDOR_AP_CHANNEL_HINT: operating channel of the BSS.
- *	This is only a hint, the BSS may be operating on a different channel.
  * @NUM_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM: number of ap threshold param
  *	attributes.
  * @MAX_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM: highest ap threshold param
@@ -305,7 +303,6 @@ enum iwl_mvm_vendor_ap_threshold_param {
 	IWL_MVM_VENDOR_AP_BSSID,
 	IWL_MVM_VENDOR_AP_LOW_RSSI_THRESHOLD,
 	IWL_MVM_VENDOR_AP_HIGH_RSSI_THRESHOLD,
-	IWL_MVM_VENDOR_AP_CHANNEL_HINT,
 	NUM_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM,
 	MAX_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM =
 		NUM_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM - 1,
