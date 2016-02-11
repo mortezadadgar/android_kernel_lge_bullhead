@@ -1244,18 +1244,6 @@ static int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 
 	iwl_enable_rfkill_int(trans);
 
-	/* If platform's RF_KILL switch is NOT set to KILL */
-	hw_rfkill = iwl_is_rfkill_set(trans);
-	if (hw_rfkill)
-		set_bit(STATUS_RFKILL, &trans->status);
-	else
-		clear_bit(STATUS_RFKILL, &trans->status);
-	iwl_trans_pcie_rf_kill(trans, hw_rfkill);
-	if (hw_rfkill && !run_in_rfkill) {
-		ret = -ERFKILL;
-		goto out;
-	}
-
 	iwl_write32(trans, CSR_INT, 0xFFFFFFFF);
 
 	/*
@@ -1269,6 +1257,18 @@ static int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 	synchronize_irq(trans_pcie->pci_dev->irq);
 
 	mutex_lock(&trans_pcie->mutex);
+
+	/* If platform's RF_KILL switch is NOT set to KILL */
+	hw_rfkill = iwl_is_rfkill_set(trans);
+	if (hw_rfkill)
+		set_bit(STATUS_RFKILL, &trans->status);
+	else
+		clear_bit(STATUS_RFKILL, &trans->status);
+	iwl_trans_pcie_rf_kill(trans, hw_rfkill);
+	if (hw_rfkill && !run_in_rfkill) {
+		ret = -ERFKILL;
+		goto out;
+	}
 
 	/* Someone called stop_device, don't try to start_fw */
 	if (trans_pcie->is_down) {
