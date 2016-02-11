@@ -355,7 +355,7 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 	/* Dont use dev_alloc_skb(), we'll have enough headroom once
 	 * ieee80211_hdr pulled.
 	 */
-	skb = __dev_alloc_skb(128, GFP_ATOMIC);
+	skb = alloc_skb(128, GFP_ATOMIC);
 	if (!skb) {
 		IWL_ERR(mvm, "alloc_skb failed\n");
 		return;
