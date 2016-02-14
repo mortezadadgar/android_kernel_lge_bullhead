@@ -1078,12 +1078,12 @@ enum mac80211_rx_flags {
 	RX_FLAG_MACTIME_END		= BIT(21),
 	RX_FLAG_VHT			= BIT(22),
 	RX_FLAG_LDPC			= BIT(23),
-	RX_FLAG_MIC_STRIPPED		= BIT(24),
 	RX_FLAG_STBC_MASK		= BIT(26) | BIT(27),
 	RX_FLAG_10MHZ			= BIT(28),
 	RX_FLAG_5MHZ			= BIT(29),
 	RX_FLAG_AMSDU_MORE		= BIT(30),
 	RX_FLAG_RADIOTAP_VENDOR_DATA	= BIT(31),
+	RX_FLAG_MIC_STRIPPED		= BIT_ULL(32),
 };
 
 #define RX_FLAG_STBC_SHIFT		26
@@ -1143,7 +1143,7 @@ struct ieee80211_rx_status {
 	u64 boottime_ns;
 	u32 device_timestamp;
 	u32 ampdu_reference;
-	u32 flag;
+	u64 flag;
 	u16 freq;
 	u8 vht_flag;
 	u8 rate_idx;
