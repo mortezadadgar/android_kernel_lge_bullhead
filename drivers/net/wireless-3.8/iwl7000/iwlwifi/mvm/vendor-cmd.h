@@ -284,6 +284,9 @@ enum iwl_mvm_vendor_results_event_type {
  * @IWL_MVM_VENDOR_GSCAN_RESULT_RSSI: signal strength in dB.
  * @IWL_MVM_VENDOR_GSCAN_RESULT_FRAME: the whole beacon/probe response
  *	frame data including the header.
+ * @IWL_MVM_VENDOR_GSCAN_RESULT_BEACON_PERIOD: period advertised in the beacon.
+ * @IWL_MVM_VENDOR_GSCAN_RESULT_CAPABILITY: capabilities advertised in the
+ *	beacon / probe response.
  * @NUM_IWL_MVM_VENDOR_GSCAN_RESULT: number of scan result attributes.
  * @MAX_IWL_MVM_VENDOR_GSCAN_RESULT: highest scan result attribute number.
  */
@@ -295,9 +298,31 @@ enum iwl_mvm_vendor_gscan_result {
 	IWL_MVM_VENDOR_GSCAN_RESULT_CHANNEL,
 	IWL_MVM_VENDOR_GSCAN_RESULT_RSSI,
 	IWL_MVM_VENDOR_GSCAN_RESULT_FRAME,
+	IWL_MVM_VENDOR_GSCAN_RESULT_BEACON_PERIOD,
+	IWL_MVM_VENDOR_GSCAN_RESULT_CAPABILITY,
 	NUM_IWL_MVM_VENDOR_GSCAN_RESULT,
 	MAX_IWL_MVM_VENDOR_GSCAN_RESULT =
 		NUM_IWL_MVM_VENDOR_GSCAN_RESULT - 1,
+};
+
+/**
+ * enum iwl_mvm_vendor_gscan_cached_scan_res - gscan cached scan result
+ * @IWL_MVM_VENDOR_GSCAN_CACHED_RES_INVALID: attribute number 0 is reserved.
+ * @IWL_MVM_VENDOR_GSCAN_CACHED_RES_SCAN_ID: unique ID for this cached result.
+ * @IWL_MVM_VENDOR_GSCAN_CACHED_RES_FLAGS: additional information about this
+ *	scan iteration.
+ * @IWL_MVM_VENDOR_GSCAN_CACHED_RES_APS: APs reported in this scan iteration.
+ * @NUM_IWL_MVM_VENDOR_GSCAN_CACHED_RES: number of scan result attributes.
+ * @MAX_IWL_MVM_VENDOR_GSCAN_CACHED_RES: highest scan result attribute number.
+ */
+enum iwl_mvm_vendor_gscan_cached_scan_res {
+	IWL_MVM_VENDOR_GSCAN_CACHED_RES_INVALID,
+	IWL_MVM_VENDOR_GSCAN_CACHED_RES_SCAN_ID,
+	IWL_MVM_VENDOR_GSCAN_CACHED_RES_FLAGS,
+	IWL_MVM_VENDOR_GSCAN_CACHED_RES_APS,
+	NUM_IWL_MVM_VENDOR_GSCAN_CACHED_RES,
+	MAX_IWL_MVM_VENDOR_GSCAN_CACHED_RES =
+		NUM_IWL_MVM_VENDOR_GSCAN_CACHED_RES - 1,
 };
 
 /**
@@ -545,6 +570,9 @@ enum iwl_mvm_vendor_lqm_result {
  *	see %enum iwl_mvm_vendor_lqm_result.
  * @IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM: report that scan results
  *	are available when buffer is that much full. In number of scans.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_CACHED_RESULTS: array of gscan cached results.
+ *	Each result is a nested attribute of
+ *	&enum iwl_mvm_vendor_gscan_cached_scan_res.
  *
  */
 enum iwl_mvm_vendor_attr {
@@ -604,6 +632,7 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT,
 	IWL_MVM_VENDOR_ATTR_LQM_RESULT,
 	IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM,
+	IWL_MVM_VENDOR_ATTR_GSCAN_CACHED_RESULTS,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,
