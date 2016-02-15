@@ -452,23 +452,13 @@ static int nvmap_dmabuf_begin_cpu_access(struct dma_buf *dmabuf,
 					  size_t start, size_t len,
 					  enum dma_data_direction dir)
 {
-	struct nvmap_handle_info *info = dmabuf->priv;
-
-	trace_nvmap_dmabuf_begin_cpu_access(dmabuf, start, len);
-	return __nvmap_cache_maint(NULL, info->handle, start, start + len,
-				   NVMAP_CACHE_OP_INV, 1);
+	return 0;
 }
 
 static void nvmap_dmabuf_end_cpu_access(struct dma_buf *dmabuf,
 					size_t start, size_t len,
 					enum dma_data_direction dir)
 {
-	struct nvmap_handle_info *info = dmabuf->priv;
-
-	trace_nvmap_dmabuf_end_cpu_access(dmabuf, start, len);
-	__nvmap_cache_maint(NULL, info->handle, start, start + len,
-				   NVMAP_CACHE_OP_WB_INV, 1);
-
 }
 
 static void *nvmap_dmabuf_kmap(struct dma_buf *dmabuf, unsigned long page_num)
