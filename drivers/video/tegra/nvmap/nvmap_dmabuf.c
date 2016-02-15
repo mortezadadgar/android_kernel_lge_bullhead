@@ -449,14 +449,12 @@ static void nvmap_dmabuf_release(struct dma_buf *dmabuf)
 }
 
 static int nvmap_dmabuf_begin_cpu_access(struct dma_buf *dmabuf,
-					  size_t start, size_t len,
 					  enum dma_data_direction dir)
 {
 	return 0;
 }
 
 static void nvmap_dmabuf_end_cpu_access(struct dma_buf *dmabuf,
-					size_t start, size_t len,
 					enum dma_data_direction dir)
 {
 }
