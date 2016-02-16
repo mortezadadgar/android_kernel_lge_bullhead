@@ -566,6 +566,14 @@ static inline void iwl_enable_hw_int_msk_msix(struct iwl_trans *trans, u32 msk)
 	trans_pcie->hw_mask = msk;
 }
 
+static inline void iwl_enable_fh_int_msk_msix(struct iwl_trans *trans, u32 msk)
+{
+	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+
+	iwl_write32(trans, CSR_MSIX_FH_INT_MASK_AD, ~msk);
+	trans_pcie->fh_mask = msk;
+}
+
 static inline void iwl_enable_fw_load_int(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
@@ -575,7 +583,9 @@ static inline void iwl_enable_fw_load_int(struct iwl_trans *trans)
 		trans_pcie->inta_mask = CSR_INT_BIT_FH_TX;
 		iwl_write32(trans, CSR_INT_MASK, trans_pcie->inta_mask);
 	} else {
-		iwl_enable_hw_int_msk_msix(trans,
+		iwl_write32(trans, CSR_MSIX_HW_INT_MASK_AD,
+			    trans_pcie->hw_init_mask);
+		iwl_enable_fh_int_msk_msix(trans,
 					   MSIX_FH_INT_CAUSES_D2S_CH0_NUM);
 	}
 }
