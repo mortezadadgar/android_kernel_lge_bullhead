@@ -1228,6 +1228,20 @@ static void _iwl_trans_pcie_stop_device(struct iwl_trans *trans, bool low_power)
 	iwl_pcie_prepare_card_hw(trans);
 }
 
+static void iwl_pcie_synchronize_irqs(struct iwl_trans *trans)
+{
+	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+
+	if (trans_pcie->msix_enabled) {
+		int i;
+
+		for (i = 0; i < trans_pcie->allocated_vector; i++)
+			synchronize_irq(trans_pcie->msix_entries[i].vector);
+	} else {
+		synchronize_irq(trans_pcie->pci_dev->irq);
+	}
+}
+
 static int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 				   const struct fw_img *fw, bool run_in_rfkill)
 {
@@ -1254,7 +1268,7 @@ static int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 	iwl_disable_interrupts(trans);
 
 	/* Make sure it finished running */
-	synchronize_irq(trans_pcie->pci_dev->irq);
+	iwl_pcie_synchronize_irqs(trans);
 
 	mutex_lock(&trans_pcie->mutex);
 
@@ -1352,20 +1366,6 @@ void iwl_trans_pcie_rf_kill(struct iwl_trans *trans, bool state)
 
 	if (iwl_op_mode_hw_rf_kill(trans->op_mode, state))
 		_iwl_trans_pcie_stop_device(trans, true);
-}
-
-static inline void iwl_pcie_synchronize_irqs(struct iwl_trans *trans)
-{
-	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
-
-	if (trans_pcie->msix_enabled) {
-		int i;
-
-		for (i = 0; i < trans_pcie->allocated_vector; i++)
-			synchronize_irq(trans_pcie->msix_entries[i].vector);
-	} else {
-		synchronize_irq(trans_pcie->pci_dev->irq);
-	}
 }
 
 static void iwl_trans_pcie_d3_suspend(struct iwl_trans *trans, bool test,
