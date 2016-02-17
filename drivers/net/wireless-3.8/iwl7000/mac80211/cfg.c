@@ -1506,7 +1506,7 @@ static int ieee80211_add_station(struct wiphy *wiphy, struct net_device *dev,
 }
 
 static int ieee80211_del_station(struct wiphy *wiphy, struct net_device *dev,
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(3,18,0)
 				 struct station_del_parameters *params)
 {
 #else
