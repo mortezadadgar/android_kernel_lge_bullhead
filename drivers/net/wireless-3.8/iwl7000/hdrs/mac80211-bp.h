@@ -1378,6 +1378,33 @@ cfg80211_measurement_response(struct wiphy *wiphy,
 {
 }
 
+enum nl80211_ftm_preamble {
+	NL80211_FTM_PREAMBLE_LEGACY = 1 << 0,
+	NL80211_FTM_PREAMBLE_HT     = 1 << 1,
+	NL80211_FTM_PREAMBLE_VHT    = 1 << 2
+};
+
+enum nl80211_ftm_bw {
+	NL80211_FTM_BW_5   = 1 << 0,
+	NL80211_FTM_BW_10  = 1 << 1,
+	NL80211_FTM_BW_20  = 1 << 2,
+	NL80211_FTM_BW_40  = 1 << 3,
+	NL80211_FTM_BW_80  = 1 << 4,
+	NL80211_FTM_BW_160 = 1 << 5
+};
+
+struct wiphy_ftm_initiator_capa {
+	u32 max_two_sided_ftm_targets;
+	u32 max_total_ftm_targets;
+	bool asap;
+	bool non_asap;
+	bool req_tsf;
+	bool req_lci;
+	bool req_civic;
+	u32 preamble;
+	u32 bw;
+};
+
 static inline bool ieee80211_viftype_nan(unsigned int iftype)
 {
 	return false;

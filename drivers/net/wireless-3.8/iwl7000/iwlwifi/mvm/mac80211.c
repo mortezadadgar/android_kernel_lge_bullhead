@@ -251,6 +251,17 @@ static const struct iwl_fw_bcast_filter iwl_mvm_default_bcast_filters[] = {
 };
 #endif
 
+static const struct wiphy_ftm_initiator_capa iwl_mvm_ftm_initiator_capa = {
+	.max_total_ftm_targets = IWL_MVM_TOF_MAX_APS,
+	.max_two_sided_ftm_targets = IWL_MVM_TOF_MAX_TWO_SIDED_APS,
+	.asap = true,
+	.non_asap = true,
+	.req_tsf = true,
+	.preamble = NL80211_FTM_PREAMBLE_LEGACY | NL80211_FTM_PREAMBLE_HT |
+		    NL80211_FTM_PREAMBLE_VHT,
+	.bw = NL80211_FTM_BW_20 | NL80211_FTM_BW_40 | NL80211_FTM_BW_80,
+};
+
 void iwl_mvm_ref(struct iwl_mvm *mvm, enum iwl_mvm_ref_type ref_type)
 {
 	if (!iwl_mvm_is_d0i3_supported(mvm))
@@ -524,13 +535,10 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 
 #if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 	/* Basic support of FTM is limited to driver/FW, so this flag should be
-		 * set (depending on capbilities specified in TLV).
-		 */
+	 * set (depending on capbilities specified in TLV).
+	 */
 	if (fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT)) {
-		hw->wiphy->flags |= WIPHY_FLAG_SUPPORTS_FTM_INITIATOR;
-		hw->wiphy->max_total_ftm_targets = IWL_MVM_TOF_MAX_APS;
-		hw->wiphy->max_two_sided_ftm_targets =
-			IWL_MVM_TOF_MAX_TWO_SIDED_APS;
+		hw->wiphy->ftm_initiator_capa = &iwl_mvm_ftm_initiator_capa;
 		hw->wiphy->flags |= WIPHY_FLAG_HAS_FTM_RESPONDER;
 	}
 #endif
