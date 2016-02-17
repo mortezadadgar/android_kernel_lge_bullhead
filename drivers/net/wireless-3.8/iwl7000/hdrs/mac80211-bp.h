@@ -665,30 +665,6 @@ csa_counter_offsets_presp(struct cfg80211_csa_settings *s)
 #define ASSOC_REQ_USE_RRM 0
 #endif
 
-/* Note: this stuff is included in in chromeos-3.18.
- * Additionally, we check for <4.0, since that's when it was
- * added upstream.
- */
-#if (LINUX_VERSION_CODE != KERNEL_VERSION(3,18,0)) &&	\
-    (LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0))
-enum nl80211_ext_feature_index {
-	NL80211_EXT_FEATURE_VHT_IBSS,
-	NL80211_EXT_FEATURE_RRM,
-
-	/* add new features before the definition below */
-	NUM_NL80211_EXT_FEATURES,
-	MAX_NL80211_EXT_FEATURES = NUM_NL80211_EXT_FEATURES - 1
-};
-#endif
-
-#if CFG80211_VERSION < KERNEL_VERSION(4,0,0)
-static inline void wiphy_ext_feature_set(struct wiphy *wiphy,
-					 enum nl80211_ext_feature_index ftidx)
-{
-}
-#define NL80211_EXT_FEATURE_RRM 0
-#endif
-
 #if CFG80211_VERSION < KERNEL_VERSION(3,19,0)
 #define NL80211_FEATURE_MAC_ON_CREATE 0 /* cannot be used */
 
@@ -960,6 +936,34 @@ ieee80211_chandef_to_operating_class(struct cfg80211_chan_def *chandef,
 #define U16_MAX         ((u16)~0U)
 #endif
 #endif
+
+/* backport wiphy_ext_feature_set/_isset
+ *
+ * To do so, define our own versions thereof that check for a negative
+ * feature index and in that case ignore it entirely. That allows us to
+ * define the ones that the cfg80211 version doesn't support to -1.
+ */
+static inline void iwl7000_wiphy_ext_feature_set(struct wiphy *wiphy, int ftidx)
+{
+	if (ftidx < 0)
+		return;
+#if CFG80211_VERSION >= KERNEL_VERSION(4,0,0)
+	wiphy_ext_feature_set(wiphy, ftidx);
+#endif
+}
+
+static inline bool iwl7000_wiphy_ext_feature_isset(struct wiphy *wiphy,
+						   int ftidx)
+{
+	if (ftidx < 0)
+		return false;
+#if CFG80211_VERSION >= KERNEL_VERSION(4,0,0)
+	return wiphy_ext_feature_isset(wiphy, ftidx);
+#endif
+	return false;
+}
+#define wiphy_ext_feature_set iwl7000_wiphy_ext_feature_set
+#define wiphy_ext_feature_isset iwl7000_wiphy_ext_feature_isset
 
 #if CFG80211_VERSION < KERNEL_VERSION(4,1,0)
 size_t ieee80211_ie_split_ric(const u8 *ies, size_t ielen,
@@ -1473,4 +1477,8 @@ static inline long ktime_get_seconds(void)
 #endif
 #ifndef S16_MIN
 #define S16_MIN		((s16)(-S16_MAX - 1))
+#endif
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,6,0)
+#define NL80211_EXT_FEATURE_RRM -1
 #endif
