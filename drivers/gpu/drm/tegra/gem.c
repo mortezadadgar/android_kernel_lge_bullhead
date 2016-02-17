@@ -531,23 +531,16 @@ tegra_gem_prime_map_dma_buf(struct dma_buf_attachment *attach,
 	struct tegra_bo *bo = to_tegra_bo(gem);
 	struct sg_table *sgt;
 
-	sgt = kmalloc(sizeof(*sgt), GFP_KERNEL);
-	if (!sgt)
-		return NULL;
-
 	if (bo->pages) {
-		struct scatterlist *sg;
-		unsigned int i;
-
-		if (sg_alloc_table(sgt, bo->num_pages, GFP_KERNEL))
-			goto free;
-
-		for_each_sg(sgt->sgl, sg, bo->num_pages, i)
-			sg_set_page(sg, bo->pages[i], PAGE_SIZE, 0);
+		sgt = drm_prime_pages_to_sg(bo->pages, bo->num_pages);
 
 		if (dma_map_sg(attach->dev, sgt->sgl, sgt->nents, dir) == 0)
 			goto free;
 	} else {
+		sgt = kmalloc(sizeof(*sgt), GFP_KERNEL);
+		if (!sgt)
+			return NULL;
+
 		if (sg_alloc_table(sgt, 1, GFP_KERNEL))
 			goto free;
 
