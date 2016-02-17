@@ -3949,7 +3949,7 @@ static int binder_thread_write(struct binder_proc *proc,
 			if (get_user(cookie, (binder_uintptr_t __user *)ptr))
 				return -EFAULT;
 
-			ptr += sizeof(void *);
+			ptr += sizeof(cookie);
 			binder_inner_proc_lock(proc);
 			list_for_each_entry(w, &proc->delivered_death,
 					    entry) {
