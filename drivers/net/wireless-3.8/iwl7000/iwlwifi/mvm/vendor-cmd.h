@@ -120,6 +120,10 @@
  *	set to %IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE_RESULTS.
  * @IWL_MVM_VENDOR_CMD_DBG_COLLECT: collect debug data
  * @IWL_MVM_VENDOR_CMD_NAN_FAW_CONF: Configure post NAN further availability.
+ * @IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS: Starts Link Quality Measurements.
+ *	Must include %IWL_MVM_VENDOR_ATTR_LQM_DURATION and
+ *	%IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT. The results will be notified with
+ *	this same command.
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -150,6 +154,7 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_GSCAN_BEACON_EVENT,
 	IWL_MVM_VENDOR_CMD_DBG_COLLECT,
 	IWL_MVM_VENDOR_CMD_NAN_FAW_CONF,
+	IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS,
 };
 
 /**
@@ -371,6 +376,57 @@ enum iwl_mvm_vendor_rxfilter_op {
 };
 
 /**
+ * enum iwl_mvm_vendor_lqm_status - status of a link quality measurement
+ * @IWL_MVM_VENDOR_LQM_STATUS_SUCCESS: measurement succeeded for the
+ *	requested time
+ * @IWL_MVM_VENDOR_LQM_STATUS_TIMEOUT: measurement succeeded but was stopped
+ *	earlier than expected because of a timeout
+ * @IWL_MVM_VENDOR_LQM_STATUS_UNBOUND: measurement succeeded but was stopped
+ *	earlier than expected because of a deassociation
+ * @IWL_MVM_VENDOR_LQM_STATUS_ABORT_CHAN_SWITCH: measurement failed because
+ *	of a channel switch
+ */
+enum iwl_mvm_vendor_lqm_status {
+	IWL_MVM_VENDOR_LQM_STATUS_SUCCESS,
+	IWL_MVM_VENDOR_LQM_STATUS_TIMEOUT,
+	IWL_MVM_VENDOR_LQM_STATUS_ABORT,
+};
+
+/**
+ * enum iwl_mvm_vendor_lqm_result - the result of a link quality measurement
+ * @IWL_MVM_VENDOR_ATTR_LQM_ACTIVE_STA_AIR_TIME: the air time for the most
+ *	active stations during the measurement. This is a binary attribute
+ *	which is an array of u32.
+ * @IWL_MVM_VENDOR_ATTR_LQM_OTHER_STA: the air time consumed by the stations
+ *	not included in %IWL_MVM_VENDOR_ATTR_LQM_ACTIVE_STA_AIR_TIME. This is a
+ *	u32.
+ * @IWL_MVM_VENDOR_ATTR_LQM_MEAS_TIME: the length (in msec) of the measurement.
+ *	This can be shorter than the requested
+ *	%IWL_MVM_VENDOR_ATTR_LQM_DURATION in case the measurement was cut
+ *	short.
+ * @IWL_MVM_VENDOR_ATTR_LQM_NUM_OF_STATIONS: number of activated stations in
+ *	the measurement.
+ * @IWL_MVM_VENDOR_ATTR_LQM_RETRY_LIMIT: the number of frames that were dropped
+ *	due to retry limit during the measurement. This is a u32.
+ * @IWL_MVM_VENDOR_ATTR_LQM_MEAS_STATUS: the measurement status.
+ *	One of &enum iwl_mvm_vendor_lqm_status. This is a u32.
+ * @NUM_IWL_MVM_VENDOR_LQM_RESULT: num of link quality measurement attributes
+ * @MAX_IWL_MVM_VENDOR_LQM_RESULT: highest link quality measurement attribute
+ *	number.
+ */
+enum iwl_mvm_vendor_lqm_result {
+	IWL_MVM_VENDOR_ATTR_LQM_ACTIVE_STA_AIR_TIME,
+	IWL_MVM_VENDOR_ATTR_LQM_OTHER_STA,
+	IWL_MVM_VENDOR_ATTR_LQM_MEAS_TIME,
+	IWL_MVM_VENDOR_ATTR_LQM_NUM_OF_STATIONS,
+	IWL_MVM_VENDOR_ATTR_LQM_RETRY_LIMIT,
+	IWL_MVM_VENDOR_ATTR_LQM_MEAS_STATUS,
+
+	NUM_IWL_MVM_VENDOR_LQM_RESULT,
+	MAX_IWL_MVM_VENDOR_LQM_RESULT = NUM_IWL_MVM_VENDOR_LQM_RESULT - 1,
+};
+
+/**
  * enum iwl_mvm_vendor_attr - attributes used in vendor commands
  * @__IWL_MVM_VENDOR_ATTR_INVALID: attribute 0 is invalid
  * @IWL_MVM_VENDOR_ATTR_LOW_LATENCY: low-latency flag attribute
@@ -457,6 +513,14 @@ enum iwl_mvm_vendor_rxfilter_op {
  *
  * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
  * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
+ * @IWL_MVM_VENDOR_ATTR_LQM_DURATION: the duration in msecs of the Link
+ *	Quality Measurement. Required for
+ *	&IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS. This is a u32.
+ * @IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT: the maximal time in msecs that the
+ *	measurement can take. Required for
+ *	&IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS. This is a u32.
+ * @IWL_MVM_VENDOR_ATTR_LQM_RESULT: result of the measurement. Nested attribute
+ *	see %enum iwl_mvm_vendor_lqm_result.
  */
 enum iwl_mvm_vendor_attr {
 	__IWL_MVM_VENDOR_ATTR_INVALID,
@@ -507,6 +571,9 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS_BY_SSID,
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_WHITE_LISTED_SSID,
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_BLACK_LISTED_SSID,
+	IWL_MVM_VENDOR_ATTR_LQM_DURATION,
+	IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT,
+	IWL_MVM_VENDOR_ATTR_LQM_RESULT,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,
