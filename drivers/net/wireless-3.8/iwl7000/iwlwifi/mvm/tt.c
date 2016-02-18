@@ -769,7 +769,7 @@ int iwl_mvm_ctdp_command(struct iwl_mvm *mvm, u32 op, u32 budget)
 static int iwl_mvm_tcool_get_max_state(struct thermal_cooling_device *cdev,
 				       unsigned long *state)
 {
-	*state = ARRAY_SIZE(iwl_mvm_cdev_budgets);
+	*state = ARRAY_SIZE(iwl_mvm_cdev_budgets) - 1;
 
 	return 0;
 }
