@@ -3388,6 +3388,10 @@ enum ieee80211_reconfig_type {
  * @rm_nan_func: Remove a nan function. The driver must call
  * ieee80211_nan_func_terminated() with
  * NL80211_NAN_FUNC_TERM_REASON_USER_REQUEST reason code upon removal.
+ * @sync_rx_queues: Process all pending frames in RSS queues. This is a
+ *	synchronization which is needed in case driver has in its RSS queues
+ *	pending frames that were received prior to the control path action
+ *	currently taken (e.g. disassociation) but are not processed yet.
  */
 struct ieee80211_ops {
 	void (*tx)(struct ieee80211_hw *hw,
@@ -3651,6 +3655,7 @@ struct ieee80211_ops {
 	void (*rm_nan_func)(struct ieee80211_hw *hw,
 			    struct ieee80211_vif *vif,
 			    u8 instance_id);
+	void (*sync_rx_queues)(struct ieee80211_hw *hw);
 };
 
 /**
