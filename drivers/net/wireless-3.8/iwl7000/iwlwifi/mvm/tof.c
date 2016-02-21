@@ -591,10 +591,10 @@ static void iwl_mvm_debug_range_req(struct iwl_mvm *mvm)
 	int i;
 
 	IWL_DEBUG_INFO(mvm,
-		       "Sending FTM request, params:\n  request id: %hhx\n"
-		       "  initiator: %hhx\n  OSLD: %hhx\n  TO: %hhx\n"
-		       "  report policy: %hhx\n  LDD: %hhx\n"
-		       "  num of aps: %hhx\n  mac rand: %hhx\n"
+		       "Sending FTM request, params:\n  request id: %hhu\n"
+		       "  initiator: %hhu\n  OSLD: %hhu\n  TO: %hhu\n"
+		       "  report policy: %hhu\n  LDD: %hhu\n"
+		       "  num of aps: %hhu\n  mac rand: %hhu\n"
 		       "  mac temp: %pM\n  mac mask: %pM\n",
 		       req->request_id, req->initiator,
 		       req->one_sided_los_disable, req->req_timeout,
@@ -606,15 +606,15 @@ static void iwl_mvm_debug_range_req(struct iwl_mvm *mvm)
 		struct iwl_tof_range_req_ap_entry ap = req->ap[i];
 
 		IWL_DEBUG_INFO(mvm,
-			       "  ap[%d]:\n    channel: %hhx\n    bw: %hhx\n"
-			       "    tsf delta direction: %hhx\n"
-			       "    ctrl channel: %hhx\n    bssid: %pM\n"
-			       "    one sided: %hhx\n    num of bursts: %hhx\n"
-			       "    burst period: %hx\n"
-			       "    samples/burst: %hhx\n"
-			       "    retries/sample: %hhx\n    tsf delta: %x\n"
-			       "    location: %hhx\n    asap: %hhx\n"
-			       "    dyn ack: %hhx\n    rssi: %hhd\n",
+			       "  ap[%d]:\n    channel: %hhu\n    bw: %hhu\n"
+			       "    tsf delta direction: %hhu\n"
+			       "    ctrl channel: %hhu\n    bssid: %pM\n"
+			       "    one sided: %hhu\n    num of bursts: %hhu\n"
+			       "    burst period: %hu\n"
+			       "    samples/burst: %hhu\n"
+			       "    retries/sample: %hhu\n    tsf delta: %u\n"
+			       "    location: %hhu\n    asap: %hhu\n"
+			       "    dyn ack: %hhu\n    rssi: %hhd\n",
 			       i, ap.channel_num, ap.bandwidth, ap.tsf_delta,
 			       ap.ctrl_ch_position, ap.bssid, ap.measure_type,
 			       ap.num_of_bursts, le16_to_cpu(ap.burst_period),
@@ -785,14 +785,14 @@ static void iwl_mvm_debug_range_resp(struct iwl_mvm *mvm,
 
 		IWL_DEBUG_INFO(mvm,
 			       "  entry %d\n  status: %d\n  complete: %s\n"
-			       "  BSSID: %pM\n  host time: %llx\n  tsf: %llx\n"
-			       "  burst index: %hhx\n  measurement num: %x\n"
-			       "  success num: %x\n  num per burst: %hhx\n"
-			       "  retry after duration: %x\n"
-			       "  burst duration: %x\n  negotiated burst: %x\n"
-			       "  rssi: %hhd\n  rssi spread: %hhx\n"
-			       "  rtt: %llx\n  rtt var: %llx\n"
-			       "  rtt spread: %llx\n\n",
+			       "  BSSID: %pM\n  host time: %llu\n  tsf: %llu\n"
+			       "  burst index: %hhu\n  measurement num: %u\n"
+			       "  success num: %u\n  num per burst: %hhu\n"
+			       "  retry after duration: %u\n"
+			       "  burst duration: %u\n  negotiated burst: %u\n"
+			       "  rssi: %hhd\n  rssi spread: %hhu\n"
+			       "  rtt: %llu\n  rtt var: %llu\n"
+			       "  rtt spread: %llu\n\n",
 			       i, res->status, res->complete ? "true" : "false",
 			       res->target->bssid, res->host_time, res->tsf,
 			       res->burst_index, res->measurement_num,
