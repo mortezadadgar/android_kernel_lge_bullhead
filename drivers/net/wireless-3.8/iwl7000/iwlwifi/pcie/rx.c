@@ -783,7 +783,6 @@ static void iwl_pcie_rx_mq_hw_init(struct iwl_trans *trans)
 	 * Single frame mode
 	 * Rx buffer size 4 or 8k or 12k
 	 * Min RB size 4 or 8
-	 * Default queue is 0
 	 * Drop frames that exceed RB size
 	 * 512 RBDs
 	 */
@@ -791,14 +790,18 @@ static void iwl_pcie_rx_mq_hw_init(struct iwl_trans *trans)
 		       RFH_DMA_EN_ENABLE_VAL |
 		       rb_size | RFH_RXF_DMA_SINGLE_FRAME_MASK |
 		       RFH_RXF_DMA_MIN_RB_4_8 |
-		       DEFAULT_RXQ_NUM << RFH_GEN_CFG_DEFAULT_RXQ_NUM_POS |
 		       RFH_RXF_DMA_DROP_TOO_LARGE_MASK |
 		       RFH_RXF_DMA_RBDCB_SIZE_512);
 
-	/* Activate DMA snooping. Set RX DMA chunk size to 128 bit */
+	/*
+	 * Activate DMA snooping.
+	 * Set RX DMA chunk size to 128 bit
+	 * Default queue is 0
+	 */
 	iwl_write_prph(trans, RFH_GEN_CFG, RFH_GEN_CFG_RFH_DMA_SNOOP |
-					  RFH_GEN_CFG_RB_CHUNK_SIZE |
-					  RFH_GEN_CFG_SERVICE_DMA_SNOOP);
+		       RFH_GEN_CFG_RB_CHUNK_SIZE |
+		       (DEFAULT_RXQ_NUM << RFH_GEN_CFG_DEFAULT_RXQ_NUM_POS) |
+		       RFH_GEN_CFG_SERVICE_DMA_SNOOP);
 	/* Enable the relevant rx queues */
 	iwl_write_prph(trans, RFH_RXF_RXQ_ACTIVE, enabled);
 
