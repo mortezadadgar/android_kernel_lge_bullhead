@@ -130,6 +130,9 @@ struct usbdevfs_hub_portinfo {
 #define USBDEVFS_CAP_BULK_CONTINUATION		0x02
 #define USBDEVFS_CAP_NO_PACKET_SIZE_LIM		0x04
 #define USBDEVFS_CAP_BULK_SCATTER_GATHER	0x08
+/* 0x10 is USBDEVFS_CAP_REAP_AFTER_DISCONNECT upstream */
+/* 0x20 is USBDEVFS_CAP_MMAP upstream */
+#define USBDEVFS_CAP_DROP_PRIVILEGES		0x40
 
 /* USBDEVFS_DISCONNECT_CLAIM flags & struct */
 
@@ -176,5 +179,8 @@ struct usbdevfs_disconnect_claim {
 #define USBDEVFS_RELEASE_PORT      _IOR('U', 25, unsigned int)
 #define USBDEVFS_GET_CAPABILITIES  _IOR('U', 26, __u32)
 #define USBDEVFS_DISCONNECT_CLAIM  _IOR('U', 27, struct usbdevfs_disconnect_claim)
+/* 28 is USBDEVFS_ALLOC_STREAMS upstream */
+/* 29 is USBDEVFS_FREE_STREAMS upstream */
+#define USBDEVFS_DROP_PRIVILEGES   _IOW('U', 30, __u32)
 
 #endif /* _UAPI_LINUX_USBDEVICE_FS_H */
