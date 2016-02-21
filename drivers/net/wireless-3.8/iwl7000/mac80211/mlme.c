@@ -4564,31 +4564,6 @@ int ieee80211_mgd_auth(struct ieee80211_sub_if_data *sdata,
 	return err;
 }
 
-static bool ieee80211_mgd_use_uapsd(struct ieee80211_sub_if_data *sdata,
-				    struct cfg80211_assoc_request *req)
-{
-	const struct cfg80211_bss_ies *ies;
-	bool result = true;
-
-	if (sdata->u.mgd.flags & IEEE80211_STA_NO_UAPSD_WORKAROUNDS)
-		return true;
-
-	rcu_read_lock();
-	ies = rcu_dereference(req->bss->ies);
-	if (!ies)
-		goto out;
-
-	/* workaround - Broadcom devices (iPhones included) don't support
-	 * U-APSD well, use their vendor IE to detect them.
-	 */
-	if (cfg80211_find_vendor_ie(0x001018, 2, ies->data, ies->len))
-		result = false;
-
- out:
-	rcu_read_unlock();
-	return result;
-}
-
 int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 			struct cfg80211_assoc_request *req)
 {
@@ -4748,7 +4723,6 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 		sdata->vif.driver_flags &= ~IEEE80211_VIF_SUPPORTS_UAPSD;
 
 	if (bss->wmm_used && bss->uapsd_supported &&
-	    ieee80211_mgd_use_uapsd(sdata, req) &&
 	    (sdata->vif.driver_flags & IEEE80211_VIF_SUPPORTS_UAPSD)) {
 		assoc_data->uapsd = true;
 		ifmgd->flags |= IEEE80211_STA_UAPSD_ENABLED;

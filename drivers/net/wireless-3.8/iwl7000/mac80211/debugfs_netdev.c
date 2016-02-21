@@ -418,35 +418,6 @@ static ssize_t ieee80211_if_parse_uapsd_queues(
 }
 IEEE80211_IF_FILE_RW(uapsd_queues);
 
-static ssize_t ieee80211_if_fmt_disable_uapsd_workarounds(
-	const struct ieee80211_sub_if_data *sdata, char *buf, int buflen)
-{
-	const struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
-
-	return snprintf(buf, buflen, "%d\n",
-			!!(ifmgd->flags & IEEE80211_STA_NO_UAPSD_WORKAROUNDS));
-}
-
-static ssize_t ieee80211_if_parse_disable_uapsd_workarounds(
-	struct ieee80211_sub_if_data *sdata, const char *buf, int buflen)
-{
-	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
-	u8 val;
-	int ret;
-
-	ret = kstrtou8(buf, 0, &val);
-	if (ret)
-		return ret;
-
-	if (val)
-		ifmgd->flags |= IEEE80211_STA_NO_UAPSD_WORKAROUNDS;
-	else
-		ifmgd->flags &= ~IEEE80211_STA_NO_UAPSD_WORKAROUNDS;
-
-	return buflen;
-}
-IEEE80211_IF_FILE_RW(disable_uapsd_workarounds);
-
 static ssize_t ieee80211_if_fmt_uapsd_max_sp_len(
 	const struct ieee80211_sub_if_data *sdata, char *buf, int buflen)
 {
@@ -661,7 +632,6 @@ static void add_sta_files(struct ieee80211_sub_if_data *sdata)
 	DEBUGFS_ADD_MODE(uapsd_queues, 0600);
 	DEBUGFS_ADD_MODE(uapsd_max_sp_len, 0600);
 	DEBUGFS_ADD_MODE(tdls_wider_bw, 0600);
-	DEBUGFS_ADD_MODE(disable_uapsd_workarounds, 0600);
 }
 
 static void add_ap_files(struct ieee80211_sub_if_data *sdata)
