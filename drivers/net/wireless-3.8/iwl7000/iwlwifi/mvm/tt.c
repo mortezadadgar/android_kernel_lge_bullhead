@@ -204,8 +204,17 @@ void iwl_mvm_temp_notif(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb)
 	if (WARN_ON(ths_crossed >= IWL_MAX_DTS_TRIPS))
 		return;
 
+	/*
+	 * We are now handling a temperature notification from the firmware
+	 * in ASYNC and hold the mutex. thermal_notify_framework will call
+	 * us back through get_temp() which ought to send a SYNC command to
+	 * the firmware and hence to take the mutex.
+	 * Avoid the deadlock by unlocking the mutex here.
+	 */
+	mutex_unlock(&mvm->mutex);
 	thermal_notify_framework(mvm->tz_device.tzone,
 				 mvm->tz_device.fw_trips_index[ths_crossed]);
+	mutex_lock(&mvm->mutex);
 #endif /* CONFIG_THERMAL */
 }
 
