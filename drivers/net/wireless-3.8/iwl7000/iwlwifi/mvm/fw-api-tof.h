@@ -332,14 +332,34 @@ struct iwl_tof_gen_resp_cmd {
 } __packed;
 
 /**
+ * enum iwl_tof_entry_status
+ *
+ * @IWL_TOF_ENTRY_SUCCESS: successful measurement.
+ * @IWL_TOF_ENTRY_NOT_MEASURED: not measured due to timeout/abort.
+ * @IWL_TOF_ENTRY_UNAVAILABLE: peer is unavailable.
+ * @IWL_TOF_ENTRY_PROTOCOL_ERR: fail due to protocol error.
+ * @IWL_TOF_ENTRY_INTERNAL_ERR: fail due to internal error.
+ * @IWL_TOF_ENTRY_INVALID: request received in an invalid state.
+ */
+enum iwl_tof_entry_status {
+	IWL_TOF_ENTRY_SUCCESS,
+	IWL_TOF_ENTRY_NOT_MEASURED,
+	IWL_TOF_ENTRY_UNAVAILABLE,
+	IWL_TOF_ENTRY_PROTOCOL_ERR,
+	IWL_TOF_ENTRY_INTERNAL_ERR,
+	IWL_TOF_ENTRY_INVALID = 0xff,
+}; /* LOCATION_MEASUREMENT_STATUS */
+
+/**
  * struct iwl_tof_range_rsp_ap_entry_ntfy - AP parameters (response)
- * @measure_status: current APs measurement status
+ * @measure_status: current APs measurement status, one of
+ *	%enum iwl_tof_entry_status.
  * @measure_bw: Current AP Bandwidth: 0  20MHz, 1  40MHz, 2  80MHz
  * @rtt: The Round Trip Time that took for the last measurement for
- *	 current AP [nSec]
+ *	 current AP [pSec]
  * @rtt_variance: The Variance of the RTT values measured for current AP
  * @rtt_spread: The Difference between the maximum and the minimum RTT
- *	       values measured for current AP in the current session [nsec]
+ *	       values measured for current AP in the current session [pSec]
  * @rssi: RSSI as uploaded in the Channel Estimation notification
  * @rssi_spread: The Difference between the maximum and the minimum RSSI values
  *	        measured for current AP in the current session
@@ -364,9 +384,26 @@ struct iwl_tof_range_rsp_ap_entry_ntfy {
 } __packed;
 
 /**
+ * enum iwl_tof_response_status - tof response status
+ *
+ * @IWL_TOF_RESPONSE_SUCCESS: successful response.
+ * @IWL_TOF_RESPONSE_TIMEOUT: request aborted due to timeout expiration.
+ *	partial result of ranges done so far is included in the response.
+ * @IWL_TOF_RESPONSE_ABORTED: Aborted due to tof service unavailable.
+ *	In case of one-sided, this also the status in case a nested request was
+ *	sent.
+ */
+enum iwl_tof_response_status {
+	IWL_TOF_RESPONSE_SUCCESS,
+	IWL_TOF_RESPONSE_TIMEOUT,
+	IWL_TOF_RESPONSE_ABORTED,
+}; /* LOCATION_RNG_RSP_STATUS */
+
+/**
  * struct iwl_tof_range_rsp_ntfy -
  * @request_id: A Token ID of the corresponding Range request
- * @request_status: status of current measurement session
+ * @request_status: status of current measurement session, one of
+ *	@enum iwl_tof_response_status.
  * @last_in_batch: reprot policy (when not all responses are uploaded at once)
  * @num_of_aps: Number of APs to measure (error if > IWL_MVM_TOF_MAX_APS)
  */
