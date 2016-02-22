@@ -791,8 +791,10 @@ static void iwl_mvm_debug_range_resp(struct iwl_mvm *mvm,
 			       "  retry after duration: %u\n"
 			       "  burst duration: %u\n  negotiated burst: %u\n"
 			       "  rssi: %hhd\n  rssi spread: %hhu\n"
-			       "  rtt: %llu\n  rtt var: %llu\n"
-			       "  rtt spread: %llu\n\n",
+			       "  rtt: %lld\n  rtt var: %llu\n"
+			       "  rtt spread: %llu\n  distance: %lld\n"
+			       "  distance variance: %llu\n"
+			       "  distance spread: %llu\n  filled: %x\n\n",
 			       i, res->status, res->complete ? "true" : "false",
 			       res->target->bssid, res->host_time, res->tsf,
 			       res->burst_index, res->measurement_num,
@@ -800,9 +802,55 @@ static void iwl_mvm_debug_range_resp(struct iwl_mvm *mvm,
 			       res->retry_after_duration, res->burst_duration,
 			       res->negotiated_burst_num, res->rssi,
 			       res->rssi_spread, res->rtt, res->rtt_variance,
-			       res->rtt_spread);
+			       res->rtt_spread, res->distance,
+			       res->distance_variance, res->distance_spread,
+			       res->filled);
 	}
 }
+
+static enum nl80211_msrment_status
+iwl_mvm_get_msrment_status(enum iwl_tof_response_status status)
+{
+	switch (status) {
+	case IWL_TOF_RESPONSE_SUCCESS:
+		return NL80211_MSRMENT_STATUS_SUCCESS;
+	case IWL_TOF_RESPONSE_TIMEOUT:
+		return NL80211_MSRMENT_STATUS_TIMEOUT;
+	case IWL_TOF_RESPONSE_ABORTED:
+	default:
+		return NL80211_MSRMENT_STATUS_FAIL;
+	}
+}
+
+static enum nl80211_ftm_response_status
+iwl_mvm_get_target_status(enum iwl_tof_entry_status status)
+{
+	switch (status) {
+	case IWL_TOF_ENTRY_SUCCESS:
+		return NL80211_FTM_RESP_SUCCESS;
+	case IWL_TOF_ENTRY_NOT_MEASURED:
+		return NL80211_FTM_RESP_NOT_MEASURED;
+	case IWL_TOF_ENTRY_UNAVAILABLE:
+		return NL80211_FTM_RESP_TARGET_UNAVAILABLE;
+	case IWL_TOF_ENTRY_PROTOCOL_ERR:
+	case IWL_TOF_ENTRY_INTERNAL_ERR:
+	case IWL_TOF_ENTRY_INVALID:
+	default:
+		return NL80211_FTM_RESP_FAIL;
+	}
+}
+
+#define div64(dividend, divisor) \
+({ \
+	u64 tmp = (dividend) < 0 ? -(dividend) : (dividend); \
+	do_div(tmp, divisor); \
+	(dividend) < 0 ? -tmp : tmp; \
+})
+
+/* Speed of light in cm/nanosec. Though RTT is in picosec units, calculations
+ * are done using nanosec, in order to avoid floating point usage.
+ */
+#define SOL_CM_NSEC 30
 
 static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 {
@@ -826,8 +874,7 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 
 	user_resp.cookie = mvm->tof_data.active_cookie;
 	user_resp.type = NL80211_MSRMENT_TYPE_FTM;
-	user_resp.status = fw_resp->request_status ?
-		NL80211_MSRMENT_STATUS_FAIL : NL80211_MSRMENT_STATUS_SUCCESS;
+	user_resp.status = iwl_mvm_get_msrment_status(fw_resp->request_status);
 	user_resp.u.ftm.num_of_entries = fw_resp->num_of_aps;
 	user_resp.u.ftm.entries = kzalloc(sizeof(*user_resp.u.ftm.entries) *
 					  fw_resp->num_of_aps, GFP_KERNEL);
@@ -851,32 +898,18 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 			continue;
 		}
 
-		/* TODO: Once FW supports more meaningful status, use it. */
-		result->status = fw_resp->ap[i].measure_status ?
-			NL80211_FTM_RESP_FAIL : NL80211_FTM_RESP_SUCCESS;
-		result->complete = fw_resp->last_in_batch;
+		result->status =
+			iwl_mvm_get_target_status(fw_ap->measure_status);
 		result->target = target;
 		timestamp = le32_to_cpu(fw_ap->timestamp);
 		result->host_time =
 			iwl_mvm_tof_get_host_time(mvm, timestamp);
-#ifdef CPTCFG_IWLMVM_TOF_TSF_WA
-		if (mvm->tof_data.active_request.report_tsf)
-			result->tsf = iwl_mvm_tof_get_tsf(mvm, timestamp);
-#endif
-		/* TODO: FW to investigate */
-		result->burst_index = 0;
 		result->rssi = fw_ap->rssi;
 		result->rssi_spread = fw_ap->rssi_spread;
 		if (iwl_mvm_tof_is_ht(mvm, fw_ap->measure_bw))
 			result->tx_rate_info.flags |= RATE_INFO_FLAGS_MCS;
 		if (iwl_mvm_tof_is_vht(mvm, fw_ap->measure_bw))
 			result->tx_rate_info.flags |= RATE_INFO_FLAGS_VHT_MCS;
-		/* TODO: FW to investigate */
-		result->tx_rate_info.mcs = 12;
-		/* TODO: FW to investigate */
-		result->tx_rate_info.legacy = 60;
-		/* TODO: FW to investigate */
-		result->tx_rate_info.nss = 1;
 #if CFG80211_VERSION < KERNEL_VERSION(3,20,0)
 		switch (iwl_mvm_tof_fw_bw_to_rate_info_bw(fw_ap->measure_bw)) {
 		default:
@@ -893,11 +926,36 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 		result->tx_rate_info.bw =
 			iwl_mvm_tof_fw_bw_to_rate_info_bw(fw_ap->measure_bw);
 #endif
-		/* TODO: FW to investigate */
-		result->rx_rate_info = result->tx_rate_info;
-		result->rtt = le32_to_cpu(fw_ap->rtt);
+		result->rtt = (s32)le32_to_cpu(fw_ap->rtt);
 		result->rtt_variance = le32_to_cpu(fw_ap->rtt_variance);
 		result->rtt_spread = le32_to_cpu(fw_ap->rtt_spread);
+		result->distance = div64(div64(result->rtt, 2) * SOL_CM_NSEC,
+					 1000);
+		result->distance_variance = div64((result->rtt_variance >> 2) *
+						  (SOL_CM_NSEC * SOL_CM_NSEC),
+						  1000000);
+		result->distance_spread = div64((result->rtt_spread >> 1) *
+						SOL_CM_NSEC, 1000);
+
+#define FTM_RESP_BIT(attr) BIT(NL80211_FTM_RESP_ENTRY_ATTR_##attr)
+#ifdef CPTCFG_IWLMVM_TOF_TSF_WA
+		if (mvm->tof_data.active_request.report_tsf) {
+			result->tsf = iwl_mvm_tof_get_tsf(mvm, timestamp);
+			result->filled |= FTM_RESP_BIT(TSF);
+		}
+#endif
+
+		/* Mark only optional fields */
+		result->filled |= FTM_RESP_BIT(HOST_TIME) |
+				  FTM_RESP_BIT(RSSI) |
+				  FTM_RESP_BIT(RSSI_SPREAD) |
+				  FTM_RESP_BIT(TX_RATE_INFO) |
+				  FTM_RESP_BIT(RTT_VAR) |
+				  FTM_RESP_BIT(RTT_SPREAD) |
+				  FTM_RESP_BIT(DISTANCE) |
+				  FTM_RESP_BIT(DISTANCE_VAR) |
+				  FTM_RESP_BIT(DISTANCE_SPREAD);
+#undef FTM_RESP_BIT
 	}
 
 	iwl_mvm_debug_range_resp(mvm, &user_resp);
