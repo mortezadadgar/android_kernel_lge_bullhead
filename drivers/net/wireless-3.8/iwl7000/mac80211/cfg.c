@@ -3687,8 +3687,9 @@ static int ieee80211_start_ftm_responder(struct wiphy *wiphy,
 #endif
 
 #if CFG80211_VERSION < KERNEL_VERSION(4,5,0)
-void ieee80211_nan_func_terminated(struct ieee80211_vif *vif, u8 inst_id, enum nl80211_nan_func_term_reason reason, gfp_t gfp)
-{
+void ieee80211_nan_func_terminated(struct ieee80211_vif *vif, u8 inst_id,
+				   enum nl80211_nan_func_term_reason reason,
+				   gfp_t gfp){
 }
 #endif
 #if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
@@ -3731,8 +3732,9 @@ void ieee80211_nan_func_terminated(struct ieee80211_vif *vif,
 EXPORT_SYMBOL(ieee80211_nan_func_terminated);
 
 #if CFG80211_VERSION < KERNEL_VERSION(4,5,0)
-void ieee80211_nan_func_match(struct ieee80211_vif *vif, struct cfg80211_nan_match_params *match, gfp_t gfp)
-{
+void ieee80211_nan_func_match(struct ieee80211_vif *vif,
+		              struct cfg80211_nan_match_params *match,
+		              gfp_t gfp){
 }
 #endif
 #if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
@@ -3766,8 +3768,10 @@ void ieee80211_nan_func_match(struct ieee80211_vif *vif,
 EXPORT_SYMBOL(ieee80211_nan_func_match);
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,14,0)
-static int _wrap_mgmt_tx(struct wiphy *wiphy, struct wireless_dev *wdev, struct ieee80211_channel *chan, bool offchan, unsigned int wait, const u8 *buf, size_t len, bool no_cck, bool dont_wait_for_ack, u64 *cookie)
-{
+static int _wrap_mgmt_tx(struct wiphy *wiphy, struct wireless_dev *wdev,
+			 struct ieee80211_channel *chan, bool offchan,
+			 unsigned int wait, const u8 *buf, size_t len,
+			 bool no_cck, bool dont_wait_for_ack, u64 *cookie){
 	struct cfg80211_mgmt_tx_params params = {
 		.chan = chan,
 		.offchan = offchan,

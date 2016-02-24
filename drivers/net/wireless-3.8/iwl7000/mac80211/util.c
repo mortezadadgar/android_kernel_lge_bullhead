@@ -1749,8 +1749,7 @@ static void ieee80211_reconfig_stations(struct ieee80211_sub_if_data *sdata)
 }
 
 #if CFG80211_VERSION < KERNEL_VERSION(4,5,0)
-static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
-{
+static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata){
 	return 0;
 }
 #endif
