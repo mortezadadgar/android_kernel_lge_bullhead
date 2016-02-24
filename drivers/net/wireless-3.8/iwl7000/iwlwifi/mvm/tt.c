@@ -508,7 +508,6 @@ int iwl_mvm_send_temp_report_ths_cmd(struct iwl_mvm *mvm)
 {
 	struct temp_report_ths_cmd cmd = {0};
 	int ret, i, j, idx = 0;
-	u32 status;
 
 	lockdep_assert_held(&mvm->mutex);
 
@@ -542,9 +541,9 @@ int iwl_mvm_send_temp_report_ths_cmd(struct iwl_mvm *mvm)
 	}
 
 send:
-	ret = iwl_mvm_send_cmd_pdu_status(mvm, WIDE_ID(PHY_OPS_GROUP,
+	ret = iwl_mvm_send_cmd_pdu(mvm, WIDE_ID(PHY_OPS_GROUP,
 						TEMP_REPORTING_THRESHOLDS_CMD),
-					  sizeof(cmd), &cmd, &status);
+				   0, sizeof(cmd), &cmd);
 	if (ret)
 		IWL_ERR(mvm, "TEMP_REPORT_THS_CMD command failed (err=%d)\n",
 			ret);
