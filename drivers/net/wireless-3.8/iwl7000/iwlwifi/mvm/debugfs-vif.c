@@ -1306,6 +1306,45 @@ static ssize_t iwl_dbgfs_tof_algo_type_read(struct file *file,
 	return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
 }
 
+static ssize_t iwl_dbgfs_tof_toa_offset_write(struct ieee80211_vif *vif,
+					      char *buf, size_t count,
+					      loff_t *ppos)
+{
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm *mvm = mvmvif->mvm;
+	u16 toa_offset;
+	int ret;
+
+	ret = kstrtou16(buf, 0, &toa_offset);
+	if (ret)
+		return ret;
+
+	mutex_lock(&mvm->mutex);
+
+	mvm->tof_data.toa_offset = toa_offset;
+
+	ret = iwl_mvm_tof_responder_cmd(mvm, vif);
+
+	mutex_unlock(&mvm->mutex);
+
+	return ret ?: count;
+}
+
+static ssize_t iwl_dbgfs_tof_toa_offset_read(struct file *file,
+					     char __user *user_buf,
+					     size_t count, loff_t *ppos)
+{
+	struct ieee80211_vif *vif = file->private_data;
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm *mvm = mvmvif->mvm;
+	char buf[10];
+	int ret;
+
+	ret = snprintf(buf, sizeof(buf), "%ud\n", mvm->tof_data.toa_offset);
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
+}
+
 static ssize_t iwl_dbgfs_low_latency_write(struct ieee80211_vif *vif, char *buf,
 					   size_t count, loff_t *ppos)
 {
@@ -1499,6 +1538,7 @@ MVM_DEBUGFS_READ_WRITE_FILE_OPS(rx_phyinfo, 10);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_enable, 32);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_range_request, 512);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_algo_type, 10);
+MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_toa_offset, 10);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_range_req_ext, 32);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_range_abort, 32);
 MVM_DEBUGFS_READ_FILE_OPS(tof_range_response);
@@ -1568,6 +1608,8 @@ void iwl_mvm_vif_dbgfs_register(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 		MVM_DEBUGFS_ADD_FILE_VIF(tof_range_response, mvmvif->dbgfs_dir,
 					 S_IRUSR);
 		MVM_DEBUGFS_ADD_FILE_VIF(tof_algo_type, mvmvif->dbgfs_dir,
+					 S_IRUSR | S_IWUSR);
+		MVM_DEBUGFS_ADD_FILE_VIF(tof_toa_offset, mvmvif->dbgfs_dir,
 					 S_IRUSR | S_IWUSR);
 	}
 

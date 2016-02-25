@@ -101,6 +101,7 @@ struct iwl_mvm_tof_data {
 #endif
 	struct cfg80211_ftm_responder_stats resp_stats;
 	u8 tof_algo_type;
+	u16 toa_offset;
 };
 
 void iwl_mvm_tof_init(struct iwl_mvm *mvm);

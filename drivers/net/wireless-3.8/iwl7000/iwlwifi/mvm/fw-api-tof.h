@@ -152,7 +152,7 @@ enum iwl_tof_algo_type {
  * @asap_mode: ASAP / Non ASAP mode for the current WLS station
  * @sta_id: index of the AP STA when in AP mode
  * @tsf_timer_offset_msecs: The dictated time offset (mSec) from the AP's TSF
- * @toa_offset: Artificial addition [0.1nsec] for the ToA - to be used for debug
+ * @toa_offset: Artificial addition [pSec] for the ToA - to be used for debug
  *		purposes, simulating station movement by adding various values
  *		to this field
  * @bssid: Current AP BSSID
