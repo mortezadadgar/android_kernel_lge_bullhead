@@ -85,9 +85,9 @@
 #include "iwl-phy-db.h"
 #include "testmode.h"
 #include "vendor-cmd.h"
-#include "iwl-nvm-parse.h"
 #include "iwl-fw-error-dump.h"
 #include "iwl-prph.h"
+#include "iwl-nvm-parse.h"
 #include "fw-dbg.h"
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 #include "iwl-dnt-cfg.h"
