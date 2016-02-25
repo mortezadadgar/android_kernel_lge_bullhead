@@ -1564,6 +1564,7 @@ static void iwl_mvm_mac_remove_interface(struct ieee80211_hw *hw,
 	}
 
 	mvmvif->ftm_responder = false;
+	memset(&mvm->tof_data.resp_stats, 0, sizeof(mvm->tof_data.resp_stats));
 
 	iwl_mvm_vif_dbgfs_clean(mvm, vif);
 
