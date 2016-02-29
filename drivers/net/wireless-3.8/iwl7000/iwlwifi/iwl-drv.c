@@ -1491,31 +1491,6 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 		goto try_again;
 	}
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
-	/*
-	* Check if different uCode is required, according to configuration.
-	* If so - overwrite existing firmware_name.
-	*/
-	if (drv->trans->dbg_cfg.d0_is_usniffer) {
-		char firmware_name[32];
-
-		release_firmware(ucode_raw);
-		snprintf(firmware_name, sizeof(firmware_name),
-			 "usniffer-%s", drv->firmware_name);
-		strcpy(drv->firmware_name, firmware_name);
-		IWL_DEBUG_INFO(drv, "attempting to load usniffer ucode %s\n",
-			       drv->firmware_name);
-		err = request_firmware(&ucode_raw, drv->firmware_name,
-				       drv->trans->dev);
-		if (err) {
-			IWL_ERR(drv, "Failed getting usniffer FW!\n");
-			goto out_unbind;
-		}
-	}
-#endif
-#endif
-
 	/* Data from ucode file:  header followed by uCode images */
 	ucode = (struct iwl_ucode_header *)ucode_raw->data;
 
