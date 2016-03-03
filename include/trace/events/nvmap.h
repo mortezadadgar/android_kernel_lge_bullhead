@@ -454,44 +454,6 @@ DEFINE_EVENT(nvmap_dmabuf_1, nvmap_dmabuf_kunmap,
 	TP_ARGS(dbuf)
 );
 
-DECLARE_EVENT_CLASS(nvmap_dmabuf_cpu_access,
-	TP_PROTO(struct dma_buf *dbuf,
-		 size_t start,
-		 size_t len),
-
-	TP_ARGS(dbuf, start, len),
-
-	TP_STRUCT__entry(
-		__field(struct dma_buf *, dbuf)
-		__field(size_t, start)
-		__field(size_t, len)
-	),
-
-	TP_fast_assign(
-		__entry->dbuf = dbuf;
-		__entry->start = start;
-		__entry->len = len;
-	),
-
-	TP_printk("dmabuf=%p, start=%d len=%d",
-		  __entry->dbuf, __entry->start, __entry->len
-	)
-);
-
-DEFINE_EVENT(nvmap_dmabuf_cpu_access, nvmap_dmabuf_begin_cpu_access,
-	TP_PROTO(struct dma_buf *dbuf,
-		 u32 start,
-		 u32 len),
-	TP_ARGS(dbuf, start, len)
-);
-
-DEFINE_EVENT(nvmap_dmabuf_cpu_access, nvmap_dmabuf_end_cpu_access,
-	TP_PROTO(struct dma_buf *dbuf,
-		 u32 start,
-		 u32 len),
-	TP_ARGS(dbuf, start, len)
-);
-
 DECLARE_EVENT_CLASS(nvmap_dmabuf_make_release,
 	TP_PROTO(const char *cli,
 		 struct nvmap_handle *h,

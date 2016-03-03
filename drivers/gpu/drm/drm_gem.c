@@ -801,9 +801,6 @@ int drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct drm_vma_offset_node *node;
 	int ret = 0;
 
-	if (drm_device_is_unplugged(dev))
-		return -ENODEV;
-
 	mutex_lock(&dev->struct_mutex);
 
 	node = drm_vma_offset_exact_lookup(&mm->vma_manager, vma->vm_pgoff,

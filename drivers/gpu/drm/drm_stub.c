@@ -429,8 +429,6 @@ void drm_unplug_dev(struct drm_device *dev)
 
 	mutex_lock(&drm_global_mutex);
 
-	drm_device_set_unplugged(dev);
-
 	if (dev->open_count == 0) {
 		drm_put_dev(dev);
 	}

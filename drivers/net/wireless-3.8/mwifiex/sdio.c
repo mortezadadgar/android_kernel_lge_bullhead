@@ -1338,10 +1338,14 @@ static int mwifiex_sdio_card_to_host_mp_aggr(struct mwifiex_adapter *adapter,
 			skb_deaggr = mwifiex_alloc_dma_align_buf(len_arr[pind],
 								 GFP_KERNEL |
 								 GFP_DMA);
-			if (!skb_deaggr)
-				goto error;
+			if (!skb_deaggr) {
+				dev_err(adapter->dev, "skb allocation failure drop pkt len=%d type=%d\n",
+					pkt_len, pkt_type);
+				curr_ptr += len_arr[pind];
+				continue;
+			}
+
 			skb_put(skb_deaggr, len_arr[pind]);
-			card->mpa_rx.skb_arr[pind] = skb_deaggr;
 
 			if ((pkt_type == MWIFIEX_TYPE_DATA ||
 			     (pkt_type == MWIFIEX_TYPE_AGGR_DATA &&
@@ -1357,7 +1361,7 @@ static int mwifiex_sdio_card_to_host_mp_aggr(struct mwifiex_adapter *adapter,
 							 pkt_type);
 			} else {
 				mwifiex_dbg(adapter, ERROR,
-					    "wrong aggr pkt:\t"
+					    "Drop wrong aggr pkt:\t"
 					    "sdio_single_port_rx_aggr=%d\t"
 					    "type=%d len=%d max_len=%d\n",
 					    adapter->sdio_rx_aggr_enable,
@@ -1376,8 +1380,15 @@ rx_curr_single:
 			    "info: RX: port: %d, rx_len: %d\n",
 			    port, rx_len);
 		skb = mwifiex_alloc_dma_align_buf(rx_len, GFP_KERNEL | GFP_DMA);
-		if (!skb)
-			goto error;
+		if (!skb) {
+			dev_err(adapter->dev, "single skb allocated fail,\t"
+				"drop pkt port=%d len=%d\n", port, rx_len);
+			if (mwifiex_sdio_card_to_host(adapter, &pkt_type,
+						      card->mpa_rx.buf, rx_len,
+						      adapter->ioport + port))
+				goto error;
+			return 0;
+		}
 		skb_put(skb, rx_len);
 
 		if (mwifiex_sdio_card_to_host(adapter, &pkt_type,
@@ -1387,10 +1398,11 @@ rx_curr_single:
 		if (!adapter->sdio_rx_aggr_enable &&
 		    pkt_type == MWIFIEX_TYPE_AGGR_DATA) {
 			mwifiex_dbg(adapter, ERROR,
-				    "Wrong pkt type %d\t"
+				    "Drop wrong pkt type %d\t"
 				    "Current SDIO RX Aggr not enabled\n",
 				    pkt_type);
-			goto error;
+			dev_kfree_skb_any(skb);
+			return 0;
 		}
 
 		mwifiex_decode_rx_packet(adapter, skb, pkt_type);
@@ -1404,16 +1416,8 @@ rx_curr_single:
 
 	return 0;
 error:
-	if (MP_RX_AGGR_IN_PROGRESS(card)) {
-		/* Multiport-aggregation transfer failed - cleanup */
-		for (pind = 0; pind < card->mpa_rx.pkt_cnt; pind++) {
-			/* copy pkt to deaggr buf */
-			skb_deaggr = card->mpa_rx.skb_arr[pind];
-			if (skb_deaggr)
-				dev_kfree_skb_any(skb_deaggr);
-		}
+	if (MP_RX_AGGR_IN_PROGRESS(card))
 		MP_RX_AGGR_BUF_RESET(card);
-	}
 
 	if (f_do_rx_cur && skb)
 		/* Single transfer pending. Free curr buff also */
@@ -1570,8 +1574,9 @@ static int mwifiex_process_int_status(struct mwifiex_adapter *adapter)
 				(rx_len + MWIFIEX_SDIO_BLOCK_SIZE -
 				 1) / MWIFIEX_SDIO_BLOCK_SIZE;
 			if (rx_len <= INTF_HEADER_LEN ||
-			    (rx_blocks * MWIFIEX_SDIO_BLOCK_SIZE) >
-			     card->mpa_rx.buf_size) {
+			    (card->mpa_rx.enabled &&
+			    ((rx_blocks * MWIFIEX_SDIO_BLOCK_SIZE) >
+			     card->mpa_rx.buf_size))) {
 				mwifiex_dbg(adapter, ERROR,
 					    "invalid rx_len=%d\n",
 					    rx_len);
@@ -1887,6 +1892,8 @@ error:
 	if (ret) {
 		kfree(card->mpa_tx.buf);
 		kfree(card->mpa_rx.buf);
+		card->mpa_tx.buf_size = 0;
+		card->mpa_rx.buf_size = 0;
 	}
 
 	return ret;
@@ -2010,14 +2017,24 @@ static int mwifiex_init_sdio(struct mwifiex_adapter *adapter)
 	ret = mwifiex_alloc_sdio_mpa_buffers(adapter,
 					     card->mp_tx_agg_buf_size,
 					     card->mp_rx_agg_buf_size);
-	if (ret) {
-		mwifiex_dbg(adapter, ERROR,
-			    "failed to alloc sdio mp-a buffers\n");
-		kfree(card->mp_regs);
-		return -1;
+
+	/* Allocate 32k MPA Tx/Rx buffers if 64k memory allocation fails */
+	if (ret && (card->mp_tx_agg_buf_size == MWIFIEX_MP_AGGR_BUF_SIZE_MAX ||
+		    card->mp_rx_agg_buf_size == MWIFIEX_MP_AGGR_BUF_SIZE_MAX)) {
+		/* Disable rx single port aggregation */
+		adapter->host_disable_sdio_rx_aggr = true;
+
+		ret = mwifiex_alloc_sdio_mpa_buffers
+			(adapter, MWIFIEX_MP_AGGR_BUF_SIZE_32K,
+			 MWIFIEX_MP_AGGR_BUF_SIZE_32K);
+		if (ret) {
+			/* Disable multi port aggregation */
+			card->mpa_tx.enabled = 0;
+			card->mpa_rx.enabled = 0;
+		}
 	}
 
-	return ret;
+	return 0;
 }
 
 /*
