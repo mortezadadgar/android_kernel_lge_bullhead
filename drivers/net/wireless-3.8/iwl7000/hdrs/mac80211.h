@@ -710,12 +710,14 @@ enum mac80211_tx_info_flags {
  *	protocol frame (e.g. EAP)
  * @IEEE80211_TX_CTRL_PS_RESPONSE: This frame is a response to a poll
  *	frame (PS-Poll or uAPSD).
+ * @IEEE80211_TX_CTRL_RATE_INJECT: This frame is injected with rate information
  *
  * These flags are used in tx_info->control.flags.
  */
 enum mac80211_tx_control_flags {
 	IEEE80211_TX_CTRL_PORT_CTRL_PROTO	= BIT(0),
 	IEEE80211_TX_CTRL_PS_RESPONSE		= BIT(1),
+	IEEE80211_TX_CTRL_RATE_INJECT		= BIT(2),
 };
 
 /*
@@ -1037,6 +1039,14 @@ ieee80211_tx_info_clear_status(struct ieee80211_tx_info *info)
  * @RX_FLAG_MIC_STRIPPED: The mic was stripped of this packet. Decryption was
  *	done by the hardware
  * @RX_FLAG_LDPC: LDPC was used
+ * @RX_FLAG_ONLY_MONITOR: Report frame only to monitor interfaces without
+ *	processing it in any regular way.
+ *	This is useful if drivers offload some frames but still want to report
+ *	them for sniffing purposes.
+ * @RX_FLAG_SKIP_MONITOR: Process and report frame to all interfaces except
+ *	monitor interfaces.
+ *	This is useful if drivers offload some frames but still want to report
+ *	them for sniffing purposes.
  * @RX_FLAG_STBC_MASK: STBC 2 bit bitmask. 1 - Nss=1, 2 - Nss=2, 3 - Nss=3
  * @RX_FLAG_10MHZ: 10 MHz (half channel) was used
  * @RX_FLAG_5MHZ: 5 MHz (quarter channel) was used
@@ -1078,6 +1088,8 @@ enum mac80211_rx_flags {
 	RX_FLAG_MACTIME_END		= BIT(21),
 	RX_FLAG_VHT			= BIT(22),
 	RX_FLAG_LDPC			= BIT(23),
+	RX_FLAG_ONLY_MONITOR		= BIT(24),
+	RX_FLAG_SKIP_MONITOR		= BIT(25),
 	RX_FLAG_STBC_MASK		= BIT(26) | BIT(27),
 	RX_FLAG_10MHZ			= BIT(28),
 	RX_FLAG_5MHZ			= BIT(29),
@@ -1097,6 +1109,7 @@ enum mac80211_rx_flags {
  * @RX_VHT_FLAG_160MHZ: 160 MHz was used
  * @RX_VHT_FLAG_BF: packet was beamformed
  */
+
 enum mac80211_rx_vht_flags {
 	RX_VHT_FLAG_80MHZ		= BIT(0),
 	RX_VHT_FLAG_160MHZ		= BIT(1),
@@ -2248,7 +2261,7 @@ static inline void SET_IEEE80211_DEV(struct ieee80211_hw *hw, struct device *dev
  * @hw: the &struct ieee80211_hw to set the MAC address for
  * @addr: the address to set
  */
-static inline void SET_IEEE80211_PERM_ADDR(struct ieee80211_hw *hw, u8 *addr)
+static inline void SET_IEEE80211_PERM_ADDR(struct ieee80211_hw *hw, const u8 *addr)
 {
 	memcpy(hw->wiphy->perm_addr, addr, ETH_ALEN);
 }
@@ -5685,6 +5698,21 @@ void ieee80211_unreserve_tid(struct ieee80211_sta *sta, u8 tid);
  */
 struct sk_buff *ieee80211_tx_dequeue(struct ieee80211_hw *hw,
 				     struct ieee80211_txq *txq);
+
+/*
+ * ieee80211_txq_get_depth - get pending frame/byte count of given txq
+ *
+ * The values are not guaranteed to be coherent with regard to each other, i.e.
+ * txq state can change half-way of this function and the caller may end up
+ * with "new" frame_cnt and "old" byte_cnt or vice-versa.
+ *
+ * @txq: pointer obtained from station or virtual interface
+ * @frame_cnt: pointer to store frame count
+ * @byte_cnt: pointer to store byte count
+ */
+void ieee80211_txq_get_depth(struct ieee80211_txq *txq,
+			     unsigned long *frame_cnt,
+			     unsigned long *byte_cnt);
 
 /**
  * ieee80211_nan_func_terminated - notify about NAN function termination.

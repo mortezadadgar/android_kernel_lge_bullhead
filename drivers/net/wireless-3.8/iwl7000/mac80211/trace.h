@@ -85,21 +85,23 @@
 #define KEY_PR_FMT	" cipher:0x%x, flags=%#x, keyidx=%d, hw_key_idx=%d"
 #define KEY_PR_ARG	__entry->cipher, __entry->flags, __entry->keyidx, __entry->hw_key_idx
 
-#define AMPDU_ACTION_ENTRY	__field(enum ieee80211_ampdu_mlme_action, ieee80211_ampdu_mlme_action)	\
-				STA_ENTRY								\
-				__field(u16, tid)							\
-				__field(u16, ssn)							\
-				__field(u8, buf_size)							\
-				__field(bool, amsdu)							\
+#define AMPDU_ACTION_ENTRY	__field(enum ieee80211_ampdu_mlme_action,		\
+					ieee80211_ampdu_mlme_action)			\
+				STA_ENTRY						\
+				__field(u16, tid)					\
+				__field(u16, ssn)					\
+				__field(u8, buf_size)					\
+				__field(bool, amsdu)					\
 				__field(u16, timeout)
-#define AMPDU_ACTION_ASSIGN	STA_NAMED_ASSIGN(params->sta);						\
-				__entry->tid = params->tid;						\
-				__entry->ssn = params->ssn;						\
-				__entry->buf_size = params->buf_size;					\
-				__entry->amsdu = params->amsdu;						\
+#define AMPDU_ACTION_ASSIGN	STA_NAMED_ASSIGN(params->sta);				\
+				__entry->tid = params->tid;				\
+				__entry->ssn = params->ssn;				\
+				__entry->buf_size = params->buf_size;			\
+				__entry->amsdu = params->amsdu;				\
 				__entry->timeout = params->timeout;
 #define AMPDU_ACTION_PR_FMT	STA_PR_FMT " tid %d, ssn %d, buf_size %u, amsdu %d, timeout %d"
-#define AMPDU_ACTION_PR_ARG	STA_PR_ARG, __entry->tid, __entry->ssn, __entry->buf_size, __entry->amsdu, __entry->timeout
+#define AMPDU_ACTION_PR_ARG	STA_PR_ARG, __entry->tid, __entry->ssn,			\
+				__entry->buf_size, __entry->amsdu, __entry->timeout
 
 /*
  * Tracing for driver callbacks.
