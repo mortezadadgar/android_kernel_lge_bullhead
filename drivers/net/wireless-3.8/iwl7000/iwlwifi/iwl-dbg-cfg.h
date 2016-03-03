@@ -230,7 +230,6 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_BIN(dbg_conf_monitor_host_command)
 	IWL_DBG_CFG_BIN(log_level_cmd)
 	IWL_DBG_CFG_BINA(ldbg_cmd, 32)
-	IWL_DBG_CFG_BIN(hw_address)
 	IWL_DBG_CFG_NODEF(u8, log_level_cmd_id)
 	IWL_DBG_CFG_NODEF(u8, dbg_conf_monitor_cmd_id)
 	IWL_DBG_CFG_NODEF(u8, ldbg_cmd_nums)
@@ -238,6 +237,7 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(u32, dbg_mon_buff_end_addr_reg_addr_b_step)
 	IWL_DBG_CFG_NODEF(u32, dbg_mon_wr_ptr_addr_b_step)
 #endif /* CPTCFG_IWLWIFI_DEVICE_TESTMODE */
+	IWL_DBG_CFG_BIN(hw_address)
 	IWL_DBG_CFG_STR(fw_dbg_conf)
 	IWL_DBG_CFG_NODEF(u8, wakelock_mode)
 	IWL_DBG_CFG_NODEF(u32, d0i3_debug)
