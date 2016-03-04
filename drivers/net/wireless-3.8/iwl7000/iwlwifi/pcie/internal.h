@@ -407,10 +407,6 @@ struct iwl_trans_pcie {
 	bool cmd_hold_nic_awake;
 	bool ref_cmd_in_flight;
 
-	/* protect ref counter */
-	spinlock_t ref_lock;
-	u32 ref_count;
-
 #ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
 	struct iwl_trans_platform_ops *platform_ops;
 	struct pci_saved_state *saved_state;
