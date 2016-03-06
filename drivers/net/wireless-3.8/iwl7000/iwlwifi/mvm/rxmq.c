@@ -145,7 +145,8 @@ static inline int iwl_mvm_check_pn(struct iwl_mvm *mvm, struct sk_buff *skb,
 		   IEEE80211_CCMP_PN_LEN) <= 0)
 		return -1;
 
-	memcpy(ptk_pn->q[queue].pn[tid], pn, IEEE80211_CCMP_PN_LEN);
+	if (!(stats->flag & RX_FLAG_AMSDU_MORE))
+		memcpy(ptk_pn->q[queue].pn[tid], pn, IEEE80211_CCMP_PN_LEN);
 	stats->flag |= RX_FLAG_PN_VALIDATED;
 
 	return 0;
@@ -545,6 +546,9 @@ void iwl_mvm_rx_mpdu_mq(struct iwl_mvm *mvm, struct napi_struct *napi,
 			u8 *qc = ieee80211_get_qos_ctl(hdr);
 
 			*qc &= ~IEEE80211_QOS_CTL_A_MSDU_PRESENT;
+			if (!(desc->amsdu_info &
+			      IWL_RX_MPDU_AMSDU_LAST_SUBFRAME))
+				rx_status->flag |= RX_FLAG_AMSDU_MORE;
 		}
 	}
 
