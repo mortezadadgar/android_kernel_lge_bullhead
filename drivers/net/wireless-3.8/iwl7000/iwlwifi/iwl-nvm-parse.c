@@ -554,8 +554,8 @@ static void iwl_set_hw_address_family_8000(struct iwl_trans *trans,
 		    memcmp(reserved_mac, hw_addr, ETH_ALEN) != 0)
 			return;
 
-		IWL_ERR_DEV(trans->dev,
-			    "mac address from nvm override section is not valid\n");
+		IWL_ERR(trans,
+			"mac address from nvm override section is not valid\n");
 	}
 
 	if (nvm_hw) {
@@ -576,14 +576,14 @@ static void iwl_set_hw_address_family_8000(struct iwl_trans *trans,
 		data->hw_addr[5] = hw_addr[0];
 
 		if (!is_valid_ether_addr(data->hw_addr))
-			IWL_ERR_DEV(trans->dev,
-				    "mac address (%pM) from hw section is not valid\n",
-				    data->hw_addr);
+			IWL_ERR(trans,
+				"mac address (%pM) from hw section is not valid\n",
+				data->hw_addr);
 
 		return;
 	}
 
-	IWL_ERR_DEV(trans->dev, "mac address is not found\n");
+	IWL_ERR(trans, "mac address is not found\n");
 }
 
 static void iwl_set_hw_address(struct iwl_trans *trans,
@@ -601,8 +601,7 @@ static void iwl_set_hw_address(struct iwl_trans *trans,
 			       ETH_ALEN);
 			return;
 		}
-		IWL_ERR_DEV(trans->dev,
-			    "mac address from config file is invalid\n");
+		IWL_ERR(trans, "mac address from config file is invalid\n");
 	}
 #endif
 
@@ -673,8 +672,8 @@ iwl_parse_nvm_data(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	if (cfg->device_family != IWL_DEVICE_FAMILY_8000) {
 		/* Checking for required sections */
 		if (!nvm_calib) {
-			IWL_ERR_DEV(dev,
-				    "Can't parse empty Calib NVM sections\n");
+			IWL_ERR(trans,
+				"Can't parse empty Calib NVM sections\n");
 			kfree(data);
 			return NULL;
 		}
