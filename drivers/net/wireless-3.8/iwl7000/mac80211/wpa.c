@@ -542,8 +542,9 @@ ieee80211_crypto_ccmp_decrypt(struct ieee80211_rx_data *rx,
 				    skb->data + skb->len - mic_len, mic_len))
 				return RX_DROP_UNUSABLE;
 		}
-
-		memcpy(key->u.ccmp.rx_pn[queue], pn, IEEE80211_CCMP_PN_LEN);
+		if (!(status->flag & RX_FLAG_AMSDU_MORE))
+			memcpy(key->u.ccmp.rx_pn[queue], pn,
+			       IEEE80211_CCMP_PN_LEN);
 	}
 
 	/* Remove CCMP header and MIC */
@@ -769,8 +770,9 @@ ieee80211_crypto_gcmp_decrypt(struct ieee80211_rx_data *rx)
 				    IEEE80211_GCMP_MIC_LEN))
 				return RX_DROP_UNUSABLE;
 		}
-
-		memcpy(key->u.gcmp.rx_pn[queue], pn, IEEE80211_GCMP_PN_LEN);
+		if (!(status->flag & RX_FLAG_AMSDU_MORE))
+			memcpy(key->u.gcmp.rx_pn[queue], pn,
+			       IEEE80211_GCMP_PN_LEN);
 	}
 
 	/* Remove GCMP header and MIC */
