@@ -565,6 +565,18 @@ static int iwl_mvm_load_ucode_wait_alive(struct iwl_mvm *mvm,
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	/* Check if ini config requests usniffer */
 	ini_usniffer = mvm->trans->dbg_cfg.d0_is_usniffer;
+
+	/* Check if ini config requests upload mode */
+	if (mvm->trans->dbg_cfg.use_upload_ucode)
+		/* Check if ucode supports upload mode */
+		if (WARN(!(fw_has_capa(&mvm->fw->ucode_capa,
+				       IWL_UCODE_TLV_CAPA_UMAC_UPLOAD) &&
+			   fw_has_capa(&mvm->fw->ucode_capa,
+				       IWL_UCODE_TLV_CAPA_LMAC_UPLOAD)),
+			 "Conflict in config and ucode capabilities:\n"
+			 "\tConfig sets upload and ucode doesn't support it.\n"
+			 ))
+			return -EINVAL;
 #endif
 #endif
 

@@ -411,6 +411,7 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 {
 	const char *name_pre = drv->cfg->fw_name_pre;
 	char tag[8];
+	char fw_name_temp[32];
 
 	if (first) {
 #ifdef CPTCFG_IWLWIFI_DEBUG_EXPERIMENTAL_UCODE
@@ -458,6 +459,18 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 				 sizeof(drv->firmware_name), "%s%c-%s.ucode",
 				 name_pre, rev_step, tag);
 	}
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+	/* check if upload firmware code is required */
+	if (drv->trans->dbg_cfg.use_upload_ucode) {
+		snprintf(fw_name_temp, sizeof(fw_name_temp), "upload-%s",
+			 drv->firmware_name);
+		strncpy(drv->firmware_name, fw_name_temp,
+			sizeof(drv->firmware_name));
+	}
+#endif
+#endif
 
 	IWL_DEBUG_INFO(drv, "attempting to load firmware %s'%s'\n",
 		       (drv->fw_index == UCODE_EXPERIMENTAL_INDEX)
@@ -1482,10 +1495,6 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	if (!api_ok)
 		api_ok = api_max;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-	iwl_dbg_cfg_load_ini(drv->trans->dev, &drv->trans->dbg_cfg);
-#endif
-
 	pieces = kzalloc(sizeof(*pieces), GFP_KERNEL);
 	if (!pieces)
 		return;
@@ -1787,6 +1796,7 @@ struct iwl_drv *iwl_drv_start(struct iwl_trans *trans,
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	trans->dbg_cfg = current_dbg_config;
+	iwl_dbg_cfg_load_ini(drv->trans->dev, &drv->trans->dbg_cfg);
 #endif
 
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
