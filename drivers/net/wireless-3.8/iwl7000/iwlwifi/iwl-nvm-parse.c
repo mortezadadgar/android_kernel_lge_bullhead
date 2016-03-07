@@ -71,6 +71,8 @@
 #include "iwl-modparams.h"
 #include "iwl-nvm-parse.h"
 #include "iwl-prph.h"
+#include "iwl-io.h"
+#include "iwl-csr.h"
 
 /* NVM offsets (in words) definitions */
 enum wkp_nvm_offsets {
@@ -524,6 +526,36 @@ static void iwl_set_radio_cfg(const struct iwl_cfg *cfg,
 	data->valid_rx_ant = NVM_RF_CFG_RX_ANT_MSK_FAMILY_8000(radio_cfg);
 }
 
+static void iwl_flip_hw_address(__le32 mac_addr0, __le32 mac_addr1, u8 *dest)
+{
+	const u8 *hw_addr;
+
+	hw_addr = (const u8 *)&mac_addr0;
+	dest[0] = hw_addr[3];
+	dest[1] = hw_addr[2];
+	dest[2] = hw_addr[1];
+	dest[3] = hw_addr[0];
+
+	hw_addr = (const u8 *)&mac_addr1;
+	dest[4] = hw_addr[1];
+	dest[5] = hw_addr[0];
+}
+
+static void iwl_set_hw_address_from_csr(struct iwl_trans *trans,
+					struct iwl_nvm_data *data)
+{
+	__le32 mac_addr0 = cpu_to_le32(iwl_read32(trans, CSR_MAC_ADDR0_STRAP));
+	__le32 mac_addr1 = cpu_to_le32(iwl_read32(trans, CSR_MAC_ADDR1_STRAP));
+
+	/* If OEM did not fuse address - get it from OTP */
+	if (!mac_addr0 && !mac_addr1) {
+		mac_addr0 = cpu_to_le32(iwl_read32(trans, CSR_MAC_ADDR0_OTP));
+		mac_addr1 = cpu_to_le32(iwl_read32(trans, CSR_MAC_ADDR1_OTP));
+	}
+
+	iwl_flip_hw_address(mac_addr0, mac_addr1, data->hw_addr);
+}
+
 static void iwl_set_hw_address_family_8000(struct iwl_trans *trans,
 					   const struct iwl_cfg *cfg,
 					   struct iwl_nvm_data *data,
@@ -564,21 +596,8 @@ static void iwl_set_hw_address_family_8000(struct iwl_trans *trans,
 						WFMP_MAC_ADDR_0));
 		__le32 mac_addr1 = cpu_to_le32(iwl_trans_read_prph(trans,
 						WFMP_MAC_ADDR_1));
-		/* read the MAC address from HW resisters */
-		hw_addr = (const u8 *)&mac_addr0;
-		data->hw_addr[0] = hw_addr[3];
-		data->hw_addr[1] = hw_addr[2];
-		data->hw_addr[2] = hw_addr[1];
-		data->hw_addr[3] = hw_addr[0];
 
-		hw_addr = (const u8 *)&mac_addr1;
-		data->hw_addr[4] = hw_addr[1];
-		data->hw_addr[5] = hw_addr[0];
-
-		if (!is_valid_ether_addr(data->hw_addr))
-			IWL_ERR(trans,
-				"mac address (%pM) from hw section is not valid\n",
-				data->hw_addr);
+		iwl_flip_hw_address(mac_addr0, mac_addr1, data->hw_addr);
 
 		return;
 	}
@@ -586,10 +605,10 @@ static void iwl_set_hw_address_family_8000(struct iwl_trans *trans,
 	IWL_ERR(trans, "mac address is not found\n");
 }
 
-static void iwl_set_hw_address(struct iwl_trans *trans,
-			       const struct iwl_cfg *cfg,
-			       struct iwl_nvm_data *data, const __le16 *nvm_hw,
-			       const __le16 *mac_override)
+static int iwl_set_hw_address(struct iwl_trans *trans,
+			      const struct iwl_cfg *cfg,
+			      struct iwl_nvm_data *data, const __le16 *nvm_hw,
+			      const __le16 *mac_override)
 {
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	struct iwl_dbg_cfg *dbg_cfg = &trans->dbg_cfg;
@@ -599,13 +618,14 @@ static void iwl_set_hw_address(struct iwl_trans *trans,
 		    is_valid_ether_addr(dbg_cfg->hw_address.data)) {
 			memcpy(data->hw_addr, dbg_cfg->hw_address.data,
 			       ETH_ALEN);
-			return;
+			return 0;
 		}
 		IWL_ERR(trans, "mac address from config file is invalid\n");
 	}
 #endif
-
-	if (cfg->device_family != IWL_DEVICE_FAMILY_8000) {
+	if (cfg->mac_addr_from_csr) {
+		iwl_set_hw_address_from_csr(trans, data);
+	} else if (cfg->device_family != IWL_DEVICE_FAMILY_8000) {
 		const u8 *hw_addr = (const u8 *)(nvm_hw + HW_ADDR);
 
 		/* The byte order is little endian 16 bit, meaning 214365 */
@@ -619,6 +639,13 @@ static void iwl_set_hw_address(struct iwl_trans *trans,
 		iwl_set_hw_address_family_8000(trans, cfg, data,
 					       mac_override, nvm_hw);
 	}
+
+	if (!is_valid_ether_addr(data->hw_addr)) {
+		IWL_ERR(trans, "no valid mac address was found\n");
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 struct iwl_nvm_data *
@@ -694,7 +721,12 @@ iwl_parse_nvm_data(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 		ch_section = regulatory;
 	}
 
-	iwl_set_hw_address(trans, cfg, data, nvm_hw, mac_override);
+	/* If no valid mac address was found - bail out */
+	if (iwl_set_hw_address(trans, cfg, data, nvm_hw, mac_override)) {
+		kfree(data);
+		return NULL;
+	}
+
 	iwl_init_sbands(dev, cfg, data, ch_section, tx_chains, rx_chains,
 			lar_fw_supported && lar_enabled);
 	data->calib_version = 255;
