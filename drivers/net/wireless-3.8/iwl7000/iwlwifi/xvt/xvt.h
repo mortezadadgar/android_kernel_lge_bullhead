@@ -163,8 +163,8 @@ struct iwl_error_event_table_v1 {
 struct iwl_error_event_table_v2 {
 	u32 valid;		/* (nonzero) valid, (0) log is empty */
 	u32 error_id;		/* type of error */
-	u32 pc;			/* program counter */
-	u32 blink1;		/* branch link */
+	u32 trm_hw_status0;	/* TRM HW status */
+	u32 trm_hw_status1;	/* TRM HW status */
 	u32 blink2;		/* branch link */
 	u32 ilink1;		/* interrupt link */
 	u32 ilink2;		/* interrupt link */
@@ -176,7 +176,7 @@ struct iwl_error_event_table_v2 {
 	u32 tsf_hi;		/* network timestamp function timer */
 	u32 gp1;		/* GP1 timer register */
 	u32 gp2;		/* GP2 timer register */
-	u32 gp3;		/* GP3 timer register */
+	u32 fw_rev_type;	/* firmware revision type */
 	u32 major;		/* uCode version major */
 	u32 minor;		/* uCode version minor */
 	u32 hw_ver;		/* HW Silicon version */
@@ -200,7 +200,7 @@ struct iwl_error_event_table_v2 {
 	u32 isr4;		/* isr status register LMPM_NIC_ISR4:
 				 * wico interrupt
 				 */
-	u32 isr_pref;		/* isr status register LMPM_NIC_PREF_STAT */
+	u32 last_cmd_id;	/* last HCMD id handled by the firmware */
 	u32 wait_event;		/* wait event() caller address */
 	u32 l2p_control;	/* L2pControlField */
 	u32 l2p_duration;	/* L2pDurationField */
@@ -213,7 +213,7 @@ struct iwl_error_event_table_v2 {
 				 * compilation
 				 */
 	u32 flow_handler;	/* FH read/write pointers, RX credit */
-} __packed;
+} __packed /* LOG_ERROR_TABLE_API_S_VER_3 */;
 
 /* UMAC error struct - relevant starting from family 8000 chip.
  * Note: This structure is read from the device with IO accesses,
