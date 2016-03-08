@@ -3,7 +3,7 @@
  *
  * GK20A Graphics channel
  *
- * Copyright (c) 2011-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -532,13 +532,21 @@ int gk20a_channel_cycle_stats(struct channel_gk20a *ch,
 #endif
 
 int gk20a_init_error_notifier(struct nvhost_hwctx *ctx,
-		u32 memhandle, u64 offset) {
+		u32 memhandle, u64 offset)
+{
 	struct channel_gk20a *ch = ctx->priv;
 	struct platform_device *dev = ch->ch->dev;
-	void *va;
-
 	struct mem_mgr *memmgr;
 	struct mem_handle *handle_ref;
+	void *va;
+	u64 end = offset + sizeof(struct nvhost_notification);
+	u64 buf_size;
+	int err;
+
+	if (offset > (u64)(~0ULL) - sizeof(struct nvhost_notification)) {
+		pr_err("gk20a_init_error_notifier: invalid offset\n");
+		return -EINVAL;
+	}
 
 	if (!memhandle) {
 		pr_err("gk20a_init_error_notifier: invalid memory handle\n");
@@ -555,6 +563,22 @@ int gk20a_init_error_notifier(struct nvhost_hwctx *ctx,
 		pr_err("Invalid handle: %d\n", memhandle);
 		return -EINVAL;
 	}
+
+	err = nvhost_memmgr_get_param(memmgr, handle_ref,
+				NVMAP_HANDLE_PARAM_SIZE,
+				&buf_size);
+	if (err) {
+		nvhost_memmgr_put(memmgr, handle_ref);
+		pr_err("Cannot query notifier size\n");
+		return err;
+	}
+
+	if (end > buf_size) {
+		nvhost_memmgr_put(memmgr, handle_ref);
+		pr_err("gk20a_init_error_notifier: offset over notifier size\n");
+		return -EINVAL;
+	}
+
 	/* map handle */
 	va = nvhost_memmgr_mmap(handle_ref);
 	if (!va) {
