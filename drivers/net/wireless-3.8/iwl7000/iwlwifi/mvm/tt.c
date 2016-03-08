@@ -812,6 +812,7 @@ static int iwl_mvm_tcool_get_cur_state(struct thermal_cooling_device *cdev,
 		return -EBUSY;
 
 	*state = mvm->cooling_dev.cur_state;
+
 	return 0;
 }
 
