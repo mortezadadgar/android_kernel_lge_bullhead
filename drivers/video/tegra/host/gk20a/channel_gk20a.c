@@ -1871,6 +1871,8 @@ int gk20a_channel_wait(struct channel_gk20a *ch,
 	u32 offset;
 	unsigned long timeout;
 	int remain, ret = 0;
+	u64 end;
+	u64 buf_size;
 
 	nvhost_dbg_fn("");
 
@@ -1886,6 +1888,12 @@ int gk20a_channel_wait(struct channel_gk20a *ch,
 	case NVHOST_WAIT_TYPE_NOTIFIER:
 		id = args->condition.notifier.nvmap_handle;
 		offset = args->condition.notifier.offset;
+		if (offset > (u32)(~0U) - sizeof(struct notification)) {
+			nvhost_err(d, "invalid notifier offset");
+			return -EINVAL;
+		}
+
+		end = offset + sizeof(struct notification);
 
 		handle_ref = nvhost_memmgr_get(memmgr, id, dev);
 		if (IS_ERR(handle_ref)) {
@@ -1894,8 +1902,24 @@ int gk20a_channel_wait(struct channel_gk20a *ch,
 			return -EINVAL;
 		}
 
+		ret = nvhost_memmgr_get_param(memmgr, handle_ref,
+					NVMAP_HANDLE_PARAM_SIZE,
+					&buf_size);
+		if (ret) {
+			nvhost_memmgr_put(memmgr, handle_ref);
+			nvhost_err(d, "Cannot query notifier size");
+			return ret;
+		}
+
+		if (end > buf_size) {
+			nvhost_memmgr_put(memmgr, handle_ref);
+			nvhost_err(d, "notifier offset over buffer size");
+			return -EINVAL;
+		}
+
 		notif = nvhost_memmgr_mmap(handle_ref);
 		if (!notif) {
+			nvhost_memmgr_put(memmgr, handle_ref);
 			nvhost_err(d, "failed to map notifier memory");
 			return -ENOMEM;
 		}
