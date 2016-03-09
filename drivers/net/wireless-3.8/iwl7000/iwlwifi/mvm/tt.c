@@ -557,7 +557,9 @@ int iwl_mvm_ctdp_command(struct iwl_mvm *mvm, u32 op, u32 state)
 
 	switch (op) {
 	case CTDP_CMD_OPERATION_START:
+#ifdef CONFIG_THERMAL
 		mvm->cooling_dev.cur_state = state;
+#endif
 		break;
 	case CTDP_CMD_OPERATION_REPORT:
 		IWL_DEBUG_TEMP(mvm, "cTDP avg energy in mWatt = %d\n", status);
