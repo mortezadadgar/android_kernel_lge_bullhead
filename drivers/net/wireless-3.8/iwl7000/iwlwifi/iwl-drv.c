@@ -1318,10 +1318,9 @@ fw_dbg_conf:
 	 * If ucode advertises that it supports GSCAN but GSCAN
 	 * capabilities TLV is not present, or if it has an old format,
 	 * warn and continue without GSCAN.
-	 * Check capa since parse_tlv is called one time with capa NULL.
 	 */
-	if (capa && fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
-	    WARN(!gscan_capa,
+	if (WARN(fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
+		 !gscan_capa,
 		 "GSCAN is supported but capabilities TLV is unavailable\n"))
 		__clear_bit((__force long)IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT,
 			    capa->_capa);
@@ -1525,8 +1524,10 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 					 drv->trans->dbg_cfg.fw_dbg_conf,
 					 drv->trans->dev);
 		if (!load_fw_dbg_err) {
+			struct iwl_ucode_capabilities capa = {};
+
 			err = iwl_parse_tlv_firmware(drv, fw_dbg_config, pieces,
-						     NULL, &usniffer_images);
+						     &capa, &usniffer_images);
 			if (err)
 				IWL_ERR(drv,
 					"Failed to configure FW DBG data!\n");
