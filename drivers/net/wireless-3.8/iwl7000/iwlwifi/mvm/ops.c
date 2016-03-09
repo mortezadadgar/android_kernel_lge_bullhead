@@ -898,9 +898,9 @@ static void iwl_mvm_async_handlers_wk(struct work_struct *wk)
 		entry->fn(mvm, &entry->rxb);
 		iwl_free_rxb(&entry->rxb);
 		list_del(&entry->list);
-		kfree(entry);
 		if (entry->context == RX_HANDLER_ASYNC_LOCKED)
 			mutex_unlock(&mvm->mutex);
+		kfree(entry);
 	}
 }
 
