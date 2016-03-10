@@ -133,8 +133,12 @@ static int iwl_xvt_fill_paging_mem(struct iwl_xvt *xvt,
 		}
 	}
 
-	if (sec_idx >= IWL_UCODE_SECTION_MAX) {
-		IWL_ERR(xvt, "driver didn't find paging image\n");
+	/*
+	 * If paging is enabled there should be at least 2 more sections left
+	 * (one for CSS and one for Paging data)
+	 */
+	if (sec_idx >= ARRAY_SIZE(image->sec) - 1) {
+		IWL_ERR(xvt, "Paging: Missing CSS and/or paging sections\n");
 		iwl_xvt_free_fw_paging(xvt);
 		return -EINVAL;
 	}
