@@ -1603,3 +1603,19 @@ ieee80211_operating_class_to_band(u8 operating_class,
 
 #define NUM_NL80211_BANDS ((enum nl80211_band)IEEE80211_NUM_BANDS)
 #endif
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,8,0)
+struct cfg80211_scan_info {
+	u64 scan_start_tsf;
+	u8 tsf_bssid[ETH_ALEN] __aligned(2);
+	bool aborted;
+};
+
+static inline void
+backport_cfg80211_scan_done(struct cfg80211_scan_request *request,
+			    struct cfg80211_scan_info *info)
+{
+	cfg80211_scan_done(request, info->aborted);
+}
+#define cfg80211_scan_done backport_cfg80211_scan_done
+#endif
