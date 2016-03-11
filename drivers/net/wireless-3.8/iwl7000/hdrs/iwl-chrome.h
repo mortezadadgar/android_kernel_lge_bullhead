@@ -99,6 +99,17 @@ static inline void idr_preload(gfp_t gfp_mask)
 static inline void idr_preload_end(void)
 {
 }
+
+#ifdef CONFIG_PM
+static inline bool pm_runtime_active(struct device *dev)
+{
+	return dev->power.runtime_status == RPM_ACTIVE ||
+		dev->power.disable_depth;
+}
+#else
+static inline bool pm_runtime_active(struct device *dev) { return true; }
+#endif /* CONFIG_PM */
+
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0)
