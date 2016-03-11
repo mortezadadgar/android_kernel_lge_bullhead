@@ -60,6 +60,10 @@ static int validate_reg(struct platform_device *ndev, u32 offset, int count)
 	struct resource *r;
 	struct nvhost_device_data *pdata = platform_get_drvdata(ndev);
 
+	/* check if offset is u32 aligned */
+	if (offset & 3)
+		return -EINVAL;
+
 	r = platform_get_resource(pdata->master ? pdata->master : ndev,
 			IORESOURCE_MEM, 0);
 	if (!r) {
