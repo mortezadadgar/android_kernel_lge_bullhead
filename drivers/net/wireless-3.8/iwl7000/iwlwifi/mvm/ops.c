@@ -746,6 +746,9 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	/* init RSS hash key */
 	get_random_bytes(mvm->secret_key, sizeof(mvm->secret_key));
 
+	setup_timer(&mvm->scan_timer, iwl_mvm_scan_timeout,
+		    (unsigned long)mvm);
+
 	return op_mode;
 
  out_unregister:
@@ -813,6 +816,8 @@ static void iwl_op_mode_mvm_stop(struct iwl_op_mode *op_mode)
 #endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
 
 	iwl_mvm_tof_clean(mvm);
+
+	del_timer_sync(&mvm->scan_timer);
 
 	ieee80211_free_hw(mvm->hw);
 }
