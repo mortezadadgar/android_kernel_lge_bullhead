@@ -813,13 +813,12 @@ static int mwifiex_prog_fw_w_helper(struct mwifiex_adapter *adapter,
 		offset += txlen;
 	} while (true);
 
-	sdio_release_host(card->func);
-
 	dev_dbg(adapter->dev, "info: FW download over, size %d bytes\n",
 		offset);
 
 	ret = 0;
 done:
+	sdio_release_host(card->func);
 	kfree(fwbuf);
 	return ret;
 }
