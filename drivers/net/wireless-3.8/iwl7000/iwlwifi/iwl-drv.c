@@ -1889,9 +1889,7 @@ struct iwl_mod_params iwlwifi_mod_params = {
 	.power_level = IWL_POWER_INDEX_1,
 	.d0i3_disable = IS_ENABLED(CPTCFG_IWLWIFI_D0I3_DEFAULT_DISABLE),
 	.d0i3_entry_delay = 1000,
-#ifndef CPTCFG_IWLWIFI_UAPSD
 	.uapsd_disable = IWL_DISABLE_UAPSD_BSS | IWL_DISABLE_UAPSD_P2P_CLIENT,
-#endif /* CPTCFG_IWLWIFI_UAPSD */
 	.disable_11ac = IS_ENABLED(CPTCFG_IWLWIFI_VHT_DEFAULT_DISABLE),
 	/* the rest are 0 by default */
 };
@@ -2077,13 +2075,8 @@ MODULE_PARM_DESC(lar_disable, "disable LAR functionality (default: N)");
 
 module_param_named(uapsd_disable, iwlwifi_mod_params.uapsd_disable,
 		   uint, S_IRUGO | S_IWUSR);
-#ifdef CPTCFG_IWLWIFI_UAPSD
-MODULE_PARM_DESC(uapsd_disable,
-		 "disable U-APSD functionality bitmap 1: BSS 2: P2P Client (default: 0)");
-#else
 MODULE_PARM_DESC(uapsd_disable,
 		 "disable U-APSD functionality bitmap 1: BSS 2: P2P Client (default: 3)");
-#endif
 
 /*
  * set bt_coex_active to true, uCode will do kill/defer
