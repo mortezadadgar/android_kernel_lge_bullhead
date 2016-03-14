@@ -123,6 +123,7 @@ void iwl_mvm_tof_init(struct iwl_mvm *mvm)
 
 	mvm->tof_data.active_request_id = IWL_MVM_TOF_RANGE_REQ_MAX_ID;
 	mvm->tof_data.active_cookie = 0;
+	mvm->tof_data.enable_dyn_ack = 1;
 
 #ifdef CPTCFG_IWLMVM_TOF_TSF_WA
 	{
@@ -551,7 +552,7 @@ int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
 		cmd_target->samples_per_burst = req_target->samples_per_burst;
 		cmd_target->retries_per_sample = req_target->retries;
 		cmd_target->asap_mode = req_target->asap;
-		cmd_target->enable_dyn_ack = 1;
+		cmd_target->enable_dyn_ack = mvm->tof_data.enable_dyn_ack;
 		cmd_target->rssi = 0;
 
 		if (req_target->lci)
