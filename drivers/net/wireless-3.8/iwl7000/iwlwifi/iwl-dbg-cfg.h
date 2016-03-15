@@ -142,7 +142,6 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG(bool, MVM_TOF_IS_RESPONDER)
 	IWL_DBG_CFG(bool, MVM_P2P_LOWLATENCY_PS_ENABLE)
 	IWL_DBG_CFG(bool, MVM_SW_TX_CSUM_OFFLOAD)
-	IWL_DBG_CFG(bool, MVM_P2P_UAPSD_STANDALONE)
 	IWL_DBG_CFG(bool, MVM_COLLECT_FW_ERR_DUMP)
 #ifdef CPTCFG_IWLMVM_TCM
 	IWL_DBG_CFG(u32, MVM_TCM_LOAD_MEDIUM_THRESH)
@@ -243,7 +242,7 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(u32, d0i3_debug)
 	IWL_DBG_CFG_NODEF(u32, valid_ants)
 	IWL_DBG_CFG_NODEF(u32, secure_boot_cfg)
-	IWL_MOD_PARAM(bool, uapsd_disable)
+	IWL_MOD_PARAM(u32, uapsd_disable)
 	IWL_MOD_PARAM(bool, d0i3_disable)
 	IWL_MOD_PARAM(bool, lar_disable)
 	IWL_MOD_PARAM(bool, fw_monitor)
