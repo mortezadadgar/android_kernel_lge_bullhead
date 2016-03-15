@@ -350,13 +350,15 @@ enum iwl_mvm_vendor_significant_change_result {
  * @IWL_MVM_VENDOR_RXFILTER_BCAST: control broadcast Rx filter
  * @IWL_MVM_VENDOR_RXFILTER_MCAST4: control IPv4 multicast Rx filter
  * @IWL_MVM_VENDOR_RXFILTER_MCAST6: control IPv4 multicast Rx filter
+ * @IWL_MVM_VENDOR_RXFILTER_EINVAL: no Rx filter command was set
  *
  */
 enum iwl_mvm_vendor_rxfilter_flags {
-	IWL_MVM_VENDOR_RXFILTER_UNICAST = BIT(0),
-	IWL_MVM_VENDOR_RXFILTER_BCAST = BIT(1),
-	IWL_MVM_VENDOR_RXFILTER_MCAST4 = BIT(2),
-	IWL_MVM_VENDOR_RXFILTER_MCAST6 = BIT(3),
+	IWL_MVM_VENDOR_RXFILTER_UNICAST = 1 << 0,
+	IWL_MVM_VENDOR_RXFILTER_BCAST = 1 << 1,
+	IWL_MVM_VENDOR_RXFILTER_MCAST4 = 1 << 2,
+	IWL_MVM_VENDOR_RXFILTER_MCAST6 = 1 << 3,
+	IWL_MVM_VENDOR_RXFILTER_EINVAL = 1 << 7,
 };
 
 /**
