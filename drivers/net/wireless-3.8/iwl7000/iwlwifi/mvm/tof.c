@@ -62,6 +62,7 @@
  *****************************************************************************/
 #include <net/cfg80211.h>
 #include <linux/etherdevice.h>
+#include <linux/math64.h>
 #include "mvm.h"
 #include "iwl-io.h"
 #include "iwl-prph.h"
@@ -849,13 +850,6 @@ iwl_mvm_get_target_status(enum iwl_tof_entry_status status)
 	}
 }
 
-#define div64(dividend, divisor) \
-({ \
-	u64 tmp = (dividend) < 0 ? -(dividend) : (dividend); \
-	do_div(tmp, divisor); \
-	(dividend) < 0 ? -tmp : tmp; \
-})
-
 /* Speed of light in cm/nanosec. Though RTT is in picosec units, calculations
  * are done using nanosec, in order to avoid floating point usage.
  */
@@ -938,13 +932,14 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 		result->rtt = (s32)le32_to_cpu(fw_ap->rtt);
 		result->rtt_variance = le32_to_cpu(fw_ap->rtt_variance);
 		result->rtt_spread = le32_to_cpu(fw_ap->rtt_spread);
-		result->distance = div64(div64(result->rtt, 2) * SOL_CM_NSEC,
-					 1000);
-		result->distance_variance = div64((result->rtt_variance >> 2) *
-						  (SOL_CM_NSEC * SOL_CM_NSEC),
-						  1000000);
-		result->distance_spread = div64((result->rtt_spread >> 1) *
-						SOL_CM_NSEC, 1000);
+		result->distance = div_s64(div_s64(result->rtt, 2) *
+					   SOL_CM_NSEC, 1000);
+		result->distance_variance = div_u64((result->rtt_variance >>
+						     2) *
+						    (SOL_CM_NSEC * SOL_CM_NSEC),
+						     1000000);
+		result->distance_spread = div_u64((result->rtt_spread >> 1) *
+						  SOL_CM_NSEC, 1000);
 
 #define FTM_RESP_BIT(attr) BIT(NL80211_FTM_RESP_ENTRY_ATTR_##attr)
 #ifdef CPTCFG_IWLMVM_TOF_TSF_WA
