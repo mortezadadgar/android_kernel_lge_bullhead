@@ -513,6 +513,18 @@ enum iwl_mvm_vendor_lqm_result {
  *
  * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
  * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
+ * @IWL_MVM_VENDOR_ATTR_WIPHY_FREQ: frequency of the selected channel in MHz,
+ *	defines the channel together with the attributes
+ *	%IWL_MVM_VENDOR_ATTR_CHANNEL_WIDTH and if needed
+ *	%IWL_MVM_VENDOR_ATTR_CENTER_FREQ1 and
+ *	%IWL_MVM_VENDOR_ATTR_CENTER_FREQ2.
+ * @IWL_MVM_VENDOR_ATTR_CHANNEL_WIDTH: u32 attribute containing one of the
+ *	values of &enum nl80211_chan_width, describing the channel width.
+ *	See the documentation of the enum for more information.
+ * @IWL_MVM_VENDOR_ATTR_CENTER_FREQ1: Center frequency of the first part of the
+ *	channel, used for anything but 20 MHz bandwidth.
+ * @IWL_MVM_VENDOR_ATTR_CENTER_FREQ2: Center frequency of the second part of
+ *	the channel, used only for 80+80 MHz bandwidth.
  * @IWL_MVM_VENDOR_ATTR_LQM_DURATION: the duration in msecs of the Link
  *	Quality Measurement. Required for
  *	&IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS. This is a u32.
@@ -571,6 +583,10 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS_BY_SSID,
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_WHITE_LISTED_SSID,
 	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_BLACK_LISTED_SSID,
+	IWL_MVM_VENDOR_ATTR_WIPHY_FREQ,
+	IWL_MVM_VENDOR_ATTR_CHANNEL_WIDTH,
+	IWL_MVM_VENDOR_ATTR_CENTER_FREQ1,
+	IWL_MVM_VENDOR_ATTR_CENTER_FREQ2,
 	IWL_MVM_VENDOR_ATTR_LQM_DURATION,
 	IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT,
 	IWL_MVM_VENDOR_ATTR_LQM_RESULT,
