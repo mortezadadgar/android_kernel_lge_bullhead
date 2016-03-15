@@ -1472,6 +1472,13 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		return PTR_ERR(cmdbuf_dmabuf);
 	}
 
+	if (hdr.cmdbuf.offset > cmdbuf_dmabuf->size) {
+		dev_err(&nvavp->nvhost_dev->dev,
+			"invalid cmdbuf offset %d\n", hdr.cmdbuf.offset);
+		ret = -EINVAL;
+		goto err_dmabuf_attach;
+	}
+
 	cmdbuf_attach = dma_buf_attach(cmdbuf_dmabuf, &nvavp->nvhost_dev->dev);
 	if (IS_ERR(cmdbuf_attach)) {
 		dev_err(&nvavp->nvhost_dev->dev, "cannot attach cmdbuf_dmabuf\n");
@@ -1509,6 +1516,14 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 			goto err_reloc_info;
 		}
 
+		if (clientctx->relocs[i].cmdbuf_offset > cmdbuf_dmabuf->size) {
+			dev_err(&nvavp->nvhost_dev->dev,
+				"invalid reloc offset in cmdbuf %d\n",
+				clientctx->relocs[i].cmdbuf_offset);
+			ret = -EINVAL;
+			goto err_reloc_info;
+		}
+
 		reloc_addr = cmdbuf_data +
 				(clientctx->relocs[i].cmdbuf_offset >> 2);
 
@@ -1522,6 +1537,15 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 			ret = PTR_ERR(target_dmabuf);
 			goto target_dmabuf_fail;
 		}
+
+		if (clientctx->relocs[i].target_offset > target_dmabuf->size) {
+			dev_err(&nvavp->nvhost_dev->dev,
+				"invalid target offset in reloc %d\n",
+				clientctx->relocs[i].target_offset);
+			ret = -EINVAL;
+			goto target_attach_fail;
+		}
+
 		target_attach = dma_buf_attach(target_dmabuf,
 						&nvavp->nvhost_dev->dev);
 		if (IS_ERR(target_attach)) {
