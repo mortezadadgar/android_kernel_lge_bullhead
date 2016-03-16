@@ -1319,11 +1319,13 @@ fw_dbg_conf:
 	 * capabilities TLV is not present, or if it has an old format,
 	 * warn and continue without GSCAN.
 	 */
-	if (WARN(fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
-		 !gscan_capa,
-		 "GSCAN is supported but capabilities TLV is unavailable\n"))
+	if (fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
+	    !gscan_capa) {
+		IWL_DEBUG_INFO(drv,
+			       "GSCAN is supported but capabilities TLV is unavailable\n");
 		__clear_bit((__force long)IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT,
 			    capa->_capa);
+	}
 
 	return 0;
 
