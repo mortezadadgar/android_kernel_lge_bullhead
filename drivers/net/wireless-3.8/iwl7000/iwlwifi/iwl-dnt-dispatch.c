@@ -107,12 +107,11 @@ static int iwl_dnt_dispatch_get_list_data(struct dnt_collect_db *db,
 					   u8 *buffer, u32 buffer_size)
 {
 	struct dnt_collect_entry *cur_entry;
-	int i, cur_index = 0, data_offset = 0;
+	int data_offset = 0;
 
 	spin_lock_bh(&db->db_lock);
-	for (i = 0; i < ARRAY_SIZE(db->collect_array); i++) {
-		cur_index = (i + db->read_ptr) % IWL_DNT_ARRAY_SIZE;
-		cur_entry = &db->collect_array[cur_index];
+	while (db->read_ptr != db->wr_ptr) {
+		cur_entry = &db->collect_array[db->read_ptr];
 		if (data_offset + cur_entry->size > buffer_size)
 			break;
 		memcpy(buffer + data_offset, cur_entry->data, cur_entry->size);
@@ -120,9 +119,10 @@ static int iwl_dnt_dispatch_get_list_data(struct dnt_collect_db *db,
 		cur_entry->size = 0;
 		kfree(cur_entry->data);
 		cur_entry->data = NULL;
-	}
 
-	db->read_ptr = cur_index;
+		/* increment read_ptr */
+		db->read_ptr = (db->read_ptr + 1) % IWL_DNT_ARRAY_SIZE;
+	}
 	spin_unlock_bh(&db->db_lock);
 	return data_offset;
 }
@@ -204,14 +204,9 @@ static int iwl_dnt_dispatch_collect_data(struct iwl_dnt *dnt,
 	 * if so it means that we complete a cycle in the array
 	 * hence replacing data in wr_ptr
 	 */
-	if (wr_entry->data) {
-		/*
-		 * since we overrun oldest data we should update read
-		 * ptr to the next oldest data
-		 */
-		db->read_ptr = (db->wr_ptr + 1) % IWL_DNT_ARRAY_SIZE;
-		kfree(wr_entry->data);
-		wr_entry->data = NULL;
+	if (WARN_ON_ONCE(wr_entry->data)) {
+		spin_unlock(&db->db_lock);
+		return -ENOMEM;
 	}
 
 	wr_entry->size = data_size;
@@ -223,6 +218,20 @@ static int iwl_dnt_dispatch_collect_data(struct iwl_dnt *dnt,
 
 	memcpy(wr_entry->data, pkt->data, wr_entry->size);
 	db->wr_ptr = (db->wr_ptr + 1) % IWL_DNT_ARRAY_SIZE;
+
+	if (db->wr_ptr == db->read_ptr) {
+		/*
+		 * since we overrun oldest data we should update read
+		 * ptr to the next oldest data
+		 */
+		struct dnt_collect_entry *rd_entry =
+			&db->collect_array[db->read_ptr];
+
+		kfree(rd_entry->data);
+		rd_entry->data = NULL;
+		db->read_ptr = (db->read_ptr + 1) % IWL_DNT_ARRAY_SIZE;
+	}
+
 	spin_unlock(&db->db_lock);
 
 	return 0;
