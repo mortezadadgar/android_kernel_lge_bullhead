@@ -1581,3 +1581,7 @@ cfg80211_sta_support_p2p_ps(struct station_parameters *params, bool p2p_go)
 #endif
 	return p2p_go;
 }
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,5,0)
+void *memdup_user_nul(const void __user *src, size_t len);
+#endif
