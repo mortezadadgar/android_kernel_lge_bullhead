@@ -1450,3 +1450,7 @@ static inline long ktime_get_seconds(void)
 #ifndef S16_MIN
 #define S16_MIN		((s16)(-S16_MAX - 1))
 #endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,5,0)
+void *memdup_user_nul(const void __user *src, size_t len);
+#endif
