@@ -122,16 +122,18 @@ void ieee80211_sta_reset_conn_monitor(struct ieee80211_sub_if_data *sdata)
 {
 	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
 
-	if (unlikely(!sdata->u.mgd.associated))
+	if (unlikely(!ifmgd->associated))
 		return;
 
-	ifmgd->probe_send_count = 0;
-	sdata->u.mgd.flags &= ~IEEE80211_STA_BEACON_LOSS_REPORTED;
+	if (ifmgd->probe_send_count)
+		ifmgd->probe_send_count = 0;
+	if (ifmgd->flags & IEEE80211_STA_BEACON_LOSS_REPORTED)
+		ifmgd->flags &= ~IEEE80211_STA_BEACON_LOSS_REPORTED;
 
 	if (ieee80211_hw_check(&sdata->local->hw, CONNECTION_MONITOR))
 		return;
 
-	mod_timer(&sdata->u.mgd.conn_mon_timer,
+	mod_timer(&ifmgd->conn_mon_timer,
 		  round_jiffies_up(jiffies + IEEE80211_CONNECTION_IDLE_TIME));
 }
 
