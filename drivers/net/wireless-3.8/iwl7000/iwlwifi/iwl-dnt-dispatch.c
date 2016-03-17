@@ -89,6 +89,7 @@ struct dnt_collect_db *iwl_dnt_dispatch_allocate_collect_db(struct iwl_dnt *dnt)
 	}
 
 	spin_lock_init(&db->db_lock);
+	init_waitqueue_head(&db->waitq);
 
 	return db;
 }
@@ -171,6 +172,9 @@ int iwl_dnt_dispatch_pull(struct iwl_trans *trans, u8 *buffer, u32 buffer_size,
 	struct iwl_dnt *dnt = trans->tmdev->dnt;
 	int ret = 0;
 
+	if (!trans->op_mode)
+		return -EINVAL;
+
 	switch (input) {
 	case MONITOR:
 		ret = iwl_dnt_dispatch_pull_monitor(dnt, trans, buffer,
@@ -231,7 +235,7 @@ static int iwl_dnt_dispatch_collect_data(struct iwl_dnt *dnt,
 		rd_entry->data = NULL;
 		db->read_ptr = (db->read_ptr + 1) % IWL_DNT_ARRAY_SIZE;
 	}
-
+	wake_up_interruptible(&db->waitq);
 	spin_unlock(&db->db_lock);
 
 	return 0;
