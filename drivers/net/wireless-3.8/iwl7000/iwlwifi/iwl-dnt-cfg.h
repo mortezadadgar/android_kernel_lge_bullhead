@@ -162,12 +162,14 @@ struct dnt_collect_entry {
 /**
  * @list_read_ptr: list read pointer
  * @list_wr_ptr: list write pointer
+ * @waitq: waitqueue for new data
  * @db_lock: lock for the list
  */
 struct dnt_collect_db {
 	struct dnt_collect_entry collect_array[IWL_DNT_ARRAY_SIZE];
 	unsigned int read_ptr;
 	unsigned int wr_ptr;
+	wait_queue_head_t waitq;
 	spinlock_t db_lock;	/*locks the array */
 };
 
@@ -255,6 +257,8 @@ struct iwl_dnt {
 
 	struct iwl_dnt_dispatch dispatch;
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
+	u8 debugfs_counter;
+	wait_queue_head_t debugfs_waitq;
 	struct dentry *debugfs_entry;
 #endif
 };
