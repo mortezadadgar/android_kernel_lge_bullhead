@@ -134,6 +134,8 @@ void iwl_mvm_tof_init(struct iwl_mvm *mvm)
 			tof_data->tsf_hash_valid = true;
 	}
 #endif
+
+	INIT_LIST_HEAD(&tof_data->lci_civic_info);
 }
 
 #ifdef CPTCFG_IWLMVM_TOF_TSF_WA
@@ -211,6 +213,16 @@ static void iwl_mvm_tsf_hash_free_elem(void *ptr, void *arg)
 }
 #endif
 
+static void iwl_mvm_tof_clean_lci_civic(struct iwl_mvm_tof_data *data)
+{
+	struct lci_civic_entry *cur, *prev;
+
+	list_for_each_entry_safe(cur, prev, &data->lci_civic_info, list) {
+		list_del(&cur->list);
+		kfree(cur);
+	}
+}
+
 static void iwl_mvm_tof_reset_active(struct iwl_mvm *mvm)
 {
 	mvm->tof_data.active_request_id = IWL_MVM_TOF_RANGE_REQ_MAX_ID;
@@ -218,6 +230,7 @@ static void iwl_mvm_tof_reset_active(struct iwl_mvm *mvm)
 	kfree(mvm->tof_data.active_request.targets);
 	mvm->tof_data.active_request.targets = NULL;
 	memset(&mvm->tof_data.active_bssid_for_tsf, 0, ETH_ALEN);
+	iwl_mvm_tof_clean_lci_civic(&mvm->tof_data);
 }
 
 void iwl_mvm_tof_clean(struct iwl_mvm *mvm)
@@ -234,6 +247,7 @@ void iwl_mvm_tof_clean(struct iwl_mvm *mvm)
 #endif
 
 	kfree(tof_data->active_request.targets);
+	iwl_mvm_tof_clean_lci_civic(tof_data);
 	memset(tof_data, 0, sizeof(*tof_data));
 	mvm->tof_data.active_request_id = IWL_MVM_TOF_RANGE_REQ_MAX_ID;
 }
@@ -850,6 +864,35 @@ iwl_mvm_get_target_status(enum iwl_tof_entry_status status)
 	}
 }
 
+static void iwl_mvm_get_lci_civic(struct iwl_mvm_tof_data *data,
+				  struct cfg80211_ftm_result *res,
+				  struct cfg80211_ftm_target *target)
+{
+	struct lci_civic_entry *entry;
+
+	if (!target->lci && !target->civic)
+		return;
+
+	list_for_each_entry(entry, &data->lci_civic_info, list) {
+		if (!ether_addr_equal_unaligned(target->bssid, entry->bssid))
+			continue;
+
+		if (entry->lci_len && target->lci) {
+			res->lci_len = entry->lci_len;
+			res->lci = entry->buf;
+			res->filled |= BIT(NL80211_FTM_RESP_ENTRY_ATTR_LCI);
+		}
+
+		if (entry->civic_len && target->civic) {
+			res->civic_len = entry->civic_len;
+			res->civic = entry->buf + entry->lci_len;
+			res->filled |= BIT(NL80211_FTM_RESP_ENTRY_ATTR_CIVIC);
+		}
+
+		break;
+	}
+}
+
 /* Speed of light in cm/nanosec. Though RTT is in picosec units, calculations
  * are done using nanosec, in order to avoid floating point usage.
  */
@@ -940,6 +983,7 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 						     1000000);
 		result->distance_spread = div_u64((result->rtt_spread >> 1) *
 						  SOL_CM_NSEC, 1000);
+		iwl_mvm_get_lci_civic(&mvm->tof_data, result, target);
 
 #define FTM_RESP_BIT(attr) BIT(NL80211_FTM_RESP_ENTRY_ATTR_##attr)
 #ifdef CPTCFG_IWLMVM_TOF_TSF_WA
@@ -1031,6 +1075,66 @@ static int iwl_mvm_tof_nb_report_notif(struct iwl_mvm *mvm, void *data)
 	return 0;
 }
 
+static void iwl_mvm_tof_lc_notif(struct iwl_mvm *mvm, void *data, size_t len)
+{
+	const struct ieee80211_mgmt *mgmt = (void *)data;
+	struct lci_civic_entry *lci_civic;
+	const u8 *ies, *lci, *civic;
+	size_t ies_len, lci_len = 0, civic_len = 0;
+	size_t baselen = IEEE80211_MIN_ACTION_SIZE +
+		sizeof(mgmt->u.action.u.ftm);
+
+	if (len <= baselen)
+		return;
+
+	ies = mgmt->u.action.u.ftm.variable;
+	ies_len = len - baselen;
+
+	while (ies && ies_len) {
+		const u8 *msr_ie = cfg80211_find_ie(WLAN_EID_MEASURE_REPORT,
+						    ies, ies_len);
+		if (!msr_ie)
+			break;
+
+		if (msr_ie[1] > 3) {
+			switch (msr_ie[4]) {
+			case IEEE80211_SPCT_MSR_RPRT_TYPE_LCI:
+				lci = msr_ie + 2;
+				lci_len = msr_ie[1];
+				break;
+			case IEEE80211_SPCT_MSR_RPRT_TYPE_CIVIC:
+				civic = msr_ie + 2;
+				civic_len = msr_ie[1];
+				break;
+			}
+		}
+
+		if (lci_len && civic_len)
+			break;
+
+		/* process next measurement report element */
+		ies_len -= (msr_ie - ies) + msr_ie[1] + 2;
+		ies = msr_ie + msr_ie[1] + 2;
+	}
+
+	lci_civic = kmalloc(sizeof(*lci_civic) + lci_len + civic_len,
+			    GFP_KERNEL);
+	if (!lci_civic)
+		return;
+
+	memcpy(lci_civic->bssid, mgmt->bssid, ETH_ALEN);
+
+	lci_civic->lci_len = lci_len;
+	if (lci_len)
+		memcpy(lci_civic->buf, lci, lci_len);
+
+	lci_civic->civic_len = civic_len;
+	if (civic_len)
+		memcpy(lci_civic->buf + lci_len, civic, civic_len);
+
+	list_add_tail(&lci_civic->list, &mvm->tof_data.lci_civic_info);
+}
+
 void iwl_mvm_tof_resp_handler(struct iwl_mvm *mvm,
 			      struct iwl_rx_cmd_buffer *rxb)
 {
@@ -1051,6 +1155,10 @@ void iwl_mvm_tof_resp_handler(struct iwl_mvm *mvm,
 		break;
 	case TOF_NEIGHBOR_REPORT_RSP_NOTIF:
 		iwl_mvm_tof_nb_report_notif(mvm, resp->data);
+		break;
+	case TOF_LC_NOTIF:
+		iwl_mvm_tof_lc_notif(mvm, resp->data,
+				     iwl_rx_packet_payload_len(pkt));
 		break;
 	default:
 	       IWL_ERR(mvm, "Unknown sub-group command 0x%x\n",

@@ -260,6 +260,8 @@ static const struct wiphy_ftm_initiator_capa iwl_mvm_ftm_initiator_capa = {
 	.preamble = NL80211_FTM_PREAMBLE_LEGACY | NL80211_FTM_PREAMBLE_HT |
 		    NL80211_FTM_PREAMBLE_VHT,
 	.bw = NL80211_FTM_BW_20 | NL80211_FTM_BW_40 | NL80211_FTM_BW_80,
+	.req_lci = true,
+	.req_civic = true,
 };
 
 void iwl_mvm_ref(struct iwl_mvm *mvm, enum iwl_mvm_ref_type ref_type)
