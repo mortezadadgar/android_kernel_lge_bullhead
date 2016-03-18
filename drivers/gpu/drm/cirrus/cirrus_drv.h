@@ -47,6 +47,17 @@
 		WREG8(SEQ_DATA, v);				\
 	} while (0)						\
 
+#define PAL_ADDR 8
+#define PAL_DATA 9
+
+#define WREG_PAL(addr, r, g, b)					\
+	do {							\
+		WREG8(PAL_ADDR, addr);				\
+		WREG8(PAL_DATA, r);				\
+		WREG8(PAL_DATA, g);				\
+		WREG8(PAL_DATA, b);				\
+	} while (0)						\
+
 #define CRT_INDEX 0x14
 #define CRT_DATA 0x15
 
@@ -134,6 +145,8 @@ struct cirrus_device {
 	void __iomem			*rmmio;
 
 	struct cirrus_mc			mc;
+	resource_size_t			cursor_ram_size;
+	void __iomem			*cursor_iomem;
 	struct cirrus_mode_info		mode_info;
 
 	int				num_crtc;

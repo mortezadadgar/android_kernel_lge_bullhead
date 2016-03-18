@@ -351,6 +351,218 @@ static int cirrus_crtc_page_flip(struct drm_crtc *crtc,
 	return 0;
 }
 
+static void cirrus_argb_to_cursor(void *src , void __iomem *dst,
+				  uint32_t cursor_size)
+{
+	uint8_t *pixel = (uint8_t *)src;
+	const uint32_t row_size = cursor_size / 8;
+	const uint32_t plane_size = row_size * cursor_size;
+	uint32_t row_skip;
+	void __iomem *plane_0 = dst;
+	void __iomem *plane_1;
+	uint32_t x;
+	uint32_t y;
+
+	switch (cursor_size) {
+	case 32:
+		row_skip = 0;
+		plane_1 = plane_0 + plane_size;
+		break;
+	case 64:
+		row_skip = row_size;
+		plane_1 = plane_0 + row_size;
+		break;
+	default:
+		DRM_DEBUG("Cursor plane format is undefined for given size");
+		return;
+	}
+
+	for (y = 0; y < cursor_size; y++) {
+		uint8_t bits_0 = 0;
+		uint8_t bits_1 = 0;
+
+		for (x = 0; x < cursor_size; x++) {
+			uint8_t alpha = pixel[3];
+			int intensity = pixel[0] + pixel[1] + pixel[2];
+
+			intensity /= 3;
+			bits_0 <<= 1;
+			bits_1 <<= 1;
+			if (alpha > 0x7f) {
+				bits_1 |= 1;
+				if (intensity > 0x7f)
+					bits_0 |= 1;
+			}
+			if ((x % 8) == 7) {
+				iowrite8(bits_0, plane_0);
+				iowrite8(bits_1, plane_1);
+				plane_0++;
+				plane_1++;
+				bits_0 = 0;
+				bits_1 = 0;
+			}
+			pixel += 4;
+		}
+		plane_0 += row_skip;
+		plane_1 += row_skip;
+	}
+}
+
+static int cirrus_bo_to_cursor(struct cirrus_device *cdev,
+			       struct drm_file *file_priv, uint32_t handle,
+			       uint32_t cursor_size, uint32_t cursor_index)
+{
+	const uint32_t pixel_count = cursor_size * cursor_size;
+	const uint32_t plane_size = pixel_count / 8;
+	const uint32_t cursor_offset = cursor_index * plane_size * 2;
+	const uint32_t expected_pages =
+		DIV_ROUND_UP(pixel_count * 4, PAGE_SIZE);
+	int ret = 0;
+	struct drm_device *dev = cdev->dev;
+	struct drm_gem_object *obj;
+	struct cirrus_bo *bo;
+	struct ttm_bo_kmap_obj bo_kmap;
+	bool is_iomem;
+	struct ttm_tt *ttm;
+	void *bo_ptr;
+
+	if ((cursor_size == 32 && cursor_index >= 64) ||
+	    (cursor_size == 64 && cursor_index >= 16)) {
+		DRM_ERROR("Cursor index is out of bounds\n");
+		return -EINVAL;
+	}
+
+	mutex_lock(&dev->struct_mutex);
+	obj = drm_gem_object_lookup(dev, file_priv, handle);
+	if (obj == NULL) {
+		ret = -ENOENT;
+		DRM_ERROR("Buffer handle for cursor is invalid\n");
+		goto out_unlock;
+	}
+
+	bo = gem_to_cirrus_bo(obj);
+	ttm = bo->bo.ttm;
+
+	if (bo->bo.num_pages < expected_pages) {
+		ret = -EINVAL;
+		DRM_ERROR("Buffer object for cursor is too small\n");
+		goto out_unlock;
+	}
+
+	ret = cirrus_bo_reserve(bo, false);
+	if (ret) {
+		DRM_ERROR("Failed to reserver buffer object for cursor\n");
+		goto out_unlock;
+	}
+
+	ret = ttm_bo_kmap(&bo->bo, 0, bo->bo.num_pages, &bo_kmap);
+	if (ret) {
+		DRM_ERROR("Cursor failed kmap of buffer object\n");
+		goto out_unreserve;
+	}
+
+	bo_ptr = ttm_kmap_obj_virtual(&bo_kmap, &is_iomem);
+
+	cirrus_argb_to_cursor(bo_ptr, cdev->cursor_iomem + cursor_offset,
+			      cursor_size);
+
+	ttm_bo_kunmap(&bo_kmap);
+out_unreserve:
+	cirrus_bo_unreserve(bo);
+out_unlock:
+	mutex_unlock(&dev->struct_mutex);
+	return ret;
+}
+
+static int cirrus_crtc_cursor_set(struct drm_crtc *crtc,
+				  struct drm_file *file_priv,
+				  uint32_t handle,
+				  uint32_t width, uint32_t height)
+{
+	int ret;
+	struct drm_device *dev = crtc->dev;
+	struct cirrus_device *cdev = dev->dev_private;
+
+	uint8_t cursor_index = 0;
+	int sr12, sr13;
+
+	if (handle == 0) {
+		WREG8(SEQ_INDEX, 0x12);
+		sr12 = RREG8(SEQ_DATA);
+		sr12 &= 0xfe;
+		WREG_SEQ(0x12, sr12);
+		return 0;
+	}
+
+	if (width != height) {
+		DRM_DEBUG("Cursors are expected to have square dimensions\n");
+		return -EINVAL;
+	}
+
+	if (!(width == 32 || width == 64)) {
+		DRM_ERROR("Cursor dimension are expected to be 32 or 64\n");
+		return -EINVAL;
+	}
+
+	ret = cirrus_bo_to_cursor(cdev, file_priv, handle, width, cursor_index);
+	if (ret)
+		return ret;
+
+
+	WREG8(SEQ_INDEX, 0x12);
+	sr12 = RREG8(SEQ_DATA);
+	sr12 &= 0xfa;
+	sr12 |= 0x03; /* enables cursor and write to extra DAC LUT */
+	if (width == 64)
+		sr12 |= 0x04;
+	WREG_SEQ(0x12, sr12);
+
+	/* Background set to black, foreground set to white */
+	WREG_PAL(0x00, 0, 0, 0);
+	WREG_PAL(0x0f, 255, 255, 255);
+
+	sr12 &= ~0x2; /* Disables writes to the extra LUT */
+	WREG_SEQ(0x12, sr12);
+
+	sr13 = 0;
+	if (width == 64)
+		sr13 |= (cursor_index & 0x0f) << 2;
+	else
+		sr13 |= cursor_index & 0x3f;
+	WREG_SEQ(0x13, sr13);
+
+	return 0;
+}
+
+static int cirrus_crtc_cursor_move(struct drm_crtc *crtc, int x, int y)
+{
+	struct drm_device *dev = crtc->dev;
+	struct cirrus_device *cdev = dev->dev_private;
+	int sr10, sr10_index;
+	int sr11, sr11_index;
+
+	if (x < 0)
+		x = 0;
+	if (x > 0x7ff)
+		x = 0x7ff;
+	if (y < 0)
+		y = 0;
+	if (y > 0x7ff)
+		y = 0x7ff;
+
+	sr10 = (x >> 3) & 0xff;
+	sr10_index = 0x10;
+	sr10_index |= (x & 0x07) << 5;
+	WREG_SEQ(sr10_index, sr10);
+
+	sr11 = (y >> 3) & 0xff;
+	sr11_index = 0x11;
+	sr11_index |= (y & 0x07) << 5;
+	WREG_SEQ(sr11_index, sr11);
+
+	return 0;
+}
+
 /*
  * The core can pass us a set of gamma values to program. We actually only
  * use this for 8-bit mode so can't perform smooth fades on deeper modes,
@@ -385,6 +597,8 @@ static void cirrus_crtc_destroy(struct drm_crtc *crtc)
 /* These provide the minimum set of functions required to handle a CRTC */
 static const struct drm_crtc_funcs cirrus_crtc_funcs = {
 	.page_flip = cirrus_crtc_page_flip,
+	.cursor_set = cirrus_crtc_cursor_set,
+	.cursor_move = cirrus_crtc_cursor_move,
 	.gamma_set = cirrus_crtc_gamma_set,
 	.set_config = drm_crtc_helper_set_config,
 	.destroy = cirrus_crtc_destroy,

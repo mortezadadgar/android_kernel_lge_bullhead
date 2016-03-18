@@ -265,7 +265,8 @@ int cirrus_mm_init(struct cirrus_device *cirrus)
 	}
 
 	ret = ttm_bo_init_mm(bdev, TTM_PL_VRAM,
-			     cirrus->mc.vram_size >> PAGE_SHIFT);
+			     (cirrus->mc.vram_size >> PAGE_SHIFT) -
+			     (cirrus->cursor_ram_size >> PAGE_SHIFT));
 	if (ret) {
 		DRM_ERROR("Failed ttm VRAM init: %d\n", ret);
 		return ret;
