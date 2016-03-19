@@ -1571,8 +1571,6 @@ static inline long ktime_get_seconds(void)
 
 #if CFG80211_VERSION < KERNEL_VERSION(4,6,0)
 #define NL80211_EXT_FEATURE_RRM -1
-#define NL80211_EXT_FEATURE_BEACON_LOSS_DO_NOT_DISCONNECT -1
-#define ASSOC_REQ_BEACON_LOSS_DO_NOT_DISCONNECT	0
 #endif
 
 static inline int
