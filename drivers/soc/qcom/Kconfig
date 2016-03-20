@@ -643,6 +643,9 @@ config KERNEL_TEXT_MPU_PROT
 	  all masters; Write access is only permited to the
 	  secure world.
 
+config STATE_NOTIFIER
+        bool "State Notifier"
+
 source "drivers/soc/qcom/memshare/Kconfig"
 
 source "drivers/soc/qcom/lge/Kconfig"
