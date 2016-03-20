@@ -2144,8 +2144,12 @@ void iwl_trans_pcie_ref(struct iwl_trans *trans)
 
 	pm_runtime_get(&trans_pcie->pci_dev->dev);
 
+#ifdef CONFIG_PM
+#if (defined(CONFIG_PM_RUNTIME) || LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0))
 	IWL_DEBUG_RPM(trans, "runtime usage count: %d\n",
 		      atomic_read(&trans_pcie->pci_dev->dev.power.usage_count));
+#endif
+#endif /* CONFIG_PM */
 }
 
 void iwl_trans_pcie_unref(struct iwl_trans *trans)
@@ -2158,8 +2162,12 @@ void iwl_trans_pcie_unref(struct iwl_trans *trans)
 	pm_runtime_mark_last_busy(&trans_pcie->pci_dev->dev);
 	pm_runtime_put_autosuspend(&trans_pcie->pci_dev->dev);
 
+#ifdef CONFIG_PM
+#if (defined(CONFIG_PM_RUNTIME) || LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0))
 	IWL_DEBUG_RPM(trans, "runtime usage count: %d\n",
 		      atomic_read(&trans_pcie->pci_dev->dev.power.usage_count));
+#endif
+#endif /* CONFIG_PM */
 }
 
 static const char *get_csr_string(int cmd)
