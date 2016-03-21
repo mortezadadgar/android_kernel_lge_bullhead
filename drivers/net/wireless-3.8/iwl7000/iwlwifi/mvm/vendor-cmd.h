@@ -573,6 +573,8 @@ enum iwl_mvm_vendor_lqm_result {
  * @IWL_MVM_VENDOR_ATTR_GSCAN_CACHED_RESULTS: array of gscan cached results.
  *	Each result is a nested attribute of
  *	&enum iwl_mvm_vendor_gscan_cached_scan_res.
+ * @IWL_MVM_VENDOR_ATTR_LAST_MSG: Indicates that this message is the last one
+ *	in the series of messages. (flag)
  *
  */
 enum iwl_mvm_vendor_attr {
@@ -633,6 +635,7 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_LQM_RESULT,
 	IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM,
 	IWL_MVM_VENDOR_ATTR_GSCAN_CACHED_RESULTS,
+	IWL_MVM_VENDOR_ATTR_LAST_MSG,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,
