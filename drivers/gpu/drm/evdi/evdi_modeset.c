@@ -55,6 +55,7 @@ static int evdi_crtc_mode_set(struct drm_crtc *crtc,
 	struct evdi_device *evdi = NULL;
 	struct evdi_framebuffer *efb = NULL;
 	struct evdi_flip_queue *flip_queue = NULL;
+	struct drm_clip_rect rect;
 
 	EVDI_ENTER();
 
@@ -79,7 +80,14 @@ static int evdi_crtc_mode_set(struct drm_crtc *crtc,
 	}
 
 	/* damage all of it */
-	evdi_handle_damage(efb, 0, 0, efb->base.width, efb->base.height);
+	evdi_painter_set_new_scanout_buffer(evdi, efb);
+	evdi_painter_commit_scanout_buffer(evdi);
+
+	rect.x1 = 0;
+	rect.y1 = 0;
+	rect.x2 = efb->base.width;
+	rect.y2 = efb->base.height;
+	evdi_painter_mark_dirty(evdi, &rect);
 	EVDI_EXIT();
 	return 0;
 }
@@ -118,8 +126,14 @@ static void evdi_sched_page_flip(struct work_struct *work)
 	mutex_unlock(&flip_queue->lock);
 
 	EVDI_CHECKPT();
-	if (fb)
-		evdi_handle_damage(to_evdi_fb(fb), 0, 0, fb->width, fb->height);
+	if (fb) {
+		struct evdi_device *evdi = dev->dev_private;
+		const struct drm_clip_rect rect = {
+			0, 0, fb->width, fb->height };
+
+		evdi_painter_commit_scanout_buffer(evdi);
+		evdi_painter_mark_dirty(evdi, &rect);
+	}
 	if (event) {
 		unsigned long flags = 0;
 
@@ -159,6 +173,7 @@ static int evdi_crtc_page_flip(struct drm_crtc *crtc,
 		}
 		efb->active = true;
 		crtc->fb = fb;
+		evdi_painter_set_new_scanout_buffer(evdi, efb);
 	}
 	if (event) {
 		if (flip_queue->event) {
