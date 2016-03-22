@@ -430,7 +430,7 @@ enum iwl_mvm_vendor_lqm_status {
 /**
  * enum iwl_mvm_vendor_lqm_result - the result of a link quality measurement
  * @IWL_MVM_VENDOR_ATTR_LQM_ACTIVE_STA_AIR_TIME: the air time for the most
- *	active stations during the measurement. This is a binary attribute
+ *	active stations during the measurement. This is a nested attribute
  *	which is an array of u32.
  * @IWL_MVM_VENDOR_ATTR_LQM_OTHER_STA: the air time consumed by the stations
  *	not included in %IWL_MVM_VENDOR_ATTR_LQM_ACTIVE_STA_AIR_TIME. This is a
@@ -438,9 +438,7 @@ enum iwl_mvm_vendor_lqm_status {
  * @IWL_MVM_VENDOR_ATTR_LQM_MEAS_TIME: the length (in msec) of the measurement.
  *	This can be shorter than the requested
  *	%IWL_MVM_VENDOR_ATTR_LQM_DURATION in case the measurement was cut
- *	short.
- * @IWL_MVM_VENDOR_ATTR_LQM_NUM_OF_STATIONS: number of activated stations in
- *	the measurement.
+ *	short. This is a u32.
  * @IWL_MVM_VENDOR_ATTR_LQM_RETRY_LIMIT: the number of frames that were dropped
  *	due to retry limit during the measurement. This is a u32.
  * @IWL_MVM_VENDOR_ATTR_LQM_MEAS_STATUS: the measurement status.
@@ -453,7 +451,6 @@ enum iwl_mvm_vendor_lqm_result {
 	IWL_MVM_VENDOR_ATTR_LQM_ACTIVE_STA_AIR_TIME,
 	IWL_MVM_VENDOR_ATTR_LQM_OTHER_STA,
 	IWL_MVM_VENDOR_ATTR_LQM_MEAS_TIME,
-	IWL_MVM_VENDOR_ATTR_LQM_NUM_OF_STATIONS,
 	IWL_MVM_VENDOR_ATTR_LQM_RETRY_LIMIT,
 	IWL_MVM_VENDOR_ATTR_LQM_MEAS_STATUS,
 
