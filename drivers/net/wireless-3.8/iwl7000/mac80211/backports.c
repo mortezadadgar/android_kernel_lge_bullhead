@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * Backport functionality introduced in Linux 4.4.
  *
@@ -152,3 +152,25 @@ void tso_start(struct sk_buff *skb, struct tso_t *tso)
 EXPORT_SYMBOL(tso_start);
 
 #endif /* < 4.4.0 */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
+#define NETDEV_RSS_KEY_LEN 40
+
+void netdev_rss_key_fill(void *buffer, size_t len)
+{
+	static u8 netdev_rss_key[NETDEV_RSS_KEY_LEN];
+	static bool initialized;
+
+	BUG_ON(len > sizeof(netdev_rss_key));
+	/*
+	 * A crude "do once". It's not protected and potentially racy, but we
+	 * will get here only on mvm_up which is protected by the rtnl lock.
+	 */
+	if (!initialized) {
+		get_random_bytes(netdev_rss_key, sizeof(netdev_rss_key));
+		initialized = true;
+	}
+	memcpy(buffer, netdev_rss_key, len);
+}
+EXPORT_SYMBOL_GPL(netdev_rss_key_fill);
+#endif /* < 3.19.0 */
