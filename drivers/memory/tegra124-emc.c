@@ -600,6 +600,7 @@ static inline void emc_get_timing(struct emc_table *timing)
 	timing->emc_mode_4 = 0;
 	timing->emc_cfg = emc_readl(EMC_CFG);
 	timing->rate = __clk_get_rate(emc_clk);
+	timing->emc_ctt_term_ctrl = emc_readl(EMC_CTT_TERM_CTRL) & 0x1fff;
 }
 
 static inline int get_dll_change(const struct emc_table *next_timing,
@@ -877,17 +878,22 @@ static void emc_set_clock(const struct emc_table *next_timing,
 	emc_writel(0, EMC_AUTO_CAL_INTERVAL);
 	auto_cal_config = emc_readl(EMC_AUTO_CAL_CONFIG);
 	auto_cal_status = emc_readl(EMC_AUTO_CAL_STATUS);
-
+	ctt_term_changed = (last_timing->emc_ctt_term_ctrl
+				!= next_timing->emc_ctt_term_ctrl);
 	if ((next_timing->emc_auto_cal_config &
 	     EMC_AUTO_CAL_CONFIG_AUTO_CAL_START) &&
-	    !(auto_cal_status & EMC_AUTO_CAL_STATUS_ACTIVE)) {
+	    !(auto_cal_status & EMC_AUTO_CAL_STATUS_ACTIVE) &&
+	    !ctt_term_changed) {
 		auto_cal_config |= EMC_AUTO_CAL_CONFIG_AUTO_CAL_START;
 		emc_writel(auto_cal_config, EMC_AUTO_CAL_CONFIG);
+		auto_cal_config = emc_readl(EMC_AUTO_CAL_CONFIG); /* to flush */
+		do {
+			udelay(5);
+			auto_cal_status = emc_readl(EMC_AUTO_CAL_STATUS);
+		} while (auto_cal_status & EMC_AUTO_CAL_STATUS_ACTIVE);
 	}
 
 	/* 2.6 Program CTT_TERM Control if it changed since last time*/
-	ctt_term_changed = (last_timing->emc_ctt_term_ctrl
-				!= next_timing->emc_ctt_term_ctrl);
 	if (last_timing->emc_ctt_term_ctrl != next_timing->emc_ctt_term_ctrl) {
 		auto_cal_disable();
 		emc_writel(next_timing->emc_ctt_term_ctrl, EMC_CTT_TERM_CTRL);
