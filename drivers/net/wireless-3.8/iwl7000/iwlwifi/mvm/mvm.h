@@ -1761,7 +1761,9 @@ void iwl_mvm_tdls_peer_cache_clear(struct iwl_mvm *mvm,
 struct iwl_mvm_tdls_peer_counter *
 iwl_mvm_tdls_peer_cache_find(struct iwl_mvm *mvm, const u8 *addr);
 #endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
-
+void iwl_mvm_sync_rx_queues_internal(struct iwl_mvm *mvm,
+				     struct iwl_mvm_internal_rxq_notif *notif,
+				     u32 size);
 struct ieee80211_vif *iwl_mvm_get_bss_vif(struct iwl_mvm *mvm);
 
 #ifdef CPTCFG_IWLMVM_TCM
