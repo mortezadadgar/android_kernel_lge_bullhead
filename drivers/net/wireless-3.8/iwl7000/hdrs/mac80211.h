@@ -1985,6 +1985,9 @@ struct ieee80211_txq {
  *	order and does not need to manage its own reorder buffer or BA session
  *	timeout.
  *
+ * @IEEE80211_HW_USES_RSS: The device uses RSS and thus requires parallel RX,
+ *	which implies using per-CPU station statistics.
+ *
  * @NUM_IEEE80211_HW_FLAGS: number of hardware flags, used for sizing arrays
  */
 enum ieee80211_hw_flags {
@@ -2022,6 +2025,7 @@ enum ieee80211_hw_flags {
 	IEEE80211_HW_BEACON_TX_STATUS,
 	IEEE80211_HW_NEEDS_UNIQUE_STA_ADDR,
 	IEEE80211_HW_SUPPORTS_REORDERING_BUFFER,
+	IEEE80211_HW_USES_RSS,
 
 	/* keep last, obviously */
 	NUM_IEEE80211_HW_FLAGS
