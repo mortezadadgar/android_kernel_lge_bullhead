@@ -182,6 +182,8 @@ source "drivers/gpu/drm/gma500/Kconfig"
 
 source "drivers/gpu/drm/udl/Kconfig"
 
+source "drivers/gpu/drm/evdi/Kconfig"
+
 source "drivers/gpu/drm/ast/Kconfig"
 
 source "drivers/gpu/drm/mgag200/Kconfig"
