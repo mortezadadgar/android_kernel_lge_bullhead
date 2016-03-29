@@ -519,12 +519,16 @@ ieee80211_crypto_ccmp_decrypt(struct ieee80211_rx_data *rx,
 		return RX_DROP_UNUSABLE;
 
 	if (!(status->flag & RX_FLAG_PN_VALIDATED)) {
+		int res;
+
 		ccmp_hdr2pn(pn, skb->data + hdrlen);
 
 		queue = rx->security_idx;
 
-		if (memcmp(pn, key->u.ccmp.rx_pn[queue],
-			   IEEE80211_CCMP_PN_LEN) <= 0) {
+		res = memcmp(pn, key->u.ccmp.rx_pn[queue],
+			     IEEE80211_CCMP_PN_LEN);
+		if (res < 0 ||
+		    (!res && !(status->flag & RX_FLAG_ALLOW_SAME_PN))) {
 			key->u.ccmp.replays++;
 			return RX_DROP_UNUSABLE;
 		}
@@ -542,9 +546,8 @@ ieee80211_crypto_ccmp_decrypt(struct ieee80211_rx_data *rx,
 				    skb->data + skb->len - mic_len, mic_len))
 				return RX_DROP_UNUSABLE;
 		}
-		if (!(status->flag & RX_FLAG_AMSDU_MORE))
-			memcpy(key->u.ccmp.rx_pn[queue], pn,
-			       IEEE80211_CCMP_PN_LEN);
+
+		memcpy(key->u.ccmp.rx_pn[queue], pn, IEEE80211_CCMP_PN_LEN);
 	}
 
 	/* Remove CCMP header and MIC */
@@ -746,12 +749,16 @@ ieee80211_crypto_gcmp_decrypt(struct ieee80211_rx_data *rx)
 		return RX_DROP_UNUSABLE;
 
 	if (!(status->flag & RX_FLAG_PN_VALIDATED)) {
+		int res;
+
 		gcmp_hdr2pn(pn, skb->data + hdrlen);
 
 		queue = rx->security_idx;
 
-		if (memcmp(pn, key->u.gcmp.rx_pn[queue],
-			   IEEE80211_GCMP_PN_LEN) <= 0) {
+		res = memcmp(pn, key->u.gcmp.rx_pn[queue],
+			     IEEE80211_GCMP_PN_LEN);
+		if (res < 0 ||
+		    (!res && !(status->flag & RX_FLAG_ALLOW_SAME_PN))) {
 			key->u.gcmp.replays++;
 			return RX_DROP_UNUSABLE;
 		}
@@ -770,9 +777,8 @@ ieee80211_crypto_gcmp_decrypt(struct ieee80211_rx_data *rx)
 				    IEEE80211_GCMP_MIC_LEN))
 				return RX_DROP_UNUSABLE;
 		}
-		if (!(status->flag & RX_FLAG_AMSDU_MORE))
-			memcpy(key->u.gcmp.rx_pn[queue], pn,
-			       IEEE80211_GCMP_PN_LEN);
+
+		memcpy(key->u.gcmp.rx_pn[queue], pn, IEEE80211_GCMP_PN_LEN);
 	}
 
 	/* Remove GCMP header and MIC */
