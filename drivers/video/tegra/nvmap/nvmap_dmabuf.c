@@ -454,9 +454,10 @@ static int nvmap_dmabuf_begin_cpu_access(struct dma_buf *dmabuf,
 	return 0;
 }
 
-static void nvmap_dmabuf_end_cpu_access(struct dma_buf *dmabuf,
-					enum dma_data_direction dir)
+static int nvmap_dmabuf_end_cpu_access(struct dma_buf *dmabuf,
+				       enum dma_data_direction dir)
 {
+	return 0;
 }
 
 static void *nvmap_dmabuf_kmap(struct dma_buf *dmabuf, unsigned long page_num)
