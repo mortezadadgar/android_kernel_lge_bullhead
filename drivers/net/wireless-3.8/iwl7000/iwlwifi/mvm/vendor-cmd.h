@@ -431,6 +431,8 @@ enum iwl_mvm_vendor_lqm_status {
 
 /**
  * enum iwl_mvm_vendor_lqm_result - the result of a link quality measurement
+ * @IWL_MVM_VENDOR_ATTR_LQM_INVALID: invalid attribute for compatibility
+ *	purpose.
  * @IWL_MVM_VENDOR_ATTR_LQM_ACTIVE_STA_AIR_TIME: the air time for the most
  *	active stations during the measurement. This is a nested attribute
  *	which is an array of u32.
@@ -450,6 +452,7 @@ enum iwl_mvm_vendor_lqm_status {
  *	number.
  */
 enum iwl_mvm_vendor_lqm_result {
+	IWL_MVM_VENDOR_ATTR_LQM_INVALID,
 	IWL_MVM_VENDOR_ATTR_LQM_ACTIVE_STA_AIR_TIME,
 	IWL_MVM_VENDOR_ATTR_LQM_OTHER_STA,
 	IWL_MVM_VENDOR_ATTR_LQM_MEAS_TIME,
