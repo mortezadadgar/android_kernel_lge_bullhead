@@ -3034,6 +3034,28 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	}
 
 	trans->hw_rf_id = iwl_read32(trans, CSR_HW_RF_ID);
+	/*
+	 * The RF_ID is set to zero in blank OTP so read version
+	 * to extract the RF_ID.
+	 */
+	if (trans->cfg->rf_id && !trans->hw_rf_id) {
+		unsigned long flags;
+
+		if (iwl_trans_grab_nic_access(trans, &flags)) {
+			u32 val;
+
+			val = iwl_read_prph_no_grab(trans, WFPM_CTRL_REG);
+			val |= ENABLE_WFPM;
+			iwl_write_prph_no_grab(trans, WFPM_CTRL_REG, val);
+			val = iwl_read_prph_no_grab(trans, SD_REG_VER);
+
+			if ((val & 0xff00) == REG_VER_RF_ID_LC)
+				trans->hw_rf_id = CSR_HW_RF_ID_TYPE_LC;
+			else
+				trans->hw_rf_id = CSR_HW_RF_ID_TYPE_JF;
+			iwl_trans_release_nic_access(trans, &flags);
+		}
+	}
 
 	iwl_pcie_set_interrupt_capa(pdev, trans);
 	trans->hw_id = (pdev->device << 16) + pdev->subsystem_device;
