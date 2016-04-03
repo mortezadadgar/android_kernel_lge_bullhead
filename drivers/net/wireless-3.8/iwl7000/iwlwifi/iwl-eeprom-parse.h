@@ -98,6 +98,7 @@ struct iwl_nvm_data {
 	s8 max_tx_pwr_half_dbm;
 
 	bool lar_enabled;
+	bool vht160_supported;
 	struct ieee80211_supported_band bands[IEEE80211_NUM_BANDS];
 	struct ieee80211_channel channels[];
 };
