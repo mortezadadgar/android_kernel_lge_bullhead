@@ -1340,7 +1340,7 @@ static ssize_t iwl_dbgfs_tof_toa_offset_read(struct file *file,
 	char buf[10];
 	int ret;
 
-	ret = snprintf(buf, sizeof(buf), "%ud\n", mvm->tof_data.toa_offset);
+	ret = snprintf(buf, sizeof(buf), "%u\n", mvm->tof_data.toa_offset);
 
 	return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
 }
