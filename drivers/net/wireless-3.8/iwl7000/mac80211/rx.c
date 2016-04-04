@@ -3648,12 +3648,12 @@ void ieee80211_clear_fast_rx(struct sta_info *sta)
 		kfree_rcu(old, rcu_head);
 }
 
-void ieee80211_check_fast_rx_iface(struct ieee80211_sub_if_data *sdata)
+void __ieee80211_check_fast_rx_iface(struct ieee80211_sub_if_data *sdata)
 {
 	struct ieee80211_local *local = sdata->local;
 	struct sta_info *sta;
 
-	mutex_lock(&local->sta_mtx);
+	lockdep_assert_held(&local->sta_mtx);
 
 	list_for_each_entry_rcu(sta, &local->sta_list, list) {
 		if (sdata != sta->sdata &&
@@ -3661,7 +3661,14 @@ void ieee80211_check_fast_rx_iface(struct ieee80211_sub_if_data *sdata)
 			continue;
 		ieee80211_check_fast_rx(sta);
 	}
+}
 
+void ieee80211_check_fast_rx_iface(struct ieee80211_sub_if_data *sdata)
+{
+	struct ieee80211_local *local = sdata->local;
+
+	mutex_lock(&local->sta_mtx);
+	__ieee80211_check_fast_rx_iface(sdata);
 	mutex_unlock(&local->sta_mtx);
 }
 
