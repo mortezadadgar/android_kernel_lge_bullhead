@@ -824,6 +824,7 @@ struct iwl_mvm {
 	struct iwl_sf_region sf_space;
 
 	u32 ampdu_ref;
+	bool ampdu_toggle;
 
 	struct iwl_notif_wait_data notif_wait;
 
@@ -1928,6 +1929,10 @@ void iwl_mvm_rx_gscan_significant_change_event(struct iwl_mvm *mvm,
 void iwl_mvm_gscan_reconfig(struct iwl_mvm *mvm);
 
 void iwl_mvm_gscan_beacons_work(struct work_struct *work);
+
+void iwl_mvm_handle_gscan_beacon_probe(struct iwl_mvm *mvm, u32 len,
+				       struct ieee80211_rx_status *rx_status,
+				       struct ieee80211_mgmt *mgmt);
 
 void iwl_mvm_recalc_multicast(struct iwl_mvm *mvm);
 int iwl_mvm_configure_bcast_filter(struct iwl_mvm *mvm);

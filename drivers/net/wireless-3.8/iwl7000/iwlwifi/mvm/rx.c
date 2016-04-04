@@ -326,7 +326,7 @@ static void iwl_mvm_rx_csum(struct ieee80211_sta *sta,
 }
 
 #ifdef CPTCFG_IWLMVM_VENDOR_CMDS
-static void
+void
 iwl_mvm_handle_gscan_beacon_probe(struct iwl_mvm *mvm, u32 len,
 				  struct ieee80211_rx_status *rx_status,
 				  struct ieee80211_mgmt *mgmt)
