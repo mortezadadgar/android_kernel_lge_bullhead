@@ -300,6 +300,7 @@ int iwl_mvm_add_nan_func(struct ieee80211_hw *hw,
 		cmd->flw_up_req_id = nan_func->followup_reqid;
 		memcpy(cmd->flw_up_addr, nan_func->followup_dest.addr,
 		       ETH_ALEN);
+		cmd->ttl = cpu_to_le32(1);
 	}
 
 	cmd_data += ALIGN(cmd->serv_info_len, 4);
