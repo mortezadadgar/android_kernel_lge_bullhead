@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,6 +24,7 @@
 #include <linux/msm-bus.h>
 #include <linux/msm-bus-board.h>
 #include <soc/qcom/ocmem.h>
+#include <linux/pm_qos.h>
 #include <media/v4l2-dev.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
@@ -313,6 +314,7 @@ struct msm_vidc_inst {
 	struct v4l2_ctrl **ctrls;
 	bool dcvs_mode;
 	u32 buffers_held_in_driver;
+	struct pm_qos_request pm_qos;
 };
 
 extern struct msm_vidc_drv *vidc_driver;
