@@ -182,6 +182,11 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_ADMA_SKIP_DATA_ALIGNMENT             (1<<13)
 /* Use reset workaround in case sdhci reset timeouts */
 #define SDHCI_QUIRK2_USE_RESET_WORKAROUND (1 << 15)
+/*
+ * Some controllers may use PIO mode to workaround HW issues in ADMA for
+ * eMMC tuning commands.
+ */
+#define SDHCI_QUIRK2_USE_PIO_FOR_EMMC_TUNING (1 << 16)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
