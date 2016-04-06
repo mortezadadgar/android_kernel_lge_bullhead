@@ -1261,8 +1261,8 @@ static void ieee80211_ibss_sta_expire(struct ieee80211_sub_if_data *sdata)
 		if (sdata != sta->sdata)
 			continue;
 
-		if (time_is_after_jiffies(last_active + exp_time) ||
-		    (time_is_after_jiffies(last_active + exp_rsn) &&
+		if (time_is_before_jiffies(last_active + exp_time) ||
+		    (time_is_before_jiffies(last_active + exp_rsn) &&
 		     sta->sta_state != IEEE80211_STA_AUTHORIZED)) {
 			sta_dbg(sta->sdata, "expiring inactive %sSTA %pM\n",
 				sta->sta_state != IEEE80211_STA_AUTHORIZED ?

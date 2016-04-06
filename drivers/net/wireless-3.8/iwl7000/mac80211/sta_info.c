@@ -1109,7 +1109,7 @@ void ieee80211_sta_expire(struct ieee80211_sub_if_data *sdata,
 		if (sdata != sta->sdata)
 			continue;
 
-		if (time_is_after_jiffies(last_active + exp_time)) {
+		if (time_is_before_jiffies(last_active + exp_time)) {
 			sta_dbg(sta->sdata, "expiring inactive STA %pM\n",
 				sta->sta.addr);
 
