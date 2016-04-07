@@ -802,6 +802,7 @@ enum iwl_mvm_queue_status {
 };
 
 #define IWL_MVM_DQA_QUEUE_TIMEOUT	(5 * HZ)
+#define IWL_MVM_NUM_CIPHERS             8
 
 struct iwl_mvm {
 	/* for logger access */
@@ -1140,7 +1141,7 @@ struct iwl_mvm {
 	u32 fw_minor_ver;
 #endif
 
-	u32 ciphers[6];
+	u32 ciphers[IWL_MVM_NUM_CIPHERS];
 	struct iwl_mvm_tof_data tof_data;
 
 #ifdef CPTCFG_IWLMVM_VENDOR_CMDS
