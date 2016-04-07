@@ -697,10 +697,10 @@ iwl_parse_nvm_data(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	sku = iwl_get_sku(cfg, nvm_sw, phy_sku);
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-	if (trans->dbg_cfg.disable_52Ghz)
+	if (trans->dbg_cfg.disable_52GHz)
 		/* remove support for 5.2 */
 		sku &= ~NVM_SKU_CAP_BAND_52GHZ;
-	if (trans->dbg_cfg.disable_24Ghz)
+	if (trans->dbg_cfg.disable_24GHz)
 		/* remove support for 2.4 */
 		sku &= ~NVM_SKU_CAP_BAND_24GHZ;
 #endif
