@@ -190,11 +190,13 @@ struct rw_semaphore __sched *rwsem_down_read_failed(struct rw_semaphore *sem)
 /*
  * wait until we successfully acquire the write lock
  */
-struct rw_semaphore __sched *rwsem_down_write_failed(struct rw_semaphore *sem)
+static inline struct rw_semaphore *
+__rwsem_down_write_failed_common(struct rw_semaphore *sem, int state)
 {
 	long count, adjustment = -RWSEM_ACTIVE_WRITE_BIAS;
 	struct rwsem_waiter waiter;
 	struct task_struct *tsk = current;
+	struct rw_semaphore *ret = sem;
 
 	/* set up my own style of waitqueue */
 	waiter.task = tsk;
@@ -216,7 +218,7 @@ struct rw_semaphore __sched *rwsem_down_write_failed(struct rw_semaphore *sem)
 		sem = __rwsem_do_wake(sem, RWSEM_WAKE_READERS);
 
 	/* wait until we successfully acquire the lock */
-	set_task_state(tsk, TASK_UNINTERRUPTIBLE);
+	set_task_state(tsk, state);
 	while (true) {
 		if (!(count & RWSEM_ACTIVE_MASK)) {
 			/* Try acquiring the write lock. */
@@ -234,19 +236,37 @@ struct rw_semaphore __sched *rwsem_down_write_failed(struct rw_semaphore *sem)
 
 		/* Block until there are no active lockers. */
 		do {
+			if (signal_pending_state(state, current)) {
+				raw_spin_lock_irq(&sem->wait_lock);
+				ret = ERR_PTR(-EINTR);
+				goto out;
+			}
 			schedule();
-			set_task_state(tsk, TASK_UNINTERRUPTIBLE);
+			set_task_state(tsk, state);
 		} while ((count = sem->count) & RWSEM_ACTIVE_MASK);
 
 		raw_spin_lock_irq(&sem->wait_lock);
 	}
-
+out:
 	list_del(&waiter.list);
 	raw_spin_unlock_irq(&sem->wait_lock);
 	tsk->state = TASK_RUNNING;
 
-	return sem;
+	return ret;
 }
+
+__visible struct rw_semaphore * __sched
+rwsem_down_write_failed(struct rw_semaphore *sem)
+{
+	return __rwsem_down_write_failed_common(sem, TASK_UNINTERRUPTIBLE);
+}
+
+__visible struct rw_semaphore * __sched
+rwsem_down_write_failed_killable(struct rw_semaphore *sem)
+{
+	return __rwsem_down_write_failed_common(sem, TASK_KILLABLE);
+}
+EXPORT_SYMBOL(rwsem_down_write_failed_killable);
 
 /*
  * handle waking up a waiter on the semaphore
