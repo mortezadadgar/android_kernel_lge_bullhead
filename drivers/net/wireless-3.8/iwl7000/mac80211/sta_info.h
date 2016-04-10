@@ -424,13 +424,12 @@ struct ieee80211_sta_rx_stats {
  * @ampdu_mlme: A-MPDU state machine state
  * @timer_to_tid: identity mapping to ID timers
  * @mesh: mesh STA information
- * @debugfs: debug filesystem info
+ * @debugfs_dir: debug filesystem directory dentry
  * @dead: set to true when sta is unlinked
  * @removed: set to true when sta is being removed from sta_list
  * @uploaded: set to true when sta is uploaded to the driver
  * @sta: station information we share with the driver
  * @sta_state: duplicates information about station state (for debug)
- * @beacon_loss_count: number of times beacon loss has triggered
  * @rcu_head: RCU head used for freeing this station struct
  * @cur_max_bandwidth: maximum bandwidth to use for TX to the station,
  *	taken from HT/VHT capabilities or VHT operating mode notification
@@ -444,6 +443,8 @@ struct ieee80211_sta_rx_stats {
  *	the BSS one.
  * @tx_stats: TX statistics
  * @rx_stats: RX statistics
+ * @pcpu_rx_stats: per-CPU RX statistics, assigned only if the driver needs
+ *	this (by advertising the USES_RSS hw flag)
  * @status_stats: TX status statistics
  */
 struct sta_info {
@@ -530,10 +531,7 @@ struct sta_info {
 	u8 timer_to_tid[IEEE80211_NUM_TIDS];
 
 #ifdef CPTCFG_MAC80211_DEBUGFS
-	struct sta_info_debugfsdentries {
-		struct dentry *dir;
-		bool add_has_run;
-	} debugfs;
+	struct dentry *debugfs_dir;
 #endif
 
 	enum ieee80211_sta_rx_bandwidth cur_max_bandwidth;

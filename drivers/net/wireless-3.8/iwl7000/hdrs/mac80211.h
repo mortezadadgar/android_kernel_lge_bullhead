@@ -715,6 +715,7 @@ enum mac80211_tx_info_flags {
  * @IEEE80211_TX_CTRL_PS_RESPONSE: This frame is a response to a poll
  *	frame (PS-Poll or uAPSD).
  * @IEEE80211_TX_CTRL_RATE_INJECT: This frame is injected with rate information
+ * @IEEE80211_TX_CTRL_AMSDU: This frame is an A-MSDU frame
  *
  * These flags are used in tx_info->control.flags.
  */
@@ -722,6 +723,7 @@ enum mac80211_tx_control_flags {
 	IEEE80211_TX_CTRL_PORT_CTRL_PROTO	= BIT(0),
 	IEEE80211_TX_CTRL_PS_RESPONSE		= BIT(1),
 	IEEE80211_TX_CTRL_RATE_INJECT		= BIT(2),
+	IEEE80211_TX_CTRL_AMSDU			= BIT(3),
 };
 
 /*
@@ -1007,6 +1009,8 @@ ieee80211_tx_info_clear_status(struct ieee80211_tx_info *info)
  *	flag indicates that the PN was verified for replay protection.
  *	Note that this flag is also currently only supported when a frame
  *	is also decrypted (ie. @RX_FLAG_DECRYPTED must be set)
+ * @RX_FLAG_DUP_VALIDATED: The driver should set this flag if it did
+ *	de-duplication by itself.
  * @RX_FLAG_FAILED_FCS_CRC: Set this flag if the FCS check failed on
  *	the frame.
  * @RX_FLAG_FAILED_PLCP_CRC: Set this flag if the PCLP check failed on
@@ -1755,6 +1759,7 @@ struct ieee80211_sta_rates {
  *	Both additional HT limits must be enforced by the low level driver.
  *	This is defined by the spec (IEEE 802.11-2012 section 8.3.2.2 NOTE 2).
  * @support_p2p_ps: indicates whether the STA supports P2P PS mechanism or not.
+ * @max_rc_amsdu_len: Maximum A-MSDU size in bytes recommended by rate control.
  * @txq: per-TID data TX queues (if driver uses the TXQ abstraction)
  */
 struct ieee80211_sta {
@@ -1776,6 +1781,7 @@ struct ieee80211_sta {
 	u8 max_amsdu_subframes;
 	u16 max_amsdu_len;
 	bool support_p2p_ps;
+	u16 max_rc_amsdu_len;
 
 	struct ieee80211_txq *txq[IEEE80211_NUM_TIDS];
 
@@ -1992,6 +1998,15 @@ struct ieee80211_txq {
  * @IEEE80211_HW_USES_RSS: The device uses RSS and thus requires parallel RX,
  *	which implies using per-CPU station statistics.
  *
+ * @IEEE80211_HW_TX_AMSDU: Hardware (or driver) supports software aggregated
+ *	A-MSDU frames. Requires software tx queueing and fast-xmit support.
+ *	When not using minstrel/minstrel_ht rate control, the driver must
+ *	limit the maximum A-MSDU size based on the current tx rate by setting
+ *	max_rc_amsdu_len in struct ieee80211_sta.
+ *
+ * @IEEE80211_HW_TX_FRAG_LIST: Hardware (or driver) supports sending frag_list
+ *	skbs, needed for zero-copy software A-MSDU.
+ *
  * @NUM_IEEE80211_HW_FLAGS: number of hardware flags, used for sizing arrays
  */
 enum ieee80211_hw_flags {
@@ -2030,6 +2045,8 @@ enum ieee80211_hw_flags {
 	IEEE80211_HW_NEEDS_UNIQUE_STA_ADDR,
 	IEEE80211_HW_SUPPORTS_REORDERING_BUFFER,
 	IEEE80211_HW_USES_RSS,
+	IEEE80211_HW_TX_AMSDU,
+	IEEE80211_HW_TX_FRAG_LIST,
 
 	/* keep last, obviously */
 	NUM_IEEE80211_HW_FLAGS
@@ -2123,6 +2140,9 @@ struct ieee80211_tx_thrshld_md {
  *	size is smaller (an example is LinkSys WRT120N with FW v1.0.07
  *	build 002 Jun 18 2012).
  *
+ * @max_tx_fragments: maximum number of tx buffers per (A)-MSDU, sum
+ *	of 1 + skb_shinfo(skb)->nr_frags for each skb in the frag_list.
+ *
  * @offchannel_tx_hw_queue: HW queue ID to use for offchannel TX
  *	(if %IEEE80211_HW_QUEUE_CONTROL is set)
  *
@@ -2179,6 +2199,7 @@ struct ieee80211_hw {
 	u8 max_rate_tries;
 	u8 max_rx_aggregation_subframes;
 	u8 max_tx_aggregation_subframes;
+	u8 max_tx_fragments;
 	u8 offchannel_tx_hw_queue;
 	u8 radiotap_mcs_details;
 	u16 radiotap_vht_details;
@@ -3397,6 +3418,10 @@ enum ieee80211_reconfig_type {
  *	the function call.
  *
  * @wake_tx_queue: Called when new packets have been added to the queue.
+ * @sync_rx_queues: Process all pending frames in RSS queues. This is a
+ *	synchronization which is needed in case driver has in its RSS queues
+ *	pending frames that were received prior to the control path action
+ *	currently taken (e.g. disassociation) but are not processed yet.
  *
  * @perform_ftm: Perform a Fine Timing Measurement with the given request
  *	parameters. The given request can only be used within the function call.
@@ -3415,10 +3440,6 @@ enum ieee80211_reconfig_type {
  * @rm_nan_func: Remove a nan function. The driver must call
  * ieee80211_nan_func_terminated() with
  * NL80211_NAN_FUNC_TERM_REASON_USER_REQUEST reason code upon removal.
- * @sync_rx_queues: Process all pending frames in RSS queues. This is a
- *	synchronization which is needed in case driver has in its RSS queues
- *	pending frames that were received prior to the control path action
- *	currently taken (e.g. disassociation) but are not processed yet.
  */
 struct ieee80211_ops {
 	void (*tx)(struct ieee80211_hw *hw,
@@ -3656,6 +3677,7 @@ struct ieee80211_ops {
 
 	void (*wake_tx_queue)(struct ieee80211_hw *hw,
 			      struct ieee80211_txq *txq);
+	void (*sync_rx_queues)(struct ieee80211_hw *hw);
 
 	int (*perform_ftm)(struct ieee80211_hw *hw, u64 cookie,
 			   struct ieee80211_vif *vif,
@@ -3682,7 +3704,6 @@ struct ieee80211_ops {
 	void (*rm_nan_func)(struct ieee80211_hw *hw,
 			    struct ieee80211_vif *vif,
 			    u8 instance_id);
-	void (*sync_rx_queues)(struct ieee80211_hw *hw);
 };
 
 /**

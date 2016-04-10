@@ -305,6 +305,10 @@ static bool ieee80211_prep_hw_scan(struct ieee80211_local *local)
 	ether_addr_copy(local->hw_scan_req->req.mac_addr, req->mac_addr);
 	ether_addr_copy(local->hw_scan_req->req.mac_addr_mask,
 			req->mac_addr_mask);
+#if CFG80211_VERSION >= KERNEL_VERSION(4,7,0)
+	ether_addr_copy(local->hw_scan_req->req.bssid,
+			cfg80211_scan_req_bssid(req));
+#endif
 
 	return true;
 }
@@ -499,7 +503,8 @@ static void ieee80211_scan_state_send_probe(struct ieee80211_local *local,
 
 	for (i = 0; i < scan_req->n_ssids; i++)
 		ieee80211_send_probe_req(
-			sdata, local->scan_addr, NULL,
+			sdata, local->scan_addr,
+			cfg80211_scan_req_bssid(scan_req),
 			scan_req->ssids[i].ssid, scan_req->ssids[i].ssid_len,
 			scan_req->ie, scan_req->ie_len,
 			scan_req->rates[band], false,
@@ -564,6 +569,9 @@ static int __ieee80211_start_scan(struct ieee80211_sub_if_data *sdata,
 			req->n_channels * sizeof(req->channels[0]);
 		local->hw_scan_req->req.ie = ies;
 		local->hw_scan_req->req.flags = req->flags;
+#if CFG80211_VERSION >= KERNEL_VERSION(4,7,0)
+		eth_broadcast_addr(local->hw_scan_req->req.bssid);
+#endif
 
 		local->hw_scan_band = 0;
 

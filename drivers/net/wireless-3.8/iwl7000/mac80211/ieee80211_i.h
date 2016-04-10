@@ -698,6 +698,11 @@ struct ieee80211_if_mesh {
 
 	/* offset from skb->data while building IE */
 	int meshconf_offset;
+
+	struct mesh_table *mesh_paths;
+	struct mesh_table *mpp_paths; /* Store paths for MPP&MAP */
+	int mesh_paths_generation;
+	int mpp_paths_generation;
 };
 
 #ifdef CPTCFG_MAC80211_MESH
@@ -799,6 +804,7 @@ struct mac80211_qos_map {
 enum txq_info_flags {
 	IEEE80211_TXQ_STOP,
 	IEEE80211_TXQ_AMPDU,
+	IEEE80211_TXQ_NO_AMSDU,
 };
 
 struct txq_info {

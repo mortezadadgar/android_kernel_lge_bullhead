@@ -1585,3 +1585,12 @@ cfg80211_sta_support_p2p_ps(struct station_parameters *params, bool p2p_go)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,5,0)
 void *memdup_user_nul(const void __user *src, size_t len);
 #endif
+
+static inline u8*
+cfg80211_scan_req_bssid(struct cfg80211_scan_request *scan_req)
+{
+#if CFG80211_VERSION >= KERNEL_VERSION(4,7,0)
+	return scan_req->bssid;
+#endif
+	return NULL;
+}
