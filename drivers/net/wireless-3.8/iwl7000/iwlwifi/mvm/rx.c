@@ -325,6 +325,32 @@ static void iwl_mvm_rx_csum(struct ieee80211_sta *sta,
 		skb->ip_summed = CHECKSUM_UNNECESSARY;
 }
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+static void
+iwl_mvm_handle_gscan_beacon_probe(struct iwl_mvm *mvm, u32 len,
+				  struct ieee80211_rx_status *rx_status,
+				  struct ieee80211_mgmt *mgmt)
+{
+	struct iwl_mvm_gscan_beacon *beacon;
+
+	beacon = kzalloc(sizeof(*beacon) + len, GFP_ATOMIC);
+	if (!beacon)
+		return;
+
+	memcpy(beacon->mgmt, mgmt, len);
+	beacon->gp2_ts = rx_status->device_timestamp;
+	beacon->len = len;
+	beacon->signal = rx_status->signal;
+	beacon->channel = ieee80211_frequency_to_channel(rx_status->freq);
+
+	spin_lock_bh(&mvm->gscan_beacons_lock);
+	list_add(&beacon->list, &mvm->gscan_beacons_list);
+	spin_unlock_bh(&mvm->gscan_beacons_lock);
+
+	schedule_work(&mvm->gscan_beacons_work);
+}
+#endif
+
 /*
  * iwl_mvm_rx_rx_mpdu - REPLY_RX_MPDU_CMD handler
  *
@@ -550,6 +576,16 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 		iwl_mvm_tof_update_tsf(mvm, pkt);
 #endif
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	if (unlikely(phy_info->mac_context_info == MAC_CONTEXT_INFO_GSCAN &&
+		     (ieee80211_is_beacon(hdr->frame_control) ||
+		      ieee80211_is_probe_resp(hdr->frame_control)))) {
+		struct ieee80211_mgmt *mgmt = (void *)(pkt->data +
+						       sizeof(*rx_res));
+
+		iwl_mvm_handle_gscan_beacon_probe(mvm, len, rx_status, mgmt);
+	} else
+#endif
 	if (unlikely(ieee80211_is_beacon(hdr->frame_control) ||
 		     ieee80211_is_probe_resp(hdr->frame_control)))
 		rx_status->boottime_ns = ktime_get_boot_ns();

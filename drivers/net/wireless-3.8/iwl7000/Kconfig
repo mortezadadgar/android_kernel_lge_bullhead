@@ -49,3 +49,15 @@ config IWL7000_XVT
 	default m
 	depends on IWL7000
 	depends on IWL7000_TESTMODE
+
+config IWL7000_VENDOR_CMDS
+	bool "enable vendor commands"
+	depends on IWL7000
+	default y
+	help
+	  This option enables support for vendor commands, including some
+	  that don't have their own Kconfig option. Other Kconfig options
+	  depend on this one as well.
+
+	  This option mostly exists for non-upstream tagging, so best
+	  leave it set to Y.
