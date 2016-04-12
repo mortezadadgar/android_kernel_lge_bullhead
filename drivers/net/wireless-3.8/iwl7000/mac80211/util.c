@@ -1748,12 +1748,12 @@ static void ieee80211_reconfig_stations(struct ieee80211_sub_if_data *sdata)
 	mutex_unlock(&local->sta_mtx);
 }
 
-#if CFG80211_VERSION < KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION < KERNEL_VERSION(4,8,0)
 static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata){
 	return 0;
 }
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
 static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
 {
 	struct ieee80211_nan_func *func, *ftmp;
@@ -2028,7 +2028,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 				ieee80211_bss_info_change_notify(sdata, changed);
 			}
 			break;
-#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
 		case NL80211_IFTYPE_NAN:
 			/* keep code in case of fall-through (spatch generated) */
 #endif

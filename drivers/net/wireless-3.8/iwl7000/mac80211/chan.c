@@ -274,7 +274,7 @@ ieee80211_get_chanctx_max_required_bw(struct ieee80211_local *local,
 				    ieee80211_get_max_required_bw(sdata));
 			break;
 		case NL80211_IFTYPE_P2P_DEVICE:
-#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
 		case NL80211_IFTYPE_NAN:
 			/* keep code in case of fall-through (spatch generated) */
 #endif
@@ -728,7 +728,7 @@ void ieee80211_recalc_smps_chanctx(struct ieee80211_local *local,
 
 		switch (sdata->vif.type) {
 		case NL80211_IFTYPE_P2P_DEVICE:
-#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
 		case NL80211_IFTYPE_NAN:
 			/* keep code in case of fall-through (spatch generated) */
 #endif
@@ -1001,7 +1001,7 @@ ieee80211_vif_chanctx_reservation_complete(struct ieee80211_sub_if_data *sdata)
 	case NL80211_IFTYPE_P2P_GO:
 	case NL80211_IFTYPE_P2P_DEVICE:
 	case NUM_NL80211_IFTYPES:
-#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
 	case NL80211_IFTYPE_NAN:
 		/* keep code in case of fall-through (spatch generated) */
 #endif

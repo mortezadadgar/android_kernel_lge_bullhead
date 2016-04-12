@@ -1027,7 +1027,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 	if (ieee80211_hw_check(&local->hw, CHANCTX_STA_CSA))
 		local->ext_capa[0] |= WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
 	if (local->hw.wiphy->ftm_initiator_capa)
 		local->ext_capa[8] |= WLAN_EXT_CAPA9_FTM_INITIATOR;
 #endif

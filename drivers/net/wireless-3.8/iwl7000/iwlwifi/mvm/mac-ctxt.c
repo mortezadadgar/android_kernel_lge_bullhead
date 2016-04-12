@@ -512,7 +512,7 @@ int iwl_mvm_mac_ctxt_init(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 					      IWL_MVM_TX_FIFO_VO, 0,
 					      wdg_timeout);
 		break;
-#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
 	case NL80211_IFTYPE_NAN:
 		/* keep code in case of fall-through (spatch generated) */
 #endif
@@ -551,7 +551,7 @@ void iwl_mvm_mac_ctxt_release(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 					    IWL_MAX_TID_COUNT, 0);
 
 		break;
-#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
 	case NL80211_IFTYPE_NAN:
 		/* keep code in case of fall-through (spatch generated) */
 #endif

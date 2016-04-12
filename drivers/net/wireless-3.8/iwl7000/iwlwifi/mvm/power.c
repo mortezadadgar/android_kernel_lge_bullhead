@@ -281,7 +281,7 @@ static void iwl_mvm_allow_uapsd_iterator(void *_data, u8 *mac,
 	switch (vif->type) {
 	case NL80211_IFTYPE_AP:
 	case NL80211_IFTYPE_ADHOC:
-#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
 	case NL80211_IFTYPE_NAN:
 		/* keep code in case of fall-through (spatch generated) */
 #endif
@@ -621,7 +621,7 @@ static void iwl_mvm_power_get_vifs_iterator(void *_data, u8 *mac,
 
 	switch (ieee80211_vif_type_p2p(vif)) {
 	case NL80211_IFTYPE_P2P_DEVICE:
-#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
 	case NL80211_IFTYPE_NAN:
 		/* keep code in case of fall-through (spatch generated) */
 #endif
