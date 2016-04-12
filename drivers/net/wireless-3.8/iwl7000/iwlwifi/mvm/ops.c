@@ -321,6 +321,23 @@ static const struct iwl_rx_handlers iwl_mvm_rx_handlers[] = {
 		       iwl_mvm_rx_stored_beacon_notif, RX_HANDLER_SYNC),
 	RX_HANDLER_GRP(DATA_PATH_GROUP, MU_GROUP_MGMT_NOTIF,
 		       iwl_mvm_mu_mimo_grp_notif, RX_HANDLER_SYNC),
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	RX_HANDLER_GRP(SCAN_GROUP, GSCAN_RESULTS_AVAILABLE_EVENT,
+		       iwl_mvm_rx_gscan_results_available,
+		       RX_HANDLER_ASYNC_LOCKED),
+	RX_HANDLER_GRP(SCAN_GROUP, GSCAN_HOTLIST_CHANGE_EVENT,
+		       iwl_mvm_rx_gscan_hotlist_change_event,
+		       RX_HANDLER_ASYNC_LOCKED),
+	RX_HANDLER_GRP(SCAN_GROUP, GSCAN_SIGNIFICANT_CHANGE_EVENT,
+		       iwl_mvm_rx_gscan_significant_change_event,
+		       RX_HANDLER_ASYNC_LOCKED),
+	RX_HANDLER_GRP(NAN_GROUP, NAN_DISCOVERY_TERMINATE_NOTIF,
+		       iwl_mvm_nan_de_term_notif, RX_HANDLER_SYNC),
+	RX_HANDLER_GRP(NAN_GROUP, NAN_DISCOVERY_EVENT_NOTIF,
+		       iwl_mvm_nan_match, RX_HANDLER_SYNC),
+	RX_HANDLER_GRP(MAC_CONF_GROUP, LINK_QUALITY_MEASUREMENT_COMPLETE_NOTIF,
+		       iwl_mvm_vendor_lqm_notif, RX_HANDLER_SYNC),
+#endif
 
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	RX_HANDLER(DEBUG_LOG_MSG, iwl_mvm_rx_fw_logs, RX_HANDLER_SYNC),
@@ -659,6 +676,13 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	INIT_LIST_HEAD(&mvm->tdls_peer_cache_list);
 #endif
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	INIT_LIST_HEAD(&mvm->gscan_beacons_list);
+	INIT_WORK(&mvm->gscan_beacons_work, iwl_mvm_gscan_beacons_work);
+	spin_lock_init(&mvm->gscan_beacons_lock);
+	mvm->rx_filters = IWL_MVM_VENDOR_RXFILTER_EINVAL;
+#endif
+
 	/*
 	 * Populate the state variables that the transport layer needs
 	 * to know about.
@@ -851,6 +875,11 @@ static void iwl_op_mode_mvm_stop(struct iwl_op_mode *op_mode)
 	kfree(mvm->scan_cmd);
 	kfree(mvm->mcast_filter_cmd);
 	mvm->mcast_filter_cmd = NULL;
+
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	kfree(mvm->mcast_active_filter_cmd);
+	mvm->mcast_active_filter_cmd = NULL;
+#endif
 
 #if defined(CONFIG_PM_SLEEP) && defined(CPTCFG_IWLWIFI_DEBUGFS)
 	kfree(mvm->d3_resume_sram);

@@ -346,6 +346,10 @@ static int ieee80211_ifa_changed(struct notifier_block *nb,
 
 	sdata_unlock(sdata);
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	ieee80211_check_fast_rx_iface(sdata);
+#endif
+
 	return NOTIFY_OK;
 }
 #endif

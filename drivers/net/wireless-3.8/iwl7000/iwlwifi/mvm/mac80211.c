@@ -744,6 +744,10 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 	mvm->bcast_filters = iwl_mvm_default_bcast_filters;
 #endif
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	iwl_mvm_set_wiphy_vendor_commands(hw->wiphy);
+#endif
+
 	ret = iwl_mvm_leds_init(mvm);
 	if (ret)
 		return ret;
@@ -1213,6 +1217,9 @@ static void iwl_mvm_restart_complete(struct iwl_mvm *mvm)
 
 	mutex_unlock(&mvm->mutex);
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	iwl_mvm_gscan_reconfig(mvm);
+#endif
 }
 
 static void iwl_mvm_resume_complete(struct iwl_mvm *mvm)
@@ -1470,6 +1477,20 @@ static int iwl_mvm_mac_add_interface(struct ieee80211_hw *hw,
 	iwl_mvm_tcm_add_vif(mvm, vif);
 #endif
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	/*
+	 * lqm_active on a new interface means that we had a FW restart
+	 * inform the CAM.
+	 */
+	if (mvmvif->lqm_active) {
+		struct iwl_link_qual_msrmnt_notif empty_lqm_notif = {
+			.mac_id = cpu_to_le32(mvmvif->id),
+			.status = cpu_to_le32(LQM_STATUS_ABORT),
+		};
+		iwl_mvm_lqm_notif_iterator(&empty_lqm_notif, vif->addr, vif);
+	}
+#endif
+
 	iwl_mvm_vif_dbgfs_register(mvm, vif);
 	goto out_unlock;
 
@@ -1573,6 +1594,16 @@ static void iwl_mvm_mac_remove_interface(struct ieee80211_hw *hw,
 	iwl_mvm_tcm_rm_vif(mvm, vif);
 #endif
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	if (mvm->gscan.wdev && mvm->gscan.wdev == ieee80211_vif_to_wdev(vif)) {
+		struct wireless_dev *wdev = ieee80211_vif_to_wdev(vif);
+
+		iwl_mvm_vendor_stop_gscan(wdev->wiphy, wdev, NULL, 0);
+		iwl_mvm_vendor_send_reset_hotlist_cmd(mvm, wdev);
+		iwl_mvm_vendor_send_reset_sig_change_cmd(mvm, wdev);
+	}
+#endif
+
 	mutex_lock(&mvm->mutex);
 
 	if (mvm->bf_allowed_vif == mvmvif) {
@@ -1648,6 +1679,12 @@ static void iwl_mvm_mc_iface_iterator(void *_data, u8 *mac,
 	struct iwl_mcast_filter_cmd *cmd = mvm->mcast_filter_cmd;
 	int ret, len;
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	if (!(mvm->rx_filters & IWL_MVM_VENDOR_RXFILTER_EINVAL) &&
+	    mvm->mcast_active_filter_cmd)
+		cmd = mvm->mcast_active_filter_cmd;
+#endif
+
 	/* if we don't have free ports, mcast frames will be dropped */
 	if (WARN_ON_ONCE(data->port_id >= MAX_PORT_ID_NUM))
 		return;
@@ -1665,7 +1702,9 @@ static void iwl_mvm_mc_iface_iterator(void *_data, u8 *mac,
 		IWL_ERR(mvm, "mcast filter cmd error. ret=%d\n", ret);
 }
 
+#ifndef CPTCFG_IWLMVM_VENDOR_CMDS
 static
+#endif
 void iwl_mvm_recalc_multicast(struct iwl_mvm *mvm)
 {
 	struct iwl_mvm_mc_iter_data iter_data = {
@@ -1736,6 +1775,9 @@ static void iwl_mvm_configure_filter(struct ieee80211_hw *hw,
 	if (!cmd)
 		goto out;
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	iwl_mvm_active_rx_filters(mvm);
+#endif
 	iwl_mvm_recalc_multicast(mvm);
 out:
 	mutex_unlock(&mvm->mutex);
@@ -1891,6 +1933,13 @@ bool iwl_mvm_bcast_filter_build_cmd(struct iwl_mvm *mvm,
 	if (!mvm->bcast_filters)
 		return false;
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	if (!(mvm->rx_filters & IWL_MVM_VENDOR_RXFILTER_EINVAL) &&
+	    mvm->rx_filters & IWL_MVM_VENDOR_RXFILTER_BCAST) {
+		cmd->disable = 1;
+		return true;
+	}
+#endif
 	/* configure and attach these filters for each associated sta vif */
 	ieee80211_iterate_active_interfaces(
 		mvm->hw, IEEE80211_IFACE_ITER_NORMAL,
