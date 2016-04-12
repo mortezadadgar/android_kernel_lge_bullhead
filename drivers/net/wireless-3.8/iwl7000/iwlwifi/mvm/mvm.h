@@ -677,6 +677,26 @@ struct iwl_mvm_tdls_peer_counter {
 };
 #endif
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+struct gscan_data {
+	struct wireless_dev *wdev;
+	struct iwl_gscan_start_cmd scan_params;
+	struct iwl_gscan_bssid_hotlist_cmd hotlist_params;
+	struct iwl_gscan_significant_change_cmd sc_params;
+	u32 gp2;
+	u64 timestamp;	/* monotonic time, in usecs. */
+};
+
+struct iwl_mvm_gscan_beacon {
+	struct list_head list;
+	u32 gp2_ts;
+	s8 signal;
+	u8 channel;
+	u32 len;
+	struct ieee80211_mgmt mgmt[0];
+};
+#endif
+
 struct iwl_mvm {
 	/* for logger access */
 	struct device *dev;
@@ -986,6 +1006,10 @@ struct iwl_mvm {
 		} peer;
 	} tdls_cs;
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	struct iwl_dev_tx_power_cmd txp_cmd;
+#endif
+
 	struct iwl_mvm_shared_mem_cfg shared_mem_cfg;
 #ifdef CPTCFG_IWLMVM_P2P_OPPPS_TEST_WA
 	/*
@@ -1002,6 +1026,18 @@ struct iwl_mvm {
 
 	u32 ciphers[6];
 	struct iwl_mvm_tof_data tof_data;
+
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	struct gscan_data gscan;
+
+	/* protects the gscan beacons list */
+	spinlock_t gscan_beacons_lock;
+	struct list_head gscan_beacons_list;
+	struct work_struct gscan_beacons_work;
+
+	struct iwl_mcast_filter_cmd *mcast_active_filter_cmd;
+	u8 rx_filters;
+#endif
 
 	struct ieee80211_vif *nan_vif;
 
@@ -1786,6 +1822,36 @@ unsigned int iwl_mvm_get_wd_timeout(struct iwl_mvm *mvm,
 				    bool tdls, bool cmd_q);
 void iwl_mvm_connection_loss(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			     const char *errmsg);
+
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+int iwl_mvm_vendor_stop_gscan(struct wiphy *wiphy, struct wireless_dev *wdev,
+			      const void *data, int data_len);
+
+void iwl_mvm_rx_gscan_results_available(struct iwl_mvm *mvm,
+					struct iwl_rx_cmd_buffer *rxb);
+
+int iwl_mvm_vendor_send_reset_hotlist_cmd(struct iwl_mvm *mvm,
+					  struct wireless_dev *wdev);
+
+int iwl_mvm_vendor_send_reset_sig_change_cmd(struct iwl_mvm *mvm,
+					     struct wireless_dev *wdev);
+
+void iwl_mvm_rx_gscan_hotlist_change_event(struct iwl_mvm *mvm,
+					   struct iwl_rx_cmd_buffer *rxb);
+
+void iwl_mvm_rx_gscan_significant_change_event(struct iwl_mvm *mvm,
+					       struct iwl_rx_cmd_buffer *rxb);
+
+void iwl_mvm_gscan_reconfig(struct iwl_mvm *mvm);
+
+void iwl_mvm_gscan_beacons_work(struct work_struct *work);
+
+void iwl_mvm_recalc_multicast(struct iwl_mvm *mvm);
+int iwl_mvm_configure_bcast_filter(struct iwl_mvm *mvm);
+
+void iwl_mvm_active_rx_filters(struct iwl_mvm *mvm);
+
+#endif
 
 /* NAN */
 void iwl_mvm_nan_match(struct iwl_mvm *mvm,

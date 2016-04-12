@@ -12,4 +12,5 @@ iwlmvm-$(CONFIG_PM) += d3.o
 ccflags-y += -D__CHECK_ENDIAN__ -I$(src)/../
 
 # non-upstream things
+iwlmvm-$(CPTCFG_IWLMVM_VENDOR_CMDS) += vendor-cmd.o
 iwlmvm-$(CPTCFG_IWLWIFI_DEVICE_TESTMODE) += testmode.o

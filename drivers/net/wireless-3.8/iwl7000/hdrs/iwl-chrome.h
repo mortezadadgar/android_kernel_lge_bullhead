@@ -364,4 +364,17 @@ pci_enable_msix_range(struct pci_dev *dev, struct msix_entry *entries,
 }
 #endif
 
+#if CFG80211_VERSION < KERNEL_VERSION(4, 1, 0) && \
+	CFG80211_VERSION >= KERNEL_VERSION(3, 14, 0)
+static inline struct sk_buff *
+backport_cfg80211_vendor_event_alloc(struct wiphy *wiphy,
+				     struct wireless_dev *wdev,
+				     int approxlen, int event_idx, gfp_t gfp)
+{
+	return cfg80211_vendor_event_alloc(wiphy, approxlen, event_idx, gfp);
+}
+
+#define cfg80211_vendor_event_alloc backport_cfg80211_vendor_event_alloc
+#endif
+
 #endif /* __IWL_CHROME */
