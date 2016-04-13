@@ -752,6 +752,7 @@ static int iwl_tm_gnl_cmd_execute(struct iwl_tm_gnl_cmd *cmd_data)
 	case IWL_TM_USER_CMD_GET_DEVICE_STATUS:
 		ret = iwl_tm_get_device_status(dev, &cmd_data->data_in,
 					       &cmd_data->data_out);
+		common_op = true;
 		break;
 #if IS_ENABLED(CPTCFG_IWLXVT)
 	case IWL_TM_USER_CMD_SWITCH_OP_MODE:
@@ -775,6 +776,7 @@ static int iwl_tm_gnl_cmd_execute(struct iwl_tm_gnl_cmd *cmd_data)
 		break;
 	case IWL_TM_USER_CMD_GET_SIL_TYPE:
 		ret = iwl_tm_gnl_get_sil_type(dev->trans, &cmd_data->data_out);
+		common_op = true;
 		break;
 	}
 	if (ret) {
