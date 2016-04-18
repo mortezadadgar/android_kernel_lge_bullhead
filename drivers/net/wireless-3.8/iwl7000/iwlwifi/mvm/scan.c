@@ -404,13 +404,16 @@ void iwl_mvm_rx_lmac_scan_complete_notif(struct iwl_mvm *mvm,
 		ieee80211_sched_scan_stopped(mvm->hw);
 		mvm->sched_scan_pass_all = SCHED_SCAN_PASS_ALL_DISABLED;
 	} else if (mvm->scan_status & IWL_MVM_SCAN_REGULAR) {
+		struct cfg80211_scan_info info = {
+			.aborted = aborted,
+		};
+
 		IWL_DEBUG_SCAN(mvm, "Regular scan %s, EBS status %s (FW)\n",
 			       aborted ? "aborted" : "completed",
 			       iwl_mvm_ebs_status_str(scan_notif->ebs_status));
 
 		mvm->scan_status &= ~IWL_MVM_SCAN_REGULAR;
-		ieee80211_scan_completed(mvm->hw,
-				scan_notif->status == IWL_SCAN_OFFLOAD_ABORTED);
+		ieee80211_scan_completed(mvm->hw, &info);
 		iwl_mvm_unref(mvm, IWL_MVM_REF_SCAN);
 		cancel_delayed_work(&mvm->scan_timeout_dwork);
 	} else {
@@ -1457,7 +1460,11 @@ void iwl_mvm_rx_umac_scan_complete_notif(struct iwl_mvm *mvm,
 
 	/* if the scan is already stopping, we don't need to notify mac80211 */
 	if (mvm->scan_uid_status[uid] == IWL_MVM_SCAN_REGULAR) {
-		ieee80211_scan_completed(mvm->hw, aborted);
+		struct cfg80211_scan_info info = {
+			.aborted = aborted,
+		};
+
+		ieee80211_scan_completed(mvm->hw, &info);
 		iwl_mvm_unref(mvm, IWL_MVM_REF_SCAN);
 		cancel_delayed_work(&mvm->scan_timeout_dwork);
 	} else if (mvm->scan_uid_status[uid] == IWL_MVM_SCAN_SCHED) {
@@ -1591,7 +1598,11 @@ void iwl_mvm_report_scan_aborted(struct iwl_mvm *mvm)
 
 		uid = iwl_mvm_scan_uid_by_status(mvm, IWL_MVM_SCAN_REGULAR);
 		if (uid >= 0) {
-			ieee80211_scan_completed(mvm->hw, true);
+			struct cfg80211_scan_info info = {
+				.aborted = true,
+			};
+
+			ieee80211_scan_completed(mvm->hw, &info);
 			mvm->scan_uid_status[uid] = 0;
 		}
 		uid = iwl_mvm_scan_uid_by_status(mvm, IWL_MVM_SCAN_SCHED);
@@ -1612,8 +1623,13 @@ void iwl_mvm_report_scan_aborted(struct iwl_mvm *mvm)
 				mvm->scan_uid_status[i] = 0;
 		}
 	} else {
-		if (mvm->scan_status & IWL_MVM_SCAN_REGULAR)
-			ieee80211_scan_completed(mvm->hw, true);
+		if (mvm->scan_status & IWL_MVM_SCAN_REGULAR) {
+			struct cfg80211_scan_info info = {
+				.aborted = true,
+			};
+
+			ieee80211_scan_completed(mvm->hw, &info);
+		}
 
 		/* Sched scan will be restarted by mac80211 in
 		 * restart_hw, so do not report if FW is about to be
@@ -1656,8 +1672,13 @@ out:
 		 */
 		iwl_mvm_unref(mvm, IWL_MVM_REF_SCAN);
 		cancel_delayed_work(&mvm->scan_timeout_dwork);
-		if (notify)
-			ieee80211_scan_completed(mvm->hw, true);
+		if (notify) {
+			struct cfg80211_scan_info info = {
+				.aborted = true,
+			};
+
+			ieee80211_scan_completed(mvm->hw, &info);
+		}
 	} else if (notify) {
 		ieee80211_sched_scan_stopped(mvm->hw);
 		mvm->sched_scan_pass_all = SCHED_SCAN_PASS_ALL_DISABLED;

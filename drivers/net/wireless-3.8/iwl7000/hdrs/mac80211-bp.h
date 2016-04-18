@@ -1618,4 +1618,8 @@ backport_cfg80211_scan_done(struct cfg80211_scan_request *request,
 	cfg80211_scan_done(request, info->aborted);
 }
 #define cfg80211_scan_done backport_cfg80211_scan_done
+
+#define NL80211_EXT_FEATURE_SCAN_START_TIME -1
+#define NL80211_EXT_FEATURE_BSS_PARENT_TSF -1
+#define NL80211_EXT_FEATURE_SET_SCAN_DWELL -1
 #endif
