@@ -265,7 +265,7 @@ static void iwl_mvm_power_configure_uapsd(struct iwl_mvm *mvm,
 }
 
 struct iwl_allow_uapsd_iface_iterator_data {
-	struct ieee80211_vif *exclude_vif;
+	struct ieee80211_vif *current_vif;
 	bool allow_uapsd;
 };
 
@@ -273,9 +273,12 @@ static void iwl_mvm_allow_uapsd_iterator(void *_data, u8 *mac,
 					 struct ieee80211_vif *vif)
 {
 	struct iwl_allow_uapsd_iface_iterator_data *data = _data;
+	struct iwl_mvm_vif *other_mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm_vif *curr_mvmvif =
+		iwl_mvm_vif_from_mac80211(data->current_vif);
 
 	/* exclude the given vif */
-	if (vif == data->exclude_vif)
+	if (vif == data->current_vif)
 		return;
 
 	switch (vif->type) {
@@ -288,7 +291,11 @@ static void iwl_mvm_allow_uapsd_iterator(void *_data, u8 *mac,
 		data->allow_uapsd = false;
 		break;
 	case NL80211_IFTYPE_STATION:
-		if (vif->bss_conf.assoc)
+		/* allow UAPSD if P2P interface and BSS station interface share
+		 * the same channel.
+		 */
+		if (vif->bss_conf.assoc &&
+		    (other_mvmvif->phy_ctxt->id != curr_mvmvif->phy_ctxt->id))
 			data->allow_uapsd = false;
 		break;
 
@@ -302,7 +309,7 @@ static bool iwl_mvm_power_allow_uapsd(struct iwl_mvm *mvm,
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_allow_uapsd_iface_iterator_data data = {
-		.exclude_vif = vif,
+		.current_vif = vif,
 		.allow_uapsd = true,
 	};
 
