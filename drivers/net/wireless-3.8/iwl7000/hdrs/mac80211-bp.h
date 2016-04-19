@@ -98,33 +98,6 @@ struct cfg80211_wowlan_tcp {
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,9,0) */
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,10,0)
-static inline bool
-ieee80211_operating_class_to_band(u8 operating_class,
-				  enum ieee80211_band *band)
-{
-	switch (operating_class) {
-	case 112:
-	case 115 ... 127:
-	case 128 ... 130:
-		*band = IEEE80211_BAND_5GHZ;
-		return true;
-	case 81:
-	case 82:
-	case 83:
-	case 84:
-		*band = IEEE80211_BAND_2GHZ;
-		return true;
-	case 180:
-		*band = IEEE80211_BAND_60GHZ;
-		return true;
-	}
-
-	/* stupid compiler */
-	*band = IEEE80211_BAND_2GHZ;
-
-	return false;
-}
-
 #define NL80211_FEATURE_USERSPACE_MPM 0
 
 enum cfg80211_station_type {
@@ -290,7 +263,7 @@ ieee80211_mandatory_rates(struct ieee80211_supported_band *sband)
 	if (WARN_ON(!sband))
 		return 1;
 
-	if (sband->band == IEEE80211_BAND_2GHZ)
+	if (sband->band == NL80211_BAND_2GHZ)
 		mandatory_flag = IEEE80211_RATE_MANDATORY_B;
 	else
 		mandatory_flag = IEEE80211_RATE_MANDATORY_A;
@@ -1594,3 +1567,39 @@ cfg80211_scan_req_bssid(struct cfg80211_scan_request *scan_req)
 #endif
 	return NULL;
 }
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,7,0)
+/* this was originally in 3.10, but causes nasty warnings
+ * due to the enum ieee80211_band removal - use the inline
+ * to avoid that.
+ */
+#define ieee80211_operating_class_to_band iwl7000_ieee80211_operating_class_to_band
+static inline bool
+ieee80211_operating_class_to_band(u8 operating_class,
+				  enum nl80211_band *band)
+{
+	switch (operating_class) {
+	case 112:
+	case 115 ... 127:
+	case 128 ... 130:
+		*band = NL80211_BAND_5GHZ;
+		return true;
+	case 81:
+	case 82:
+	case 83:
+	case 84:
+		*band = NL80211_BAND_2GHZ;
+		return true;
+	case 180:
+		*band = NL80211_BAND_60GHZ;
+		return true;
+	}
+
+	/* stupid compiler */
+	*band = NL80211_BAND_2GHZ;
+
+	return false;
+}
+
+#define NUM_NL80211_BANDS ((enum nl80211_band)IEEE80211_NUM_BANDS)
+#endif

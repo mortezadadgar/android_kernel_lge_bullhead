@@ -72,7 +72,7 @@ enum srf_type {
 };
 
 static bool iwl_mvm_can_beacon(struct ieee80211_vif *vif,
-			       enum ieee80211_band band, u8 channel)
+			       enum nl80211_band band, u8 channel)
 {
 	struct wiphy *wiphy = ieee80211_vif_to_wdev(vif)->wiphy;
 	int freq = ieee80211_channel_to_frequency(channel, band);
@@ -111,7 +111,7 @@ int iwl_mvm_start_nan(struct ieee80211_hw *hw,
 	cmd.sta_id = cpu_to_le32(mvm->aux_sta.sta_id);
 	cmd.master_pref = conf->master_pref;
 	if (conf->dual == NL80211_NAN_BAND_DUAL) {
-		if (!iwl_mvm_can_beacon(vif, IEEE80211_BAND_5GHZ,
+		if (!iwl_mvm_can_beacon(vif, NL80211_BAND_5GHZ,
 					NAN_CHANNEL_52)) {
 			IWL_ERR(mvm, "Can't beacon on %d\n", NAN_CHANNEL_52);
 			ret = -EINVAL;
@@ -528,7 +528,7 @@ int iwl_mvm_nan_config_nan_faw_cmd(struct iwl_mvm *mvm,
 	mvmvif = iwl_mvm_vif_from_mac80211(mvm->nan_vif);
 
 	/* Set the channel info data */
-	cmd.faw_ci.band = (chandef->chan->band == IEEE80211_BAND_2GHZ ?
+	cmd.faw_ci.band = (chandef->chan->band == NL80211_BAND_2GHZ ?
 	      PHY_BAND_24 : PHY_BAND_5);
 
 	cmd.faw_ci.channel = chandef->chan->hw_value;
