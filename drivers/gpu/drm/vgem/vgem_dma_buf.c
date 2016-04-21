@@ -99,8 +99,10 @@ struct dma_buf *vgem_gem_prime_export(struct drm_device *dev,
 			      obj->size, flags);
 }
 
-struct drm_gem_object *vgem_gem_prime_import(struct drm_device *dev,
-					     struct dma_buf *dma_buf)
+struct drm_gem_object *
+vgem_gem_prime_import_sg_table(struct drm_device *dev,
+			       size_t size,
+			       struct sg_table *sg)
 {
 	struct drm_vgem_gem_object *obj = NULL;
 	int ret;
@@ -111,16 +113,11 @@ struct drm_gem_object *vgem_gem_prime_import(struct drm_device *dev,
 		goto fail;
 	}
 
-	ret = drm_gem_object_init(dev, &obj->base, dma_buf->size);
+	ret = drm_gem_object_init(dev, &obj->base, size);
 	if (ret) {
 		ret = -ENOMEM;
 		goto fail_free;
 	}
-
-	get_dma_buf(dma_buf);
-
-	obj->base.dma_buf = dma_buf;
-	obj->use_dma_buf = true;
 
 	return &obj->base;
 

@@ -87,8 +87,8 @@ static void vgem_gem_free_object(struct drm_gem_object *obj)
 
 	drm_gem_free_mmap_offset(obj);
 
-	if (vgem_obj->use_dma_buf && obj->dma_buf) {
-		dma_buf_put(obj->dma_buf);
+	if (obj->import_attach) {
+		dma_buf_put(obj->import_attach->dmabuf);
 		obj->dma_buf = NULL;
 	}
 
@@ -108,7 +108,7 @@ int vgem_gem_get_pages(struct drm_vgem_gem_object *obj)
 	gfp_t gfpmask = GFP_KERNEL;
 	int num_pages, i, ret = 0;
 
-	if (obj->pages || obj->use_dma_buf)
+	if (obj->pages || obj->base.import_attach)
 		return 0;
 
 	num_pages = obj->base.size / PAGE_SIZE;
@@ -308,8 +308,8 @@ int vgem_drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	obj = container_of(node, struct drm_gem_object, vma_node);
 	vgem_obj = to_vgem_bo(obj);
 
-	if (obj->dma_buf && vgem_obj->use_dma_buf) {
-		ret = dma_buf_mmap(obj->dma_buf, vma, 0);
+	if (obj->import_attach) {
+		ret = dma_buf_mmap(obj->import_attach->dmabuf, vma, 0);
 		goto out_unlock;
 	}
 
@@ -373,8 +373,9 @@ static struct drm_driver vgem_driver = {
 	.dumb_map_offset	= vgem_gem_dumb_map,
 	.prime_handle_to_fd	= drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle	= drm_gem_prime_fd_to_handle,
-	.gem_prime_export	= vgem_gem_prime_export,
-	.gem_prime_import	= vgem_gem_prime_import,
+	.gem_prime_export	= drm_gem_prime_export,
+	.gem_prime_import	= drm_gem_prime_import,
+	.gem_prime_import_sg_table	= vgem_gem_prime_import_sg_table,
 	.name	= DRIVER_NAME,
 	.desc	= DRIVER_DESC,
 	.date	= DRIVER_DATE,
