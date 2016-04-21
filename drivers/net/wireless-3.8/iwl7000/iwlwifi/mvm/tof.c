@@ -583,8 +583,8 @@ int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
 	memcpy(&mvm->tof_data.active_request, req,
 	       sizeof(struct cfg80211_ftm_request));
 	if (vif->bss_conf.assoc && req->report_tsf)
-		memcpy(&mvm->tof_data.active_bssid_for_tsf,
-		       &vif->bss_conf.bssid, ETH_ALEN);
+		memcpy(mvm->tof_data.active_bssid_for_tsf, vif->bss_conf.bssid,
+		       ETH_ALEN);
 
 	if (vif->bss_conf.assoc)
 		memcpy(cmd->range_req_bssid, vif->bss_conf.bssid, ETH_ALEN);
