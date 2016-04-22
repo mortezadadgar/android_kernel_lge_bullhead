@@ -1294,7 +1294,7 @@ static inline bool iwl_mvm_is_mplut_supported(struct iwl_mvm *mvm)
 }
 
 static inline
-bool iwl_mvm_is_p2p_standalone_uapsd_supported(struct iwl_mvm *mvm)
+bool iwl_mvm_is_p2p_scm_uapsd_supported(struct iwl_mvm *mvm)
 {
 	return fw_has_capa(&mvm->fw->ucode_capa,
 			   IWL_UCODE_TLV_CAPA_P2P_SCM_UAPSD) &&

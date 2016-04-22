@@ -326,7 +326,7 @@ static bool iwl_mvm_power_allow_uapsd(struct iwl_mvm *mvm,
 	    IEEE80211_P2P_OPPPS_ENABLE_BIT))
 		return false;
 
-	if (vif->p2p && !iwl_mvm_is_p2p_standalone_uapsd_supported(mvm))
+	if (vif->p2p && !iwl_mvm_is_p2p_scm_uapsd_supported(mvm))
 		return false;
 
 	ieee80211_iterate_active_interfaces_atomic(mvm->hw,
