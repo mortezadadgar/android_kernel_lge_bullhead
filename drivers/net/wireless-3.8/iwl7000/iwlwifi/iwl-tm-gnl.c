@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2010 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -33,6 +34,7 @@
  *
  * Copyright(c) 2010 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -460,6 +462,28 @@ static int iwl_tm_gnl_get_sil_type(struct iwl_trans * trans,struct iwl_tm_data *
 	return 0;
 }
 
+static int iwl_tm_gnl_get_rfid(struct iwl_trans *trans,
+			       struct iwl_tm_data *data_out)
+{
+	struct iwl_tm_rfid *resp;
+
+	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
+	if (!resp)
+		return -ENOMEM;
+
+	IWL_DEBUG_INFO(trans, "HW RFID=0x08%X\n", trans->hw_rf_id);
+
+	resp->flavor = CSR_HW_RFID_FLAVOR(trans->hw_rf_id);
+	resp->dash   = CSR_HW_RFID_DASH(trans->hw_rf_id);
+	resp->step   = CSR_HW_RFID_STEP(trans->hw_rf_id);
+	resp->type   = CSR_HW_RFID_TYPE(trans->hw_rf_id);
+
+	data_out->data = resp;
+	data_out->len = sizeof(*resp);
+
+	return 0;
+}
+
 /*
  * Testmode GNL family types (This NL family
  * will eventually replace nl80211 support in
@@ -774,8 +798,14 @@ static int iwl_tm_gnl_cmd_execute(struct iwl_tm_gnl_cmd *cmd_data)
 						&cmd_data->data_out);
 		common_op = true;
 		break;
+
 	case IWL_TM_USER_CMD_GET_SIL_TYPE:
 		ret = iwl_tm_gnl_get_sil_type(dev->trans, &cmd_data->data_out);
+		common_op = true;
+		break;
+
+	case IWL_TM_USER_CMD_GET_RFID:
+		ret = iwl_tm_gnl_get_rfid(dev->trans, &cmd_data->data_out);
 		common_op = true;
 		break;
 	}
