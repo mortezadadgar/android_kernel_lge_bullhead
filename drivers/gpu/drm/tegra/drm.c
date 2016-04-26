@@ -716,6 +716,12 @@ static const struct of_device_id host1x_drm_subdevs[] = {
 
 static int tegra_drm_platform_probe(struct platform_device *pdev)
 {
+	if (!drm_host1x_check_clients_probed()) {
+		dev_info(&pdev->dev,
+			"clients are still probing, wait until they're done.\n");
+		return -EPROBE_DEFER;
+	}
+
 	return drm_platform_init(&tegra_drm_driver, pdev);
 }
 

@@ -1528,12 +1528,29 @@ static int tegra_sor_probe(struct platform_device *pdev)
 {
 	struct device_node *np;
 	struct tegra_sor *sor;
+	struct host1x_client *client;
 	struct resource *regs;
 	int err;
 
-	sor = devm_kzalloc(&pdev->dev, sizeof(*sor), GFP_KERNEL);
-	if (!sor)
-		return -ENOMEM;
+	client = drm_host1x_get_client(&pdev->dev);
+	if (client) {
+		sor = host1x_client_to_sor(client);
+	} else {
+		sor = kzalloc(sizeof(*sor), GFP_KERNEL);
+		if (!sor)
+			return -ENOMEM;
+
+		INIT_LIST_HEAD(&sor->client.list);
+		sor->client.ops = &sor_client_ops;
+		sor->client.dev = &pdev->dev;
+	}
+
+	err = drm_host1x_register(&sor->client);
+	if (err < 0) {
+		dev_err(&pdev->dev, "failed to register host1x client: %d\n",
+			err);
+		return err;
+	}
 
 	sor->output.dev = sor->dev = &pdev->dev;
 
@@ -1587,21 +1604,11 @@ static int tegra_sor_probe(struct platform_device *pdev)
 	if (err < 0)
 		return err;
 
-	INIT_LIST_HEAD(&sor->client.list);
-	sor->client.ops = &sor_client_ops;
-	sor->client.dev = &pdev->dev;
-
 	mutex_init(&sor->lock);
 
-	err = drm_host1x_register(&sor->client);
-	if (err < 0) {
-		dev_err(&pdev->dev, "failed to register host1x client: %d\n",
-			err);
-		return err;
-	}
-
 	platform_set_drvdata(pdev, sor);
-
+	sor->client.driver_probed = 1;
+	dev_info(&pdev->dev, "initialized\n");
 	return 0;
 }
 
@@ -1622,6 +1629,7 @@ static int tegra_sor_remove(struct platform_device *pdev)
 	clk_disable_unprepare(sor->clk_dp);
 	clk_disable_unprepare(sor->clk);
 
+	kfree(sor);
 	return 0;
 }
 

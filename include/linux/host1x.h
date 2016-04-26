@@ -48,6 +48,8 @@ struct host1x_client {
 
 	struct host1x_syncpt **syncpts;
 	unsigned int num_syncpts;
+
+	int driver_probed;
 };
 
 /*

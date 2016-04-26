@@ -1455,6 +1455,7 @@ static int tegra_hdmi_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *match;
 	struct tegra_hdmi *hdmi;
+	struct host1x_client *client;
 	struct resource *regs;
 	int err;
 
@@ -1462,9 +1463,25 @@ static int tegra_hdmi_probe(struct platform_device *pdev)
 	if (!match)
 		return -ENODEV;
 
-	hdmi = devm_kzalloc(&pdev->dev, sizeof(*hdmi), GFP_KERNEL);
-	if (!hdmi)
-		return -ENOMEM;
+	client = drm_host1x_get_client(&pdev->dev);
+	if (client) {
+		hdmi = host1x_client_to_hdmi(client);
+	} else {
+		hdmi = kzalloc(sizeof(*hdmi), GFP_KERNEL);
+		if (!hdmi)
+			return -ENOMEM;
+
+		INIT_LIST_HEAD(&hdmi->client.list);
+		hdmi->client.ops = &hdmi_client_ops;
+		hdmi->client.dev = &pdev->dev;
+	}
+
+	err = drm_host1x_register(&hdmi->client);
+	if (err < 0) {
+		dev_err(&pdev->dev, "failed to register host1x client: %d\n",
+			err);
+		return err;
+	}
 
 	hdmi->config = match->data;
 	hdmi->dev = &pdev->dev;
@@ -1530,19 +1547,9 @@ static int tegra_hdmi_probe(struct platform_device *pdev)
 
 	hdmi->irq = err;
 
-	INIT_LIST_HEAD(&hdmi->client.list);
-	hdmi->client.ops = &hdmi_client_ops;
-	hdmi->client.dev = &pdev->dev;
-
-	err = drm_host1x_register(&hdmi->client);
-	if (err < 0) {
-		dev_err(&pdev->dev, "failed to register host1x client: %d\n",
-			err);
-		return err;
-	}
-
 	platform_set_drvdata(pdev, hdmi);
-
+	hdmi->client.driver_probed = 1;
+	dev_info(&pdev->dev, "initialized\n");
 	return 0;
 }
 
@@ -1567,6 +1574,7 @@ static int tegra_hdmi_remove(struct platform_device *pdev)
 	clk_disable_unprepare(hdmi->clk_parent);
 	clk_disable_unprepare(hdmi->clk);
 
+	kfree(hdmi);
 	return 0;
 }
 

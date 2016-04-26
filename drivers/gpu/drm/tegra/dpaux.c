@@ -28,6 +28,7 @@ static LIST_HEAD(dpaux_list);
 
 struct tegra_dpaux {
 	struct drm_dp_aux aux;
+	struct host1x_client client;
 	struct device *dev;
 
 	void __iomem *regs;
@@ -45,6 +46,12 @@ struct tegra_dpaux {
 	struct work_struct work;
 	struct list_head list;
 };
+
+static inline struct tegra_dpaux *
+host1x_client_to_dpaux(struct host1x_client *client)
+{
+	return container_of(client, struct tegra_dpaux, client);
+}
 
 static inline struct tegra_dpaux *to_dpaux(struct drm_dp_aux *aux)
 {
@@ -272,13 +279,30 @@ static irqreturn_t tegra_dpaux_irq(int irq, void *data)
 static int tegra_dpaux_probe(struct platform_device *pdev)
 {
 	struct tegra_dpaux *dpaux;
+	struct host1x_client *client;
 	struct resource *regs;
 	unsigned long value;
 	int err;
 
-	dpaux = devm_kzalloc(&pdev->dev, sizeof(*dpaux), GFP_KERNEL);
-	if (!dpaux)
-		return -ENOMEM;
+	client = drm_host1x_get_client(&pdev->dev);
+	if (client) {
+		dpaux = host1x_client_to_dpaux(client);
+	} else {
+		dpaux = kzalloc(sizeof(*dpaux), GFP_KERNEL);
+		if (!dpaux)
+			return -ENOMEM;
+
+		INIT_LIST_HEAD(&dpaux->client.list);
+		dpaux->client.ops = NULL;
+		dpaux->client.dev = &pdev->dev;
+	}
+
+	err = drm_host1x_register(&dpaux->client);
+	if (err < 0) {
+		dev_err(&pdev->dev, "failed to register host1x client: %d\n",
+			err);
+		return err;
+	}
 
 	INIT_WORK(&dpaux->work, tegra_dpaux_hotplug);
 	init_completion(&dpaux->complete);
@@ -358,7 +382,8 @@ static int tegra_dpaux_probe(struct platform_device *pdev)
 	mutex_unlock(&dpaux_lock);
 
 	platform_set_drvdata(pdev, dpaux);
-
+	dpaux->client.driver_probed = 1;
+	dev_info(&pdev->dev, "initialized\n");
 	return 0;
 }
 
@@ -378,6 +403,7 @@ static int tegra_dpaux_remove(struct platform_device *pdev)
 	reset_control_assert(dpaux->rst);
 	clk_disable_unprepare(dpaux->clk);
 
+	kfree(dpaux);
 	return 0;
 }
 

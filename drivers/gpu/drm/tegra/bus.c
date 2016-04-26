@@ -29,7 +29,15 @@ int drm_host1x_init(struct drm_driver *driver, struct host1x_device *device)
 
 int drm_host1x_register(struct host1x_client *client)
 {
+	struct host1x_client *pos;
+
 	mutex_lock(&clients_lock);
+	list_for_each_entry(pos, &clients, list) {
+		if (pos->dev == client->dev) {
+			mutex_unlock(&clients_lock);
+			return 0;
+		}
+	}
 	list_add_tail(&client->list, &clients);
 	mutex_unlock(&clients_lock);
 	return 0;
@@ -96,4 +104,33 @@ int drm_host1x_device_exit(struct host1x_device *device)
 	return 0;
 }
 
+struct host1x_client *drm_host1x_get_client(struct device *dev)
+{
+	struct host1x_client *pos;
 
+	mutex_lock(&clients_lock);
+	list_for_each_entry(pos, &clients, list) {
+		if (pos->dev == dev) {
+			mutex_unlock(&clients_lock);
+			return pos;
+		}
+	}
+	mutex_unlock(&clients_lock);
+	return NULL;
+}
+
+int drm_host1x_check_clients_probed(void)
+{
+	struct host1x_client *pos;
+
+	mutex_lock(&clients_lock);
+	list_for_each_entry(pos, &clients, list) {
+		if (!pos->driver_probed) {
+			mutex_unlock(&clients_lock);
+			return 0;
+		}
+	}
+
+	mutex_unlock(&clients_lock);
+	return 1;
+}

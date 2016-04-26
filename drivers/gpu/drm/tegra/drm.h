@@ -267,6 +267,9 @@ void drm_host1x_exit(struct drm_driver *driver, struct host1x_device *device);
 int drm_host1x_register(struct host1x_client *client);
 int drm_host1x_unregister(struct host1x_client *client);
 int drm_host1x_device_init(struct drm_device *drm, struct host1x_device *device);
+int drm_host1x_device_exit(struct host1x_device *device);
+struct host1x_client *drm_host1x_get_client(struct device *dev);
+int drm_host1x_check_clients_probed(void);
 
 /* from rgb.c */
 int tegra_dc_rgb_probe(struct tegra_dc *dc);

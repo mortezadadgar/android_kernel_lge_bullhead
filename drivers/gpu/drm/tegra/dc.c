@@ -1596,11 +1596,28 @@ static int tegra_dc_probe(struct platform_device *pdev)
 	const struct of_device_id *id;
 	struct resource *regs;
 	struct tegra_dc *dc;
+	struct host1x_client *client;
 	int err;
 
-	dc = devm_kzalloc(&pdev->dev, sizeof(*dc), GFP_KERNEL);
-	if (!dc)
-		return -ENOMEM;
+	client = drm_host1x_get_client(&pdev->dev);
+	if (client) {
+		dc = host1x_client_to_dc(client);
+	} else {
+		dc = kzalloc(sizeof(*dc), GFP_KERNEL);
+		if (!dc)
+			return -ENOMEM;
+
+		INIT_LIST_HEAD(&dc->client.list);
+		dc->client.ops = &dc_client_ops;
+		dc->client.dev = &pdev->dev;
+	}
+
+	err = drm_host1x_register(&dc->client);
+	if (err < 0) {
+		dev_err(&pdev->dev, "failed to register host1x client: %d\n",
+			err);
+		return err;
+	}
 
 	id = of_match_node(tegra_dc_of_match, pdev->dev.of_node);
 	if (!id)
@@ -1651,25 +1668,15 @@ static int tegra_dc_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	INIT_LIST_HEAD(&dc->client.list);
-	dc->client.ops = &dc_client_ops;
-	dc->client.dev = &pdev->dev;
-
 	err = tegra_dc_rgb_probe(dc);
 	if (err < 0 && err != -ENODEV) {
 		dev_err(&pdev->dev, "failed to probe RGB output: %d\n", err);
 		return err;
 	}
 
-	err = drm_host1x_register(&dc->client);
-	if (err < 0) {
-		dev_err(&pdev->dev, "failed to register host1x client: %d\n",
-			err);
-		return err;
-	}
-
 	platform_set_drvdata(pdev, dc);
-
+	dc->client.driver_probed = 1;
+	dev_info(&pdev->dev, "initialized\n");
 	return 0;
 }
 
@@ -1696,6 +1703,7 @@ static int tegra_dc_remove(struct platform_device *pdev)
 		clk_disable_unprepare(dc->emc_clk);
 
 	tegra_dc_powergate_locked(dc);
+	kfree(dc);
 
 	return 0;
 }
