@@ -136,10 +136,10 @@ struct iwl_drv {
 };
 
 enum {
-	DVM_OP_MODE =	0,
-	MVM_OP_MODE =	1,
+	DVM_OP_MODE,
+	MVM_OP_MODE,
 #if IS_ENABLED(CPTCFG_IWLXVT)
-	XVT_OP_MODE =	2,
+	XVT_OP_MODE,
 #endif
 };
 
