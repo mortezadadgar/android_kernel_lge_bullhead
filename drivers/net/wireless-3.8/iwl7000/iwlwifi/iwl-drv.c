@@ -243,7 +243,7 @@ int iwl_drv_switch_op_mode(struct iwl_drv *drv, const char *new_op_name)
 	/* Checking if the device supports the desired operation mode */
 
 	/* xVT mode is available only with 16 FW */
-	if (drv->fw.mvm_fw) {
+	if (drv->fw.type == IWL_FW_MVM) {
 		if ((idx != XVT_OP_MODE) && (idx != MVM_OP_MODE)) {
 			IWL_ERR(drv, "Op mode %s not supported by device\n",
 				new_op_name);
@@ -1031,17 +1031,17 @@ fw_dbg_conf:
 		 case IWL_UCODE_TLV_SEC_RT:
 			iwl_store_ucode_sec(pieces, tlv_data, IWL_UCODE_REGULAR,
 					    tlv_len);
-			drv->fw.mvm_fw = true;
+			drv->fw.type = IWL_FW_MVM;
 			break;
 		case IWL_UCODE_TLV_SEC_INIT:
 			iwl_store_ucode_sec(pieces, tlv_data, IWL_UCODE_INIT,
 					    tlv_len);
-			drv->fw.mvm_fw = true;
+			drv->fw.type = IWL_FW_MVM;
 			break;
 		case IWL_UCODE_TLV_SEC_WOWLAN:
 			iwl_store_ucode_sec(pieces, tlv_data, IWL_UCODE_WOWLAN,
 					    tlv_len);
-			drv->fw.mvm_fw = true;
+			drv->fw.type = IWL_FW_MVM;
 			break;
 		case IWL_UCODE_TLV_DEF_CALIB:
 			if (tlv_len != sizeof(struct iwl_tlv_calib_data))
@@ -1084,17 +1084,17 @@ fw_dbg_conf:
 		 case IWL_UCODE_TLV_SECURE_SEC_RT:
 			iwl_store_ucode_sec(pieces, tlv_data, IWL_UCODE_REGULAR,
 					    tlv_len);
-			drv->fw.mvm_fw = true;
+			drv->fw.type = IWL_FW_MVM;
 			break;
 		case IWL_UCODE_TLV_SECURE_SEC_INIT:
 			iwl_store_ucode_sec(pieces, tlv_data, IWL_UCODE_INIT,
 					    tlv_len);
-			drv->fw.mvm_fw = true;
+			drv->fw.type = IWL_FW_MVM;
 			break;
 		case IWL_UCODE_TLV_SECURE_SEC_WOWLAN:
 			iwl_store_ucode_sec(pieces, tlv_data, IWL_UCODE_WOWLAN,
 					    tlv_len);
-			drv->fw.mvm_fw = true;
+			drv->fw.type = IWL_FW_MVM;
 			break;
 		case IWL_UCODE_TLV_NUM_OF_CPU:
 			if (tlv_len != sizeof(u32))
@@ -1566,7 +1566,7 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	 * In mvm uCode there is no difference between data and instructions
 	 * sections.
 	 */
-	if (!fw->mvm_fw && validate_sec_sizes(drv, pieces, drv->cfg))
+	if (fw->type == IWL_FW_DVM && validate_sec_sizes(drv, pieces, drv->cfg))
 		goto try_again;
 
 	/* Allocate ucode buffers for card's bus-master loading ... */
@@ -1699,13 +1699,19 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 #endif
 
 	mutex_lock(&iwlwifi_opmode_table_mtx);
-	if (fw->mvm_fw)
-		op = &iwlwifi_opmode_table[MVM_OP_MODE];
-	else
+	switch (fw->type) {
+	case IWL_FW_DVM:
 		op = &iwlwifi_opmode_table[DVM_OP_MODE];
+		break;
+	default:
+		WARN(1, "Invalid fw type %d\n", fw->type);
+	case IWL_FW_MVM:
+		op = &iwlwifi_opmode_table[MVM_OP_MODE];
+		break;
+	}
 
 #if IS_ENABLED(CPTCFG_IWLXVT)
-	if (iwlwifi_mod_params.xvt_default_mode && drv->fw.mvm_fw)
+	if (iwlwifi_mod_params.xvt_default_mode && drv->fw.type == IWL_FW_MVM)
 		op = &iwlwifi_opmode_table[XVT_OP_MODE];
 
 	drv->xvt_mode_on = (op == &iwlwifi_opmode_table[XVT_OP_MODE]);
