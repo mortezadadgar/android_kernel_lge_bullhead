@@ -2622,7 +2622,7 @@ __hif_pci_suspend(struct pci_dev *pdev, pm_message_t state, bool runtime_pm)
     }
 
     if (wma_check_scan_in_progress(temp_module)) {
-        printk("%s: Scan in progress. Aborting suspend%s\n", __func__,
+        pr_debug("%s: Scan in progress. Aborting suspend%s\n", __func__,
                 runtime_pm ? " for runtime PM" : "");
         goto out;
     }
