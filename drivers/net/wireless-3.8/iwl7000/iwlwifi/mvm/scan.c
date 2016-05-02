@@ -1235,7 +1235,7 @@ static int iwl_mvm_check_running_scans(struct iwl_mvm *mvm, int type)
 	return -EIO;
 }
 
-#define SCAN_TIMEOUT (CPTCFG_IWL_TIMEOUT_FACTOR * 16 * HZ)
+#define SCAN_TIMEOUT (CPTCFG_IWL_TIMEOUT_FACTOR * 20 * HZ)
 
 void iwl_mvm_scan_timeout(unsigned long data)
 {
