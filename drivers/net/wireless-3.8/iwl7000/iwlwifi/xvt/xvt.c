@@ -163,6 +163,26 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 	trans_cfg.wide_cmd_header = fw_has_api(&xvt->fw->ucode_capa,
 					       IWL_UCODE_TLV_API_WIDE_CMD_HDR);
 
+	switch (iwlwifi_mod_params.amsdu_size) {
+	case IWL_AMSDU_DEF:
+	case IWL_AMSDU_4K:
+		trans_cfg.rx_buf_size = IWL_AMSDU_4K;
+		break;
+	case IWL_AMSDU_8K:
+		trans_cfg.rx_buf_size = IWL_AMSDU_8K;
+		break;
+	case IWL_AMSDU_12K:
+		trans_cfg.rx_buf_size = IWL_AMSDU_12K;
+		break;
+	default:
+		pr_err("%s: Unsupported amsdu_size: %d\n", KBUILD_MODNAME,
+		       iwlwifi_mod_params.amsdu_size);
+		trans_cfg.rx_buf_size = IWL_AMSDU_4K;
+	}
+	/* the hardware splits the A-MSDU */
+	if (xvt->trans->cfg->mq_rx_supported)
+		trans_cfg.rx_buf_size = IWL_AMSDU_4K;
+
 	/* Configure transport layer */
 	iwl_trans_configure(xvt->trans, &trans_cfg);
 	trans->command_groups = trans_cfg.command_groups;
