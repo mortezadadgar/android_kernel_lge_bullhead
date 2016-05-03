@@ -412,7 +412,7 @@ void iwl_mvm_rx_lmac_scan_complete_notif(struct iwl_mvm *mvm,
 		ieee80211_scan_completed(mvm->hw,
 				scan_notif->status == IWL_SCAN_OFFLOAD_ABORTED);
 		iwl_mvm_unref(mvm, IWL_MVM_REF_SCAN);
-		del_timer(&mvm->scan_timer);
+		cancel_delayed_work(&mvm->scan_timeout_dwork);
 	} else {
 		IWL_ERR(mvm,
 			"got scan complete notification but no scan is running\n");
@@ -1235,15 +1235,16 @@ static int iwl_mvm_check_running_scans(struct iwl_mvm *mvm, int type)
 	return -EIO;
 }
 
-#define SCAN_TIMEOUT (CPTCFG_IWL_TIMEOUT_FACTOR * 20 * HZ)
+#define SCAN_TIMEOUT (CPTCFG_IWL_TIMEOUT_FACTOR * 20000)
 
-void iwl_mvm_scan_timeout(unsigned long data)
+void iwl_mvm_scan_timeout_wk(struct work_struct *work)
 {
-	struct iwl_mvm *mvm = (struct iwl_mvm *)data;
+	struct delayed_work *delayed_work = to_delayed_work(work);
+	struct iwl_mvm *mvm = container_of(delayed_work, struct iwl_mvm,
+					   scan_timeout_dwork);
 
 	IWL_ERR(mvm, "regular scan timed out\n");
 
-	del_timer(&mvm->scan_timer);
 	iwl_force_nmi(mvm->trans);
 }
 
@@ -1326,7 +1327,8 @@ int iwl_mvm_reg_scan_start(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	mvm->scan_status |= IWL_MVM_SCAN_REGULAR;
 	iwl_mvm_ref(mvm, IWL_MVM_REF_SCAN);
 
-	mod_timer(&mvm->scan_timer, jiffies + SCAN_TIMEOUT);
+	queue_delayed_work(system_wq, &mvm->scan_timeout_dwork,
+			   msecs_to_jiffies(SCAN_TIMEOUT));
 
 	return 0;
 }
@@ -1457,7 +1459,7 @@ void iwl_mvm_rx_umac_scan_complete_notif(struct iwl_mvm *mvm,
 	if (mvm->scan_uid_status[uid] == IWL_MVM_SCAN_REGULAR) {
 		ieee80211_scan_completed(mvm->hw, aborted);
 		iwl_mvm_unref(mvm, IWL_MVM_REF_SCAN);
-		del_timer(&mvm->scan_timer);
+		cancel_delayed_work(&mvm->scan_timeout_dwork);
 	} else if (mvm->scan_uid_status[uid] == IWL_MVM_SCAN_SCHED) {
 		ieee80211_sched_scan_stopped(mvm->hw);
 		mvm->sched_scan_pass_all = SCHED_SCAN_PASS_ALL_DISABLED;
@@ -1653,7 +1655,7 @@ out:
 		 * to release the scan reference here.
 		 */
 		iwl_mvm_unref(mvm, IWL_MVM_REF_SCAN);
-		del_timer(&mvm->scan_timer);
+		cancel_delayed_work(&mvm->scan_timeout_dwork);
 		if (notify)
 			ieee80211_scan_completed(mvm->hw, true);
 	} else if (notify) {
