@@ -255,6 +255,7 @@ struct iwl_xvt {
 	struct device *dev;
 
 	struct mutex mutex;	/* Protects access to xVT struct */
+	struct mutex notif_mtx;	/* Protects notifications processing */
 	enum iwl_xvt_state state;
 	bool txq_full;
 	bool fw_error;
