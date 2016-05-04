@@ -718,12 +718,37 @@ static int tegra_drm_platform_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int tegra_drm_platform_suspend(struct device *dev)
+{
+	struct tegra_drm *tegra = dev_get_drvdata(dev);
+
+	drm_kms_helper_poll_disable(tegra->drm);
+
+	return 0;
+}
+
+static int tegra_drm_platform_resume(struct device *dev)
+{
+	struct tegra_drm *tegra = dev_get_drvdata(dev);
+
+	drm_kms_helper_poll_enable(tegra->drm);
+
+	return 0;
+}
+#endif
+
+static const struct dev_pm_ops tegra_drm_platform_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(tegra_drm_platform_suspend, tegra_drm_platform_resume)
+};
+
 static struct platform_driver tegra_drm_platform_driver = {
 	.probe = tegra_drm_platform_probe,
 	.remove = tegra_drm_platform_remove,
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = "tegra-drm",
+		.pm = &tegra_drm_platform_pm_ops,
 	},
 };
 
