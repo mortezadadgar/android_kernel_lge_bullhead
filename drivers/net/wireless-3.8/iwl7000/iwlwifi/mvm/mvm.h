@@ -134,11 +134,13 @@ extern const struct ieee80211_ops iwl_mvm_hw_ops;
  *	proprietary tools over testmode to debug the INIT fw.
  * @tfd_q_hang_detect: enabled the detection of hung transmit queues
  * @power_scheme: one of enum iwl_power_scheme
+ * @ftm_resp_asap: Disable non ASAP mode in FTM responder
  */
 struct iwl_mvm_mod_params {
 	bool init_dbg;
 	bool tfd_q_hang_detect;
 	int power_scheme;
+	bool ftm_resp_asap;
 };
 extern struct iwl_mvm_mod_params iwlmvm_mod_params;
 

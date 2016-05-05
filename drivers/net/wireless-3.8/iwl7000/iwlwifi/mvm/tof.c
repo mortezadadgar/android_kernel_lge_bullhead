@@ -359,6 +359,7 @@ iwl_mvm_tof_set_responder(struct iwl_mvm *mvm,
 
 	/* By default it's 0 - IWL_TOF_ALGO_TYPE_MAX_LIKE */
 	cmd->algo_type = mvm->tof_data.tof_algo_type;
+	cmd->asap_mode = iwlmvm_mod_params.ftm_resp_asap;
 }
 
 int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,

@@ -117,6 +117,10 @@ module_param_named(tfd_q_hang_detect, iwlmvm_mod_params.tfd_q_hang_detect,
 		   bool, S_IRUGO);
 MODULE_PARM_DESC(tfd_q_hang_detect,
 		 "TFD queues hang detection (default: true");
+module_param_named(ftm_resp_asap, iwlmvm_mod_params.ftm_resp_asap, bool,
+		   S_IRUGO);
+MODULE_PARM_DESC(ftm_resp_asap,
+		 "FTM responder ASAP mode only (non ASAP mode is disabled), default: false");
 
 
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
