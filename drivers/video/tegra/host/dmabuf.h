@@ -33,7 +33,8 @@ struct mem_mgr *nvhost_dmabuf_get_mgr_file(int fd);
 struct mem_handle *nvhost_dmabuf_alloc(struct mem_mgr *mgr,
 		size_t size, size_t align, int flags);
 void nvhost_dmabuf_put(struct mem_handle *handle);
-struct sg_table *nvhost_dmabuf_pin(struct mem_handle *handle);
+struct sg_table *nvhost_dmabuf_pin(struct mem_handle *handle,
+				struct device *dev);
 void nvhost_dmabuf_unpin(struct mem_handle *handle, struct sg_table *sgt);
 void *nvhost_dmabuf_mmap(struct mem_handle *handle);
 void nvhost_dmabuf_munmap(struct mem_handle *handle, void *addr);
@@ -43,4 +44,9 @@ void nvhost_dmabuf_kunmap(struct mem_handle *handle, unsigned int pagenum,
 struct mem_handle *nvhost_dmabuf_get(ulong id, struct platform_device *dev);
 int nvhost_dmabuf_get_param(struct mem_mgr *memmgr, struct mem_handle *handle,
 			   u32 param, u64 *result);
+void nvhost_dmabuf_get_comptags(struct mem_handle *handle,
+				struct nvhost_comptags *comptags);
+int nvhost_dmabuf_alloc_comptags(struct mem_handle *handle,
+				 struct nvhost_allocator *allocator,
+				 int lines);
 #endif

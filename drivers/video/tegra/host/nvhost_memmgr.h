@@ -21,7 +21,9 @@
 #ifndef _NVHOST_MEM_MGR_H_
 #define _NVHOST_MEM_MGR_H_
 
+#include <linux/dma-buf.h>
 #include <linux/dma-mapping.h>
+#include <linux/nvmap.h>
 #include <linux/scatterlist.h>
 
 struct nvhost_chip_support;
@@ -50,6 +52,7 @@ enum mem_rw_flag {
 enum mem_mgr_type {
 	mem_mgr_type_nvmap = 0,
 	mem_mgr_type_dmabuf = 1,
+	mem_mgr_type_invalid = 2,
 };
 
 #ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
@@ -87,7 +90,29 @@ struct sg_table *nvhost_memmgr_sg_table(struct mem_mgr *mgr,
 		struct mem_handle *handle);
 void nvhost_memmgr_free_sg_table(struct mem_mgr *mgr,
 		struct mem_handle *handle, struct sg_table *sgt);
-static inline int nvhost_memmgr_type(ulong id) { return id & MEMMGR_TYPE_MASK; }
+extern struct dma_buf_ops nvmap_dma_buf_ops;
+static inline int nvhost_memmgr_type(ulong id) {
+	struct dma_buf* db = (struct dma_buf*)id;
+
+#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
+	if (id >= NVMAP_HANDLE_NATIVE_FD_START &&
+			id < NVMAP_HANDLE_FOREIGN_FD_START)
+		return mem_mgr_type_nvmap;
+	else if (id >= NVMAP_HANDLE_FOREIGN_FD_START &&
+			id < NVMAP_HANDLE_FOREIGN_FD_END)
+		return mem_mgr_type_dmabuf;
+#endif
+
+	/* nvtest would give wrong ID for kernel verification */
+	if (id == ~0)
+		return mem_mgr_type_invalid;
+
+	if (db->ops == &nvmap_dma_buf_ops)
+		return mem_mgr_type_nvmap;
+	else
+		return mem_mgr_type_dmabuf;
+}
+
 static inline int nvhost_memmgr_id(ulong id) { return id & MEMMGR_ID_MASK; }
 u32 nvhost_memmgr_handle_to_id(struct mem_handle *handle);
 

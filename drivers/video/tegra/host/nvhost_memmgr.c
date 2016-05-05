@@ -118,7 +118,10 @@ struct mem_handle *nvhost_memmgr_get(struct mem_mgr *mgr,
 		h = (struct mem_handle *) nvhost_dmabuf_get(id, dev);
 		break;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
 	default:
+		WARN_ON(1);
 		break;
 	}
 
@@ -138,7 +141,10 @@ void nvhost_memmgr_put(struct mem_mgr *mgr, struct mem_handle *handle)
 		nvhost_dmabuf_put(handle);
 		break;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
 	default:
+		WARN_ON(1);
 		break;
 	}
 }
@@ -154,10 +160,13 @@ struct sg_table *nvhost_memmgr_pin(struct mem_mgr *mgr,
 #endif
 #ifdef CONFIG_TEGRA_GRHOST_USE_DMABUF
 	case mem_mgr_type_dmabuf:
-		return nvhost_dmabuf_pin(handle);
+		return nvhost_dmabuf_pin(handle, dev);
 		break;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
 	default:
+		WARN_ON(1);
 		return 0;
 		break;
 	}
@@ -178,7 +187,10 @@ void nvhost_memmgr_unpin(struct mem_mgr *mgr,
 		nvhost_dmabuf_unpin(handle, sgt);
 		break;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
 	default:
+		WARN_ON(1);
 		break;
 	}
 }
@@ -196,7 +208,10 @@ void *nvhost_memmgr_mmap(struct mem_handle *handle)
 		return nvhost_dmabuf_mmap(handle);
 		break;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
 	default:
+		WARN_ON(1);
 		return 0;
 		break;
 	}
@@ -215,7 +230,10 @@ void nvhost_memmgr_munmap(struct mem_handle *handle, void *addr)
 		nvhost_dmabuf_munmap(handle, addr);
 		break;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
 	default:
+		WARN_ON(1);
 		break;
 	}
 }
@@ -241,7 +259,10 @@ int nvhost_memmgr_get_param(struct mem_mgr *mem_mgr,
 					       param, result);
 		break;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
 	default:
+		WARN_ON(1);
 		break;
 	}
 	return -EINVAL;
@@ -260,8 +281,11 @@ void *nvhost_memmgr_kmap(struct mem_handle *handle, unsigned int pagenum)
 		return nvhost_dmabuf_kmap(handle, pagenum);
 		break;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
 	default:
 		return 0;
+		WARN_ON(1);
 		break;
 	}
 }
@@ -280,7 +304,10 @@ void nvhost_memmgr_kunmap(struct mem_handle *handle, unsigned int pagenum,
 		nvhost_dmabuf_kunmap(handle, pagenum, addr);
 		break;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
 	default:
+		WARN_ON(1);
 		break;
 	}
 }
@@ -299,7 +326,10 @@ u32 nvhost_memmgr_handle_to_id(struct mem_handle *handle)
 		WARN_ON(1);
 		break;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
 	default:
+		WARN_ON(1);
 		break;
 	}
 
@@ -320,6 +350,8 @@ struct sg_table *nvhost_memmgr_sg_table(struct mem_mgr *mgr,
 		WARN_ON(1);
 		break;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
 	default:
 		break;
 	}
@@ -343,7 +375,10 @@ void nvhost_memmgr_free_sg_table(struct mem_mgr *mgr,
 		WARN_ON(1);
 		break;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
 	default:
+		WARN_ON(1);
 		break;
 	}
 	return;
@@ -353,11 +388,22 @@ void nvhost_memmgr_get_comptags(struct mem_handle *mem,
 				struct nvhost_comptags *comptags)
 {
 #ifdef CONFIG_TEGRA_GRHOST_USE_NVMAP
-	return nvhost_nvmap_get_comptags(mem, comptags);
+	switch (nvhost_memmgr_type((ulong)mem)) {
+	case mem_mgr_type_nvmap:
+		nvhost_nvmap_get_comptags(mem, comptags);
+		return;
 #endif
 #ifdef CONFIG_TEGRA_GRHOST_USE_DMABUF
-	WARN_ON(1);
+	case mem_mgr_type_dmabuf:
+		nvhost_dmabuf_get_comptags(mem, comptags);
+		return;
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
+	default:
+		WARN_ON(1);
+		return;
+	}
 }
 
 int nvhost_memmgr_alloc_comptags(struct mem_handle *mem,
@@ -365,12 +411,20 @@ int nvhost_memmgr_alloc_comptags(struct mem_handle *mem,
 				 int lines)
 {
 #ifdef CONFIG_TEGRA_GRHOST_USE_NVMAP
-	return nvhost_nvmap_alloc_comptags(mem, allocator, lines);
+	switch (nvhost_memmgr_type((ulong)mem)) {
+	case mem_mgr_type_nvmap:
+		return nvhost_nvmap_alloc_comptags(mem, allocator, lines);
 #endif
 #ifdef CONFIG_TEGRA_GRHOST_USE_DMABUF
-	WARN_ON(1);
-	return 0;
+	case mem_mgr_type_dmabuf:
+		return nvhost_dmabuf_alloc_comptags(mem, allocator, lines);
 #endif
+	case mem_mgr_type_invalid:
+	/* Fall through */
+	default:
+		WARN_ON(1);
+		return 0;
+	}
 }
 
 int nvhost_memmgr_init(struct nvhost_chip_support *chip)

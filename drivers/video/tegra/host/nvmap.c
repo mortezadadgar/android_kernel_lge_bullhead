@@ -191,6 +191,7 @@ priv_exist_or_err:
 						      DMA_BIDIRECTIONAL);
 		if (IS_ERR(as_priv->sgt)) {
 			dma_buf_detach(dmabuf, as_priv->attach);
+			as_priv->attach = NULL;
 			mutex_unlock(&priv->lock);
 			return as_priv->sgt;
 		}
@@ -229,6 +230,7 @@ void nvhost_nvmap_unpin(struct mem_mgr *mgr, struct mem_handle *handle,
 			dma_buf_unmap_attachment(as_priv->attach,
 				as_priv->sgt, DMA_BIDIRECTIONAL);
 			dma_buf_detach(dmabuf, as_priv->attach);
+			as_priv->attach = NULL;
 		}
 		trace_nvhost_nvmap_unpin(dev_name(dev),
 			dmabuf, as_priv->len, dma_addr);
@@ -260,12 +262,8 @@ void nvhost_nvmap_kunmap(struct mem_handle *handle, unsigned int pagenum,
 struct mem_handle *nvhost_nvmap_get(struct mem_mgr *mgr,
 		ulong id, struct platform_device *dev)
 {
-#ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
-	return (struct mem_handle *)dma_buf_get(id);
-#else
 	return (struct mem_handle *)
 		nvmap_dmabuf_export((struct nvmap_client *)mgr, id);
-#endif
 }
 
 int nvhost_nvmap_get_param(struct mem_mgr *mgr, struct mem_handle *handle,
