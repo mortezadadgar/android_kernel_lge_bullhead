@@ -3434,17 +3434,17 @@ enum ieee80211_reconfig_type {
  *	match that of the active FTM request.
  * @start_ftm_responder: Start FTM responder and configure its parameters.
  *
- * @start_nan: join an existing nan cluster, or create a new one.
- * @stop_nan: leave the nan cluster.
- * @nan_change_conf: change nan configuration. The data in cfg80211_nan_conf
+ * @start_nan: join an existing NAN cluster, or create a new one.
+ * @stop_nan: leave the NAN cluster.
+ * @nan_change_conf: change NAN configuration. The data in cfg80211_nan_conf
  *	contains full new configuration and changes specify which parameters
  *	are changed with respect to the last nan config.
- * @add_nan_func: Add a nan function. Returns 0 on success. The data in
+ * @add_nan_func: Add a NAN function. Returns 0 on success. The data in
  *	cfg80211_nan_func must not be referenced outside the scope of
  *	this call.
- * @rm_nan_func: Remove a nan function. The driver must call
- * ieee80211_nan_func_terminated() with
- * NL80211_NAN_FUNC_TERM_REASON_USER_REQUEST reason code upon removal.
+ * @rm_nan_func: Remove a NAN function. The driver must call
+ *	ieee80211_nan_func_terminated() with
+ *	NL80211_NAN_FUNC_TERM_REASON_USER_REQUEST reason code upon removal.
  */
 struct ieee80211_ops {
 	void (*tx)(struct ieee80211_hw *hw,
@@ -5786,7 +5786,7 @@ void ieee80211_txq_get_depth(struct ieee80211_txq *txq,
 /**
  * ieee80211_nan_func_terminated - notify about NAN function termination.
  *
- * This function is used to notify mac80211 about nan function termination.
+ * This function is used to notify mac80211 about NAN function termination.
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @inst_id: the local instance id
