@@ -51,7 +51,8 @@
 extern void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 		struct dsi_panel_cmds *pcmds);
 
-static int parse_dsi_cmds(struct dsi_panel_cmds *pcmds, const uint8_t *cmd, int blen)
+static int parse_dsi_cmds(struct mdss_livedisplay_ctx *mlc,
+		struct dsi_panel_cmds *pcmds, const uint8_t *cmd, int blen)
 {
 	int len;
 	char *buf, *bp;
@@ -110,8 +111,7 @@ static int parse_dsi_cmds(struct dsi_panel_cmds *pcmds, const uint8_t *cmd, int 
 		len -= dchdr->dlen;
 	}
 
-	/*Set default link state to HS Mode*/
-	pcmds->link_state = DSI_HS_MODE;
+	pcmds->link_state = mlc->link_state;
 
 	pr_debug("%s: dcs_cmd=%x len=%d, cmd_cnt=%d link_state=%d\n", __func__,
 		pcmds->buf[0], pcmds->blen, pcmds->cmd_cnt, pcmds->link_state);
@@ -267,7 +267,7 @@ static int mdss_livedisplay_update_locked(struct mdss_dsi_ctrl_pdata *ctrl_pdata
 	}
 
 	// Parse the command and send it
-	ret = parse_dsi_cmds(&dsi_cmds, (const uint8_t *)cmd_buf, len);
+	ret = parse_dsi_cmds(mlc, &dsi_cmds, (const uint8_t *)cmd_buf, len);
 	if (ret == 0) {
 		mdss_dsi_panel_cmds_send(ctrl_pdata, &dsi_cmds);
 		kfree(dsi_cmds.buf);
@@ -557,6 +557,7 @@ int mdss_livedisplay_parse_dt(struct device_node *np, struct mdss_panel_info *pi
 	int rc = 0, i = 0;
 	struct mdss_livedisplay_ctx *mlc;
 	char preset_name[64];
+	const char *link_state;
 	uint32_t tmp = 0;
 
 	if (pinfo == NULL)
@@ -564,6 +565,12 @@ int mdss_livedisplay_parse_dt(struct device_node *np, struct mdss_panel_info *pi
 
 	mlc = kzalloc(sizeof(struct mdss_livedisplay_ctx), GFP_KERNEL);
 	mutex_init(&mlc->lock);
+
+	link_state = of_get_property(np, "cm,mdss-livedisplay-command-state", NULL);
+	if (link_state && !strcmp(link_state, "dsi_lp_mode"))
+		mlc->link_state = DSI_LP_MODE;
+	else
+		mlc->link_state = DSI_HS_MODE;
 
 	mlc->cabc_cmds = of_get_property(np,
 			"cm,mdss-livedisplay-cabc-cmd", &mlc->cabc_cmds_len);
