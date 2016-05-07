@@ -26,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -84,6 +84,7 @@ struct iwl_dbg_cfg current_dbg_config = {
 #define DBG_CFG_REINCLUDE
 #define IWL_DBG_CFG(type, name) \
 	.name = IWL_ ## name,
+#define IWL_DBG_CFG_STR(name) /* no default */
 #define IWL_DBG_CFG_NODEF(type, name) /* no default */
 #define IWL_DBG_CFG_BIN(name) /* nothing, default empty */
 #define IWL_DBG_CFG_BINA(name, max) /* nothing, default empty */
@@ -92,6 +93,7 @@ struct iwl_dbg_cfg current_dbg_config = {
 	.name = IWL_ ## name,
 #include "iwl-dbg-cfg.h"
 #undef IWL_DBG_CFG
+#undef IWL_DBG_CFG_STR
 #undef IWL_DBG_CFG_NODEF
 #undef IWL_DBG_CFG_BIN
 #undef IWL_DBG_CFG_BINA
@@ -170,9 +172,27 @@ error:
 	return -EINVAL;
 }
 
+static __maybe_unused char *
+dbg_cfg_load_str(const char *name, const char *val)
+{
+	char *out;
+
+	if (strlen(val) == 0) {
+		printk(KERN_INFO "iwlwifi debug config: Invalid data for %s\n",
+		       name);
+	} else {
+		out = kstrdup(val, GFP_KERNEL);
+		printk(KERN_INFO "iwlwifi debug config: %s=%s\n", name, out);
+		return out;
+	}
+	return NULL;
+}
+
 void iwl_dbg_cfg_free(struct iwl_dbg_cfg *dbgcfg)
 {
 #define IWL_DBG_CFG(t, n) /* nothing */
+#define IWL_DBG_CFG_STR(n)				\
+	kfree(dbgcfg->n);
 #define IWL_DBG_CFG_NODEF(t, n) /* nothing */
 #define IWL_DBG_CFG_BIN(n)				\
 	do {						\
@@ -195,6 +215,7 @@ void iwl_dbg_cfg_free(struct iwl_dbg_cfg *dbgcfg)
 #define IWL_MOD_PARAM(t, n) /* nothing */
 #include "iwl-dbg-cfg.h"
 #undef IWL_DBG_CFG
+#undef IWL_DBG_CFG_STR
 #undef IWL_DBG_CFG_NODEF
 #undef IWL_DBG_CFG_BIN
 #undef IWL_DBG_CFG_BINA
@@ -286,6 +307,13 @@ void iwl_dbg_cfg_load_ini(struct device *dev, struct iwl_dbg_cfg *dbgcfg)
 					 &dbgcfg->n, min, max);		\
 			continue;					\
 		}
+#define IWL_DBG_CFG_STR(n)						\
+		if (strncmp(#n, line, strlen(#n)) == 0 &&		\
+			line[strlen(#n)] == '=') {			\
+			dbgcfg->n =					\
+				dbg_cfg_load_str(#n, line + strlen(#n) + 1);\
+			continue;					\
+		}
 #define IWL_MOD_PARAM(t, n)						\
 		if (strncmp(#n, line, strlen(#n)) == 0 &&		\
 		    line[strlen(#n)] == '=') {				\
@@ -295,6 +323,7 @@ void iwl_dbg_cfg_load_ini(struct device *dev, struct iwl_dbg_cfg *dbgcfg)
 		}
 #include "iwl-dbg-cfg.h"
 #undef IWL_DBG_CFG
+#undef IWL_DBG_CFG_STR
 #undef IWL_DBG_CFG_NODEF
 #undef IWL_DBG_CFG_BIN
 #undef IWL_DBG_CFG_BINA

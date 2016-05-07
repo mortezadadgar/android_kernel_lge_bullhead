@@ -3,6 +3,7 @@ obj-$(CPTCFG_MAC80211) += iwl7000_mac80211.o
 # mac80211 objects
 mac80211-y := \
 	main.o status.o \
+	driver-ops.o \
 	sta_info.o \
 	wep.o \
 	wpa.o \
@@ -26,11 +27,10 @@ mac80211-y := \
 	key.o \
 	util.o \
 	wme.o \
-	event.o \
 	chan.o \
 	trace.o mlme.o \
 	tdls.o \
-	reg.o cfg-utils.o \
+	reg.o cfg-utils.o backports.o \
 	ocb.o
 
 mac80211-$(CPTCFG_MAC80211_LEDS) += led.o

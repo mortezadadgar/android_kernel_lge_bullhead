@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,7 +27,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -205,6 +206,7 @@
 #define CSR_INT_BIT_FH_TX        (1 << 27) /* Tx DMA FH_INT[1:0] */
 #define CSR_INT_BIT_SCD          (1 << 26) /* TXQ pointer advanced */
 #define CSR_INT_BIT_SW_ERR       (1 << 25) /* uCode error */
+#define CSR_INT_BIT_PAGING       (1 << 24) /* SDIO PAGING */
 #define CSR_INT_BIT_RF_KILL      (1 << 7)  /* HW RFKILL switch GP_CNTRL[27] toggled */
 #define CSR_INT_BIT_CT_KILL      (1 << 6)  /* Critical temp (chip too hot) rfkill */
 #define CSR_INT_BIT_SW_RX        (1 << 3)  /* Rx, command responses */
@@ -215,6 +217,7 @@
 				 CSR_INT_BIT_HW_ERR  | \
 				 CSR_INT_BIT_FH_TX   | \
 				 CSR_INT_BIT_SW_ERR  | \
+				 CSR_INT_BIT_PAGING  | \
 				 CSR_INT_BIT_RF_KILL | \
 				 CSR_INT_BIT_SW_RX   | \
 				 CSR_INT_BIT_WAKEUP  | \
@@ -304,6 +307,7 @@
 /* HW REV */
 #define CSR_HW_REV_DASH(_val)          (((_val) & 0x0000003) >> 0)
 #define CSR_HW_REV_STEP(_val)          (((_val) & 0x000000C) >> 2)
+#define CSR_HW_REV_TYPE(_val)          (((_val) & 0x000FFF0) >> 4)
 
 
 /**
@@ -551,5 +555,53 @@ enum dtd_diode_reg {
 	DTS_DIODE_REG_FLAGS_PASS_ONCE_POS	= 7,
 	DTS_DIODE_REG_FLAGS_PASS_ONCE		= 0x00000080, /* bits [7:7] */
 };
+
+/*****************************************************************************
+ *                        MSIX related registers                             *
+ *****************************************************************************/
+
+#define CSR_MSIX_BASE			(0x2000)
+#define CSR_MSIX_FH_INT_CAUSES_AD	(CSR_MSIX_BASE + 0x800)
+#define CSR_MSIX_FH_INT_MASK_AD		(CSR_MSIX_BASE + 0x804)
+#define CSR_MSIX_HW_INT_CAUSES_AD	(CSR_MSIX_BASE + 0x808)
+#define CSR_MSIX_HW_INT_MASK_AD		(CSR_MSIX_BASE + 0x80C)
+#define CSR_MSIX_AUTOMASK_ST_AD		(CSR_MSIX_BASE + 0x810)
+#define CSR_MSIX_RX_IVAR_AD_REG		(CSR_MSIX_BASE + 0x880)
+#define CSR_MSIX_IVAR_AD_REG		(CSR_MSIX_BASE + 0x890)
+#define CSR_MSIX_PENDING_PBA_AD		(CSR_MSIX_BASE + 0x1000)
+#define CSR_MSIX_RX_IVAR(cause)		(CSR_MSIX_RX_IVAR_AD_REG + (cause))
+#define CSR_MSIX_IVAR(cause)		(CSR_MSIX_IVAR_AD_REG + (cause))
+
+#define MSIX_FH_INT_CAUSES_Q(q)		(q)
+
+/*
+ * Causes for the FH register interrupts
+ */
+enum msix_fh_int_causes {
+	MSIX_FH_INT_CAUSES_D2S_CH0_NUM		= BIT(16),
+	MSIX_FH_INT_CAUSES_D2S_CH1_NUM		= BIT(17),
+	MSIX_FH_INT_CAUSES_S2D			= BIT(19),
+	MSIX_FH_INT_CAUSES_FH_ERR		= BIT(21),
+};
+
+/*
+ * Causes for the HW register interrupts
+ */
+enum msix_hw_int_causes {
+	MSIX_HW_INT_CAUSES_REG_ALIVE		= BIT(0),
+	MSIX_HW_INT_CAUSES_REG_WAKEUP		= BIT(1),
+	MSIX_HW_INT_CAUSES_REG_CT_KILL		= BIT(6),
+	MSIX_HW_INT_CAUSES_REG_RF_KILL		= BIT(7),
+	MSIX_HW_INT_CAUSES_REG_PERIODIC		= BIT(8),
+	MSIX_HW_INT_CAUSES_REG_SW_ERR		= BIT(25),
+	MSIX_HW_INT_CAUSES_REG_SCD		= BIT(26),
+	MSIX_HW_INT_CAUSES_REG_FH_TX		= BIT(27),
+	MSIX_HW_INT_CAUSES_REG_HW_ERR		= BIT(29),
+	MSIX_HW_INT_CAUSES_REG_HAP		= BIT(30),
+};
+
+#define MSIX_MIN_INTERRUPT_VECTORS		2
+#define MSIX_AUTO_CLEAR_CAUSE			0
+#define MSIX_NON_AUTO_CLEAR_CAUSE		BIT(7)
 
 #endif /* !__iwl_csr_h__ */

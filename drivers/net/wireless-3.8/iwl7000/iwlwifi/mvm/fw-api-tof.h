@@ -25,7 +25,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- * Intel Linux Wireless <ilw@linux.intel.com>
+ * Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -74,6 +74,7 @@ enum iwl_mvm_tof_sub_grp_ids {
 	TOF_RESPONDER_CONFIG_CMD = 0x5,
 	TOF_NW_INITIATED_RES_SEND_CMD = 0x6,
 	TOF_NEIGHBOR_REPORT_REQ_CMD = 0x7,
+	TOF_RESPONDER_DYN_CONFIG_CMD = 0x8,
 	TOF_NEIGHBOR_REPORT_RSP_NOTIF = 0xFC,
 	TOF_NW_INITIATED_REQ_RCVD_NOTIF = 0xFD,
 	TOF_RANGE_RESPONSE_NOTIF = 0xFE,
@@ -96,6 +97,16 @@ struct iwl_tof_config_cmd {
 } __packed;
 
 /**
+ * enum iwl_tof_bandwidth - values for iwl_tof_range_req_ap_entry.bandwidth
+ */
+enum iwl_tof_bandwidth {
+	IWL_TOF_BW_20_LEGACY,
+	IWL_TOF_BW_20_HT,
+	IWL_TOF_BW_40,
+	IWL_TOF_BW_80,
+};
+
+/**
  * struct iwl_tof_responder_config_cmd - ToF AP mode (for debug)
  * @burst_period: future use: (currently hard coded in the LMAC)
  *		  The interval between two sequential bursts.
@@ -115,7 +126,7 @@ struct iwl_tof_config_cmd {
  *			 params and use the recomended Initiator params.
  *			 0 - otherwise
  * @channel_num: current AP Channel
- * @bandwidth: current AP Bandwidth: 0  20MHz, 1  40MHz, 2  80MHz
+ * @bandwidth: current AP Bandwidth: &enum iwl_tof_bandwidth
  * @rate: current AP rate
  * @ctrl_ch_position: coding of the control channel position relative to
  *	     the center frequency.
@@ -157,6 +168,22 @@ struct iwl_tof_responder_config_cmd {
 } __packed;
 
 /**
+ * struct iwl_tof_responder_dyn_config_cmd - Dynamic responder settings
+ * @lci_len: The length of the 1st (LCI) part in the @lci_civic buffer
+ * @civic_len: The length of the 2nd (CIVIC) part in the @lci_civic buffer
+ * @lci_civic: The LCI/CIVIC buffer. LCI data (if exists) comes first, then, if
+ *	needed, 0-padding such that the next part is dword-aligned, then CIVIC
+ *	data (if exists) follows, and then 0-padding again to complete a
+ *	4-multiple long buffer.
+ */
+struct iwl_tof_responder_dyn_config_cmd {
+	__le32 sub_grp_cmd_id;
+	__le32 lci_len;
+	__le32 civic_len;
+	u8 lci_civic[];
+} __packed;
+
+/**
  * struct iwl_tof_range_request_ext_cmd - extended range req for WLS
  * @tsf_timer_offset_msec: the recommended time offset (mSec) from the AP's TSF
  * @min_delta_ftm: Minimal time between two consecutive measurements,
@@ -179,11 +206,20 @@ struct iwl_tof_range_req_ext_cmd {
 } __packed;
 
 #define IWL_MVM_TOF_MAX_APS 21
+#define IWL_MVM_TOF_MAX_TWO_SIDED_APS 5
 
 /**
+ * enum iwl_tof_location_query - values for query bitmap
+ */
+enum iwl_tof_location_query {
+	IWL_TOF_LOC_LCI = 0x01,
+	IWL_TOF_LOC_CIVIC = 0x02,
+};
+
+ /**
  * struct iwl_tof_range_req_ap_entry - AP configuration parameters
  * @channel_num: Current AP Channel
- * @bandwidth: Current AP Bandwidth: 0  20MHz, 1  40MHz, 2  80MHz
+ * @bandwidth: Current AP Bandwidth. One of iwl_tof_bandwidth.
  * @tsf_delta_direction: TSF relatively to the subject AP
  * @ctrl_ch_position: Coding of the control channel position relative to the
  *	     center frequency.
@@ -235,18 +271,18 @@ struct iwl_tof_range_req_ap_entry {
 
 /**
  * enum iwl_tof_response_mode
- * @IWL_MVM_TOF_RESPOSE_ASAP: report each AP measurement separately as soon as
- *			      possible (not supported for this release)
- * @IWL_MVM_TOF_RESPOSE_TIMEOUT: report all AP measurements as a batch upon
- *				 timeout expiration
- * @IWL_MVM_TOF_RESPOSE_COMPLETE: report all AP measurements as a batch at the
- *				  earlier of: measurements completion / timeout
- *				  expiration.
+ * @IWL_MVM_TOF_RESPONSE_ASAP: report each AP measurement separately as soon as
+ *			       possible (not supported for this release)
+ * @IWL_MVM_TOF_RESPONSE_TIMEOUT: report all AP measurements as a batch upon
+ *				  timeout expiration
+ * @IWL_MVM_TOF_RESPONSE_COMPLETE: report all AP measurements as a batch at the
+ *				   earlier of: measurements completion / timeout
+ *				   expiration.
  */
 enum iwl_tof_response_mode {
-	IWL_MVM_TOF_RESPOSE_ASAP = 1,
-	IWL_MVM_TOF_RESPOSE_TIMEOUT,
-	IWL_MVM_TOF_RESPOSE_COMPLETE,
+	IWL_MVM_TOF_RESPONSE_ASAP,
+	IWL_MVM_TOF_RESPONSE_TIMEOUT,
+	IWL_MVM_TOF_RESPONSE_COMPLETE,
 };
 
 /**
@@ -279,8 +315,10 @@ struct iwl_tof_range_req_cmd {
 	u8 los_det_disable;
 	u8 num_of_ap;
 	u8 macaddr_random;
+	u8 range_req_bssid[ETH_ALEN];
 	u8 macaddr_template[ETH_ALEN];
 	u8 macaddr_mask[ETH_ALEN];
+	u16 reserved;
 	struct iwl_tof_range_req_ap_entry ap[IWL_MVM_TOF_MAX_APS];
 } __packed;
 

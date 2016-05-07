@@ -1470,7 +1470,6 @@ static const u8 *ieee80211_tdls_find_sw_timing_ie(struct sk_buff *skb)
 				skb->len - (ie_start - skb->data));
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 static struct sk_buff *
 ieee80211_tdls_ch_sw_tmpl_get(struct sta_info *sta, u8 oper_class,
 			      struct cfg80211_chan_def *chandef,
@@ -1617,7 +1616,6 @@ ieee80211_tdls_cancel_channel_switch(struct wiphy *wiphy,
 out:
 	mutex_unlock(&local->sta_mtx);
 }
-#endif
 
 static struct sk_buff *
 ieee80211_tdls_ch_sw_resp_tmpl_get(struct sta_info *sta,
@@ -1662,7 +1660,6 @@ ieee80211_tdls_ch_sw_resp_tmpl_get(struct sta_info *sta,
 	return skb;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 static int
 ieee80211_process_tdls_channel_switch_resp(struct ieee80211_sub_if_data *sdata,
 					   struct sk_buff *skb)
@@ -1747,7 +1744,6 @@ out:
 	dev_kfree_skb_any(params.tmpl_skb);
 	return ret;
 }
-#endif
 
 static int
 ieee80211_process_tdls_channel_switch_req(struct ieee80211_sub_if_data *sdata,
@@ -1928,9 +1924,7 @@ ieee80211_process_tdls_channel_switch(struct ieee80211_sub_if_data *sdata,
 		ieee80211_process_tdls_channel_switch_req(sdata, skb);
 		break;
 	case WLAN_TDLS_CHANNEL_SWITCH_RESPONSE:
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 		ieee80211_process_tdls_channel_switch_resp(sdata, skb);
-#endif
 		break;
 	default:
 		WARN_ON_ONCE(1);

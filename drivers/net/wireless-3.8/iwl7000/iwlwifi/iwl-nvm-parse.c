@@ -26,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -241,7 +241,6 @@ static u32 iwl_get_channel_flags(u8 ch_num, int ch_idx, bool is_5ghz,
 	if (nvm_flags & NVM_CHANNEL_RADAR)
 		flags |= IEEE80211_CHAN_RADAR;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,16,0)
 	if (nvm_flags & NVM_CHANNEL_INDOOR_ONLY)
 		flags |= IEEE80211_CHAN_INDOOR_ONLY;
 
@@ -251,7 +250,6 @@ static u32 iwl_get_channel_flags(u8 ch_num, int ch_idx, bool is_5ghz,
 	if ((nvm_flags & NVM_CHANNEL_GO_CONCURRENT) &&
 	    (flags & IEEE80211_CHAN_NO_IR))
 		flags |= IEEE80211_CHAN_IR_CONCURRENT;
-#endif
 
 	return flags;
 }
@@ -368,6 +366,9 @@ static void iwl_init_vht_hw_capab(const struct iwl_cfg *cfg,
 		       max_ampdu_exponent <<
 		       IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_SHIFT;
 
+	if (cfg->vht_mu_mimo_supported)
+		vht_cap->cap |= IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE;
+
 	if (cfg->ht_params->ldpc)
 		vht_cap->cap |= IEEE80211_VHT_CAP_RXLDPC;
 
@@ -381,8 +382,19 @@ static void iwl_init_vht_hw_capab(const struct iwl_cfg *cfg,
 	else
 		vht_cap->cap |= IEEE80211_VHT_CAP_TX_ANTENNA_PATTERN;
 
-	if (iwlwifi_mod_params.amsdu_size_8K)
+	switch (iwlwifi_mod_params.amsdu_size) {
+	case IWL_AMSDU_4K:
+		vht_cap->cap |= IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_3895;
+		break;
+	case IWL_AMSDU_8K:
 		vht_cap->cap |= IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_7991;
+		break;
+	case IWL_AMSDU_12K:
+		vht_cap->cap |= IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_11454;
+		break;
+	default:
+		break;
+	}
 
 	vht_cap->vht_mcs.rx_mcs_map =
 		cpu_to_le16(IEEE80211_VHT_MCS_SUPPORT_0_9 << 0 |
@@ -440,7 +452,7 @@ static void iwl_init_sbands(struct device *dev, const struct iwl_cfg *cfg,
 					  IEEE80211_BAND_5GHZ);
 	iwl_init_ht_hw_capab(cfg, data, &sband->ht_cap, IEEE80211_BAND_5GHZ,
 			     tx_chains, rx_chains);
-	if (data->sku_cap_11ac_enable)
+	if (data->sku_cap_11ac_enable && !iwlwifi_mod_params.disable_11ac)
 		iwl_init_vht_hw_capab(cfg, data, &sband->vht_cap,
 				      tx_chains, rx_chains);
 
@@ -530,7 +542,7 @@ static void iwl_set_hw_address_family_8000(struct device *dev,
 					   struct iwl_nvm_data *data,
 					   const __le16 *mac_override,
 					   const __le16 *nvm_hw,
-					   u32 mac_addr0, u32 mac_addr1)
+					   __le32 mac_addr0, __le32 mac_addr1)
 {
 	const u8 *hw_addr;
 
@@ -574,7 +586,8 @@ static void iwl_set_hw_address_family_8000(struct device *dev,
 
 		if (!is_valid_ether_addr(data->hw_addr))
 			IWL_ERR_DEV(dev,
-				    "mac address from hw section is not valid\n");
+				    "mac address (%pM) from hw section is not valid\n",
+				    data->hw_addr);
 
 		return;
 	}
@@ -582,15 +595,13 @@ static void iwl_set_hw_address_family_8000(struct device *dev,
 	IWL_ERR_DEV(dev, "mac address is not found\n");
 }
 
-#define IWL_4165_DEVICE_ID 0x5501
-
 struct iwl_nvm_data *
 iwl_parse_nvm_data(struct device *dev, const struct iwl_cfg *cfg,
 		   const __le16 *nvm_hw, const __le16 *nvm_sw,
 		   const __le16 *nvm_calib, const __le16 *regulatory,
 		   const __le16 *mac_override, const __le16 *phy_sku,
 		   u8 tx_chains, u8 rx_chains, bool lar_fw_supported,
-		   u32 mac_addr0, u32 mac_addr1, u32 hw_id)
+		   __le32 mac_addr0, __le32 mac_addr1)
 {
 	struct iwl_nvm_data *data;
 	u32 sku;
@@ -628,17 +639,6 @@ iwl_parse_nvm_data(struct device *dev, const struct iwl_cfg *cfg,
 	data->sku_cap_11ac_enable = data->sku_cap_11n_enable &&
 				    (sku & NVM_SKU_CAP_11AC_ENABLE);
 	data->sku_cap_mimo_disabled = sku & NVM_SKU_CAP_MIMO_DISABLE;
-
-	/*
-	 * OTP 0x52 bug work around
-	 * define antenna 1x1 according to MIMO disabled
-	 */
-	if (hw_id == IWL_4165_DEVICE_ID && data->sku_cap_mimo_disabled) {
-		data->valid_tx_ant = ANT_B;
-		data->valid_rx_ant = ANT_B;
-		tx_chains = ANT_B;
-		rx_chains = ANT_B;
-	}
 
 	data->n_hw_addrs = iwl_get_n_hw_addrs(cfg, nvm_sw);
 
@@ -722,14 +722,12 @@ static u32 iwl_nvm_get_regdom_bw_flags(const u8 *nvm_chan,
 	if (nvm_flags & NVM_CHANNEL_INDOOR_ONLY)
 		flags |= NL80211_RRF_NO_OUTDOOR;
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	/* Set the GO concurrent flag only in case that NO_IR is set.
 	 * Otherwise it is meaningless
 	 */
 	if ((nvm_flags & NVM_CHANNEL_GO_CONCURRENT) &&
 	    (flags & NL80211_RRF_NO_IR))
 		flags |= NL80211_RRF_GO_CONCURRENT;
-#endif
 
 	return flags;
 }

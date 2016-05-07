@@ -6,6 +6,7 @@
  * GPL LICENSE SUMMARY
  *
  * Copyright(c) 2007 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -25,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -242,4 +243,44 @@ void iwl_xvt_dump_nic_error_log_v2(struct iwl_xvt *xvt,
 	IWL_ERR(xvt, "0x%08X | lmpm_pmg_sel\n", table->lmpm_pmg_sel);
 	IWL_ERR(xvt, "0x%08X | timestamp\n", table->u_timestamp);
 	IWL_ERR(xvt, "0x%08X | flow_handler\n", table->flow_handler);
+}
+
+void iwl_xvt_get_umac_error_log(struct iwl_xvt *xvt,
+				struct iwl_umac_error_event_table *table)
+{
+	struct iwl_trans *trans = xvt->trans;
+	u32 base;
+
+	base = xvt->umac_error_event_table;
+
+	if (base < 0x800000) {
+		IWL_ERR(xvt,
+			"Not valid error log pointer 0x%08X for %s uCode\n",
+			base,
+			(xvt->cur_ucode == IWL_UCODE_INIT)
+					? "Init" : "RT");
+		return;
+	}
+
+	iwl_trans_read_mem_bytes(trans, base, table, sizeof(*table));
+}
+
+void iwl_xvt_dump_umac_error_log(struct iwl_xvt *xvt,
+				 struct iwl_umac_error_event_table *table)
+{
+	IWL_ERR(xvt, "0x%08X | %s\n", table->error_id,
+		desc_lookup(table->error_id));
+	IWL_ERR(xvt, "0x%08X | umac branchlink1\n", table->blink1);
+	IWL_ERR(xvt, "0x%08X | umac branchlink2\n", table->blink2);
+	IWL_ERR(xvt, "0x%08X | umac interruptlink1\n", table->ilink1);
+	IWL_ERR(xvt, "0x%08X | umac interruptlink2\n", table->ilink2);
+	IWL_ERR(xvt, "0x%08X | umac data1\n", table->data1);
+	IWL_ERR(xvt, "0x%08X | umac data2\n", table->data2);
+	IWL_ERR(xvt, "0x%08X | umac data3\n", table->data3);
+	IWL_ERR(xvt, "0x%08X | umac major\n", table->umac_major);
+	IWL_ERR(xvt, "0x%08X | umac minor\n", table->umac_minor);
+	IWL_ERR(xvt, "0x%08X | frame pointer\n", table->frame_pointer);
+	IWL_ERR(xvt, "0x%08X | stack pointer\n", table->stack_pointer);
+	IWL_ERR(xvt, "0x%08X | last host cmd\n", table->cmd_header);
+	IWL_ERR(xvt, "0x%08X | isr status reg\n", table->nic_isr_pref);
 }

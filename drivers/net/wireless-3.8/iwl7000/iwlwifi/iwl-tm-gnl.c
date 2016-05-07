@@ -26,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -444,6 +444,22 @@ static int iwl_tm_gnl_get_build_info(struct iwl_trans *trans,
 	return 0;
 }
 
+static int iwl_tm_gnl_get_sil_type(struct iwl_trans * trans,struct iwl_tm_data * data_out)
+{
+	struct iwl_tm_sil_type *resp;
+
+	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
+	if (!resp)
+		return -ENOMEM;
+
+	resp->silicon_type = CSR_HW_REV_TYPE(trans->hw_rev);
+
+	data_out->data = resp;
+	data_out->len = sizeof(*resp);
+
+	return 0;
+}
+
 /*
  * Testmode GNL family types (This NL family
  * will eventually replace nl80211 support in
@@ -756,6 +772,9 @@ static int iwl_tm_gnl_cmd_execute(struct iwl_tm_gnl_cmd *cmd_data)
 		ret = iwl_tm_gnl_get_build_info(dev->trans,
 						&cmd_data->data_out);
 		common_op = true;
+		break;
+	case IWL_TM_USER_CMD_GET_SIL_TYPE:
+		ret = iwl_tm_gnl_get_sil_type(dev->trans, &cmd_data->data_out);
 		break;
 	}
 	if (ret) {

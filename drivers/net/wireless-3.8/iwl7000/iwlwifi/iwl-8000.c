@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2014 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,7 +27,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -69,13 +70,16 @@
 #include "iwl-agn-hw.h"
 
 /* Highest firmware API version supported */
-#define IWL8000_UCODE_API_MAX	16
+#define IWL8000_UCODE_API_MAX	21
+#define IWL8265_UCODE_API_MAX	21
 
 /* Oldest version we won't warn about */
-#define IWL8000_UCODE_API_OK	12
+#define IWL8000_UCODE_API_OK	13
+#define IWL8265_UCODE_API_OK	20
 
 /* Lowest firmware API version supported */
-#define IWL8000_UCODE_API_MIN	12
+#define IWL8000_UCODE_API_MIN	13
+#define IWL8265_UCODE_API_MIN	20
 
 /* NVM versions */
 #define IWL8000_NVM_VERSION		0x0a1d
@@ -93,6 +97,10 @@
 #define IWL8000_MODULE_FIRMWARE(api) \
 	IWL8000_FW_PRE "-" __stringify(api) ".ucode"
 
+#define IWL8265_FW_PRE "iwlwifi-8265-"
+#define IWL8265_MODULE_FIRMWARE(api) \
+	IWL8265_FW_PRE __stringify(api) ".ucode"
+
 #define NVM_HW_SECTION_NUM_FAMILY_8000		10
 #define DEFAULT_NVM_FILE_FAMILY_8000B		"nvmData-8000B"
 #define DEFAULT_NVM_FILE_FAMILY_8000C		"nvmData-8000C"
@@ -107,7 +115,7 @@
 
 static const struct iwl_base_params iwl8000_base_params = {
 	.eeprom_size = OTP_LOW_IMAGE_SIZE_FAMILY_8000,
-	.num_of_queues = IWLAGN_NUM_QUEUES,
+	.num_of_queues = 31,
 	.pll_cfg_val = 0,
 	.shadow_ram_support = true,
 	.led_compensation = 57,
@@ -144,17 +152,14 @@ static const struct iwl_tt_params iwl8000_tt_params = {
 	.support_tx_backoff = true,
 };
 
-#define IWL_DEVICE_8000							\
-	.ucode_api_max = IWL8000_UCODE_API_MAX,				\
-	.ucode_api_ok = IWL8000_UCODE_API_OK,				\
-	.ucode_api_min = IWL8000_UCODE_API_MIN,				\
+#define IWL_DEVICE_8000_COMMON						\
 	.device_family = IWL_DEVICE_FAMILY_8000,			\
 	.max_inst_size = IWL60_RTC_INST_SIZE,				\
 	.max_data_size = IWL60_RTC_DATA_SIZE,				\
 	.base_params = &iwl8000_base_params,				\
 	.led_mode = IWL_LED_RF_STATE,					\
 	.nvm_hw_section_num = NVM_HW_SECTION_NUM_FAMILY_8000,		\
-	.d0i3 = true,							\
+	.features = NETIF_F_RXCSUM,					\
 	.non_shared_ant = ANT_A,					\
 	.dccm_offset = IWL8260_DCCM_OFFSET,				\
 	.dccm_len = IWL8260_DCCM_LEN,					\
@@ -167,10 +172,28 @@ static const struct iwl_tt_params iwl8000_tt_params = {
 	.thermal_params = &iwl8000_tt_params,				\
 	.apmg_not_supported = true
 
+#define IWL_DEVICE_8000							\
+	IWL_DEVICE_8000_COMMON,						\
+	.ucode_api_max = IWL8000_UCODE_API_MAX,				\
+	.ucode_api_ok = IWL8000_UCODE_API_OK,				\
+	.ucode_api_min = IWL8000_UCODE_API_MIN				\
+
+#define IWL_DEVICE_8260							\
+	IWL_DEVICE_8000_COMMON,						\
+	.ucode_api_max = IWL8000_UCODE_API_MAX,				\
+	.ucode_api_ok = IWL8000_UCODE_API_OK,				\
+	.ucode_api_min = IWL8000_UCODE_API_MIN				\
+
+#define IWL_DEVICE_8265							\
+	IWL_DEVICE_8000_COMMON,						\
+	.ucode_api_max = IWL8265_UCODE_API_MAX,				\
+	.ucode_api_ok = IWL8265_UCODE_API_OK,				\
+	.ucode_api_min = IWL8265_UCODE_API_MIN				\
+
 const struct iwl_cfg iwl8260_2n_cfg = {
 	.name = "Intel(R) Dual Band Wireless N 8260",
 	.fw_name_pre = IWL8000_FW_PRE,
-	IWL_DEVICE_8000,
+	IWL_DEVICE_8260,
 	.ht_params = &iwl8000_ht_params,
 	.nvm_ver = IWL8000_NVM_VERSION,
 	.nvm_calib_ver = IWL8000_TX_POWER_VERSION,
@@ -179,11 +202,22 @@ const struct iwl_cfg iwl8260_2n_cfg = {
 const struct iwl_cfg iwl8260_2ac_cfg = {
 	.name = "Intel(R) Dual Band Wireless AC 8260",
 	.fw_name_pre = IWL8000_FW_PRE,
-	IWL_DEVICE_8000,
+	IWL_DEVICE_8260,
 	.ht_params = &iwl8000_ht_params,
 	.nvm_ver = IWL8000_NVM_VERSION,
 	.nvm_calib_ver = IWL8000_TX_POWER_VERSION,
 	.max_ht_ampdu_exponent = IEEE80211_HT_MAX_AMPDU_64K,
+};
+
+const struct iwl_cfg iwl8265_2ac_cfg = {
+	.name = "Intel(R) Dual Band Wireless AC 8265",
+	.fw_name_pre = IWL8265_FW_PRE,
+	IWL_DEVICE_8265,
+	.ht_params = &iwl8000_ht_params,
+	.nvm_ver = IWL8000_NVM_VERSION,
+	.nvm_calib_ver = IWL8000_TX_POWER_VERSION,
+	.max_ht_ampdu_exponent = IEEE80211_HT_MAX_AMPDU_64K,
+	.vht_mu_mimo_supported = true,
 };
 
 const struct iwl_cfg iwl4165_2ac_cfg = {
@@ -199,7 +233,7 @@ const struct iwl_cfg iwl4165_2ac_cfg = {
 const struct iwl_cfg iwl8260_2ac_sdio_cfg = {
 	.name = "Intel(R) Dual Band Wireless-AC 8260",
 	.fw_name_pre = IWL8000_FW_PRE,
-	IWL_DEVICE_8000,
+	IWL_DEVICE_8260,
 	.ht_params = &iwl8000_ht_params,
 	.nvm_ver = IWL8000_NVM_VERSION,
 	.nvm_calib_ver = IWL8000_TX_POWER_VERSION,
@@ -226,3 +260,4 @@ const struct iwl_cfg iwl4165_2ac_sdio_cfg = {
 };
 
 MODULE_FIRMWARE(IWL8000_MODULE_FIRMWARE(IWL8000_UCODE_API_OK));
+MODULE_FIRMWARE(IWL8265_MODULE_FIRMWARE(IWL8265_UCODE_API_OK));

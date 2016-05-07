@@ -16,7 +16,6 @@
 #include <linux/if_arp.h>
 #include <linux/etherdevice.h>
 #include <linux/rtnetlink.h>
-#include <linux/pm_qos.h>
 #include <net/sch_generic.h>
 #include <linux/slab.h>
 #include <linux/export.h>
@@ -39,28 +38,6 @@ void ieee80211_rx_bss_put(struct ieee80211_local *local,
 			 container_of((void *)bss, struct cfg80211_bss, priv));
 }
 
-/*
- * An incompatible AP workaround:
- * if the AP does not advertise MIMO capabilities disable U-APSD.
- * iPhones, among others, advertise themselves as U-APSD capable when
- * they aren't. Avoid connecting to those devices in U-APSD enabled.
- */
-static bool broken_uapsd_workarounds(struct ieee802_11_elems *elems)
-{
-	int i;
-
-	/* iPhone 4/4s with this problem doesn't have ht_capa */
-	if (!elems->ht_cap_elem)
-		return true;
-
-	for (i = 1; i < 4; i++) {
-		if (elems->ht_cap_elem->mcs.rx_mask[i])
-			return false;
-	}
-
-	return true;
-}
-
 static bool is_uapsd_supported(struct ieee802_11_elems *elems)
 {
 	u8 qos_info;
@@ -73,9 +50,6 @@ static bool is_uapsd_supported(struct ieee802_11_elems *elems)
 		qos_info = elems->wmm_param[6];
 	else
 		/* no valid wmm information or parameter element found */
-		return false;
-
-	if (broken_uapsd_workarounds(elems))
 		return false;
 
 	return qos_info & IEEE80211_WMM_IE_AP_QOSINFO_UAPSD;
@@ -92,26 +66,25 @@ ieee80211_bss_info_update(struct ieee80211_local *local,
 	struct cfg80211_bss *cbss;
 	struct ieee80211_bss *bss;
 	int clen, srlen;
-	enum nl80211_bss_scan_width scan_width;
-	s32 signal = 0;
+	struct cfg80211_inform_bss bss_meta = {
+		.boottime_ns = rx_status->boottime_ns,
+	};
 	bool signal_valid;
 
 	if (ieee80211_hw_check(&local->hw, SIGNAL_DBM))
-		signal = rx_status->signal * 100;
+		bss_meta.signal = rx_status->signal * 100;
 	else if (ieee80211_hw_check(&local->hw, SIGNAL_UNSPEC))
-		signal = (rx_status->signal * 100) / local->hw.max_signal;
+		bss_meta.signal = (rx_status->signal * 100) / local->hw.max_signal;
 
-	scan_width = NL80211_BSS_CHAN_WIDTH_20;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
+	bss_meta.scan_width = NL80211_BSS_CHAN_WIDTH_20;
 	if (rx_status->flag & RX_FLAG_5MHZ)
-		scan_width = NL80211_BSS_CHAN_WIDTH_5;
+		bss_meta.scan_width = NL80211_BSS_CHAN_WIDTH_5;
 	if (rx_status->flag & RX_FLAG_10MHZ)
-		scan_width = NL80211_BSS_CHAN_WIDTH_10;
-#endif
+		bss_meta.scan_width = NL80211_BSS_CHAN_WIDTH_10;
 
-	cbss = cfg80211_inform_bss_width_frame(local->hw.wiphy, channel,
-					       scan_width, mgmt, len, signal,
-					       GFP_ATOMIC);
+	bss_meta.chan = channel;
+	cbss = cfg80211_inform_bss_frame_data(local->hw.wiphy, &bss_meta,
+					      mgmt, len, GFP_ATOMIC);
 	if (!cbss)
 		return NULL;
 	/* In case the signal is invalid update the status */
@@ -264,14 +237,12 @@ ieee80211_prepare_scan_chandef(struct cfg80211_chan_def *chandef,
 {
 	memset(chandef, 0, sizeof(*chandef));
 	switch (scan_width) {
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 	case NL80211_BSS_CHAN_WIDTH_5:
 		chandef->width = NL80211_CHAN_WIDTH_5;
 		break;
 	case NL80211_BSS_CHAN_WIDTH_10:
 		chandef->width = NL80211_CHAN_WIDTH_10;
 		break;
-#endif
 	default:
 		chandef->width = NL80211_CHAN_WIDTH_20_NOHT;
 		break;
@@ -321,12 +292,7 @@ static bool ieee80211_prep_hw_scan(struct ieee80211_local *local)
 	}
 
 	local->hw_scan_req->req.n_channels = n_chans;
-	ieee80211_prepare_scan_chandef(&chandef,
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
-				       req->scan_width);
-#else
-				       NL80211_BSS_CHAN_WIDTH_20);
-#endif
+	ieee80211_prepare_scan_chandef(&chandef, cfg_scan_req_width(req));
 
 	ielen = ieee80211_build_preq_ies(local,
 					 (u8 *)local->hw_scan_req->req.ie,
@@ -336,11 +302,9 @@ static bool ieee80211_prep_hw_scan(struct ieee80211_local *local)
 					 bands_used, req->rates, &chandef);
 	local->hw_scan_req->req.ie_len = ielen;
 	local->hw_scan_req->req.no_cck = req->no_cck;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	ether_addr_copy(local->hw_scan_req->req.mac_addr, req->mac_addr);
 	ether_addr_copy(local->hw_scan_req->req.mac_addr_mask,
 			req->mac_addr_mask);
-#endif
 
 	return true;
 }
@@ -352,6 +316,7 @@ static void __ieee80211_scan_completed(struct ieee80211_hw *hw, bool aborted)
 	bool was_scanning = local->scanning;
 	struct cfg80211_scan_request *scan_req;
 	struct ieee80211_sub_if_data *scan_sdata;
+	struct ieee80211_sub_if_data *sdata;
 
 	lockdep_assert_held(&local->mtx);
 
@@ -411,7 +376,16 @@ static void __ieee80211_scan_completed(struct ieee80211_hw *hw, bool aborted)
 
 	ieee80211_mlme_notify_scan_completed(local);
 	ieee80211_ibss_notify_scan_completed(local);
-	ieee80211_mesh_notify_scan_completed(local);
+
+	/* Requeue all the work that might have been ignored while
+	 * the scan was in progress; if there was none this will
+	 * just be a no-op for the particular interface.
+	 */
+	list_for_each_entry_rcu(sdata, &local->interfaces, list) {
+		if (ieee80211_sdata_running(sdata))
+			ieee80211_queue_work(&sdata->local->hw, &sdata->work);
+	}
+
 	if (was_scanning)
 		ieee80211_start_next_roc(local);
 }
@@ -635,8 +609,8 @@ static int __ieee80211_start_scan(struct ieee80211_sub_if_data *sdata,
 		/* We need to ensure power level is at max for scanning. */
 		ieee80211_hw_config(local, 0);
 
-		if ((req->channels[0]->flags &
-		     IEEE80211_CHAN_NO_IR) ||
+		if ((req->channels[0]->flags & (IEEE80211_CHAN_NO_IR |
+						IEEE80211_CHAN_RADAR)) ||
 		    !req->n_ssids) {
 			next_delay = IEEE80211_PASSIVE_CHANNEL_TIME;
 		} else {
@@ -683,7 +657,7 @@ ieee80211_scan_get_channel_time(struct ieee80211_channel *chan)
 	 * TODO: channel switching also consumes quite some time,
 	 * add that delay as well to get a better estimation
 	 */
-	if (chan->flags & IEEE80211_CHAN_NO_IR)
+	if (chan->flags & (IEEE80211_CHAN_NO_IR | IEEE80211_CHAN_RADAR))
 		return IEEE80211_PASSIVE_CHANNEL_TIME;
 	return IEEE80211_PROBE_DELAY + IEEE80211_CHANNEL_TIME;
 }
@@ -772,17 +746,13 @@ static void ieee80211_scan_state_set_channel(struct ieee80211_local *local,
 	local->scan_chandef.chan = chan;
 	local->scan_chandef.center_freq1 = chan->center_freq;
 	local->scan_chandef.center_freq2 = 0;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
-	switch (scan_req->scan_width) {
+	switch (cfg_scan_req_width(scan_req)) {
 	case NL80211_BSS_CHAN_WIDTH_5:
 		local->scan_chandef.width = NL80211_CHAN_WIDTH_5;
 		break;
 	case NL80211_BSS_CHAN_WIDTH_10:
 		local->scan_chandef.width = NL80211_CHAN_WIDTH_10;
 		break;
-#else
-	switch (NL80211_BSS_CHAN_WIDTH_20) {
-#endif
 	case NL80211_BSS_CHAN_WIDTH_20:
 		/* If scanning on oper channel, use whatever channel-type
 		 * is currently in use.
@@ -790,11 +760,7 @@ static void ieee80211_scan_state_set_channel(struct ieee80211_local *local,
 		oper_scan_width = cfg80211_chandef_to_scan_width(
 					&local->_oper_chandef);
 		if (chan == local->_oper_chandef.chan &&
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
-		    oper_scan_width == scan_req->scan_width)
-#else
-		    oper_scan_width == NL80211_BSS_CHAN_WIDTH_20)
-#endif
+		    oper_scan_width == cfg_scan_req_width(scan_req))
 			local->scan_chandef = local->_oper_chandef;
 		else
 			local->scan_chandef.width = NL80211_CHAN_WIDTH_20_NOHT;
@@ -823,7 +789,8 @@ static void ieee80211_scan_state_set_channel(struct ieee80211_local *local,
 	 *
 	 * In any case, it is not necessary for a passive scan.
 	 */
-	if (chan->flags & IEEE80211_CHAN_NO_IR || !scan_req->n_ssids) {
+	if ((chan->flags & (IEEE80211_CHAN_NO_IR | IEEE80211_CHAN_RADAR)) ||
+	    !scan_req->n_ssids) {
 		*next_delay = IEEE80211_PASSIVE_CHANNEL_TIME;
 		local->next_scan_state = SCAN_DECISION;
 		return;
@@ -1144,12 +1111,7 @@ int __ieee80211_request_sched_scan_start(struct ieee80211_sub_if_data *sdata,
 		goto out;
 	}
 
-	ieee80211_prepare_scan_chandef(&chandef,
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
-				       req->scan_width);
-#else
-				       NL80211_BSS_CHAN_WIDTH_20);
-#endif
+	ieee80211_prepare_scan_chandef(&chandef, cfg_scan_req_width(req));
 
 	len = ieee80211_build_preq_ies(local, ie, num_bands * iebufsz,
 				       &sched_scan_ies, req->ie,
@@ -1264,6 +1226,14 @@ void ieee80211_sched_scan_stopped(struct ieee80211_hw *hw)
 	struct ieee80211_local *local = hw_to_local(hw);
 
 	trace_api_sched_scan_stopped(local);
+
+	/*
+	 * this shouldn't really happen, so for simplicity
+	 * simply ignore it, and let mac80211 reconfigure
+	 * the sched scan later on.
+	 */
+	if (local->in_reconfig)
+		return;
 
 	schedule_work(&local->sched_scan_stopped_work);
 }

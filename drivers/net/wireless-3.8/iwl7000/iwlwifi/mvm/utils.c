@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright (C) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,13 +27,14 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright (C) 2015 - 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -67,7 +69,7 @@
 #include "iwl-debug.h"
 #include "iwl-io.h"
 #include "iwl-prph.h"
-
+#include "fw-dbg.h"
 #include "mvm.h"
 #include "fw-api-rs.h"
 #ifdef CPTCFG_IWLMVM_TCM
@@ -660,44 +662,142 @@ void iwl_mvm_dump_nic_error_log(struct iwl_mvm *mvm)
 	if (mvm->support_umac_log)
 		iwl_mvm_dump_umac_error_log(mvm);
 }
-void iwl_mvm_enable_txq(struct iwl_mvm *mvm, int queue, u16 ssn,
-			const struct iwl_trans_txq_scd_cfg *cfg,
+
+int iwl_mvm_find_free_queue(struct iwl_mvm *mvm, u8 minq, u8 maxq)
+{
+	int i;
+
+	lockdep_assert_held(&mvm->queue_info_lock);
+
+	for (i = minq; i <= maxq; i++)
+		if (mvm->queue_info[i].hw_queue_refcount == 0 &&
+		    !mvm->queue_info[i].setup_reserved)
+			return i;
+
+	return -ENOSPC;
+}
+
+void iwl_mvm_enable_txq(struct iwl_mvm *mvm, int queue, int mac80211_queue,
+			u16 ssn, const struct iwl_trans_txq_scd_cfg *cfg,
 			unsigned int wdg_timeout)
 {
-	struct iwl_scd_txq_cfg_cmd cmd = {
-		.scd_queue = queue,
-		.enable = 1,
-		.window = cfg->frame_limit,
-		.sta_id = cfg->sta_id,
-		.ssn = cpu_to_le16(ssn),
-		.tx_fifo = cfg->fifo,
-		.aggregate = cfg->aggregate,
-		.tid = cfg->tid,
-	};
+	bool enable_queue = true;
 
-	if (!iwl_mvm_is_scd_cfg_supported(mvm)) {
-		iwl_trans_txq_enable_cfg(mvm->trans, queue, ssn, cfg,
-					 wdg_timeout);
+	spin_lock_bh(&mvm->queue_info_lock);
+
+	/* Make sure this TID isn't already enabled */
+	if (mvm->queue_info[queue].tid_bitmap & BIT(cfg->tid)) {
+		spin_unlock_bh(&mvm->queue_info_lock);
+		IWL_ERR(mvm, "Trying to enable TXQ with existing TID %d\n",
+			cfg->tid);
 		return;
 	}
 
-	iwl_trans_txq_enable_cfg(mvm->trans, queue, ssn, NULL, wdg_timeout);
-	WARN(iwl_mvm_send_cmd_pdu(mvm, SCD_QUEUE_CFG, 0, sizeof(cmd), &cmd),
-	     "Failed to configure queue %d on FIFO %d\n", queue, cfg->fifo);
+	/* Update mappings and refcounts */
+	mvm->queue_info[queue].hw_queue_to_mac80211 |= BIT(mac80211_queue);
+	mvm->queue_info[queue].hw_queue_refcount++;
+	if (mvm->queue_info[queue].hw_queue_refcount > 1)
+		enable_queue = false;
+	mvm->queue_info[queue].tid_bitmap |= BIT(cfg->tid);
+
+	IWL_DEBUG_TX_QUEUES(mvm,
+			    "Enabling TXQ #%d refcount=%d (mac80211 map:0x%x)\n",
+			    queue, mvm->queue_info[queue].hw_queue_refcount,
+			    mvm->queue_info[queue].hw_queue_to_mac80211);
+
+	spin_unlock_bh(&mvm->queue_info_lock);
+
+	/* Send the enabling command if we need to */
+	if (enable_queue) {
+		struct iwl_scd_txq_cfg_cmd cmd = {
+			.scd_queue = queue,
+			.enable = 1,
+			.window = cfg->frame_limit,
+			.sta_id = cfg->sta_id,
+			.ssn = cpu_to_le16(ssn),
+			.tx_fifo = cfg->fifo,
+			.aggregate = cfg->aggregate,
+			.tid = cfg->tid,
+		};
+
+		iwl_trans_txq_enable_cfg(mvm->trans, queue, ssn, NULL,
+					 wdg_timeout);
+		WARN(iwl_mvm_send_cmd_pdu(mvm, SCD_QUEUE_CFG, 0, sizeof(cmd),
+					  &cmd),
+		     "Failed to configure queue %d on FIFO %d\n", queue,
+		     cfg->fifo);
+	}
 }
 
-void iwl_mvm_disable_txq(struct iwl_mvm *mvm, int queue, u8 flags)
+void iwl_mvm_disable_txq(struct iwl_mvm *mvm, int queue, int mac80211_queue,
+			 u8 tid, u8 flags)
 {
 	struct iwl_scd_txq_cfg_cmd cmd = {
 		.scd_queue = queue,
 		.enable = 0,
 	};
+	bool remove_mac_queue = true;
 	int ret;
 
-	if (!iwl_mvm_is_scd_cfg_supported(mvm)) {
-		iwl_trans_txq_disable(mvm->trans, queue, true);
+	spin_lock_bh(&mvm->queue_info_lock);
+
+	if (WARN_ON(mvm->queue_info[queue].hw_queue_refcount == 0)) {
+		spin_unlock_bh(&mvm->queue_info_lock);
 		return;
 	}
+
+	mvm->queue_info[queue].tid_bitmap &= ~BIT(tid);
+
+	/*
+	 * If there is another TID with the same AC - don't remove the MAC queue
+	 * from the mapping
+	 */
+	if (tid < IWL_MAX_TID_COUNT) {
+		unsigned long tid_bitmap =
+			mvm->queue_info[queue].tid_bitmap;
+		int ac = tid_to_mac80211_ac[tid];
+		int i;
+
+		for_each_set_bit(i, &tid_bitmap, IWL_MAX_TID_COUNT) {
+			if (tid_to_mac80211_ac[i] == ac)
+				remove_mac_queue = false;
+		}
+	}
+
+	if (remove_mac_queue)
+		mvm->queue_info[queue].hw_queue_to_mac80211 &=
+			~BIT(mac80211_queue);
+	mvm->queue_info[queue].hw_queue_refcount--;
+
+	cmd.enable = mvm->queue_info[queue].hw_queue_refcount ? 1 : 0;
+
+	IWL_DEBUG_TX_QUEUES(mvm,
+			    "Disabling TXQ #%d refcount=%d (mac80211 map:0x%x)\n",
+			    queue,
+			    mvm->queue_info[queue].hw_queue_refcount,
+			    mvm->queue_info[queue].hw_queue_to_mac80211);
+
+	/* If the queue is still enabled - nothing left to do in this func */
+	if (cmd.enable) {
+		spin_unlock_bh(&mvm->queue_info_lock);
+		return;
+	}
+
+	/* Make sure queue info is correct even though we overwrite it */
+	WARN(mvm->queue_info[queue].hw_queue_refcount ||
+	     mvm->queue_info[queue].tid_bitmap ||
+	     mvm->queue_info[queue].hw_queue_to_mac80211,
+	     "TXQ #%d info out-of-sync - refcount=%d, mac map=0x%x, tid=0x%x\n",
+	     queue, mvm->queue_info[queue].hw_queue_refcount,
+	     mvm->queue_info[queue].hw_queue_to_mac80211,
+	     mvm->queue_info[queue].tid_bitmap);
+
+	/* If we are here - the queue is freed and we can zero out these vals */
+	mvm->queue_info[queue].hw_queue_refcount = 0;
+	mvm->queue_info[queue].tid_bitmap = 0;
+	mvm->queue_info[queue].hw_queue_to_mac80211 = 0;
+
+	spin_unlock_bh(&mvm->queue_info_lock);
 
 	iwl_trans_txq_disable(mvm->trans, queue, false);
 	ret = iwl_mvm_send_cmd_pdu(mvm, SCD_QUEUE_CFG, flags,
@@ -841,17 +941,15 @@ bool iwl_mvm_rx_diversity_allowed(struct iwl_mvm *mvm)
 }
 
 int iwl_mvm_update_low_latency(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
-			       bool value)
+			       bool prev)
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	int res;
 
 	lockdep_assert_held(&mvm->mutex);
 
-	if (mvmvif->low_latency == value)
+	if (iwl_mvm_vif_low_latency(mvmvif) == prev)
 		return 0;
-
-	mvmvif->low_latency = value;
 
 	res = iwl_mvm_update_quotas(mvm, false, NULL);
 	if (res)
@@ -1034,14 +1132,17 @@ static void iwl_mvm_tcm_iter(void *_data, u8 *mac, struct ieee80211_vif *vif)
 	low_latency = mvm->tcm.result.low_latency[mvmvif->id];
 
 	if (!mvm->tcm.result.change[mvmvif->id] &&
-	    mvmvif->low_latency == low_latency) {
+	    mvmvif->low_latency_traffic == low_latency) {
 		iwl_mvm_update_quotas(mvm, false, NULL);
 		return;
 	}
 
-	if (mvmvif->low_latency != low_latency) {
+	if (mvmvif->low_latency_traffic != low_latency) {
 		/* this sends traffic load and updates quota as well */
-		iwl_mvm_update_low_latency(mvm, vif, low_latency);
+		bool prev = iwl_mvm_vif_low_latency(mvmvif);
+
+		mvmvif->low_latency_traffic = low_latency;
+		iwl_mvm_update_low_latency(mvm, vif, prev);
 	} else {
 		iwl_mvm_send_tcm_event(mvm, vif);
 		iwl_mvm_update_quotas(mvm, false, NULL);
@@ -1067,6 +1168,9 @@ void iwl_mvm_tcm_work(struct work_struct *work)
 	/* send global only */
 	if (mvm->tcm.result.global_change && !data.any_sent)
 		iwl_mvm_send_tcm_event(mvm, NULL);
+
+	if (fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_UMAC_SCAN))
+		iwl_mvm_config_scan(mvm);
 
 	mutex_unlock(&mvm->mutex);
 }
@@ -1135,7 +1239,7 @@ static void iwl_mvm_check_uapsd_agg_expected_tpt(struct iwl_mvm *mvm,
 	u64 tpt;
 	unsigned long rate;
 
-	rate = ewma_read(&mvm->tcm.data[mac].uapsd_nonagg_detect.rate);
+	rate = ewma_rate_read(&mvm->tcm.data[mac].uapsd_nonagg_detect.rate);
 
 	if (!rate || mvm->tcm.data[mac].opened_rx_ba_sessions ||
 	    mvm->tcm.data[mac].uapsd_nonagg_detect.detected)
@@ -1177,11 +1281,10 @@ static unsigned long iwl_mvm_calc_tcm_stats(struct iwl_mvm *mvm,
 	for (mac = 0; mac < NUM_MAC_INDEX_DRIVER; mac++) {
 		struct iwl_mvm_tcm_mac *mdata = &mvm->tcm.data[mac];
 		u32 vo_vi_pkts = 0;
-		u32 airtime = 0;
+		u32 airtime = mdata->rx.airtime;
 
 		for (ac = IEEE80211_AC_VO; ac <= IEEE80211_AC_BK; ac++)
-			airtime += mdata->rx.airtime[ac] +
-				   mdata->tx.airtime[ac];
+			airtime += mdata->tx.airtime[ac];
 		total_airtime += airtime;
 
 		load = iwl_mvm_tcm_load(mvm, airtime, elapsed);
@@ -1294,3 +1397,25 @@ void iwl_mvm_tcm_rm_vif(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 	cancel_delayed_work_sync(&mvmvif->uapsd_nonagg_detected_wk);
 }
 #endif
+
+void iwl_mvm_get_sync_time(struct iwl_mvm *mvm, u32 *gp2, u64 *boottime)
+{
+	bool ps_disabled;
+
+	lockdep_assert_held(&mvm->mutex);
+
+	/* Disable power save when reading GP2 */
+	ps_disabled = mvm->ps_disabled;
+	if (!ps_disabled) {
+		mvm->ps_disabled = true;
+		iwl_mvm_power_update_device(mvm);
+	}
+
+	*gp2 = iwl_read_prph(mvm->trans, DEVICE_SYSTEM_TIME_REG);
+	*boottime = ktime_get_boot_ns();
+
+	if (!ps_disabled) {
+		mvm->ps_disabled = ps_disabled;
+		iwl_mvm_power_update_device(mvm);
+	}
+}

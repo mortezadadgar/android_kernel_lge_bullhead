@@ -26,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -454,11 +454,11 @@ static void iwl_eeprom_enhanced_txpower(struct device *dev,
 				 TXP_CHECK_AND_PRINT(COMMON_TYPE),
 				 txp->flags);
 		IWL_DEBUG_EEPROM(dev,
-				 "\t\t chain_A: 0x%02x chain_B: 0X%02x chain_C: 0X%02x\n",
+				 "\t\t chain_A: %d chain_B: %d chain_C: %d\n",
 				 txp->chain_a_max, txp->chain_b_max,
 				 txp->chain_c_max);
 		IWL_DEBUG_EEPROM(dev,
-				 "\t\t MIMO2: 0x%02x MIMO3: 0x%02x High 20_on_40: 0x%02x Low 20_on_40: 0x%02x\n",
+				 "\t\t MIMO2: %d MIMO3: %d High 20_on_40: 0x%02x Low 20_on_40: 0x%02x\n",
 				 txp->mimo2_max, txp->mimo3_max,
 				 ((txp->delta_20_in_40 & 0xf0) >> 4),
 				 (txp->delta_20_in_40 & 0x0f));
@@ -713,12 +713,12 @@ int iwl_init_sband_channels(struct iwl_nvm_data *data,
 	struct ieee80211_channel *chan = &data->channels[0];
 	int n = 0, idx = 0;
 
-	while (chan->band != band && idx < n_channels)
+	while (idx < n_channels && chan->band != band)
 		chan = &data->channels[++idx];
 
 	sband->channels = &data->channels[idx];
 
-	while (chan->band == band && idx < n_channels) {
+	while (idx < n_channels && chan->band == band) {
 		chan = &data->channels[++idx];
 		n++;
 	}
@@ -766,7 +766,7 @@ void iwl_init_ht_hw_capab(const struct iwl_cfg *cfg,
 	if (cfg->ht_params->ldpc)
 		ht_info->cap |= IEEE80211_HT_CAP_LDPC_CODING;
 
-	if (iwlwifi_mod_params.amsdu_size_8K)
+	if (iwlwifi_mod_params.amsdu_size >= IWL_AMSDU_8K)
 		ht_info->cap |= IEEE80211_HT_CAP_MAX_AMSDU;
 
 	ht_info->ampdu_factor = cfg->max_ht_ampdu_exponent;

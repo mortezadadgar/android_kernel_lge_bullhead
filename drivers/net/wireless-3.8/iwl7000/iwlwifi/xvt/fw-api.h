@@ -6,7 +6,7 @@
  * GPL LICENSE SUMMARY
  *
  * Copyright(c) 2007 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,13 +26,13 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
  *
  * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -72,13 +72,24 @@
 #define IWL_XVT_DEFAULT_TX_FIFO	0
 #define IWL_XVT_CMD_FIFO	7
 
+/* command groups */
+enum {
+	PHY_OPS_GROUP = 0x4,
+};
+
 enum {
 	XVT_ALIVE = 0x1,
 	INIT_COMPLETE_NOTIF = 0x4,
 	APMG_PD_SV_CMD = 0x43,
 
+	/* ToF */
+	LOCATION_GROUP_NOTIFICATION = 0x11,
+
 	/* Tx */
 	TX_CMD = 0x1C,
+
+	/* Paging block to FW cpu2 */
+	FW_PAGING_BLOCK_CMD = 0x4f,
 
 	/* Phy */
 	PHY_CONFIGURATION_CMD = 0x6a,
@@ -107,6 +118,15 @@ enum {
 	DEBUG_LOG_MSG = 0xf7,
 
 	REPLY_MAX = 0xff,
+};
+
+enum iwl_phy_ops_subcmd_ids {
+	DTS_MEASUREMENT_NOTIF_WIDE = WIDE_ID(PHY_OPS_GROUP, 0xFF),
+};
+
+enum iwl_location_ops_subcmd_ids {
+	LOCATION_MCSI_NOTIFICATION = 0xFB,
+	LOCATION_RANGE_RESPONSE_NOTIFICATION = 0xFE
 };
 
 /*
@@ -308,6 +328,27 @@ enum {
 	NVM_SECTION_TYPE_MAC_OVERRIDE = 11,
 	NVM_NUM_OF_SECTIONS,
 };
+
+#define NUM_OF_FW_PAGING_BLOCKS	33 /* 32 for data and 1 block for CSS */
+
+/*
+ * struct iwl_fw_paging_cmd - paging layout
+ *
+ * (FW_PAGING_BLOCK_CMD = 0x4f)
+ *
+ * Send to FW the paging layout in the driver.
+ *
+ * @flags: various flags for the command
+ * @block_size: the block size in powers of 2
+ * @block_num: number of blocks specified in the command.
+ * @device_phy_addr: virtual addresses from device side
+*/
+struct iwl_fw_paging_cmd {
+	__le32 flags;
+	__le32 block_size;
+	__le32 block_num;
+	__le32 device_phy_addr[NUM_OF_FW_PAGING_BLOCKS];
+} __packed; /* FW_PAGING_BLOCK_CMD_API_S_VER_1 */
 
 /**
  * struct iwl_nvm_access_cmd_ver2 - Request the device to send an NVM section

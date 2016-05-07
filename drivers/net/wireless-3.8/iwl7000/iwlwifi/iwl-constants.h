@@ -26,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -86,15 +86,9 @@ enum {
 };
 
 #ifndef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-#ifdef CPTCFG_IWLMVM_WAKELOCK
-/* wakelock timeout to use when all the references were released */
-#define IWL_WAKELOCK_TIMEOUT_MS		1500
-#endif /* CPTCFG_IWLMVM_WAKELOCK */
+#define IWL_D0I3_DEBUG			0
 #else /* CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES */
 #define IWL_D0I3_DEBUG			(trans->dbg_cfg.d0i3_debug)
-#ifdef CPTCFG_IWLMVM_WAKELOCK
-#define IWL_WAKELOCK_TIMEOUT_MS		(trans->dbg_cfg.WAKELOCK_TIMEOUT_MS)
-#endif /* CPTCFG_IWLMVM_WAKELOCK */
 #endif /* CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES */
 
 #endif /* __IWL_CONSTANTS_H */

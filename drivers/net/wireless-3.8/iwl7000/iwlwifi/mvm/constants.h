@@ -6,7 +6,8 @@
  * GPL LICENSE SUMMARY
  *
  * Copyright(c) 2013 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2015        Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,13 +27,14 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
  *
  * Copyright(c) 2013 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2015        Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -76,6 +78,9 @@
 #define IWL_MVM_DEFAULT_PS_RX_DATA_TIMEOUT	(100 * USEC_PER_MSEC)
 #define IWL_MVM_WOWLAN_PS_TX_DATA_TIMEOUT	(10 * USEC_PER_MSEC)
 #define IWL_MVM_WOWLAN_PS_RX_DATA_TIMEOUT	(10 * USEC_PER_MSEC)
+#define IWL_MVM_SHORT_PS_TX_DATA_TIMEOUT	(2 * 1024) /* defined in TU */
+#define IWL_MVM_SHORT_PS_RX_DATA_TIMEOUT	(40 * 1024) /* defined in TU */
+#define IWL_MVM_P2P_LOWLATENCY_PS_ENABLE	1
 #define IWL_MVM_UAPSD_RX_DATA_TIMEOUT		(50 * USEC_PER_MSEC)
 #define IWL_MVM_UAPSD_TX_DATA_TIMEOUT		(50 * USEC_PER_MSEC)
 #define IWL_MVM_UAPSD_QUEUES		(IEEE80211_WMM_IE_STA_QOSINFO_AC_VO |\
@@ -106,10 +111,10 @@
 #define IWL_MVM_FW_BCAST_FILTER_PASS_ALL	0
 #define IWL_MVM_QUOTA_THRESHOLD			4
 #define IWL_MVM_RS_RSSI_BASED_INIT_RATE         0
-#define IWL_MVM_RS_DISABLE_P2P_MIMO		IS_ENABLED(CPTCFG_IWLMVM_DISABLE_P2P_MIMO)
 #define IWL_MVM_RS_80_20_FAR_RANGE_TWEAK	1
-#define IWL_MVM_RRM_PRETEND_QUIET_SUPPORT	0
 #define IWL_MVM_TOF_IS_RESPONDER		0
+#define IWL_MVM_SW_TX_CSUM_OFFLOAD		0
+#define IWL_MVM_COLLECT_FW_ERR_DUMP		1
 #ifdef CPTCFG_IWLMVM_TCM
 #define IWL_MVM_TCM_LOAD_MEDIUM_THRESH		10 /* percentage */
 #define IWL_MVM_TCM_LOAD_HIGH_THRESH		50 /* percentage */
@@ -151,6 +156,9 @@
 #define IWL_MVM_DEFAULT_PS_RX_DATA_TIMEOUT	(mvm->trans->dbg_cfg.MVM_DEFAULT_PS_RX_DATA_TIMEOUT)
 #define IWL_MVM_WOWLAN_PS_TX_DATA_TIMEOUT	(mvm->trans->dbg_cfg.MVM_WOWLAN_PS_TX_DATA_TIMEOUT)
 #define IWL_MVM_WOWLAN_PS_RX_DATA_TIMEOUT	(mvm->trans->dbg_cfg.MVM_WOWLAN_PS_RX_DATA_TIMEOUT)
+#define IWL_MVM_SHORT_PS_TX_DATA_TIMEOUT	(mvm->trans->dbg_cfg.MVM_SHORT_PS_TX_DATA_TIMEOUT)
+#define IWL_MVM_SHORT_PS_RX_DATA_TIMEOUT	(mvm->trans->dbg_cfg.MVM_SHORT_PS_RX_DATA_TIMEOUT)
+#define IWL_MVM_P2P_LOWLATENCY_PS_ENABLE	(mvm->trans->dbg_cfg.MVM_P2P_LOWLATENCY_PS_ENABLE)
 #define IWL_MVM_UAPSD_TX_DATA_TIMEOUT		(mvm->trans->dbg_cfg.MVM_UAPSD_TX_DATA_TIMEOUT)
 #define IWL_MVM_UAPSD_RX_DATA_TIMEOUT		(mvm->trans->dbg_cfg.MVM_UAPSD_RX_DATA_TIMEOUT)
 #define IWL_MVM_UAPSD_QUEUES			(mvm->trans->dbg_cfg.MVM_UAPSD_QUEUES)
@@ -169,14 +177,16 @@
 #define IWL_MVM_BT_COEX_SYNC2SCO		(mvm->trans->dbg_cfg.MVM_BT_COEX_SYNC2SCO)
 #define IWL_MVM_BT_COEX_CORUNNING		(mvm->trans->dbg_cfg.MVM_BT_COEX_CORUNNING)
 #define IWL_MVM_BT_COEX_MPLUT			(mvm->trans->dbg_cfg.MVM_BT_COEX_MPLUT)
-#define IWL_MVM_BT_COEX_RRC			(mvm->trans->dbg_cfg.MVM_BT_COEX_TTC)
-#define IWL_MVM_BT_COEX_TTC			(mvm->trans->dbg_cfg.MVM_BT_COEX_RRC)
+#define IWL_MVM_BT_COEX_RRC			(mvm->trans->dbg_cfg.MVM_BT_COEX_RRC)
+#define IWL_MVM_BT_COEX_TTC			(mvm->trans->dbg_cfg.MVM_BT_COEX_TTC)
 #define IWL_MVM_BT_COEX_MPLUT_REG0		(mvm->trans->dbg_cfg.MVM_BT_COEX_MPLUT_REG0)
 #define IWL_MVM_BT_COEX_MPLUT_REG1		(mvm->trans->dbg_cfg.MVM_BT_COEX_MPLUT_REG1)
 #define IWL_MVM_BT_COEX_ANTENNA_COUPLING_THRS	(mvm->trans->dbg_cfg.MVM_BT_COEX_ANTENNA_COUPLING_THRS)
 #define IWL_MVM_FW_MCAST_FILTER_PASS_ALL	(mvm->trans->dbg_cfg.MVM_FW_MCAST_FILTER_PASS_ALL)
 #define IWL_MVM_FW_BCAST_FILTER_PASS_ALL	(mvm->trans->dbg_cfg.MVM_FW_BCAST_FILTER_PASS_ALL)
 #define IWL_MVM_TOF_IS_RESPONDER		(mvm->trans->dbg_cfg.MVM_TOF_IS_RESPONDER)
+#define IWL_MVM_SW_TX_CSUM_OFFLOAD		(mvm->trans->dbg_cfg.MVM_SW_TX_CSUM_OFFLOAD)
+#define IWL_MVM_COLLECT_FW_ERR_DUMP		(mvm->trans->dbg_cfg.MVM_COLLECT_FW_ERR_DUMP)
 #ifdef CPTCFG_IWLMVM_TCM
 #define IWL_MVM_TCM_LOAD_MEDIUM_THRESH		(mvm->trans->dbg_cfg.MVM_TCM_LOAD_MEDIUM_THRESH)
 #define IWL_MVM_TCM_LOAD_HIGH_THRESH		(mvm->trans->dbg_cfg.MVM_TCM_LOAD_HIGH_THRESH)
@@ -186,7 +196,6 @@
 #endif /* CPTCFG_IWLMVM_TCM */
 #define IWL_MVM_QUOTA_THRESHOLD			(mvm->trans->dbg_cfg.MVM_QUOTA_THRESHOLD)
 #define IWL_MVM_RS_RSSI_BASED_INIT_RATE         (mvm->trans->dbg_cfg.MVM_RS_RSSI_BASED_INIT_RATE)
-#define IWL_MVM_RS_DISABLE_P2P_MIMO             (mvm->trans->dbg_cfg.MVM_RS_DISABLE_P2P_MIMO)
 #define IWL_MVM_RS_80_20_FAR_RANGE_TWEAK	(mvm->trans->dbg_cfg.MVM_RS_80_20_FAR_RANGE_TWEAK)
 #define IWL_MVM_RS_NUM_TRY_BEFORE_ANT_TOGGLE    (mvm->trans->dbg_cfg.MVM_RS_NUM_TRY_BEFORE_ANT_TOGGLE)
 #define IWL_MVM_RS_HT_VHT_RETRIES_PER_RATE      (mvm->trans->dbg_cfg.MVM_RS_HT_VHT_RETRIES_PER_RATE)
@@ -218,5 +227,12 @@
 #define IWL_MVM_RS_TPC_SR_NO_INCREASE		(mvm->trans->dbg_cfg.MVM_RS_TPC_SR_NO_INCREASE)
 #define IWL_MVM_RS_TPC_TX_POWER_STEP		(mvm->trans->dbg_cfg.MVM_RS_TPC_TX_POWER_STEP)
 #endif /* CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES */
+
+/* Default values for the FTM range_request_ext command: */
+#define IWL_MVM_FTM_REQ_EXT_TSF_TIMER_OFFSET_MSEC_DFLT 5
+#define IWL_MVM_FTM_REQ_EXT_MIN_DELTA_FTM_DFLT 0
+#define IWL_MVM_FTM_REQ_EXT_FORMAT_AND_BW20M_DFLT IEEE80211_FTM_FORMAT_BW_HT_20
+#define IWL_MVM_FTM_REQ_EXT_FORMAT_AND_BW40M_DFLT IEEE80211_FTM_FORMAT_BW_HT_40
+#define IWL_MVM_FTM_REQ_EXT_FORMAT_AND_BW80M_DFLT IEEE80211_FTM_FORMAT_BW_VHT_80
 
 #endif /* __MVM_CONSTANTS_H */

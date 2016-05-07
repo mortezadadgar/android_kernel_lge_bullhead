@@ -4,6 +4,7 @@
  * Copyright 2006-2007	Jiri Benc <jbenc@suse.cz>
  * Copyright 2007	Johannes Berg <johannes@sipsolutions.net>
  * Copyright 2013-2014  Intel Mobile Communications GmbH
+ * Copyright (C) 2015-2016	Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -287,10 +288,13 @@ static void __ieee80211_wake_queue(struct ieee80211_hw *hw, int queue,
 	if (!test_bit(reason, &local->queue_stop_reasons[queue]))
 		return;
 
-	if (!refcounted)
+	if (!refcounted) {
 		local->q_stop_reasons[queue][reason] = 0;
-	else
+	} else {
 		local->q_stop_reasons[queue][reason]--;
+		if (WARN_ON(local->q_stop_reasons[queue][reason] < 0))
+			local->q_stop_reasons[queue][reason] = 0;
+	}
 
 	if (local->q_stop_reasons[queue][reason] == 0)
 		__clear_bit(reason, &local->queue_stop_reasons[queue]);
@@ -593,7 +597,7 @@ static void __iterate_interfaces(struct ieee80211_local *local,
 	list_for_each_entry_rcu(sdata, &local->interfaces, list) {
 		switch (sdata->vif.type) {
 		case NL80211_IFTYPE_MONITOR:
-			if (!(sdata->u.mntr_flags & MONITOR_FLAG_ACTIVE))
+			if (!(sdata->u.mntr.flags & MONITOR_FLAG_ACTIVE))
 				continue;
 			break;
 		case NL80211_IFTYPE_AP_VLAN:
@@ -1129,7 +1133,7 @@ void ieee80211_set_wmm_default(struct ieee80211_sub_if_data *sdata,
 		 !(sdata->flags & IEEE80211_SDATA_OPERATING_GMODE);
 	rcu_read_unlock();
 
-	is_ocb = (sdata->vif.type == NL80211_IFTYPE_OCB);
+	is_ocb = (ieee80211_viftype_ocb(sdata->vif.type));
 
 	/* Set defaults according to 802.11-2007 Table 7-37 */
 	aCWmax = 1023;
@@ -1204,7 +1208,8 @@ void ieee80211_set_wmm_default(struct ieee80211_sub_if_data *sdata,
 	}
 
 	if (sdata->vif.type != NL80211_IFTYPE_MONITOR &&
-	    sdata->vif.type != NL80211_IFTYPE_P2P_DEVICE) {
+	    sdata->vif.type != NL80211_IFTYPE_P2P_DEVICE &&
+	    !ieee80211_viftype_nan(sdata->vif.type)) {
 		sdata->vif.bss_conf.qos = enable_qos;
 		if (bss_notify)
 			ieee80211_bss_info_change_notify(sdata,
@@ -1640,6 +1645,29 @@ void ieee80211_stop_device(struct ieee80211_local *local)
 	drv_stop(local);
 }
 
+static void ieee80211_flush_completed_scan(struct ieee80211_local *local,
+					   bool aborted)
+{
+	/* It's possible that we don't handle the scan completion in
+	 * time during suspend, so if it's still marked as completed
+	 * here, queue the work and flush it to clean things up.
+	 * Instead of calling the worker function directly here, we
+	 * really queue it to avoid potential races with other flows
+	 * scheduling the same work.
+	 */
+	if (test_bit(SCAN_COMPLETED, &local->scanning)) {
+		/* If coming from reconfiguration failure, abort the scan so
+		 * we don't attempt to continue a partial HW scan - which is
+		 * possible otherwise if (e.g.) the 2.4 GHz portion was the
+		 * completed scan, and a 5 GHz portion is still pending.
+		 */
+		if (aborted)
+			set_bit(SCAN_ABORTED, &local->scanning);
+		ieee80211_queue_delayed_work(&local->hw, &local->scan_work, 0);
+		flush_delayed_work(&local->scan_work);
+	}
+}
+
 static void ieee80211_handle_reconfig_failure(struct ieee80211_local *local)
 {
 	struct ieee80211_sub_if_data *sdata;
@@ -1657,8 +1685,9 @@ static void ieee80211_handle_reconfig_failure(struct ieee80211_local *local)
 
 	local->resuming = false;
 	local->suspended = false;
-	local->started = false;
 	local->in_reconfig = false;
+
+	ieee80211_flush_completed_scan(local, true);
 
 	/* scheduled scan clearly can't be running any more, but tell
 	 * cfg80211 and clear local state
@@ -1697,6 +1726,81 @@ static void ieee80211_assign_chanctx(struct ieee80211_local *local,
 	}
 	mutex_unlock(&local->chanctx_mtx);
 }
+
+static void ieee80211_reconfig_stations(struct ieee80211_sub_if_data *sdata)
+{
+	struct ieee80211_local *local = sdata->local;
+	struct sta_info *sta;
+
+	/* add STAs back */
+	mutex_lock(&local->sta_mtx);
+	list_for_each_entry(sta, &local->sta_list, list) {
+		enum ieee80211_sta_state state;
+
+		if (!sta->uploaded || sta->sdata != sdata)
+			continue;
+
+		for (state = IEEE80211_STA_NOTEXIST;
+		     state < sta->sta_state; state++)
+			WARN_ON(drv_sta_state(local, sta->sdata, sta, state,
+					      state + 1));
+	}
+	mutex_unlock(&local->sta_mtx);
+}
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,5,0)
+static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata){
+	return 0;
+}
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
+{
+	struct ieee80211_nan_func *func, *ftmp;
+	LIST_HEAD(tmp_list);
+	int res;
+
+	res = drv_start_nan(sdata->local, sdata,
+			    &sdata->u.nan.nan_conf);
+	if (WARN_ON(res))
+		return res;
+
+	/* Add all the functions:
+	 * This is a little bit ugly. We need to call a potentially sleeping
+	 * callback for each entry in the list, so we can't hold the spinlock.
+	 * So we will copy everything to a temporary list and empty the
+	 * original one. And then we re-add the functions one by one
+	 * to the list.
+	 */
+	spin_lock_bh(&sdata->u.nan.func_lock);
+	list_splice_tail_init(&sdata->u.nan.functions_list, &tmp_list);
+	spin_unlock_bh(&sdata->u.nan.func_lock);
+
+	list_for_each_entry_safe(func, ftmp, &tmp_list, list) {
+		list_del(&func->list);
+
+		/* TODO: need to adjust TTL of the function */
+		spin_lock_bh(&sdata->u.nan.func_lock);
+		list_add(&func->list, &sdata->u.nan.functions_list);
+		spin_unlock_bh(&sdata->u.nan.func_lock);
+		res = drv_add_nan_func(sdata->local, sdata,
+				       &func->func);
+		if (WARN_ON(res)) {
+			/* make sure all the functions are back in the list,
+			 * otherwise we leak memory
+			 */
+			spin_lock_bh(&sdata->u.nan.func_lock);
+			list_splice_tail(&tmp_list,
+					 &sdata->u.nan.functions_list);
+			spin_unlock_bh(&sdata->u.nan.func_lock);
+
+			return -EIO;
+		}
+	}
+
+	return 0;
+}
+#endif
 
 int ieee80211_reconfig(struct ieee80211_local *local)
 {
@@ -1745,6 +1849,18 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		local->suspended = true;
 	}
 #endif
+
+	/*
+	 * In case of hw_restart during suspend (without wowlan),
+	 * cancel restart work, as we are reconfiguring the device
+	 * anyway.
+	 * Note that restart_work is scheduled on a frozen workqueue,
+	 * so we can't deadlock in this case.
+	 */
+	if (suspended && local->in_reconfig && !reconfig_due_to_wowlan)
+		cancel_work_sync(&local->restart_work);
+
+	local->started = false;
 
 	/*
 	 * Upon resume hardware can sometimes be goofy due to
@@ -1821,48 +1937,9 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 				WARN_ON(drv_add_chanctx(local, ctx));
 		mutex_unlock(&local->chanctx_mtx);
 
-		list_for_each_entry(sdata, &local->interfaces, list) {
-			if (!ieee80211_sdata_running(sdata))
-				continue;
-			ieee80211_assign_chanctx(local, sdata);
-		}
-
 		sdata = rtnl_dereference(local->monitor_sdata);
 		if (sdata && ieee80211_sdata_running(sdata))
 			ieee80211_assign_chanctx(local, sdata);
-	}
-
-	/* add STAs back */
-	mutex_lock(&local->sta_mtx);
-	list_for_each_entry(sta, &local->sta_list, list) {
-		enum ieee80211_sta_state state;
-
-		if (!sta->uploaded)
-			continue;
-
-		/* AP-mode stations will be added later */
-		if (sta->sdata->vif.type == NL80211_IFTYPE_AP)
-			continue;
-
-		for (state = IEEE80211_STA_NOTEXIST;
-		     state < sta->sta_state; state++)
-			WARN_ON(drv_sta_state(local, sta->sdata, sta, state,
-					      state + 1));
-	}
-	mutex_unlock(&local->sta_mtx);
-
-	/* reconfigure tx conf */
-	if (hw->queues >= IEEE80211_NUM_ACS) {
-		list_for_each_entry(sdata, &local->interfaces, list) {
-			if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN ||
-			    sdata->vif.type == NL80211_IFTYPE_MONITOR ||
-			    !ieee80211_sdata_running(sdata))
-				continue;
-
-			for (i = 0; i < IEEE80211_NUM_ACS; i++)
-				drv_conf_tx(local, sdata, i,
-					    &sdata->tx_conf[i]);
-		}
 	}
 
 	/* reconfigure hardware */
@@ -1877,6 +1954,22 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		if (!ieee80211_sdata_running(sdata))
 			continue;
 
+		ieee80211_assign_chanctx(local, sdata);
+
+		switch (sdata->vif.type) {
+		case NL80211_IFTYPE_AP_VLAN:
+		case NL80211_IFTYPE_MONITOR:
+			break;
+		default:
+			ieee80211_reconfig_stations(sdata);
+			/* fall through */
+		case NL80211_IFTYPE_AP: /* AP stations are handled later */
+			for (i = 0; i < IEEE80211_NUM_ACS; i++)
+				drv_conf_tx(local, sdata, i,
+					    &sdata->tx_conf[i]);
+			break;
+		}
+
 		/* common change flags for all interface types */
 		changed = BSS_CHANGED_ERP_CTS_PROT |
 			  BSS_CHANGED_ERP_PREAMBLE |
@@ -1889,6 +1982,9 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 			  BSS_CHANGED_QOS |
 			  BSS_CHANGED_IDLE |
 			  BSS_CHANGED_TXPOWER;
+
+		if (sdata->flags & IEEE80211_SDATA_MU_MIMO_OWNER)
+			changed |= BSS_CHANGED_MU_GROUPS;
 
 		switch (sdata->vif.type) {
 		case NL80211_IFTYPE_STATION:
@@ -1906,10 +2002,11 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 			break;
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 		case NL80211_IFTYPE_OCB:
+			/* keep code in case of fall-through (spatch generated) */
+#endif
 			changed |= BSS_CHANGED_OCB;
 			ieee80211_bss_info_change_notify(sdata, changed);
 			break;
-#endif
 		case NL80211_IFTYPE_ADHOC:
 			changed |= BSS_CHANGED_IBSS;
 			/* fall through */
@@ -1931,6 +2028,16 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 				ieee80211_bss_info_change_notify(sdata, changed);
 			}
 			break;
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+		case NL80211_IFTYPE_NAN:
+			/* keep code in case of fall-through (spatch generated) */
+#endif
+			res = ieee80211_reconfig_nan(sdata);
+			if (res < 0) {
+				ieee80211_handle_reconfig_failure(local);
+				return res;
+			}
+			break;
 		case NL80211_IFTYPE_WDS:
 		case NL80211_IFTYPE_AP_VLAN:
 		case NL80211_IFTYPE_MONITOR:
@@ -1946,7 +2053,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		}
 	}
 
-	ieee80211_recalc_ps(local, -1);
+	ieee80211_recalc_ps(local);
 
 	/*
 	 * The sta might be in psm against the ap (e.g. because
@@ -1961,7 +2068,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 			if (!sdata->u.mgd.associated)
 				continue;
 
-			ieee80211_send_nullfunc(local, sdata, 0);
+			ieee80211_send_nullfunc(local, sdata, false);
 		}
 	}
 
@@ -2010,16 +2117,26 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		    sched_scan_req->n_scan_plans > 1 ||
 #endif
 		    __ieee80211_request_sched_scan_start(sched_scan_sdata,
-							 sched_scan_req))
+							 sched_scan_req)) {
+			RCU_INIT_POINTER(local->sched_scan_sdata, NULL);
+			RCU_INIT_POINTER(local->sched_scan_req, NULL);
 			sched_scan_stopped = true;
+		}
 	mutex_unlock(&local->mtx);
 
 	if (sched_scan_stopped)
 		cfg80211_sched_scan_stopped_rtnl(local->hw.wiphy);
 
  wake_up:
-	local->in_reconfig = false;
-	barrier();
+	if (local->in_reconfig) {
+		local->in_reconfig = false;
+		barrier();
+
+		/* Restart deferred ROCs */
+		mutex_lock(&local->mtx);
+		ieee80211_start_next_roc(local);
+		mutex_unlock(&local->mtx);
+	}
 
 	if (local->monitors == local->open_count && local->monitors > 0)
 		ieee80211_add_virtual_monitor(local);
@@ -2067,17 +2184,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 	mb();
 	local->resuming = false;
 
-	/* It's possible that we don't handle the scan completion in
-	 * time during suspend, so if it's still marked as completed
-	 * here, queue the work and flush it to clean things up.
-	 * Instead of calling the worker function directly here, we
-	 * really queue it to avoid potential races with other flows
-	 * scheduling the same work.
-	 */
-	if (test_bit(SCAN_COMPLETED, &local->scanning)) {
-		ieee80211_queue_delayed_work(&local->hw, &local->scan_work, 0);
-		flush_delayed_work(&local->scan_work);
-	}
+	ieee80211_flush_completed_scan(local, false);
 
 	if (local->open_count && !reconfig_due_to_wowlan)
 		drv_reconfig_complete(local, IEEE80211_RECONFIG_TYPE_SUSPEND);
@@ -2135,7 +2242,13 @@ void ieee80211_recalc_smps(struct ieee80211_sub_if_data *sdata)
 	chanctx_conf = rcu_dereference_protected(sdata->vif.chanctx_conf,
 					lockdep_is_held(&local->chanctx_mtx));
 
-	if (WARN_ON_ONCE(!chanctx_conf))
+	/*
+	 * This function can be called from a work, thus it may be possible
+	 * that the chanctx_conf is removed (due to a disconnection, for
+	 * example).
+	 * So nothing should be done in such case.
+	 */
+	if (!chanctx_conf)
 		goto unlock;
 
 	chanctx = container_of(chanctx_conf, struct ieee80211_chanctx, conf);
@@ -2327,6 +2440,8 @@ u8 *ieee80211_ie_build_vht_oper(u8 *pos, struct ieee80211_sta_vht_cap *vht_cap,
 	if (chandef->center_freq2)
 		vht_oper->center_freq_seg2_idx =
 			ieee80211_frequency_to_channel(chandef->center_freq2);
+	else
+		vht_oper->center_freq_seg2_idx = 0x00;
 
 	switch (chandef->width) {
 	case NL80211_CHAN_WIDTH_160:
@@ -2544,7 +2659,7 @@ int ieee80211_ave_rssi(struct ieee80211_vif *vif)
 		/* non-managed type inferfaces */
 		return 0;
 	}
-	return ifmgd->ave_beacon_signal / 16;
+	return -ewma_beacon_signal_read(&ifmgd->ave_beacon_signal);
 }
 EXPORT_SYMBOL_GPL(ieee80211_ave_rssi);
 
@@ -2592,10 +2707,11 @@ u64 ieee80211_calculate_rx_timestamp(struct ieee80211_local *local,
 	/* Fill cfg80211 rate info */
 	if (status->flag & RX_FLAG_HT) {
 		ri.mcs = status->rate_idx;
-#if CFG80211_VERSION < KERNEL_VERSION(3,20,0)
-		ri.flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
-#else
 		ri.flags |= RATE_INFO_FLAGS_MCS;
+#if CFG80211_VERSION < KERNEL_VERSION(3,20,0)
+		if (status->flag & RX_FLAG_40MHZ)
+			ri.flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
+#else
 		if (status->flag & RX_FLAG_40MHZ)
 			ri.bw = RATE_INFO_BW_40;
 		else
@@ -2651,6 +2767,18 @@ u64 ieee80211_calculate_rx_timestamp(struct ieee80211_local *local,
 		sband = local->hw.wiphy->bands[status->band];
 		bitrate = sband->bitrates[status->rate_idx].bitrate;
 		ri.legacy = DIV_ROUND_UP(bitrate, (1 << shift));
+
+		if (status->flag & RX_FLAG_MACTIME_PLCP_START) {
+			/* TODO: handle HT/VHT preambles */
+			if (status->band == IEEE80211_BAND_5GHZ) {
+				ts += 20 << shift;
+				mpdu_offset += 2;
+			} else if (status->flag & RX_FLAG_SHORTPRE) {
+				ts += 96;
+			} else {
+				ts += 192;
+			}
+		}
 	}
 
 	rate = cfg80211_calculate_bitrate(&ri);
@@ -2670,7 +2798,6 @@ u64 ieee80211_calculate_rx_timestamp(struct ieee80211_local *local,
 
 void ieee80211_dfs_cac_cancel(struct ieee80211_local *local)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(3,15,0)
 	struct ieee80211_sub_if_data *sdata;
 	struct cfg80211_chan_def chandef;
 
@@ -2683,7 +2810,7 @@ void ieee80211_dfs_cac_cancel(struct ieee80211_local *local)
 		 */
 		cancel_delayed_work(&sdata->dfs_cac_timer_work);
 
-		if (sdata->wdev.cac_started) {
+		if (wdev_cac_started(&sdata->wdev)) {
 			chandef = sdata->vif.bss_conf.chandef;
 			ieee80211_vif_release_channel(sdata);
 			cfg80211_cac_event(sdata->dev,
@@ -2694,12 +2821,10 @@ void ieee80211_dfs_cac_cancel(struct ieee80211_local *local)
 	}
 	mutex_unlock(&local->iflist_mtx);
 	mutex_unlock(&local->mtx);
-#endif
 }
 
 void ieee80211_dfs_radar_detected_work(struct work_struct *work)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(3,15,0)
 	struct ieee80211_local *local =
 		container_of(work, struct ieee80211_local, radar_detected_work);
 	struct cfg80211_chan_def chandef = local->hw.conf.chandef;
@@ -2723,7 +2848,6 @@ void ieee80211_dfs_radar_detected_work(struct work_struct *work)
 		WARN_ON(1);
 	else
 		cfg80211_radar_event(local->hw.wiphy, &chandef, GFP_KERNEL);
-#endif
 }
 
 void ieee80211_radar_detected(struct ieee80211_hw *hw)
@@ -2783,14 +2907,12 @@ u32 ieee80211_chandef_downgrade(struct cfg80211_chan_def *c)
 		c->width = NL80211_CHAN_WIDTH_20_NOHT;
 		ret = IEEE80211_STA_DISABLE_HT | IEEE80211_STA_DISABLE_VHT;
 		break;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,11,0)
 	case NL80211_CHAN_WIDTH_5:
 	case NL80211_CHAN_WIDTH_10:
 		WARN_ON_ONCE(1);
 		/* keep c->width */
 		ret = IEEE80211_STA_DISABLE_HT | IEEE80211_STA_DISABLE_VHT;
 		break;
-#endif
 	}
 
 	WARN_ON_ONCE(!cfg80211_chandef_valid(c));
@@ -2978,6 +3100,13 @@ ieee80211_extend_noa_desc(struct ieee80211_noa_data *data, u32 tsf, int i)
 	int skip;
 
 	if (end > 0)
+		return false;
+
+	/* One shot NOA  */
+	if (data->count[i] == 1)
+		return false;
+
+	if (data->desc[i].interval == 0)
 		return false;
 
 	/* End time is in the past, check for repetitions */
@@ -3327,9 +3456,11 @@ void ieee80211_init_tx_queue(struct ieee80211_sub_if_data *sdata,
 	if (sta) {
 		txqi->txq.sta = &sta->sta;
 		sta->sta.txq[tid] = &txqi->txq;
+		txqi->txq.tid = tid;
 		txqi->txq.ac = ieee802_1d_to_ac[tid & 7];
 	} else {
 		sdata->vif.txq = &txqi->txq;
+		txqi->txq.tid = 0;
 		txqi->txq.ac = IEEE80211_AC_BE;
 	}
 }

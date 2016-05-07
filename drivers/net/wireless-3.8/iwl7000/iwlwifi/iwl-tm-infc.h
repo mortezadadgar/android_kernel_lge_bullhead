@@ -27,7 +27,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -115,6 +115,8 @@ enum {
 	IWL_TM_USER_CMD_GET_SIL_STEP,
 	IWL_TM_USER_CMD_GET_DRIVER_BUILD_INFO,
 	IWL_TM_USER_CMD_GET_FW_INFO,
+	IWL_TM_USER_CMD_BUS_DATA_ACCESS,
+	IWL_TM_USER_CMD_GET_SIL_TYPE,
 
 	IWL_TM_USER_CMD_NOTIF_UCODE_RX_PKT = TM_CMD_NOTIF_BASE,
 	IWL_TM_USER_CMD_NOTIF_DRIVER,
@@ -128,6 +130,8 @@ enum {
 	IWL_TM_USER_CMD_NOTIF_RETRIEVE_MONITOR,
 	IWL_TM_USER_CMD_NOTIF_CRASH_DATA,
 	IWL_TM_USER_CMD_NOTIF_BFE,
+	IWL_TM_USER_CMD_NOTIF_LOC_MCSI,
+	IWL_TM_USER_CMD_NOTIF_LOC_RANGE,
 };
 
 /*
@@ -154,6 +158,7 @@ enum {
 	IWL_XVT_CMD_SEND_REPLY_ALIVE = XVT_CMD_NOTIF_BASE,
 	IWL_XVT_CMD_SEND_RFKILL,
 	IWL_XVT_CMD_SEND_NIC_ERROR,
+	IWL_XVT_CMD_SEND_NIC_UMAC_ERROR,
 
 	/* Bus Tester Commands*/
 	IWL_TM_USER_CMD_SV_BUS_CONFIG = XVT_BUS_TESTER_BASE,
@@ -316,6 +321,14 @@ struct iwl_switch_op_mode {
  */
 struct iwl_sil_step {
 	__u32 silicon_step;
+} __packed __aligned(4);
+
+/**
+ * struct iwl_sil_type - holds the silicon type
+ * @silicon_type: the device silicon type
+ */
+struct iwl_tm_sil_type {
+	__u32 silicon_type;
 } __packed __aligned(4);
 
 #define MAX_DRIVER_VERSION_LEN	256

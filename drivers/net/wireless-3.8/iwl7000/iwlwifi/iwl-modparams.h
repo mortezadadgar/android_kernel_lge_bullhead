@@ -25,7 +25,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -86,6 +86,17 @@ enum iwl_disable_11n {
 	IWL_ENABLE_HT_TXAGG	 = BIT(3),
 };
 
+enum iwl_amsdu_size {
+	IWL_AMSDU_4K = 0,
+	IWL_AMSDU_8K = 1,
+	IWL_AMSDU_12K = 2,
+};
+
+enum iwl_uapsd_disable {
+	IWL_DISABLE_UAPSD_BSS		= BIT(0),
+	IWL_DISABLE_UAPSD_P2P_CLIENT	= BIT(1),
+};
+
 /**
  * struct iwl_mod_params
  *
@@ -94,7 +105,7 @@ enum iwl_disable_11n {
  * @sw_crypto: using hardware encryption, default = 0
  * @disable_11n: disable 11n capabilities, default = 0,
  *	use IWL_[DIS,EN]ABLE_HT_* constants
- * @amsdu_size_8K: enable 8K amsdu size, default = 0
+ * @amsdu_size: enable 8K amsdu size, default = 4K. enum iwl_amsdu_size.
  * @restart_fw: restart firmware, default = 1
  * @bt_coex_active: enable bt coex, default = true
  * @led_mode: system default, default = 0
@@ -102,15 +113,21 @@ enum iwl_disable_11n {
  * @power_level: power level, default = 1
  * @debug_level: levels are IWL_DL_*
  * @ant_coupling: antenna coupling in dB, default = 0
+ * @nvm_file: specifies a external NVM file
+ * @uapsd_disable: disable U-APSD, see %enum iwl_uapsd_disable, default =
+ *	IWL_DISABLE_UAPSD_BSS | IWL_DISABLE_UAPSD_P2P_CLIENT
  * @xvt_default_mode: xVT is the default operation mode, default = false
  * @d0i3_disable: disable d0i3, default = 1,
+ * @d0i3_entry_delay: time to wait after no refs are taken before
+ *	entering D0i3 (in msecs)
  * @lar_disable: disable LAR (regulatory), default = 0
  * @fw_monitor: allow to use firmware monitor
+ * @disable_11ac: disable VHT capabilities, default = false.
  */
 struct iwl_mod_params {
 	int sw_crypto;
 	unsigned int disable_11n;
-	int amsdu_size_8K;
+	int amsdu_size;
 	bool restart_fw;
 	bool bt_coex_active;
 	int led_mode;
@@ -124,10 +141,12 @@ struct iwl_mod_params {
 	bool xvt_default_mode;
 #endif
 	char *nvm_file;
-	bool uapsd_disable;
+	u32 uapsd_disable;
 	bool d0i3_disable;
+	unsigned int d0i3_entry_delay;
 	bool lar_disable;
 	bool fw_monitor;
+	bool disable_11ac;
 };
 
 #endif /* #__iwl_modparams_h__ */

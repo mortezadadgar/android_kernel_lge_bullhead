@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,7 +27,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -62,9 +63,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 #include <linux/etherdevice.h>
+#include <linux/skbuff.h>
 #include "iwl-trans.h"
 #include "mvm.h"
 #include "fw-api.h"
+#include "fw-dbg.h"
 
 /*
  * iwl_mvm_rx_rx_phy_cmd - REPLY_RX_PHY_CMD handler
@@ -202,7 +205,6 @@ static u32 iwl_mvm_set_mac80211_rx_flag(struct iwl_mvm *mvm,
 			return -1;
 
 		stats->flag |= RX_FLAG_DECRYPTED;
-		IWL_DEBUG_WEP(mvm, "hw decrypted CCMP successfully\n");
 		*crypt_len = IEEE80211_CCMP_HDR_LEN;
 		return 0;
 
@@ -272,8 +274,7 @@ static void iwl_mvm_rx_handle_tcm(struct iwl_mvm *mvm,
 	/* count the airtime only once for each ampdu */
 	if (mdata->rx.last_ampdu_ref != mvm->ampdu_ref) {
 		mdata->rx.last_ampdu_ref = mvm->ampdu_ref;
-		mdata->rx.airtime[ac] +=
-			le16_to_cpu(phy_info->frame_time);
+		mdata->rx.airtime += le16_to_cpu(phy_info->frame_time);
 	}
 	mvmvif = iwl_mvm_vif_from_mac80211(mvmsta->vif);
 
@@ -306,7 +307,46 @@ static void iwl_mvm_rx_handle_tcm(struct iwl_mvm *mvm,
 				RATE_MCS_CHAN_WIDTH_POS);
 
 	mdata->uapsd_nonagg_detect.rx_bytes += len;
-	ewma_add(&mdata->uapsd_nonagg_detect.rate, thr);
+	ewma_rate_add(&mdata->uapsd_nonagg_detect.rate, thr);
+}
+#endif
+
+static void iwl_mvm_rx_csum(struct ieee80211_sta *sta,
+			    struct sk_buff *skb,
+			    u32 status)
+{
+	struct iwl_mvm_sta *mvmsta = iwl_mvm_sta_from_mac80211(sta);
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(mvmsta->vif);
+
+	if (mvmvif->features & NETIF_F_RXCSUM &&
+	    status & RX_MPDU_RES_STATUS_CSUM_DONE &&
+	    status & RX_MPDU_RES_STATUS_CSUM_OK)
+		skb->ip_summed = CHECKSUM_UNNECESSARY;
+}
+
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+static void
+iwl_mvm_handle_gscan_beacon_probe(struct iwl_mvm *mvm, u32 len,
+				  struct ieee80211_rx_status *rx_status,
+				  struct ieee80211_mgmt *mgmt)
+{
+	struct iwl_mvm_gscan_beacon *beacon;
+
+	beacon = kzalloc(sizeof(*beacon) + len, GFP_ATOMIC);
+	if (!beacon)
+		return;
+
+	memcpy(beacon->mgmt, mgmt, len);
+	beacon->gp2_ts = rx_status->device_timestamp;
+	beacon->len = len;
+	beacon->signal = rx_status->signal;
+	beacon->channel = ieee80211_frequency_to_channel(rx_status->freq);
+
+	spin_lock_bh(&mvm->gscan_beacons_lock);
+	list_add(&beacon->list, &mvm->gscan_beacons_list);
+	spin_unlock_bh(&mvm->gscan_beacons_lock);
+
+	schedule_work(&mvm->gscan_beacons_work);
 }
 #endif
 
@@ -323,7 +363,7 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_rx_phy_info *phy_info;
 	struct iwl_rx_mpdu_res_start *rx_res;
-	struct ieee80211_sta *sta;
+	struct ieee80211_sta *sta = NULL;
 	struct sk_buff *skb;
 	u32 len;
 	u32 ampdu_status;
@@ -360,13 +400,6 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 		return;
 	}
 
-	if ((unlikely(phy_info->cfg_phy_cnt > 20))) {
-		IWL_DEBUG_DROP(mvm, "dsp size out of range [0,20]: %d\n",
-			       phy_info->cfg_phy_cnt);
-		kfree_skb(skb);
-		return;
-	}
-
 	/*
 	 * Keep packets with CRC errors (and with overrun) for monitor mode
 	 * (otherwise the firmware discards them) but mark them as bad.
@@ -389,11 +422,9 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 	rx_status->freq =
 		ieee80211_channel_to_frequency(le16_to_cpu(phy_info->channel),
 					       rx_status->band);
-	/*
-	 * TSF as indicated by the fw is at INA time, but mac80211 expects the
-	 * TSF at the beginning of the MPDU.
-	 */
-	/*rx_status->flag |= RX_FLAG_MACTIME_MPDU;*/
+
+	/* TSF as indicated by the firmware  is at INA time */
+	rx_status->flag |= RX_FLAG_MACTIME_PLCP_START;
 
 	iwl_mvm_get_signal_strength(mvm, phy_info, rx_status);
 
@@ -401,22 +432,33 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 			      (unsigned long long)rx_status->mactime);
 
 	rcu_read_lock();
-	/*
-	 * We have tx blocked stations (with CS bit). If we heard frames from
-	 * a blocked station on a new channel we can TX to it again.
-	 */
-	if (unlikely(mvm->csa_tx_block_bcn_timeout)) {
-		sta = ieee80211_find_sta(
-			rcu_dereference(mvm->csa_tx_blocked_vif), hdr->addr2);
-		if (sta)
-			iwl_mvm_sta_modify_disable_tx_ap(mvm, sta, false);
+	if (rx_pkt_status & RX_MPDU_RES_STATUS_SRC_STA_FOUND) {
+		u32 id = rx_pkt_status & RX_MPDU_RES_STATUS_STA_ID_MSK;
+
+		id >>= RX_MDPU_RES_STATUS_STA_ID_SHIFT;
+
+		if (!WARN_ON_ONCE(id >= IWL_MVM_STATION_COUNT)) {
+			sta = rcu_dereference(mvm->fw_id_to_mac_id[id]);
+			if (IS_ERR(sta))
+				sta = NULL;
+		}
+	} else if (!is_multicast_ether_addr(hdr->addr2)) {
+		/* This is fine since we prevent two stations with the same
+		 * address from being added.
+		 */
+		sta = ieee80211_find_sta_by_ifaddr(mvm->hw, hdr->addr2, NULL);
 	}
 
-	/* This is fine since we don't support multiple AP interfaces */
-	sta = ieee80211_find_sta_by_ifaddr(mvm->hw, hdr->addr2, NULL);
 	if (sta) {
-		struct iwl_mvm_sta *mvmsta;
-		mvmsta = iwl_mvm_sta_from_mac80211(sta);
+		struct iwl_mvm_sta *mvmsta = iwl_mvm_sta_from_mac80211(sta);
+
+		/* We have tx blocked stations (with CS bit). If we heard
+		 * frames from a blocked station on a new channel we can
+		 * TX to it again.
+		 */
+		if (unlikely(mvm->csa_tx_block_bcn_timeout))
+			iwl_mvm_sta_modify_disable_tx_ap(mvm, sta, false);
+
 		rs_update_last_rssi(mvm, &mvmsta->lq_sta, rx_status);
 
 		if (iwl_fw_dbg_trigger_enabled(mvm->fw, FW_DBG_TRIGGER_RSSI) &&
@@ -437,25 +479,25 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 			if (trig_check && rx_status->signal < rssi)
 				iwl_mvm_fw_dbg_collect_trig(mvm, trig, NULL);
 		}
-	}
 
 #ifdef CPTCFG_IWLMVM_TCM
-	if (sta && !mvm->tcm.paused && len >= sizeof(*hdr) &&
-	    !is_multicast_ether_addr(hdr->addr1) &&
-	    ieee80211_is_data(hdr->frame_control))
-		iwl_mvm_rx_handle_tcm(mvm, sta, hdr, len, phy_info,
-				      rate_n_flags);
+		if (!mvm->tcm.paused && len >= sizeof(*hdr) &&
+		    !is_multicast_ether_addr(hdr->addr1) &&
+		    ieee80211_is_data(hdr->frame_control))
+			iwl_mvm_rx_handle_tcm(mvm, sta, hdr, len, phy_info,
+					      rate_n_flags);
 #endif
-
 #ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
-	/*
-	 * these packets are from the AP or the existing TDLS peer. In both
-	 * cases an existing station.
-	 */
-	if (sta)
-		iwl_mvm_tdls_peer_cache_pkt(mvm, hdr, len, false);
+		/*
+		 * these packets are from the AP or the existing TDLS peer.
+		 * In both cases an existing station.
+		 */
+		iwl_mvm_tdls_peer_cache_pkt(mvm, hdr, len, 0);
 #endif /* CPTCFG_IWLMVM_TDLS_PEER_CACHE */
 
+		if (ieee80211_is_data(hdr->frame_control))
+			iwl_mvm_rx_csum(sta, skb, rx_pkt_status);
+	}
 	rcu_read_unlock();
 
 	/* set the preamble flag if appropriate */
@@ -520,12 +562,29 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
 				   rx_status->flag & RX_FLAG_AMPDU_DETAILS);
 #endif
 
+	if (unlikely((ieee80211_is_beacon(hdr->frame_control) ||
+		      ieee80211_is_probe_resp(hdr->frame_control)) &&
+		     mvm->sched_scan_pass_all == SCHED_SCAN_PASS_ALL_ENABLED))
+		mvm->sched_scan_pass_all = SCHED_SCAN_PASS_ALL_FOUND;
+
 #ifdef CPTCFG_IWLMVM_TOF_TSF_WA
 	if (fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT) &&
 	    (ieee80211_is_beacon(hdr->frame_control) ||
 	     ieee80211_is_probe_resp(hdr->frame_control)))
 		iwl_mvm_tof_update_tsf(mvm, pkt);
 #endif
+
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	if (unlikely(phy_info->mac_context_info == MAC_CONTEXT_INFO_GSCAN &&
+		     (ieee80211_is_beacon(hdr->frame_control) ||
+		      ieee80211_is_probe_resp(hdr->frame_control)))) {
+		struct ieee80211_mgmt *mgmt = (void *)(pkt->data +
+						       sizeof(*rx_res));
+
+		iwl_mvm_handle_gscan_beacon_probe(mvm, len, rx_status, mgmt);
+	}
+#endif
+
 	iwl_mvm_pass_packet_to_mac80211(mvm, napi, skb, hdr, len, ampdu_status,
 					crypt_len, rxb);
 }
@@ -541,7 +600,7 @@ static void iwl_mvm_update_rx_statistics(struct iwl_mvm *mvm,
 struct iwl_mvm_stat_data {
 	struct iwl_mvm *mvm;
 	__le32 mac_id;
-	__s8 beacon_filter_average_energy;
+	u8 beacon_filter_average_energy;
 	struct mvm_statistics_general_v8 *general;
 };
 
@@ -659,55 +718,32 @@ iwl_mvm_rx_stats_check_trigger(struct iwl_mvm *mvm, struct iwl_rx_packet *pkt)
 void iwl_mvm_handle_rx_statistics(struct iwl_mvm *mvm,
 				  struct iwl_rx_packet *pkt)
 {
-	size_t v8_len = sizeof(struct iwl_notif_statistics_v8);
-	size_t v10_len = sizeof(struct iwl_notif_statistics_v10);
+	struct iwl_notif_statistics_v10 *stats = (void *)&pkt->data;
 	struct iwl_mvm_stat_data data = {
 		.mvm = mvm,
 	};
 	u32 temperature;
 
-	if (fw_has_api(&mvm->fw->ucode_capa, IWL_UCODE_TLV_API_STATS_V10)) {
-		struct iwl_notif_statistics_v10 *stats = (void *)&pkt->data;
+	if (iwl_rx_packet_payload_len(pkt) != sizeof(*stats))
+		goto invalid;
 
-		if (iwl_rx_packet_payload_len(pkt) != v10_len)
-			goto invalid;
+	temperature = le32_to_cpu(stats->general.radio_temperature);
+	data.mac_id = stats->rx.general.mac_id;
+	data.beacon_filter_average_energy =
+		stats->general.beacon_filter_average_energy;
 
-		temperature = le32_to_cpu(stats->general.radio_temperature);
-		data.mac_id = stats->rx.general.mac_id;
-		data.beacon_filter_average_energy =
-			stats->general.beacon_filter_average_energy;
+	iwl_mvm_update_rx_statistics(mvm, &stats->rx);
 
-		iwl_mvm_update_rx_statistics(mvm, &stats->rx);
+	mvm->radio_stats.rx_time = le64_to_cpu(stats->general.rx_time);
+	mvm->radio_stats.tx_time = le64_to_cpu(stats->general.tx_time);
+	mvm->radio_stats.on_time_rf =
+		le64_to_cpu(stats->general.on_time_rf);
+	mvm->radio_stats.on_time_scan =
+		le64_to_cpu(stats->general.on_time_scan);
 
-		mvm->radio_stats.rx_time = le64_to_cpu(stats->general.rx_time);
-		mvm->radio_stats.tx_time = le64_to_cpu(stats->general.tx_time);
-		mvm->radio_stats.on_time_rf =
-			le64_to_cpu(stats->general.on_time_rf);
-		mvm->radio_stats.on_time_scan =
-			le64_to_cpu(stats->general.on_time_scan);
-
-		data.general = &stats->general;
-	} else {
-		struct iwl_notif_statistics_v8 *stats = (void *)&pkt->data;
-
-		if (iwl_rx_packet_payload_len(pkt) != v8_len)
-			goto invalid;
-
-		temperature = le32_to_cpu(stats->general.radio_temperature);
-		data.mac_id = stats->rx.general.mac_id;
-		data.beacon_filter_average_energy =
-			stats->general.beacon_filter_average_energy;
-
-		iwl_mvm_update_rx_statistics(mvm, &stats->rx);
-	}
+	data.general = &stats->general;
 
 	iwl_mvm_rx_stats_check_trigger(mvm, pkt);
-
-	/* Only handle rx statistics temperature changes if async temp
-	 * notifications are not supported
-	 */
-	if (!fw_has_api(&mvm->fw->ucode_capa, IWL_UCODE_TLV_API_ASYNC_DTM))
-		iwl_mvm_tt_temp_changed(mvm, temperature);
 
 	ieee80211_iterate_active_interfaces(mvm->hw,
 					    IEEE80211_IFACE_ITER_NORMAL,
@@ -722,4 +758,52 @@ void iwl_mvm_handle_rx_statistics(struct iwl_mvm *mvm,
 void iwl_mvm_rx_statistics(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb)
 {
 	iwl_mvm_handle_rx_statistics(mvm, rxb_addr(rxb));
+}
+
+void iwl_mvm_window_status_notif(struct iwl_mvm *mvm,
+				 struct iwl_rx_cmd_buffer *rxb)
+{
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_ba_window_status_notif *notif = (void *)pkt->data;
+	int i;
+	u32 pkt_len = iwl_rx_packet_payload_len(pkt);
+
+	if (WARN_ONCE(pkt_len != sizeof(*notif),
+		      "Received window status notification of wrong size (%u)\n",
+		      pkt_len))
+		return;
+
+	rcu_read_lock();
+	for (i = 0; i < BA_WINDOW_STREAMS_MAX; i++) {
+		struct ieee80211_sta *sta;
+		u8 sta_id, tid;
+		u64 bitmap;
+		u32 ssn;
+		u16 ratid;
+		u16 received_mpdu;
+
+		ratid = le16_to_cpu(notif->ra_tid[i]);
+		/* check that this TID is valid */
+		if (!(ratid & BA_WINDOW_STATUS_VALID_MSK))
+			continue;
+
+		received_mpdu = le16_to_cpu(notif->mpdu_rx_count[i]);
+		if (received_mpdu == 0)
+			continue;
+
+		tid = ratid & BA_WINDOW_STATUS_TID_MSK;
+		/* get the station */
+		sta_id = (ratid & BA_WINDOW_STATUS_STA_ID_MSK)
+			 >> BA_WINDOW_STATUS_STA_ID_POS;
+		sta = rcu_dereference(mvm->fw_id_to_mac_id[sta_id]);
+		if (IS_ERR_OR_NULL(sta))
+			continue;
+		bitmap = le64_to_cpu(notif->bitmap[i]);
+		ssn = le32_to_cpu(notif->start_seq_num[i]);
+
+		/* update mac80211 with the bitmap for the reordering buffer */
+		ieee80211_mark_rx_ba_filtered_frames(sta, tid, ssn, bitmap,
+						     received_mpdu);
+	}
+	rcu_read_unlock();
 }

@@ -6,7 +6,6 @@
  * Copyright (c) 2006 Jiri Benc <jbenc@suse.cz>
  * Copyright 2008, Johannes Berg <johannes@sipsolutions.net>
  * Copyright 2013-2014  Intel Mobile Communications GmbH
- * Copyright 2015	Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -77,7 +76,8 @@ bool __ieee80211_recalc_txpower(struct ieee80211_sub_if_data *sdata)
 void ieee80211_recalc_txpower(struct ieee80211_sub_if_data *sdata,
 			      bool update_bss)
 {
-	if (__ieee80211_recalc_txpower(sdata) || update_bss)
+	if (__ieee80211_recalc_txpower(sdata) ||
+	    (update_bss && ieee80211_sdata_running(sdata)))
 		ieee80211_bss_info_change_notify(sdata, BSS_CHANGED_TXPOWER);
 }
 
@@ -188,7 +188,7 @@ static int ieee80211_verify_mac(struct ieee80211_sub_if_data *sdata, u8 *addr,
 			continue;
 
 		if (iter->vif.type == NL80211_IFTYPE_MONITOR &&
-		    !(iter->u.mntr_flags & MONITOR_FLAG_ACTIVE))
+		    !(iter->u.mntr.flags & MONITOR_FLAG_ACTIVE))
 			continue;
 
 		m = iter->vif.addr;
@@ -217,7 +217,7 @@ static int ieee80211_change_mac(struct net_device *dev, void *addr)
 		return -EBUSY;
 
 	if (sdata->vif.type == NL80211_IFTYPE_MONITOR &&
-	    !(sdata->u.mntr_flags & MONITOR_FLAG_ACTIVE))
+	    !(sdata->u.mntr.flags & MONITOR_FLAG_ACTIVE))
 		check_dup = false;
 
 	ret = ieee80211_verify_mac(sdata, sa->sa_data, check_dup);
@@ -263,10 +263,10 @@ static int ieee80211_check_concurrent_iface(struct ieee80211_sub_if_data *sdata,
 			/*
 			 * Only OCB and monitor mode may coexist
 			 */
-			if ((sdata->vif.type == NL80211_IFTYPE_OCB &&
+			if ((ieee80211_viftype_ocb(sdata->vif.type) &&
 			     nsdata->vif.type != NL80211_IFTYPE_MONITOR) ||
 			    (sdata->vif.type != NL80211_IFTYPE_MONITOR &&
-			     nsdata->vif.type == NL80211_IFTYPE_OCB))
+			     ieee80211_viftype_ocb(nsdata->vif.type)))
 				return -EBUSY;
 
 			/*
@@ -325,6 +325,9 @@ static int ieee80211_check_queues(struct ieee80211_sub_if_data *sdata,
 	int n_queues = sdata->local->hw.queues;
 	int i;
 
+	if (ieee80211_viftype_nan(iftype))
+		return 0;
+
 	if (iftype != NL80211_IFTYPE_P2P_DEVICE) {
 		for (i = 0; i < IEEE80211_NUM_ACS; i++) {
 			if (WARN_ON_ONCE(sdata->vif.hw_queue[i] ==
@@ -357,7 +360,7 @@ void ieee80211_adjust_monitor_flags(struct ieee80211_sub_if_data *sdata,
 				    const int offset)
 {
 	struct ieee80211_local *local = sdata->local;
-	u32 flags = sdata->u.mntr_flags;
+	u32 flags = sdata->u.mntr.flags;
 
 #define ADJUST(_f, _s)	do {					\
 	if (flags & MONITOR_FLAG_##_f)				\
@@ -541,6 +544,11 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 	case NL80211_IFTYPE_P2P_DEVICE:
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	case NL80211_IFTYPE_NAN:
+		/* keep code in case of fall-through (spatch generated) */
 #endif
 		/* no special treatment */
 		break;
@@ -591,12 +599,12 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 		}
 		break;
 	case NL80211_IFTYPE_MONITOR:
-		if (sdata->u.mntr_flags & MONITOR_FLAG_COOK_FRAMES) {
+		if (sdata->u.mntr.flags & MONITOR_FLAG_COOK_FRAMES) {
 			local->cooked_mntrs++;
 			break;
 		}
 
-		if (sdata->u.mntr_flags & MONITOR_FLAG_ACTIVE) {
+		if (sdata->u.mntr.flags & MONITOR_FLAG_ACTIVE) {
 			res = drv_add_interface(local, sdata);
 			if (res)
 				goto err_stop;
@@ -643,7 +651,8 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 			local->fif_probe_req++;
 		}
 
-		if (sdata->vif.type != NL80211_IFTYPE_P2P_DEVICE)
+		if (sdata->vif.type != NL80211_IFTYPE_P2P_DEVICE &&
+		    !ieee80211_viftype_nan(sdata->vif.type))
 			changed |= ieee80211_reset_erp_info(sdata);
 		ieee80211_bss_info_change_notify(sdata, changed);
 
@@ -652,11 +661,18 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 		case NL80211_IFTYPE_ADHOC:
 		case NL80211_IFTYPE_AP:
 		case NL80211_IFTYPE_MESH_POINT:
+#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 		case NL80211_IFTYPE_OCB:
+			/* keep code in case of fall-through (spatch generated) */
+#endif
 			netif_carrier_off(dev);
 			break;
 		case NL80211_IFTYPE_WDS:
 		case NL80211_IFTYPE_P2P_DEVICE:
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+		case NL80211_IFTYPE_NAN:
+			/* keep code in case of fall-through (spatch generated) */
+#endif
 			break;
 		default:
 			/* not reached */
@@ -714,7 +730,7 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 	if (hw_reconf_flags)
 		ieee80211_hw_config(local, hw_reconf_flags);
 
-	ieee80211_recalc_ps(local, -1);
+	ieee80211_recalc_ps(local);
 
 	if (sdata->vif.type == NL80211_IFTYPE_MONITOR ||
 	    sdata->vif.type == NL80211_IFTYPE_AP_VLAN) {
@@ -786,8 +802,9 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 	u32 hw_reconf_flags = 0;
 	int i, flushed;
 	struct ps_data *ps;
-	struct cfg80211_chan_def __maybe_unused chandef;
+	struct cfg80211_chan_def chandef;
 	bool cancel_scan;
+	struct ieee80211_nan_func *func, *tmp_func;
 
 	clear_bit(SDATA_STATE_RUNNING, &sdata->state);
 
@@ -878,8 +895,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 
 	cancel_delayed_work_sync(&sdata->dfs_cac_timer_work);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(3,15,0)
-	if (sdata->wdev.cac_started) {
+	if (wdev_cac_started(&sdata->wdev)) {
 		chandef = sdata->vif.bss_conf.chandef;
 		WARN_ON(local->suspended);
 		mutex_lock(&local->mtx);
@@ -889,7 +905,6 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 				   NL80211_RADAR_CAC_ABORTED,
 				   GFP_KERNEL);
 	}
-#endif
 
 	/* APs need special treatment */
 	if (sdata->vif.type == NL80211_IFTYPE_AP) {
@@ -929,7 +944,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 		/* no need to tell driver */
 		break;
 	case NL80211_IFTYPE_MONITOR:
-		if (sdata->u.mntr_flags & MONITOR_FLAG_COOK_FRAMES) {
+		if (sdata->u.mntr.flags & MONITOR_FLAG_COOK_FRAMES) {
 			local->cooked_mntrs--;
 			break;
 		}
@@ -941,6 +956,20 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 		}
 
 		ieee80211_adjust_monitor_flags(sdata, -1);
+		break;
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	case NL80211_IFTYPE_NAN:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
+		/* clean all the functions */
+		spin_lock_bh(&sdata->u.nan.func_lock);
+		list_for_each_entry_safe(func, tmp_func,
+					 &sdata->u.nan.functions_list, list) {
+			list_del(&func->list);
+			cfg80211_free_nan_func_members(&func->func);
+			kfree(func);
+		}
+		spin_unlock_bh(&sdata->u.nan.func_lock);
 		break;
 	case NL80211_IFTYPE_P2P_DEVICE:
 		/* relies on synchronize_rcu() below */
@@ -1014,7 +1043,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 		ieee80211_recalc_idle(local);
 		mutex_unlock(&local->mtx);
 
-		if (!(sdata->u.mntr_flags & MONITOR_FLAG_ACTIVE))
+		if (!(sdata->u.mntr.flags & MONITOR_FLAG_ACTIVE))
 			break;
 
 		/* fall through */
@@ -1023,7 +1052,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 			drv_remove_interface(local, sdata);
 	}
 
-	ieee80211_recalc_ps(local, -1);
+	ieee80211_recalc_ps(local);
 
 	if (cancel_scan)
 		flush_delayed_work(&local->scan_work);
@@ -1148,43 +1177,6 @@ ieee80211_get_stats64(struct net_device *dev, struct rtnl_link_stats64 *stats)
 	return stats;
 }
 
-static int ieee80211_netdev_set_features(struct net_device *dev,
-					 netdev_features_t features)
-{
-	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
-	struct ieee80211_local *local = sdata->local;
-	netdev_features_t changed = dev->features ^ features;
-	int ret;
-
-	if (!(changed & IEEE80211_SUPPORTED_NETDEV_FEATURES))
-		return 0;
-
-	switch (sdata->vif.type) {
-	case NL80211_IFTYPE_MONITOR:
-	case NL80211_IFTYPE_AP_VLAN:
-		/* these aren't known to the driver */
-		return -EOPNOTSUPP;
-	default:
-		break;
-	}
-
-	ret = drv_set_features(local, sdata, features, changed);
-	if (ret)
-		return ret;
-
-	if (sdata->vif.type == NL80211_IFTYPE_AP) {
-		struct ieee80211_sub_if_data *vlan;
-
-		/* propagate to VLANs as they're dependent */
-		list_for_each_entry(vlan, &sdata->u.ap.vlans, u.vlan.list) {
-			vlan->dev->features = features;
-			netdev_update_features(vlan->dev);
-		}
-	}
-
-	return 0;
-}
-
 static const struct net_device_ops ieee80211_dataif_ops = {
 	.ndo_open		= ieee80211_open,
 	.ndo_stop		= ieee80211_stop,
@@ -1195,7 +1187,6 @@ static const struct net_device_ops ieee80211_dataif_ops = {
 	.ndo_set_mac_address 	= ieee80211_change_mac,
 	.ndo_select_queue	= ieee80211_netdev_select_queue,
 	.ndo_get_stats64	= ieee80211_get_stats64,
-	.ndo_set_features	= ieee80211_netdev_set_features,
 };
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0) || \
@@ -1333,6 +1324,16 @@ static void ieee80211_iface_work(struct work_struct *work)
 				}
 			}
 			mutex_unlock(&local->sta_mtx);
+		} else if (ieee80211_is_action(mgmt->frame_control) &&
+			   mgmt->u.action.category == WLAN_CATEGORY_VHT) {
+			switch (mgmt->u.action.u.vht_group_notif.action_code) {
+			case WLAN_VHT_ACTION_GROUPID_MGMT:
+				ieee80211_process_mu_groups(sdata, mgmt);
+				break;
+			default:
+				WARN_ON(1);
+				break;
+			}
 		} else if (ieee80211_is_data_qos(mgmt->frame_control)) {
 			struct ieee80211_hdr *hdr = (void *)mgmt;
 			/*
@@ -1399,9 +1400,10 @@ static void ieee80211_iface_work(struct work_struct *work)
 		break;
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
 		ieee80211_ocb_work(sdata);
 		break;
-#endif
 	default:
 		break;
 	}
@@ -1421,10 +1423,8 @@ static void ieee80211_recalc_smps_work(struct work_struct *work)
 static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 				  enum nl80211_iftype type)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	static const u8 bssid_wildcard[ETH_ALEN] = {0xff, 0xff, 0xff,
 						    0xff, 0xff, 0xff};
-#endif
 
 	/* clear type-dependent union */
 	memset(&sdata->u, 0, sizeof(sdata->u));
@@ -1450,9 +1450,7 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 	skb_queue_head_init(&sdata->skb_queue);
 	INIT_WORK(&sdata->work, ieee80211_iface_work);
 	INIT_WORK(&sdata->recalc_smps, ieee80211_recalc_smps_work);
-#if CFG80211_VERSION >= KERNEL_VERSION(3,12,0)
 	INIT_WORK(&sdata->csa_finalize_work, ieee80211_csa_finalize_work);
-#endif
 	INIT_LIST_HEAD(&sdata->assigned_chanctx_list);
 	INIT_LIST_HEAD(&sdata->reserved_chanctx_list);
 
@@ -1481,10 +1479,11 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 		break;
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
 		sdata->vif.bss_conf.bssid = bssid_wildcard;
 		ieee80211_ocb_setup_sdata(sdata);
 		break;
-#endif
 	case NL80211_IFTYPE_ADHOC:
 		sdata->vif.bss_conf.bssid = sdata->u.ibss.bssid;
 		ieee80211_ibss_setup_sdata(sdata);
@@ -1496,11 +1495,21 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 	case NL80211_IFTYPE_MONITOR:
 		sdata->dev->type = ARPHRD_IEEE80211_RADIOTAP;
 		sdata->dev->netdev_ops = &ieee80211_monitorif_ops;
-		sdata->u.mntr_flags = MONITOR_FLAG_CONTROL |
+		sdata->u.mntr.flags = MONITOR_FLAG_CONTROL |
 				      MONITOR_FLAG_OTHER_BSS;
 		break;
 	case NL80211_IFTYPE_WDS:
 		sdata->vif.bss_conf.bssid = NULL;
+		break;
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	case NL80211_IFTYPE_NAN:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
+		bitmap_zero(sdata->u.nan.func_ids,
+			    IEEE80211_MAX_NAN_INSTANCE_ID + 1);
+		INIT_LIST_HEAD(&sdata->u.nan.functions_list);
+		spin_lock_init(&sdata->u.nan.func_lock);
+		sdata->vif.bss_conf.bssid = sdata->vif.addr;
 		break;
 	case NL80211_IFTYPE_AP_VLAN:
 	case NL80211_IFTYPE_P2P_DEVICE:
@@ -1534,6 +1543,7 @@ static int ieee80211_runtime_change_iftype(struct ieee80211_sub_if_data *sdata,
 	case NL80211_IFTYPE_ADHOC:
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
 #endif
 		/*
 		 * Could maybe also all others here?
@@ -1552,6 +1562,7 @@ static int ieee80211_runtime_change_iftype(struct ieee80211_sub_if_data *sdata,
 	case NL80211_IFTYPE_ADHOC:
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
 #endif
 		/*
 		 * Could probably support everything
@@ -1772,7 +1783,7 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 
 	ASSERT_RTNL();
 
-	if (type == NL80211_IFTYPE_P2P_DEVICE) {
+	if (type == NL80211_IFTYPE_P2P_DEVICE || ieee80211_viftype_nan(type)) {
 		struct wireless_dev *wdev;
 
 		sdata = kzalloc(sizeof(*sdata) + local->hw.vif_data_size,
@@ -1866,13 +1877,23 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 		sband = local->hw.wiphy->bands[i];
 		sdata->rc_rateidx_mask[i] =
 			sband ? (1 << sband->n_bitrates) - 1 : 0;
-		if (sband)
+		if (sband) {
+			__le16 cap;
+			u16 *vht_rate_mask;
+
 			memcpy(sdata->rc_rateidx_mcs_mask[i],
 			       sband->ht_cap.mcs.rx_mask,
 			       sizeof(sdata->rc_rateidx_mcs_mask[i]));
-		else
+
+			cap = sband->vht_cap.vht_mcs.rx_mcs_map;
+			vht_rate_mask = sdata->rc_rateidx_vht_mcs_mask[i];
+			ieee80211_get_vht_mask_from_cap(cap, vht_rate_mask);
+		} else {
 			memset(sdata->rc_rateidx_mcs_mask[i], 0,
 			       sizeof(sdata->rc_rateidx_mcs_mask[i]));
+			memset(sdata->rc_rateidx_vht_mcs_mask[i], 0,
+			       sizeof(sdata->rc_rateidx_vht_mcs_mask[i]));
+		}
 	}
 
 	ieee80211_set_default_queues(sdata);
@@ -1892,8 +1913,7 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 				sdata->u.mgd.use_4addr = params->use_4addr;
 		}
 
-		ndev->features = local->hw.netdev_features;
-		ndev->hw_features = local->hw.netdev_hw_features;
+		ndev->features |= local->hw.netdev_features;
 
 		netdev_set_default_ethtool_ops(ndev, &ieee80211_ethtool_ops);
 
@@ -1928,6 +1948,7 @@ void ieee80211_if_remove(struct ieee80211_sub_if_data *sdata)
 		unregister_netdevice(sdata->dev);
 	} else {
 		cfg80211_unregister_wdev(&sdata->wdev);
+		ieee80211_teardown_sdata(sdata);
 		kfree(sdata);
 	}
 }
@@ -1937,7 +1958,6 @@ void ieee80211_sdata_stop(struct ieee80211_sub_if_data *sdata)
 	if (WARN_ON_ONCE(!test_bit(SDATA_STATE_RUNNING, &sdata->state)))
 		return;
 	ieee80211_do_stop(sdata, true);
-	ieee80211_teardown_sdata(sdata);
 }
 
 void ieee80211_remove_interfaces(struct ieee80211_local *local)

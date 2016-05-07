@@ -27,7 +27,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -101,12 +101,16 @@ void iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
 	void *data = pkt->data;
 	u32 size = iwl_rx_packet_payload_len(pkt);
 
-	switch (pkt->hdr.cmd) {
+	IWL_DEBUG_INFO(xvt, "rx notification: group=0x%x, id=0x%x\n",
+		       pkt->hdr.group_id, pkt->hdr.cmd);
+
+	switch (WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd)) {
 	case GET_SET_PHY_DB_CMD:
 		iwl_xvt_user_send_notif(xvt, IWL_TM_USER_CMD_NOTIF_PHY_DB,
 					data, size, GFP_ATOMIC);
 		break;
 	case DTS_MEASUREMENT_NOTIFICATION:
+	case DTS_MEASUREMENT_NOTIF_WIDE:
 		iwl_xvt_user_send_notif(xvt,
 					IWL_TM_USER_CMD_NOTIF_DTS_MEASUREMENTS,
 					data, size, GFP_ATOMIC);
@@ -140,6 +144,17 @@ void iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
 		break;
 	case DEBUG_LOG_MSG:
 		iwl_dnt_dispatch_collect_ucode_message(xvt->trans, rxb);
+		break;
+	case LOCATION_GROUP_NOTIFICATION:
+		if (le32_to_cpu(*(__le32 *)data) == LOCATION_MCSI_NOTIFICATION)
+			iwl_xvt_user_send_notif(xvt,
+						IWL_TM_USER_CMD_NOTIF_LOC_MCSI,
+						data, size, GFP_ATOMIC);
+		else if (le32_to_cpu(*(__le32 *)data) ==
+			 LOCATION_RANGE_RESPONSE_NOTIFICATION)
+			iwl_xvt_user_send_notif(xvt,
+						IWL_TM_USER_CMD_NOTIF_LOC_RANGE,
+						data, size, GFP_ATOMIC);
 		break;
 	case REPLY_RX_PHY_CMD:
 		IWL_DEBUG_INFO(xvt,
@@ -276,7 +291,7 @@ static int iwl_xvt_reg_ops(struct iwl_trans *trans,
 		return -ENOMEM;
 	result->num = read_idx;
 	if (is_grab_nic_access_required) {
-		if (!iwl_trans_grab_nic_access(trans, false, &flags)) {
+		if (!iwl_trans_grab_nic_access(trans, &flags)) {
 			kfree(result);
 			return -EBUSY;
 		}
@@ -409,7 +424,7 @@ static int iwl_xvt_indirect_read(struct iwl_xvt *xvt,
 	/* Hard-coded periphery absolute address */
 	if (IWL_ABS_PRPH_START <= addr &&
 	    addr < IWL_ABS_PRPH_START + PRPH_END) {
-		if (!iwl_trans_grab_nic_access(trans, false, &flags))
+		if (!iwl_trans_grab_nic_access(trans, &flags))
 			return -EBUSY;
 		for (i = 0; i < size32; i++)
 			buf32[i] = iwl_trans_read_prph(trans,
@@ -440,7 +455,7 @@ static int iwl_xvt_indirect_write(struct iwl_xvt *xvt,
 		/* Periphery writes can be 1-3 bytes long, or DWORDs */
 		if (size < 4) {
 			memcpy(&val, buf, size);
-			if (!iwl_trans_grab_nic_access(trans, false, &flags))
+			if (!iwl_trans_grab_nic_access(trans, &flags))
 				return -EBUSY;
 			iwl_write32(trans, HBUS_TARG_PRPH_WADDR,
 				    (addr & 0x0000FFFF) | ((size - 1) << 24));
@@ -714,6 +729,9 @@ static void iwl_xvt_stop_op_mode(struct iwl_xvt *xvt)
 		xvt->fw_running = false;
 	}
 	iwl_trans_stop_device(xvt->trans);
+
+	iwl_xvt_free_fw_paging(xvt);
+
 	xvt->state = IWL_XVT_STATE_UNINITIALIZED;
 }
 
@@ -863,6 +881,7 @@ static int iwl_xvt_modulated_tx(struct iwl_xvt *xvt,
 	xvt->tot_tx = tx_req->times;
 	xvt->tx_counter = 0;
 	for (tx_count = 0; tx_count < tx_req->times; tx_count++) {
+		struct ieee80211_tx_info *info;
 
 		if (xvt->fw_error) {
 			IWL_ERR(xvt, "FW Error while sending Tx\n");
@@ -874,6 +893,7 @@ static int iwl_xvt_modulated_tx(struct iwl_xvt *xvt,
 			return -ENOMEM;
 		}
 		memcpy(skb_put(skb, tx_req->len), tx_req->data, tx_req->len);
+		info = IEEE80211_SKB_CB(skb);
 
 		dev_cmd = iwl_xvt_set_mod_tx_params(xvt, skb,
 						    tx_req->sta_id,
@@ -915,6 +935,7 @@ static int iwl_xvt_modulated_tx(struct iwl_xvt *xvt,
 
 		local_bh_disable();
 
+		memset(info->driver_data, 0, sizeof(info->driver_data));
 		err = iwl_trans_tx(xvt->trans, skb, dev_cmd,
 				   IWL_XVT_DEFAULT_TX_QUEUE);
 
@@ -1066,9 +1087,9 @@ static int iwl_xvt_get_chip_id(struct iwl_xvt *xvt,
 	if (!chip_id)
 		return -ENOMEM;
 
-	chip_id->registers[0] = ioread32((void __iomem *)XVT_SCU_SNUM1);
-	chip_id->registers[1] = ioread32((void __iomem *)XVT_SCU_SNUM2);
-	chip_id->registers[2] = ioread32((void __iomem *)XVT_SCU_SNUM3);
+	chip_id->registers[0] = ioread32((void __force __iomem *)XVT_SCU_SNUM1);
+	chip_id->registers[1] = ioread32((void __force __iomem *)XVT_SCU_SNUM2);
+	chip_id->registers[2] = ioread32((void __force __iomem *)XVT_SCU_SNUM3);
 
 
 	data_out->data = chip_id;
@@ -1085,8 +1106,8 @@ static int iwl_xvt_get_fw_info(struct iwl_xvt *xvt,
 	u32 *bitmap;
 	int i;
 
-	api_len = IWL_API_MAX_BITS / 8;
-	capa_len = IWL_API_MAX_BITS / 8;
+	api_len = 4 * DIV_ROUND_UP(NUM_IWL_UCODE_TLV_API, 32);
+	capa_len = 4 * DIV_ROUND_UP(NUM_IWL_UCODE_TLV_CAPA, 32);
 
 	fw_info = kzalloc(sizeof(*fw_info) + api_len + capa_len, GFP_KERNEL);
 	if (!fw_info)
@@ -1099,14 +1120,14 @@ static int iwl_xvt_get_fw_info(struct iwl_xvt *xvt,
 	fw_info->fw_capa_len = capa_len;
 
 	bitmap = (u32 *)fw_info->data;
-	for (i = 0; i < 8 * api_len; i++) {
+	for (i = 0; i < NUM_IWL_UCODE_TLV_API; i++) {
 		if (fw_has_api(&xvt->fw->ucode_capa,
 			       (__force iwl_ucode_tlv_api_t)i))
 			bitmap[i / 32] |= BIT(i % 32);
 	}
 
 	bitmap = (u32 *)(fw_info->data + api_len);
-	for (i = 0; i < 8 * capa_len; i++) {
+	for (i = 0; i < NUM_IWL_UCODE_TLV_CAPA; i++) {
 		if (fw_has_capa(&xvt->fw->ucode_capa,
 				(__force iwl_ucode_tlv_capa_t)i))
 			bitmap[i / 32] |= BIT(i % 32);
@@ -1277,8 +1298,8 @@ int iwl_xvt_user_cmd_execute(struct iwl_op_mode *op_mode, u32 cmd,
 	mutex_unlock(&xvt->mutex);
 
 	if (ret)
-		IWL_ERR(xvt, "%s ret=%d\n", __func__, ret);
+		IWL_ERR(xvt, "%s (cmd=0x%X) ret=%d\n", __func__, cmd, ret);
 	else
-		IWL_DEBUG_INFO(xvt, "%s ended Ok\n", __func__);
+		IWL_DEBUG_INFO(xvt, "%s (cmd=0x%X) ended Ok\n", __func__, cmd);
 	return ret;
 }

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2006	Jiri Benc <jbenc@suse.cz>
  * Copyright 2007	Johannes Berg <johannes@sipsolutions.net>
+ * Copyright 2015	Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -114,14 +115,6 @@ static ssize_t ieee80211_if_fmt_##name(					\
 	return scnprintf(buf, buflen, "%pM\n", sdata->field);		\
 }
 
-#define IEEE80211_IF_FMT_DEC_DIV_16(name, field)			\
-static ssize_t ieee80211_if_fmt_##name(					\
-	const struct ieee80211_sub_if_data *sdata,			\
-	char *buf, int buflen)						\
-{									\
-	return scnprintf(buf, buflen, "%d\n", sdata->field / 16);	\
-}
-
 #define IEEE80211_IF_FMT_JIFFIES_TO_MS(name, field)			\
 static ssize_t ieee80211_if_fmt_##name(					\
 	const struct ieee80211_sub_if_data *sdata,			\
@@ -186,6 +179,38 @@ IEEE80211_IF_FILE(rc_rateidx_mcs_mask_2ghz,
 IEEE80211_IF_FILE(rc_rateidx_mcs_mask_5ghz,
 		  rc_rateidx_mcs_mask[IEEE80211_BAND_5GHZ], HEXARRAY);
 
+static ssize_t ieee80211_if_fmt_rc_rateidx_vht_mcs_mask_2ghz(
+				const struct ieee80211_sub_if_data *sdata,
+				char *buf, int buflen)
+{
+	int i, len = 0;
+	const u16 *mask = sdata->rc_rateidx_vht_mcs_mask[IEEE80211_BAND_2GHZ];
+
+	for (i = 0; i < NL80211_VHT_NSS_MAX; i++)
+		len += scnprintf(buf + len, buflen - len, "%04x ", mask[i]);
+	len += scnprintf(buf + len, buflen - len, "\n");
+
+	return len;
+}
+
+IEEE80211_IF_FILE_R(rc_rateidx_vht_mcs_mask_2ghz);
+
+static ssize_t ieee80211_if_fmt_rc_rateidx_vht_mcs_mask_5ghz(
+				const struct ieee80211_sub_if_data *sdata,
+				char *buf, int buflen)
+{
+	int i, len = 0;
+	const u16 *mask = sdata->rc_rateidx_vht_mcs_mask[IEEE80211_BAND_5GHZ];
+
+	for (i = 0; i < NL80211_VHT_NSS_MAX; i++)
+		len += scnprintf(buf + len, buflen - len, "%04x ", mask[i]);
+	len += scnprintf(buf + len, buflen - len, "\n");
+
+	return len;
+}
+
+IEEE80211_IF_FILE_R(rc_rateidx_vht_mcs_mask_5ghz);
+
 IEEE80211_IF_FILE(flags, flags, HEX);
 IEEE80211_IF_FILE(state, state, LHEX);
 IEEE80211_IF_FILE(txpower, vif.bss_conf.txpower, DEC);
@@ -215,8 +240,6 @@ IEEE80211_IF_FILE_R(hw_queues);
 /* STA attributes */
 IEEE80211_IF_FILE(bssid, u.mgd.bssid, MAC);
 IEEE80211_IF_FILE(aid, u.mgd.aid, DEC);
-IEEE80211_IF_FILE(last_beacon, u.mgd.last_beacon_signal, DEC);
-IEEE80211_IF_FILE(ave_beacon, u.mgd.ave_beacon_signal, DEC_DIV_16);
 IEEE80211_IF_FILE(beacon_timeout, u.mgd.beacon_timeout, JIFFIES_TO_MS);
 
 static int ieee80211_set_smps(struct ieee80211_sub_if_data *sdata,
@@ -593,6 +616,8 @@ static void add_common_files(struct ieee80211_sub_if_data *sdata)
 	DEBUGFS_ADD(rc_rateidx_mask_5ghz);
 	DEBUGFS_ADD(rc_rateidx_mcs_mask_2ghz);
 	DEBUGFS_ADD(rc_rateidx_mcs_mask_5ghz);
+	DEBUGFS_ADD(rc_rateidx_vht_mcs_mask_2ghz);
+	DEBUGFS_ADD(rc_rateidx_vht_mcs_mask_5ghz);
 	DEBUGFS_ADD(hw_queues);
 }
 
@@ -600,8 +625,6 @@ static void add_sta_files(struct ieee80211_sub_if_data *sdata)
 {
 	DEBUGFS_ADD(bssid);
 	DEBUGFS_ADD(aid);
-	DEBUGFS_ADD(last_beacon);
-	DEBUGFS_ADD(ave_beacon);
 	DEBUGFS_ADD(beacon_timeout);
 	DEBUGFS_ADD_MODE(smps, 0600);
 	DEBUGFS_ADD_MODE(tkip_mic_test, 0200);
@@ -752,6 +775,7 @@ void ieee80211_debugfs_remove_netdev(struct ieee80211_sub_if_data *sdata)
 
 	debugfs_remove_recursive(sdata->vif.debugfs_dir);
 	sdata->vif.debugfs_dir = NULL;
+	sdata->debugfs.subdir_stations = NULL;
 }
 
 void ieee80211_debugfs_rename_netdev(struct ieee80211_sub_if_data *sdata)

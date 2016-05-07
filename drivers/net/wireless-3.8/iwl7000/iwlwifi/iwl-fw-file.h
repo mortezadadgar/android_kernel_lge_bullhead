@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2008 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,13 +27,14 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
  *
  * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -132,6 +134,7 @@ enum iwl_ucode_tlv_type {
 	IWL_UCODE_TLV_API_CHANGES_SET	= 29,
 	IWL_UCODE_TLV_ENABLED_CAPABILITIES	= 30,
 	IWL_UCODE_TLV_N_SCAN_CHANNELS		= 31,
+	IWL_UCODE_TLV_PAGING		= 32,
 	IWL_UCODE_TLV_SEC_RT_USNIFFER	= 34,
 	IWL_UCODE_TLV_SDIO_ADMA_ADDR	= 35,
 	IWL_UCODE_TLV_FW_VERSION	= 36,
@@ -147,6 +150,7 @@ struct iwl_ucode_tlv {
 	u8 data[0];
 };
 
+#define IWL_TLV_FW_DBG_MAGIC		0xb5221389
 #define IWL_TLV_UCODE_MAGIC		0x0a4c5749
 #define FW_VER_HUMAN_READABLE_SZ	64
 
@@ -246,33 +250,31 @@ typedef unsigned int __bitwise__ iwl_ucode_tlv_api_t;
  * @IWL_UCODE_TLV_API_FRAGMENTED_SCAN: This ucode supports active dwell time
  *	longer than the passive one, which is essential for fragmented scan.
  * @IWL_UCODE_TLV_API_WIFI_MCC_UPDATE: ucode supports MCC updates with source.
- * IWL_UCODE_TLV_API_HDC_PHASE_0: ucode supports finer configuration of LTR
- * @IWL_UCODE_TLV_API_TX_POWER_DEV: new API for tx power.
  * @IWL_UCODE_TLV_API_WIDE_CMD_HDR: ucode supports wide command header
- * @IWL_UCODE_TLV_API_SCD_CFG: This firmware can configure the scheduler
- *	through the dedicated host command.
- * @IWL_UCODE_TLV_API_SINGLE_SCAN_EBS: EBS is supported for single scans too.
- * @IWL_UCODE_TLV_API_ASYNC_DTM: Async temperature notifications are supported.
  * @IWL_UCODE_TLV_API_LQ_SS_PARAMS: Configure STBC/BFER via LQ CMD ss_params
- * @IWL_UCODE_TLV_API_STATS_V10: uCode supports/uses statistics API version 10
  * @IWL_UCODE_TLV_API_NEW_VERSION: new versioning format
  * @IWL_UCODE_TLV_API_EXT_SCAN_PRIORITY: scan APIs use 8-level priority
  *	instead of 3.
+ * @IWL_UCODE_TLV_API_TX_POWER_CHAIN: TX power API has larger command size
+ *	(command version 3) that supports per-chain limits
+ *
+ * @NUM_IWL_UCODE_TLV_API: number of bits used
  */
 enum iwl_ucode_tlv_api {
 	IWL_UCODE_TLV_API_BT_COEX_SPLIT         = (__force iwl_ucode_tlv_api_t)3,
 	IWL_UCODE_TLV_API_FRAGMENTED_SCAN	= (__force iwl_ucode_tlv_api_t)8,
 	IWL_UCODE_TLV_API_WIFI_MCC_UPDATE	= (__force iwl_ucode_tlv_api_t)9,
-	IWL_UCODE_TLV_API_HDC_PHASE_0		= (__force iwl_ucode_tlv_api_t)10,
-	IWL_UCODE_TLV_API_TX_POWER_DEV		= (__force iwl_ucode_tlv_api_t)11,
 	IWL_UCODE_TLV_API_WIDE_CMD_HDR		= (__force iwl_ucode_tlv_api_t)14,
-	IWL_UCODE_TLV_API_SCD_CFG		= (__force iwl_ucode_tlv_api_t)15,
-	IWL_UCODE_TLV_API_SINGLE_SCAN_EBS	= (__force iwl_ucode_tlv_api_t)16,
-	IWL_UCODE_TLV_API_ASYNC_DTM		= (__force iwl_ucode_tlv_api_t)17,
 	IWL_UCODE_TLV_API_LQ_SS_PARAMS		= (__force iwl_ucode_tlv_api_t)18,
-	IWL_UCODE_TLV_API_STATS_V10		= (__force iwl_ucode_tlv_api_t)19,
 	IWL_UCODE_TLV_API_NEW_VERSION		= (__force iwl_ucode_tlv_api_t)20,
 	IWL_UCODE_TLV_API_EXT_SCAN_PRIORITY	= (__force iwl_ucode_tlv_api_t)24,
+	IWL_UCODE_TLV_API_TX_POWER_CHAIN	= (__force iwl_ucode_tlv_api_t)27,
+
+	NUM_IWL_UCODE_TLV_API
+#ifdef __CHECKER__
+		/* sparse says it cannot increment the previous enum member */
+		= 128
+#endif
 };
 
 typedef unsigned int __bitwise__ iwl_ucode_tlv_capa_t;
@@ -296,10 +298,14 @@ typedef unsigned int __bitwise__ iwl_ucode_tlv_capa_t;
  * @IWL_UCODE_TLV_CAPA_DQA_SUPPORT: supports dynamic queue allocation (DQA),
  *	which also implies support for the scheduler configuration command
  * @IWL_UCODE_TLV_CAPA_TDLS_CHANNEL_SWITCH: supports TDLS channel switching
+ * @IWL_UCODE_TLV_CAPA_CNSLDTD_D3_D0_IMG: Consolidated D3-D0 image
  * @IWL_UCODE_TLV_CAPA_HOTSPOT_SUPPORT: supports Hot Spot Command
  * @IWL_UCODE_TLV_CAPA_DC2DC_SUPPORT: supports DC2DC Command
  * @IWL_UCODE_TLV_CAPA_2G_COEX_SUPPORT: supports 2G coex Command
+ * @IWL_UCODE_TLV_CAPA_CSUM_SUPPORT: supports TCP Checksum Offload
  * @IWL_UCODE_TLV_CAPA_RADIO_BEACON_STATS: support radio and beacon statistics
+ * @IWL_UCODE_TLV_CAPA_P2P_SCM_UAPSD: supports U-APSD on p2p interface when it
+ *	is standalone or with a BSS station interface in the same binding.
  * @IWL_UCODE_TLV_CAPA_BT_COEX_PLCR: enabled BT Coex packet level co-running
  * @IWL_UCODE_TLV_CAPA_LAR_MULTI_MCC: ucode supports LAR updates with different
  *	sources for the MCC. This TLV bit is a future replacement to
@@ -307,6 +313,21 @@ typedef unsigned int __bitwise__ iwl_ucode_tlv_capa_t;
  *	is supported.
  * @IWL_UCODE_TLV_CAPA_BT_COEX_RRC: supports BT Coex RRC
  * @IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT: supports gscan
+ * @IWL_UCODE_TLV_CAPA_NAN_SUPPORT: supports NAN
+ * @IWL_UCODE_TLV_CAPA_EXTENDED_DTS_MEASURE: extended DTS measurement
+ * @IWL_UCODE_TLV_CAPA_SHORT_PM_TIMEOUTS: supports short PM timeouts
+ * @IWL_UCODE_TLV_CAPA_BT_MPLUT_SUPPORT: supports bt-coex Multi-priority LUT
+ * @IWL_UCODE_TLV_CAPA_BEACON_ANT_SELECTION: firmware will decide on what
+ *	antenna the beacon should be transmitted
+ * @IWL_UCODE_TLV_CAPA_BEACON_STORING: firmware will store the latest beacon
+ *	from AP and will send it upon d0i3 exit.
+ * @IWL_UCODE_TLV_CAPA_LAR_SUPPORT_V2: support LAR API V2
+ * @IWL_UCODE_TLV_CAPA_CT_KILL_BY_FW: firmware responsible for CT-kill
+ * @IWL_UCODE_TLV_CAPA_TEMP_THS_REPORT_SUPPORT: supports temperature
+ *	thresholds reporting
+ * @IWL_UCODE_TLV_CAPA_CTDP_SUPPORT: supports cTDP command
+ *
+ * @NUM_IWL_UCODE_TLV_CAPA: number of bits used
  */
 enum iwl_ucode_tlv_capa {
 	IWL_UCODE_TLV_CAPA_D0I3_SUPPORT			= (__force iwl_ucode_tlv_capa_t)0,
@@ -321,14 +342,34 @@ enum iwl_ucode_tlv_capa {
 	IWL_UCODE_TLV_CAPA_QUIET_PERIOD_SUPPORT		= (__force iwl_ucode_tlv_capa_t)11,
 	IWL_UCODE_TLV_CAPA_DQA_SUPPORT			= (__force iwl_ucode_tlv_capa_t)12,
 	IWL_UCODE_TLV_CAPA_TDLS_CHANNEL_SWITCH		= (__force iwl_ucode_tlv_capa_t)13,
+	IWL_UCODE_TLV_CAPA_CNSLDTD_D3_D0_IMG		= (__force iwl_ucode_tlv_capa_t)17,
 	IWL_UCODE_TLV_CAPA_HOTSPOT_SUPPORT		= (__force iwl_ucode_tlv_capa_t)18,
 	IWL_UCODE_TLV_CAPA_DC2DC_CONFIG_SUPPORT		= (__force iwl_ucode_tlv_capa_t)19,
 	IWL_UCODE_TLV_CAPA_2G_COEX_SUPPORT		= (__force iwl_ucode_tlv_capa_t)20,
+	IWL_UCODE_TLV_CAPA_CSUM_SUPPORT			= (__force iwl_ucode_tlv_capa_t)21,
 	IWL_UCODE_TLV_CAPA_RADIO_BEACON_STATS		= (__force iwl_ucode_tlv_capa_t)22,
+	IWL_UCODE_TLV_CAPA_P2P_SCM_UAPSD		= (__force iwl_ucode_tlv_capa_t)26,
 	IWL_UCODE_TLV_CAPA_BT_COEX_PLCR			= (__force iwl_ucode_tlv_capa_t)28,
 	IWL_UCODE_TLV_CAPA_LAR_MULTI_MCC		= (__force iwl_ucode_tlv_capa_t)29,
 	IWL_UCODE_TLV_CAPA_BT_COEX_RRC			= (__force iwl_ucode_tlv_capa_t)30,
 	IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT		= (__force iwl_ucode_tlv_capa_t)31,
+	IWL_UCODE_TLV_CAPA_NAN_SUPPORT			= (__force iwl_ucode_tlv_capa_t)34,
+	IWL_UCODE_TLV_CAPA_EXTENDED_DTS_MEASURE		= (__force iwl_ucode_tlv_capa_t)64,
+	IWL_UCODE_TLV_CAPA_SHORT_PM_TIMEOUTS		= (__force iwl_ucode_tlv_capa_t)65,
+	IWL_UCODE_TLV_CAPA_BT_MPLUT_SUPPORT		= (__force iwl_ucode_tlv_capa_t)67,
+	IWL_UCODE_TLV_CAPA_MULTI_QUEUE_RX_SUPPORT	= (__force iwl_ucode_tlv_capa_t)68,
+	IWL_UCODE_TLV_CAPA_BEACON_ANT_SELECTION		= (__force iwl_ucode_tlv_capa_t)71,
+	IWL_UCODE_TLV_CAPA_BEACON_STORING		= (__force iwl_ucode_tlv_capa_t)72,
+	IWL_UCODE_TLV_CAPA_LAR_SUPPORT_V2		= (__force iwl_ucode_tlv_capa_t)73,
+	IWL_UCODE_TLV_CAPA_CT_KILL_BY_FW		= (__force iwl_ucode_tlv_capa_t)74,
+	IWL_UCODE_TLV_CAPA_TEMP_THS_REPORT_SUPPORT	= (__force iwl_ucode_tlv_capa_t)75,
+	IWL_UCODE_TLV_CAPA_CTDP_SUPPORT			= (__force iwl_ucode_tlv_capa_t)76,
+
+	NUM_IWL_UCODE_TLV_CAPA
+#ifdef __CHECKER__
+		/* sparse says it cannot increment the previous enum member */
+		= 128
+#endif
 };
 
 /* The default calibrate table size if not specified by firmware file */
@@ -339,15 +380,13 @@ enum iwl_ucode_tlv_capa {
 /* The default max probe length if not specified by the firmware file */
 #define IWL_DEFAULT_MAX_PROBE_LENGTH	200
 
-#define IWL_API_MAX_BITS		64
-#define IWL_CAPABILITIES_MAX_BITS	64
-
 /*
  * For 16.0 uCode and above, there is no differentiation between sections,
  * just an offset to the HW address.
  */
-#define IWL_UCODE_SECTION_MAX 12
+#define IWL_UCODE_SECTION_MAX 16
 #define CPU1_CPU2_SEPARATOR_SECTION	0xFFFFCCCC
+#define PAGING_SEPARATOR_SECTION	0xAAAABBBB
 
 /* uCode version contains 4 values: Major/Minor/API/Serial */
 #define IWL_UCODE_MAJOR(ver)	(((ver) & 0xFF000000) >> 24)
@@ -421,6 +460,8 @@ enum iwl_fw_dbg_reg_operator {
 	INDIRECT_ASSIGN,
 	INDIRECT_SETBIT,
 	INDIRECT_CLEARBIT,
+
+	PRPH_BLOCKBIT,
 };
 
 /**
@@ -494,10 +535,13 @@ struct iwl_fw_dbg_conf_hcmd {
  *
  * @IWL_FW_DBG_TRIGGER_START: when trigger occurs re-conf the dbg mechanism
  * @IWL_FW_DBG_TRIGGER_STOP: when trigger occurs pull the dbg data
+ * @IWL_FW_DBG_TRIGGER_MONITOR_ONLY: when trigger occurs trigger is set to
+ *	collect only monitor data
  */
 enum iwl_fw_dbg_trigger_mode {
 	IWL_FW_DBG_TRIGGER_START = BIT(0),
 	IWL_FW_DBG_TRIGGER_STOP = BIT(1),
+	IWL_FW_DBG_TRIGGER_MONITOR_ONLY = BIT(2),
 };
 
 /**
@@ -509,6 +553,7 @@ enum iwl_fw_dbg_trigger_mode {
  * @IWL_FW_DBG_CONF_VIF_P2P_CLIENT: P2P Client mode
  * @IWL_FW_DBG_CONF_VIF_P2P_GO: P2P GO mode
  * @IWL_FW_DBG_CONF_VIF_P2P_DEVICE: P2P device
+ * @IWL_FW_DBG_CONF_VIF_NAN: NAN device
  */
 enum iwl_fw_dbg_trigger_vif_type {
 	IWL_FW_DBG_CONF_VIF_ANY = NL80211_IFTYPE_UNSPECIFIED,
@@ -518,6 +563,9 @@ enum iwl_fw_dbg_trigger_vif_type {
 	IWL_FW_DBG_CONF_VIF_P2P_CLIENT = NL80211_IFTYPE_P2P_CLIENT,
 	IWL_FW_DBG_CONF_VIF_P2P_GO = NL80211_IFTYPE_P2P_GO,
 	IWL_FW_DBG_CONF_VIF_P2P_DEVICE = NL80211_IFTYPE_P2P_DEVICE,
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	IWL_FW_DBG_CONF_VIF_NAN = NL80211_IFTYPE_NAN,
+#endif
 };
 
 /**
@@ -534,6 +582,8 @@ enum iwl_fw_dbg_trigger_vif_type {
  * @start_conf_id: if mode is %IWL_FW_DBG_TRIGGER_START, this defines what
  *	configuration should be applied when the triggers kicks in.
  * @occurrences: number of occurrences. 0 means the trigger will never fire.
+ * @trig_dis_ms: the time, in milliseconds, after an occurrence of this
+ *	trigger in which another occurrence should be ignored.
  */
 struct iwl_fw_dbg_trigger_tlv {
 	__le32 id;
@@ -543,7 +593,8 @@ struct iwl_fw_dbg_trigger_tlv {
 	u8 mode;
 	u8 start_conf_id;
 	__le16 occurrences;
-	__le32 reserved[2];
+	__le16 trig_dis_ms;
+	__le16 reserved[3];
 
 	u8 data[0];
 } __packed;
@@ -706,6 +757,32 @@ struct iwl_fw_dbg_trigger_ba {
 	__le16 rx_bar;
 	__le16 tx_bar;
 	__le16 frame_timeout;
+} __packed;
+
+/**
+ * struct iwl_fw_dbg_trigger_tdls - configures trigger for TDLS events.
+ * @action_bitmap: the TDLS action to trigger the collection upon
+ * @peer_mode: trigger on specific peer or all
+ * @peer: the TDLS peer to trigger the collection on
+ */
+struct iwl_fw_dbg_trigger_tdls {
+	u8 action_bitmap;
+	u8 peer_mode;
+	u8 peer[ETH_ALEN];
+	u8 reserved[4];
+} __packed;
+
+/**
+ * struct iwl_fw_dbg_trigger_tx_status - configures trigger for tx response
+ *  status.
+ * @statuses: the list of statuses to trigger the collection on
+ */
+struct iwl_fw_dbg_trigger_tx_status {
+	struct tx_status {
+		u8 status;
+		u8 reserved[3];
+	} __packed statuses[16];
+	__le32 reserved[2];
 } __packed;
 
 /**

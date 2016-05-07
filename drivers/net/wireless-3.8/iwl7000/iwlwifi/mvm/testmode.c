@@ -26,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -213,7 +213,7 @@ static int iwl_mvm_tm_reg_ops(struct iwl_trans *trans,
 		return -ENOMEM;
 	result->num = read_idx;
 	if (is_grab_nic_access_required) {
-		if (!iwl_trans_grab_nic_access(trans, false, &flags)) {
+		if (!iwl_trans_grab_nic_access(trans, &flags)) {
 			kfree(result);
 			return -EBUSY;
 		}
@@ -284,7 +284,7 @@ static int iwl_tm_indirect_read(struct iwl_mvm *mvm,
 	/* Hard-coded periphery absolute address */
 	if (IWL_ABS_PRPH_START <= addr &&
 	    addr < IWL_ABS_PRPH_START + PRPH_END) {
-		if (!iwl_trans_grab_nic_access(trans, false, &flags)) {
+		if (!iwl_trans_grab_nic_access(trans, &flags)) {
 			mutex_unlock(&mvm->mutex);
 			return -EBUSY;
 		}
@@ -319,7 +319,7 @@ static int iwl_tm_indirect_write(struct iwl_mvm *mvm,
 		/* Periphery writes can be 1-3 bytes long, or DWORDs */
 		if (size < 4) {
 			memcpy(&val, buf, size);
-			if (!iwl_trans_grab_nic_access(trans, false, &flags)) {
+			if (!iwl_trans_grab_nic_access(trans, &flags)) {
 				mutex_unlock(&mvm->mutex);
 				return -EBUSY;
 			}
@@ -353,8 +353,8 @@ static int iwl_tm_get_fw_info(struct iwl_mvm *mvm,
 	u32 *bitmap;
 	int i;
 
-	api_len = IWL_API_MAX_BITS / 8;
-	capa_len = IWL_API_MAX_BITS / 8;
+	api_len = 4 * DIV_ROUND_UP(NUM_IWL_UCODE_TLV_API, 32);
+	capa_len = 4 * DIV_ROUND_UP(NUM_IWL_UCODE_TLV_CAPA, 32);
 
 	fw_info = kzalloc(sizeof(*fw_info) + api_len + capa_len, GFP_KERNEL);
 	if (!fw_info)
@@ -367,14 +367,14 @@ static int iwl_tm_get_fw_info(struct iwl_mvm *mvm,
 	fw_info->fw_capa_len = capa_len;
 
 	bitmap = (u32 *)fw_info->data;
-	for (i = 0; i < 8 * api_len; i++) {
+	for (i = 0; i < NUM_IWL_UCODE_TLV_API; i++) {
 		if (fw_has_api(&mvm->fw->ucode_capa,
 			       (__force iwl_ucode_tlv_api_t)i))
 			bitmap[i / 32] |= BIT(i % 32);
 	}
 
 	bitmap = (u32 *)(fw_info->data + api_len);
-	for (i = 0; i < 8 * capa_len; i++) {
+	for (i = 0; i < NUM_IWL_UCODE_TLV_CAPA; i++) {
 		if (fw_has_capa(&mvm->fw->ucode_capa,
 				(__force iwl_ucode_tlv_capa_t)i))
 			bitmap[i / 32] |= BIT(i % 32);
@@ -439,34 +439,6 @@ int iwl_mvm_tm_cmd_execute(struct iwl_op_mode *op_mode, u32 cmd,
 
 	return ret;
 }
-
-#ifdef CPTCFG_NL80211_TESTMODE
-/**
- * iwl_tm_mvm_retrieve_monitor() - trigger monitor retrieve event
- */
-int iwl_tm_mvm_retrieve_monitor(struct ieee80211_hw *hw,
-				struct ieee80211_tx_thrshld_md *md)
-{
-	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
-	struct iwl_tm_thrshld_md tm_md;
-
-	if (!md)
-		return -1;
-
-	tm_md.mode = md->mode;
-	tm_md.monitor_collec_wind = md->monitor_collec_wind;
-	tm_md.seq = md->seq;
-	tm_md.pkt_start = md->pkt_start;
-	tm_md.pkt_end = md->pkt_end;
-	tm_md.msrmnt = md->msrmnt;
-	tm_md.tid = md->tid;
-
-	return iwl_tm_gnl_send_msg(mvm->trans,
-				   IWL_TM_USER_CMD_NOTIF_RETRIEVE_MONITOR,
-				   false, &tm_md, sizeof(tm_md),
-				   GFP_ATOMIC);
-}
-#endif
 
 /**
  * iwl_tm_mvm_send_rx() - Send a spontaneous rx message to user

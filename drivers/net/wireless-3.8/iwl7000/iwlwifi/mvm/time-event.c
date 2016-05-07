@@ -26,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -73,6 +73,7 @@
 #include "mvm.h"
 #include "iwl-io.h"
 #include "iwl-prph.h"
+#include "fw-dbg.h"
 
 /*
  * For the high priority TE use a time event type that has similar priority to
@@ -129,7 +130,7 @@ void iwl_mvm_roc_done_wk(struct work_struct *wk)
 	 * issue as it will have to complete before the next command is
 	 * executed, and a new time event means a new command.
 	 */
-	iwl_mvm_flush_tx_path(mvm, queues, false);
+	iwl_mvm_flush_tx_path(mvm, queues, CMD_ASYNC);
 }
 
 static void iwl_mvm_roc_finished(struct iwl_mvm *mvm)
@@ -370,20 +371,13 @@ static int iwl_mvm_aux_roc_te_handle_notif(struct iwl_mvm *mvm,
 
 	iwl_mvm_te_check_trigger(mvm, notif, te_data);
 
-	if (!le32_to_cpu(notif->status)) {
-		IWL_DEBUG_TE(mvm,
-			     "ERROR: Aux ROC Time Event %s notification failure\n",
-			     (le32_to_cpu(notif->action) &
-			      TE_V2_NOTIF_HOST_EVENT_START) ? "start" : "end");
-		return -EINVAL;
-	}
-
 	IWL_DEBUG_TE(mvm,
-		     "Aux ROC time event notification  - UID = 0x%x action %d\n",
+		     "Aux ROC time event notification  - UID = 0x%x action %d (error = %d)\n",
 		     le32_to_cpu(notif->unique_id),
-		     le32_to_cpu(notif->action));
+		     le32_to_cpu(notif->action), le32_to_cpu(notif->status));
 
-	if (le32_to_cpu(notif->action) == TE_V2_NOTIF_HOST_EVENT_END) {
+	if (!le32_to_cpu(notif->status) ||
+	    le32_to_cpu(notif->action) == TE_V2_NOTIF_HOST_EVENT_END) {
 		/* End TE, notify mac80211 */
 		ieee80211_remain_on_channel_expired(mvm->hw);
 		iwl_mvm_roc_finished(mvm); /* flush aux queue */
@@ -791,11 +785,9 @@ int iwl_mvm_start_p2p_roc(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	return iwl_mvm_time_event_send_add(mvm, vif, te_data, &time_cmd);
 }
 
-void iwl_mvm_stop_roc(struct iwl_mvm *mvm)
+static struct iwl_mvm_time_event_data *iwl_mvm_get_roc_te(struct iwl_mvm *mvm)
 {
-	struct iwl_mvm_vif *mvmvif = NULL;
 	struct iwl_mvm_time_event_data *te_data;
-	bool is_p2p = false;
 
 	lockdep_assert_held(&mvm->mutex);
 
@@ -809,11 +801,8 @@ void iwl_mvm_stop_roc(struct iwl_mvm *mvm)
 	 * request
 	 */
 	list_for_each_entry(te_data, &mvm->time_event_list, list) {
-		if (te_data->vif->type == NL80211_IFTYPE_P2P_DEVICE) {
-			mvmvif = iwl_mvm_vif_from_mac80211(te_data->vif);
-			is_p2p = true;
-			goto remove_te;
-		}
+		if (te_data->vif->type == NL80211_IFTYPE_P2P_DEVICE)
+			goto out;
 	}
 
 	/* There can only be at most one AUX ROC time event, we just use the
@@ -822,18 +811,35 @@ void iwl_mvm_stop_roc(struct iwl_mvm *mvm)
 	te_data = list_first_entry_or_null(&mvm->aux_roc_te_list,
 					   struct iwl_mvm_time_event_data,
 					   list);
-	if (te_data)
-		mvmvif = iwl_mvm_vif_from_mac80211(te_data->vif);
-
-remove_te:
+out:
 	spin_unlock_bh(&mvm->time_event_lock);
+	return te_data;
+}
 
-	if (!mvmvif) {
+void iwl_mvm_cleanup_roc_te(struct iwl_mvm *mvm)
+{
+	struct iwl_mvm_time_event_data *te_data;
+	u32 uid;
+
+	te_data = iwl_mvm_get_roc_te(mvm);
+	if (te_data)
+		__iwl_mvm_remove_time_event(mvm, te_data, &uid);
+}
+
+void iwl_mvm_stop_roc(struct iwl_mvm *mvm)
+{
+	struct iwl_mvm_vif *mvmvif;
+	struct iwl_mvm_time_event_data *te_data;
+
+	te_data = iwl_mvm_get_roc_te(mvm);
+	if (!te_data) {
 		IWL_WARN(mvm, "No remain on channel event\n");
 		return;
 	}
 
-	if (is_p2p)
+	mvmvif = iwl_mvm_vif_from_mac80211(te_data->vif);
+
+	if (te_data->vif->type == NL80211_IFTYPE_P2P_DEVICE)
 		iwl_mvm_remove_time_event(mvm, mvmvif, te_data);
 	else
 		iwl_mvm_remove_aux_roc_te(mvm, mvmvif, te_data);

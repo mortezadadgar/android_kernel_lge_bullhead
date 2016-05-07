@@ -6,6 +6,7 @@
  * GPL LICENSE SUMMARY
  *
  * Copyright(c) 2007 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -25,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -97,19 +98,25 @@ static void __exit iwl_xvt_exit(void)
 }
 module_exit(iwl_xvt_exit);
 
-#define CMD(x) [x] = #x
-
-static const char *const iwl_xvt_cmd_strings[REPLY_MAX] = {
-	CMD(XVT_ALIVE),
-	CMD(INIT_COMPLETE_NOTIF),
-	CMD(TX_CMD),
-	CMD(PHY_CONFIGURATION_CMD),
-	CMD(CALIB_RES_NOTIF_PHY_DB),
-	CMD(REPLY_RX_PHY_CMD),
-	CMD(REPLY_RX_MPDU_CMD),
-	CMD(REPLY_RX_DSP_EXT_INFO),
+/* Please keep this array *SORTED* by hex value.
+ * Access is done through binary search.
+ * A warning will be triggered on violation.
+ */
+static const struct iwl_hcmd_names iwl_xvt_cmd_names[] = {
+	HCMD_NAME(XVT_ALIVE),
+	HCMD_NAME(INIT_COMPLETE_NOTIF),
+	HCMD_NAME(TX_CMD),
+	HCMD_NAME(FW_PAGING_BLOCK_CMD),
+	HCMD_NAME(PHY_CONFIGURATION_CMD),
+	HCMD_NAME(CALIB_RES_NOTIF_PHY_DB),
+	HCMD_NAME(REPLY_RX_PHY_CMD),
+	HCMD_NAME(REPLY_RX_MPDU_CMD),
+	HCMD_NAME(REPLY_RX_DSP_EXT_INFO),
 };
-#undef CMD
+
+static const struct iwl_hcmd_arr iwl_xvt_cmd_groups[] = {
+	[0x0] = HCMD_ARR(iwl_xvt_cmd_names),
+};
 
 static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 					 const struct iwl_cfg *cfg,
@@ -145,17 +152,21 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 	trans_cfg.op_mode = op_mode;
 	trans_cfg.no_reclaim_cmds = no_reclaim_cmds;
 	trans_cfg.n_no_reclaim_cmds = ARRAY_SIZE(no_reclaim_cmds);
-	trans_cfg.command_names = iwl_xvt_cmd_strings;
+	trans_cfg.command_groups = iwl_xvt_cmd_groups;
+	trans_cfg.command_groups_size = ARRAY_SIZE(iwl_xvt_cmd_groups);
 
 	trans_cfg.cmd_queue = IWL_XVT_CMD_QUEUE;
 	trans_cfg.cmd_fifo = IWL_XVT_CMD_FIFO;
-	trans_cfg.rx_buf_size_8k = false;
 	if (xvt->fw->ucode_capa.flags & IWL_UCODE_TLV_FLAGS_DW_BC_TABLE)
 		trans_cfg.bc_table_dword = true;
 	trans_cfg.scd_set_active = true;
+	trans_cfg.wide_cmd_header = fw_has_api(&xvt->fw->ucode_capa,
+					       IWL_UCODE_TLV_API_WIDE_CMD_HDR);
 
 	/* Configure transport layer */
 	iwl_trans_configure(xvt->trans, &trans_cfg);
+	trans->command_groups = trans_cfg.command_groups;
+	trans->command_groups_size = trans_cfg.command_groups_size;
 
 	/* set up notification wait support */
 	iwl_notification_wait_init(&xvt->notif_wait);
@@ -262,8 +273,10 @@ static void iwl_xvt_nic_error(struct iwl_op_mode *op_mode)
 {
 	struct iwl_xvt *xvt = IWL_OP_MODE_GET_XVT(op_mode);
 	void *p_table;
+	void *p_table_umac = NULL;
 	struct iwl_error_event_table_v1 table_v1;
 	struct iwl_error_event_table_v2 table_v2;
+	struct iwl_umac_error_event_table table_umac;
 	int err, table_size;
 
 	xvt->fw_error = true;
@@ -280,6 +293,14 @@ static void iwl_xvt_nic_error(struct iwl_op_mode *op_mode)
 		p_table = kmemdup(&table_v1, sizeof(table_v1), GFP_ATOMIC);
 		table_size = sizeof(table_v1);
 	}
+
+	if (xvt->support_umac_log) {
+		iwl_xvt_get_umac_error_log(xvt, &table_umac);
+		iwl_xvt_dump_umac_error_log(xvt, &table_umac);
+		p_table_umac = kmemdup(&table_umac, sizeof(table_umac),
+				       GFP_ATOMIC);
+	}
+
 	if (p_table) {
 		err = iwl_xvt_user_send_notif(xvt, IWL_XVT_CMD_SEND_NIC_ERROR,
 					      (void *)p_table, table_size,
@@ -288,7 +309,21 @@ static void iwl_xvt_nic_error(struct iwl_op_mode *op_mode)
 			IWL_WARN(xvt,
 				 "Error %d sending NIC error notification\n",
 				 err);
+		kfree(p_table);
 	}
+
+	if (p_table_umac) {
+		err = iwl_xvt_user_send_notif(xvt,
+					      IWL_XVT_CMD_SEND_NIC_UMAC_ERROR,
+					      (void *)p_table_umac,
+					      sizeof(table_umac), GFP_ATOMIC);
+		if (err)
+			IWL_WARN(xvt,
+				 "Error %d sending NIC umac error notification\n",
+				 err);
+		kfree(p_table_umac);
+	}
+
 }
 
 static bool iwl_xvt_set_hw_rfkill_state(struct iwl_op_mode *op_mode, bool state)

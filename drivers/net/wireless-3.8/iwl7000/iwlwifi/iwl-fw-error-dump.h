@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2014 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,13 +27,14 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
  *
  * Copyright(c) 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2014 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -84,6 +86,11 @@
  * @IWL_FW_ERROR_DUMP_MEM: chunk of memory
  * @IWL_FW_ERROR_DUMP_ERROR_INFO: description of what triggered this dump.
  *	Structured as &struct iwl_fw_error_dump_trigger_desc.
+ * @IWL_FW_ERROR_DUMP_RB: the content of an RB structured as
+ *	&struct iwl_fw_error_dump_rb
+ * @IWL_FW_ERROR_PAGING: UMAC's image memory segments which were
+ *	paged to the DRAM.
+ * @IWL_FW_ERROR_DUMP_RADIO_REG: Dump the radio registers.
  */
 enum iwl_fw_error_dump_type {
 	/* 0 is deprecated */
@@ -97,6 +104,9 @@ enum iwl_fw_error_dump_type {
 	IWL_FW_ERROR_DUMP_FH_REGS = 8,
 	IWL_FW_ERROR_DUMP_MEM = 9,
 	IWL_FW_ERROR_DUMP_ERROR_INFO = 10,
+	IWL_FW_ERROR_DUMP_RB = 11,
+	IWL_FW_ERROR_DUMP_PAGING = 12,
+	IWL_FW_ERROR_DUMP_RADIO_REG = 13,
 
 	IWL_FW_ERROR_DUMP_MAX,
 };
@@ -223,6 +233,33 @@ struct iwl_fw_error_dump_mem {
 };
 
 /**
+ * struct iwl_fw_error_dump_rb - content of an Receive Buffer
+ * @index: the index of the Receive Buffer in the Rx queue
+ * @rxq: the RB's Rx queue
+ * @reserved:
+ * @data: the content of the Receive Buffer
+ */
+struct iwl_fw_error_dump_rb {
+	__le32 index;
+	__le32 rxq;
+	__le32 reserved;
+	u8 data[];
+};
+
+/**
+ * struct iwl_fw_error_dump_paging - content of the UMAC's image page
+ *	block on DRAM
+ * @index: the index of the page block
+ * @reserved:
+ * @data: the content of the page block
+ */
+struct iwl_fw_error_dump_paging {
+	__le32 index;
+	__le32 reserved;
+	u8 data[];
+};
+
+/**
  * iwl_fw_error_next_data - advance fw error dump data pointer
  * @data: previous data block
  * Returns: next data block
@@ -257,6 +294,11 @@ iwl_fw_error_next_data(struct iwl_fw_error_dump_data *data)
  * @FW_DBG_TRIGGER_BA: trigger log collection upon BlockAck related events.
  * @FW_DBG_TX_LATENCY: trigger log collection when the tx latency goes above a
  *	threshold.
+ * @FW_DBG_TDLS: trigger log collection upon TDLS related events.
+ * @FW_DBG_TRIGGER_TX_STATUS: trigger log collection upon tx status when
+ *  the firmware sends a tx reply.
+ * @FW_DBG_TRIGGER_USER_EXTENDED: trigger log collection upon user space
+ *  request.
  */
 enum iwl_fw_dbg_trigger {
 	FW_DBG_TRIGGER_INVALID = 0,
@@ -272,6 +314,9 @@ enum iwl_fw_dbg_trigger {
 	FW_DBG_TRIGGER_TIME_EVENT,
 	FW_DBG_TRIGGER_BA,
 	FW_DBG_TRIGGER_TX_LATENCY,
+	FW_DBG_TRIGGER_TDLS,
+	FW_DBG_TRIGGER_TX_STATUS,
+	FW_DBG_TRIGGER_USER_EXTENDED,
 
 	/* must be last */
 	FW_DBG_TRIGGER_MAX,

@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,13 +27,14 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -104,13 +106,35 @@ static int iwl_nvm_write_chunk(struct iwl_mvm *mvm, u16 section,
 	struct iwl_host_cmd cmd = {
 		.id = NVM_ACCESS_CMD,
 		.len = { sizeof(struct iwl_nvm_access_cmd), length },
-		.flags = CMD_SEND_IN_RFKILL,
+		.flags = CMD_WANT_SKB | CMD_SEND_IN_RFKILL,
 		.data = { &nvm_access_cmd, data },
 		/* data may come from vmalloc, so use _DUP */
 		.dataflags = { 0, IWL_HCMD_DFL_DUP },
 	};
+	struct iwl_rx_packet *pkt;
+	struct iwl_nvm_access_resp *nvm_resp;
+	int ret;
 
-	return iwl_mvm_send_cmd(mvm, &cmd);
+	ret = iwl_mvm_send_cmd(mvm, &cmd);
+	if (ret)
+		return ret;
+
+	pkt = cmd.resp_pkt;
+	if (!pkt) {
+		IWL_ERR(mvm, "Error in NVM_ACCESS response\n");
+		return -EINVAL;
+	}
+	/* Extract & check NVM write response */
+	nvm_resp = (void *)pkt->data;
+	if (le16_to_cpu(nvm_resp->status) != READ_NVM_CHUNK_SUCCEED) {
+		IWL_ERR(mvm,
+			"NVM access write command failed for section %u (status = 0x%x)\n",
+			section, le16_to_cpu(nvm_resp->status));
+		ret = -EIO;
+	}
+
+	iwl_free_resp(&cmd);
+	return ret;
 }
 
 static int iwl_nvm_read_chunk(struct iwl_mvm *mvm, u16 section,
@@ -210,6 +234,19 @@ static int iwl_nvm_write_section(struct iwl_mvm *mvm, u16 section,
 	return 0;
 }
 
+static void iwl_mvm_nvm_fixups(struct iwl_mvm *mvm, unsigned int section,
+			       u8 *data, unsigned int len)
+{
+#define IWL_4165_DEVICE_ID	0x5501
+#define NVM_SKU_CAP_MIMO_DISABLE BIT(5)
+
+	if (section == NVM_SECTION_TYPE_PHY_SKU &&
+	    mvm->trans->hw_id == IWL_4165_DEVICE_ID && data && len >= 5 &&
+	    (data[4] & NVM_SKU_CAP_MIMO_DISABLE))
+		/* OTP 0x52 bug work around: it's a 1x1 device */
+		data[3] = ANT_B | (ANT_B << 4);
+}
+
 /*
  * Reads an NVM section completely.
  * NICs prior to 7000 family doesn't have a real NVM, but just read
@@ -250,6 +287,8 @@ static int iwl_nvm_read_section(struct iwl_mvm *mvm, u16 section,
 		offset += ret;
 	}
 
+	iwl_mvm_nvm_fixups(mvm, section, data, offset);
+
 	IWL_DEBUG_EEPROM(mvm->trans->dev,
 			 "NVM section %d read completed\n", section);
 	return offset;
@@ -261,7 +300,7 @@ iwl_parse_nvm_sections(struct iwl_mvm *mvm)
 	struct iwl_nvm_section *sections = mvm->nvm_sections;
 	const __le16 *hw, *sw, *calib, *regulatory, *mac_override, *phy_sku;
 	bool lar_enabled;
-	u32 mac_addr0, mac_addr1;
+	__le32 mac_addr0, mac_addr1;
 
 	/* Checking for required sections */
 	if (mvm->trans->cfg->device_family != IWL_DEVICE_FAMILY_8000) {
@@ -298,8 +337,10 @@ iwl_parse_nvm_sections(struct iwl_mvm *mvm)
 		return NULL;
 
 	/* read the mac address from WFMP registers */
-	mac_addr0 = iwl_trans_read_prph(mvm->trans, WFMP_MAC_ADDR_0);
-	mac_addr1 = iwl_trans_read_prph(mvm->trans, WFMP_MAC_ADDR_1);
+	mac_addr0 = cpu_to_le32(iwl_trans_read_prph(mvm->trans,
+						    WFMP_MAC_ADDR_0));
+	mac_addr1 = cpu_to_le32(iwl_trans_read_prph(mvm->trans,
+						    WFMP_MAC_ADDR_1));
 
 	hw = (const __le16 *)sections[mvm->cfg->nvm_hw_section_num].data;
 	sw = (const __le16 *)sections[NVM_SECTION_TYPE_SW].data;
@@ -316,8 +357,7 @@ iwl_parse_nvm_sections(struct iwl_mvm *mvm)
 	return iwl_parse_nvm_data(mvm->trans->dev, mvm->cfg, hw, sw, calib,
 				  regulatory, mac_override, phy_sku,
 				  mvm->fw->valid_tx_ant, mvm->fw->valid_rx_ant,
-				  lar_enabled, mac_addr0, mac_addr1,
-				  mvm->trans->hw_id);
+				  lar_enabled, mac_addr0, mac_addr1);
 }
 
 #define MAX_NVM_FILE_LEN	16384
@@ -353,7 +393,8 @@ static int iwl_mvm_read_external_nvm(struct iwl_mvm *mvm)
 		__le16 word2;
 		u8 data[];
 	} *file_sec;
-	const u8 *eof, *temp;
+	const u8 *eof;
+	u8 *temp;
 	int max_section_size;
 	const __le32 *dword_buff;
 
@@ -483,6 +524,10 @@ static int iwl_mvm_read_external_nvm(struct iwl_mvm *mvm)
 			ret = -ENOMEM;
 			break;
 		}
+
+		iwl_mvm_nvm_fixups(mvm, section_id, temp, section_size);
+
+		kfree(mvm->nvm_sections[section_id].data);
 		mvm->nvm_sections[section_id].data = temp;
 		mvm->nvm_sections[section_id].length = section_size;
 
@@ -547,6 +592,9 @@ int iwl_nvm_init(struct iwl_mvm *mvm, bool read_nvm_from_nic)
 				ret = -ENOMEM;
 				break;
 			}
+
+			iwl_mvm_nvm_fixups(mvm, section, temp, ret);
+
 			mvm->nvm_sections[section].data = temp;
 			mvm->nvm_sections[section].length = ret;
 
@@ -563,6 +611,10 @@ int iwl_nvm_init(struct iwl_mvm *mvm, bool read_nvm_from_nic)
 			case NVM_SECTION_TYPE_PRODUCTION:
 				mvm->nvm_prod_blob.data = temp;
 				mvm->nvm_prod_blob.size  = ret;
+				break;
+			case NVM_SECTION_TYPE_PHY_SKU:
+				mvm->nvm_phy_sku_blob.data = temp;
+				mvm->nvm_phy_sku_blob.size  = ret;
 				break;
 			default:
 				if (section == mvm->cfg->nvm_hw_section_num) {
@@ -592,7 +644,8 @@ int iwl_nvm_init(struct iwl_mvm *mvm, bool read_nvm_from_nic)
 			else
 				mvm->nvm_file_name = nvm_file_C;
 
-			if (ret == -EFAULT && mvm->nvm_file_name) {
+			if ((ret == -EFAULT || ret == -ENOENT) &&
+			    mvm->nvm_file_name) {
 				/* in case nvm file was failed try again */
 				ret = iwl_mvm_read_external_nvm(mvm);
 				if (ret)
@@ -622,6 +675,7 @@ iwl_mvm_update_mcc(struct iwl_mvm *mvm, const char *alpha2,
 		.source_id = (u8)src_id,
 	};
 	struct iwl_mcc_update_resp *mcc_resp, *resp_cp = NULL;
+	struct iwl_mcc_update_resp_v1 *mcc_resp_v1 = NULL;
 	struct iwl_rx_packet *pkt;
 	struct iwl_host_cmd cmd = {
 		.id = MCC_UPDATE_CMD,
@@ -633,11 +687,15 @@ iwl_mvm_update_mcc(struct iwl_mvm *mvm, const char *alpha2,
 	u32 status;
 	int resp_len, n_channels;
 	u16 mcc;
+	bool resp_v2 = fw_has_capa(&mvm->fw->ucode_capa,
+				   IWL_UCODE_TLV_CAPA_LAR_SUPPORT_V2);
 
 	if (WARN_ON_ONCE(!iwl_mvm_is_lar_supported(mvm)))
 		return ERR_PTR(-EOPNOTSUPP);
 
 	cmd.len[0] = sizeof(struct iwl_mcc_update_cmd);
+	if (!resp_v2)
+		cmd.len[0] = sizeof(struct iwl_mcc_update_cmd_v1);
 
 	IWL_DEBUG_LAR(mvm, "send MCC update to FW with '%c%c' src = %d\n",
 		      alpha2[0], alpha2[1], src_id);
@@ -649,31 +707,50 @@ iwl_mvm_update_mcc(struct iwl_mvm *mvm, const char *alpha2,
 	pkt = cmd.resp_pkt;
 
 	/* Extract MCC response */
-	mcc_resp = (void *)pkt->data;
-	status = le32_to_cpu(mcc_resp->status);
-
-	mcc = le16_to_cpu(mcc_resp->mcc);
-
-	/* W/A for a FW/NVM issue - returns 0x00 for the world domain */
-	if (mcc == 0) {
-		mcc = 0x3030;  /* "00" - world */
-		mcc_resp->mcc = cpu_to_le16(mcc);
+	if (resp_v2) {
+		mcc_resp = (void *)pkt->data;
+		n_channels =  __le32_to_cpu(mcc_resp->n_channels);
+	} else {
+		mcc_resp_v1 = (void *)pkt->data;
+		n_channels =  __le32_to_cpu(mcc_resp_v1->n_channels);
 	}
 
-	n_channels =  __le32_to_cpu(mcc_resp->n_channels);
-	IWL_DEBUG_LAR(mvm,
-		      "MCC response status: 0x%x. new MCC: 0x%x ('%c%c') change: %d n_chans: %d\n",
-		      status, mcc, mcc >> 8, mcc & 0xff,
-		      !!(status == MCC_RESP_NEW_CHAN_PROFILE), n_channels);
+	resp_len = sizeof(struct iwl_mcc_update_resp) + n_channels *
+		sizeof(__le32);
 
-	resp_len = sizeof(*mcc_resp) + n_channels * sizeof(__le32);
-	resp_cp = kmemdup(mcc_resp, resp_len, GFP_KERNEL);
+	resp_cp = kzalloc(resp_len, GFP_KERNEL);
 	if (!resp_cp) {
 		ret = -ENOMEM;
 		goto exit;
 	}
 
-	ret = 0;
+	if (resp_v2) {
+		memcpy(resp_cp, mcc_resp, resp_len);
+	} else {
+		resp_cp->status = mcc_resp_v1->status;
+		resp_cp->mcc = mcc_resp_v1->mcc;
+		resp_cp->cap = mcc_resp_v1->cap;
+		resp_cp->source_id = mcc_resp_v1->source_id;
+		resp_cp->n_channels = mcc_resp_v1->n_channels;
+		memcpy(resp_cp->channels, mcc_resp_v1->channels,
+		       n_channels * sizeof(__le32));
+	}
+
+	status = le32_to_cpu(resp_cp->status);
+
+	mcc = le16_to_cpu(resp_cp->mcc);
+
+	/* W/A for a FW/NVM issue - returns 0x00 for the world domain */
+	if (mcc == 0) {
+		mcc = 0x3030;  /* "00" - world */
+		resp_cp->mcc = cpu_to_le16(mcc);
+	}
+
+	IWL_DEBUG_LAR(mvm,
+		      "MCC response status: 0x%x. new MCC: 0x%x ('%c%c') change: %d n_chans: %d\n",
+		      status, mcc, mcc >> 8, mcc & 0xff,
+		      !!(status == MCC_RESP_NEW_CHAN_PROFILE), n_channels);
+
 exit:
 	iwl_free_resp(&cmd);
 	if (ret)

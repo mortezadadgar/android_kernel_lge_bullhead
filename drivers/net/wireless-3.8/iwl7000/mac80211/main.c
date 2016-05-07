@@ -20,7 +20,6 @@
 #include <linux/if_arp.h>
 #include <linux/rtnetlink.h>
 #include <linux/bitmap.h>
-#include <linux/pm_qos.h>
 #include <linux/inetdevice.h>
 #include <net/net_namespace.h>
 #include <net/cfg80211.h>
@@ -32,7 +31,6 @@
 #include "mesh.h"
 #include "wep.h"
 #include "led.h"
-#include "cfg.h"
 #include "debugfs.h"
 
 void ieee80211_configure_filter(struct ieee80211_local *local)
@@ -250,6 +248,7 @@ static void ieee80211_restart_work(struct work_struct *work)
 
 	/* wait for scan work complete */
 	flush_workqueue(local->workqueue);
+	flush_work(&local->sched_scan_stopped_work);
 
 	WARN(test_bit(SCAN_HW_SCANNING, &local->scanning),
 	     "%s called with hardware scan in progress\n", __func__);
@@ -258,6 +257,11 @@ static void ieee80211_restart_work(struct work_struct *work)
 	list_for_each_entry(sdata, &local->interfaces, list)
 		flush_delayed_work(&sdata->dec_tailroom_needed_wk);
 	ieee80211_scan_cancel(local);
+
+	/* make sure any new ROC will consider local->in_reconfig */
+	flush_delayed_work(&local->roc_work);
+	flush_work(&local->hw_roc_done);
+
 	ieee80211_reconfig(local);
 	rtnl_unlock();
 }
@@ -283,7 +287,7 @@ void ieee80211_restart_hw(struct ieee80211_hw *hw)
 	local->in_reconfig = true;
 	barrier();
 
-	schedule_work(&local->restart_work);
+	queue_work(system_freezable_wq, &local->restart_work);
 }
 EXPORT_SYMBOL(ieee80211_restart_hw);
 
@@ -309,12 +313,6 @@ static int ieee80211_ifa_changed(struct notifier_block *nb,
 
 	if (wdev->wiphy != local->hw.wiphy)
 		return NOTIFY_DONE;
-
-#ifdef CPTCFG_CFG80211_ANDROID_P2P_HACK
-	/* P2P Device has no netdev assigned to it */
-	if (wdev->iftype == NL80211_IFTYPE_P2P_DEVICE)
-		return NOTIFY_DONE;
-#endif
 
 	sdata = IEEE80211_DEV_TO_SUB_IF(ndev);
 	bss_conf = &sdata->vif.bss_conf;
@@ -367,12 +365,6 @@ static int ieee80211_ifa6_changed(struct notifier_block *nb,
 	/* Make sure it's our interface that got changed */
 	if (!wdev || wdev->wiphy != local->hw.wiphy)
 		return NOTIFY_DONE;
-
-#ifdef CPTCFG_CFG80211_ANDROID_P2P_HACK
-	/* P2P Device has no netdev assigned to it */
-	if (wdev->iftype == NL80211_IFTYPE_P2P_DEVICE)
-		return NOTIFY_DONE;
-#endif
 
 	sdata = IEEE80211_DEV_TO_SUB_IF(ndev);
 
@@ -555,7 +547,8 @@ struct ieee80211_hw *ieee80211_alloc_hw_nm(size_t priv_data_len,
 			   NL80211_FEATURE_HT_IBSS |
 			   NL80211_FEATURE_VIF_TXPOWER |
 			   NL80211_FEATURE_MAC_ON_CREATE |
-			   NL80211_FEATURE_USERSPACE_MPM;
+			   NL80211_FEATURE_USERSPACE_MPM |
+			   NL80211_FEATURE_FULL_AP_CLIENT_STATE;
 
 	if (!ops->hw_scan)
 		wiphy->features |= NL80211_FEATURE_LOW_PRIORITY_SCAN |
@@ -835,6 +828,10 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 	     !local->ops->tdls_recv_channel_switch))
 		return -EOPNOTSUPP;
 
+	if (WARN_ON(ieee80211_has_nan_iftype(local->hw.wiphy->interface_modes) &&
+		    (!local->ops->start_nan || !local->ops->stop_nan)))
+		return -EINVAL;
+
 	if (!local->use_chanctx) {
 		for (i = 0; i < local->hw.wiphy->n_iface_combinations; i++) {
 			const struct ieee80211_iface_combination *comb;
@@ -852,6 +849,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 		 */
 		if (local->hw.wiphy->interface_modes & BIT(NL80211_IFTYPE_WDS))
 			return -EINVAL;
+
 #if CFG80211_VERSION >= KERNEL_VERSION(3,9,0)
 		/* DFS is not supported with multi-channel combinations yet */
 		for (i = 0; i < local->hw.wiphy->n_iface_combinations; i++) {
@@ -866,9 +864,11 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 #endif
 	}
 
-	feature_whitelist = IEEE80211_SUPPORTED_NETDEV_FEATURES;
-	if (WARN_ON(hw->netdev_features & ~feature_whitelist ||
-		    hw->netdev_hw_features & ~feature_whitelist))
+	/* Only HW csum features are currently compatible with mac80211 */
+	feature_whitelist = NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM |
+			    NETIF_F_HW_CSUM | NETIF_F_SG | NETIF_F_HIGHDMA |
+			    NETIF_F_GSO_SOFTWARE;
+	if (WARN_ON(hw->netdev_features & ~feature_whitelist))
 		return -EINVAL;
 
 	if (hw->max_report_rates == 0)
@@ -1025,8 +1025,10 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 	if (ieee80211_hw_check(&local->hw, CHANCTX_STA_CSA))
 		local->ext_capa[0] |= WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING;
 
-	if (ieee80211_hw_check(&local->hw, SUPPORTS_FTM_INITIATOR))
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	if (local->hw.wiphy->flags & WIPHY_FLAG_SUPPORTS_FTM_INITIATOR)
 		local->ext_capa[8] |= WLAN_EXT_CAPA9_FTM_INITIATOR;
+#endif
 
 #if CFG80211_VERSION >= KERNEL_VERSION(3,16,0)
 	local->hw.wiphy->max_num_csa_counters = IEEE80211_MAX_CSA_COUNTERS_NUM;
@@ -1074,6 +1076,9 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 	if (!local->hw.txq_ac_max_pending)
 		local->hw.txq_ac_max_pending = 64;
 
+	if (!local->hw.max_nan_de_entries)
+		local->hw.max_nan_de_entries = IEEE80211_MAX_NAN_INSTANCE_ID;
+
 	result = ieee80211_wep_init(local);
 	if (result < 0)
 		wiphy_debug(local->hw.wiphy, "Failed to initialize wep: %d\n",
@@ -1105,13 +1110,6 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 
 	rtnl_unlock();
 
-	local->network_latency_notifier.notifier_call =
-		ieee80211_max_network_latency;
-	result = pm_qos_add_notifier(PM_QOS_NETWORK_LATENCY,
-				     &local->network_latency_notifier);
-	if (result)
-		goto fail_pm_qos;
-
 #ifdef CONFIG_INET
 	local->ifa_notifier.notifier_call = ieee80211_ifa_changed;
 	result = register_inetaddr_notifier(&local->ifa_notifier);
@@ -1138,10 +1136,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 #endif
 #if defined(CONFIG_INET) || defined(CONFIG_IPV6)
  fail_ifa:
-	pm_qos_remove_notifier(PM_QOS_NETWORK_LATENCY,
-			       &local->network_latency_notifier);
 #endif
- fail_pm_qos:
 	rtnl_lock();
 	rate_control_deinitialize(local);
 	ieee80211_remove_interfaces(local);
@@ -1169,8 +1164,6 @@ void ieee80211_unregister_hw(struct ieee80211_hw *hw)
 
 	intel_regulatory_deregister(local);
 
-	pm_qos_remove_notifier(PM_QOS_NETWORK_LATENCY,
-			       &local->network_latency_notifier);
 #ifdef CONFIG_INET
 	unregister_inetaddr_notifier(&local->ifa_notifier);
 #endif
@@ -1189,6 +1182,7 @@ void ieee80211_unregister_hw(struct ieee80211_hw *hw)
 
 	rtnl_unlock();
 
+	cancel_delayed_work_sync(&local->roc_work);
 	cancel_work_sync(&local->restart_work);
 	cancel_work_sync(&local->reconfig_filter);
 	cancel_work_sync(&local->tdls_chsw_work);
@@ -1236,6 +1230,8 @@ void ieee80211_free_hw(struct ieee80211_hw *hw)
 	sta_info_stop(local);
 
 	ieee80211_free_led_names(local);
+
+	kfree(local->uapsd_black_list);
 
 	wiphy_free(local->hw.wiphy);
 }

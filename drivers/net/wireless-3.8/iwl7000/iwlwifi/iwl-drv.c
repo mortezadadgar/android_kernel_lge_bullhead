@@ -26,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -428,8 +428,11 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 	 * here we always load the 'api_max' version, and once that
 	 * has returned we load the dbg-cfg file.
 	 */
-	if ((drv->fw_index != drv->cfg->ucode_api_max &&
-	     !drv->trans->dbg_cfg.load_old_fw) ||
+	if ((drv->fw_index != drv->cfg->ucode_api_max
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	     && !drv->trans->dbg_cfg.load_old_fw
+#endif
+	    ) ||
 	    drv->fw_index < drv->cfg->ucode_api_min) {
 #else
 	if (drv->fw_index < drv->cfg->ucode_api_min) {
@@ -448,8 +451,10 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 	if (drv->trans->cfg->device_family == IWL_DEVICE_FAMILY_8000) {
 		char rev_step = 'A' + CSR_HW_REV_STEP(drv->trans->hw_rev);
 
-		snprintf(drv->firmware_name, sizeof(drv->firmware_name),
-			 "%s%c-%s.ucode", name_pre, rev_step, tag);
+		if (rev_step != 'A')
+			snprintf(drv->firmware_name,
+				 sizeof(drv->firmware_name), "%s%c-%s.ucode",
+				 name_pre, rev_step, tag);
 	}
 
 	IWL_DEBUG_INFO(drv, "attempting to load firmware %s'%s'\n",
@@ -655,8 +660,10 @@ static int iwl_set_ucode_api_flags(struct iwl_drv *drv, const u8 *data,
 	u32 api_flags = le32_to_cpu(ucode_api->api_flags);
 	int i;
 
-	if (api_index >= IWL_API_MAX_BITS / 32) {
-		IWL_ERR(drv, "api_index larger than supported by driver\n");
+	if (api_index >= DIV_ROUND_UP(NUM_IWL_UCODE_TLV_API, 32)) {
+		IWL_ERR(drv,
+			"api flags index %d larger than supported by driver\n",
+			api_index);
 		/* don't return an error so we can load FW that has more bits */
 		return 0;
 	}
@@ -677,8 +684,10 @@ static int iwl_set_ucode_capabilities(struct iwl_drv *drv, const u8 *data,
 	u32 api_flags = le32_to_cpu(ucode_capa->api_capa);
 	int i;
 
-	if (api_index >= IWL_CAPABILITIES_MAX_BITS / 32) {
-		IWL_ERR(drv, "api_index larger than supported by driver\n");
+	if (api_index >= DIV_ROUND_UP(NUM_IWL_UCODE_TLV_CAPA, 32)) {
+		IWL_ERR(drv,
+			"capa flags index %d larger than supported by driver\n",
+			api_index);
 		/* don't return an error so we can load FW that has more bits */
 		return 0;
 	}
@@ -795,21 +804,33 @@ static int iwl_parse_v1_v2_firmware(struct iwl_drv *drv,
 static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 				const struct firmware *ucode_raw,
 				struct iwl_firmware_pieces *pieces,
-				struct iwl_ucode_capabilities *capa)
+				struct iwl_ucode_capabilities *capa,
+				bool *usniffer_images)
 {
 	struct iwl_tlv_ucode_header *ucode = (void *)ucode_raw->data;
 	struct iwl_ucode_tlv *tlv;
 	size_t len = ucode_raw->size;
 	const u8 *data;
 	u32 tlv_len;
+	u32 usniffer_img;
 	enum iwl_ucode_tlv_type tlv_type;
 	const u8 *tlv_data;
 	char buildstr[25];
-	u32 build;
+	u32 build, paging_mem_size;
 	int num_of_cpus;
-	bool usniffer_images = false;
 	bool usniffer_req = false;
 	bool gscan_capa = false;
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (ucode->magic == cpu_to_le32(IWL_TLV_FW_DBG_MAGIC)) {
+		size_t dbg_data_ofs = offsetof(struct iwl_tlv_ucode_header,
+					       human_readable);
+		data = (void *)ucode_raw->data + dbg_data_ofs;
+		len -= dbg_data_ofs;
+
+		goto fw_dbg_conf;
+	}
+#endif
 
 	if (len < sizeof(*ucode)) {
 		IWL_ERR(drv, "uCode has invalid length: %zd\n", len);
@@ -846,6 +867,10 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 	data = ucode->data;
 
 	len -= sizeof(*ucode);
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+fw_dbg_conf:
+#endif
 
 	while (len >= sizeof(*tlv)) {
 		len -= sizeof(*tlv);
@@ -1211,10 +1236,39 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 			break;
 			}
 		case IWL_UCODE_TLV_SEC_RT_USNIFFER:
-			usniffer_images = true;
+			*usniffer_images = true;
 			iwl_store_ucode_sec(pieces, tlv_data,
 					    IWL_UCODE_REGULAR_USNIFFER,
 					    tlv_len);
+			break;
+		case IWL_UCODE_TLV_PAGING:
+			if (tlv_len != sizeof(u32))
+				goto invalid_tlv_len;
+			paging_mem_size = le32_to_cpup((__le32 *)tlv_data);
+
+			IWL_DEBUG_FW(drv,
+				     "Paging: paging enabled (size = %u bytes)\n",
+				     paging_mem_size);
+
+			if (paging_mem_size > MAX_PAGING_IMAGE_SIZE) {
+				IWL_ERR(drv,
+					"Paging: driver supports up to %lu bytes for paging image\n",
+					MAX_PAGING_IMAGE_SIZE);
+				return -EINVAL;
+			}
+
+			if (paging_mem_size & (FW_PAGING_SIZE - 1)) {
+				IWL_ERR(drv,
+					"Paging: image isn't multiple %lu\n",
+					FW_PAGING_SIZE);
+				return -EINVAL;
+			}
+
+			drv->fw.img[IWL_UCODE_REGULAR].paging_mem_size =
+				paging_mem_size;
+			usniffer_img = IWL_UCODE_REGULAR_USNIFFER;
+			drv->fw.img[usniffer_img].paging_mem_size =
+				paging_mem_size;
 			break;
 		case IWL_UCODE_TLV_SDIO_ADMA_ADDR:
 			if (tlv_len != sizeof(u32))
@@ -1233,7 +1287,7 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 		}
 	}
 
-	if (usniffer_req && !usniffer_images) {
+	if (usniffer_req && !*usniffer_images) {
 		IWL_ERR(drv,
 			"user selected to work with usniffer but usniffer image isn't available in ucode package\n");
 		return -EINVAL;
@@ -1248,8 +1302,9 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 	/*
 	 * If ucode advertises that it supports GSCAN but GSCAN
 	 * capabilities TLV is not present, warn and continue without GSCAN.
+	 * Check capa since parse_tlv is called one time with capa NULL.
 	 */
-	if (fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
+	if (capa && fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
 	    WARN(!gscan_capa,
 		 "GSCAN is supported but capabilities TLV is unavailable\n"))
 		__clear_bit((__force long)IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT,
@@ -1395,6 +1450,12 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	u32 api_ver;
 	int i;
 	bool load_module = false;
+	bool usniffer_images = false;
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	const struct firmware *fw_dbg_config;
+	int load_fw_dbg_err = -ENOENT;
+#endif
 
 	fw->ucode_capa.max_probe_length = IWL_DEFAULT_MAX_PROBE_LENGTH;
 	fw->ucode_capa.standard_phy_calibration_size =
@@ -1461,10 +1522,26 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 		err = iwl_parse_v1_v2_firmware(drv, ucode_raw, pieces);
 	else
 		err = iwl_parse_tlv_firmware(drv, ucode_raw, pieces,
-					     &fw->ucode_capa);
+					     &fw->ucode_capa, &usniffer_images);
 
 	if (err)
 		goto try_again;
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (!ucode->ver && drv->trans->dbg_cfg.fw_dbg_conf) {
+		load_fw_dbg_err =
+			request_firmware(&fw_dbg_config,
+					 drv->trans->dbg_cfg.fw_dbg_conf,
+					 drv->trans->dev);
+		if (!load_fw_dbg_err) {
+			err = iwl_parse_tlv_firmware(drv, fw_dbg_config, pieces,
+						     NULL, &usniffer_images);
+			if (err)
+				IWL_ERR(drv,
+					"Failed to configure FW DBG data!\n");
+		}
+	}
+#endif
 
 	if (fw_has_api(&drv->fw.ucode_capa, IWL_UCODE_TLV_API_NEW_VERSION))
 		api_ver = drv->fw.ucode_ver;
@@ -1559,6 +1636,8 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 		sizeof(struct iwl_fw_dbg_trigger_time_event);
 	trigger_tlv_sz[FW_DBG_TRIGGER_BA] =
 		sizeof(struct iwl_fw_dbg_trigger_ba);
+	trigger_tlv_sz[FW_DBG_TRIGGER_TDLS] =
+		sizeof(struct iwl_fw_dbg_trigger_tdls);
 
 	for (i = 0; i < ARRAY_SIZE(drv->fw.dbg_trigger_tlv); i++) {
 		if (pieces->dbg_trigger_tlv[i]) {
@@ -1617,6 +1696,11 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 
 	/* We have our copies now, allow OS release its copies */
 	release_firmware(ucode_raw);
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (!load_fw_dbg_err)
+		release_firmware(fw_dbg_config);
+#endif
 
 	mutex_lock(&iwlwifi_opmode_table_mtx);
 	if (fw->mvm_fw)
@@ -1813,9 +1897,9 @@ struct iwl_mod_params iwlwifi_mod_params = {
 	.bt_coex_active = true,
 	.power_level = IWL_POWER_INDEX_1,
 	.d0i3_disable = IS_ENABLED(CPTCFG_IWLWIFI_D0I3_DEFAULT_DISABLE),
-#ifndef CPTCFG_IWLWIFI_UAPSD
-	.uapsd_disable = true,
-#endif /* CPTCFG_IWLWIFI_UAPSD */
+	.d0i3_entry_delay = 1000,
+	.uapsd_disable = IWL_DISABLE_UAPSD_BSS | IWL_DISABLE_UAPSD_P2P_CLIENT,
+	.disable_11ac = IS_ENABLED(CPTCFG_IWLWIFI_VHT_DEFAULT_DISABLE),
 	/* the rest are 0 by default */
 };
 IWL_EXPORT_SYMBOL(iwlwifi_mod_params);
@@ -1972,9 +2056,9 @@ MODULE_PARM_DESC(swcrypto, "using crypto in software (default 0 [hardware])");
 module_param_named(11n_disable, iwlwifi_mod_params.disable_11n, uint, S_IRUGO);
 MODULE_PARM_DESC(11n_disable,
 	"disable 11n functionality, bitmap: 1: full, 2: disable agg TX, 4: disable agg RX, 8 enable agg TX");
-module_param_named(amsdu_size_8K, iwlwifi_mod_params.amsdu_size_8K,
+module_param_named(amsdu_size, iwlwifi_mod_params.amsdu_size,
 		   int, S_IRUGO);
-MODULE_PARM_DESC(amsdu_size_8K, "enable 8K amsdu size (default 0)");
+MODULE_PARM_DESC(amsdu_size, "amsdu size 0:4K 1:8K 2:12K (default 0)");
 module_param_named(fw_restart, iwlwifi_mod_params.restart_fw, bool, S_IRUGO);
 MODULE_PARM_DESC(fw_restart, "restart firmware in case of error (default true)");
 
@@ -1999,12 +2083,9 @@ module_param_named(lar_disable, iwlwifi_mod_params.lar_disable,
 MODULE_PARM_DESC(lar_disable, "disable LAR functionality (default: N)");
 
 module_param_named(uapsd_disable, iwlwifi_mod_params.uapsd_disable,
-		   bool, S_IRUGO | S_IWUSR);
-#ifdef CPTCFG_IWLWIFI_UAPSD
-MODULE_PARM_DESC(uapsd_disable, "disable U-APSD functionality (default: N)");
-#else
-MODULE_PARM_DESC(uapsd_disable, "disable U-APSD functionality (default: Y)");
-#endif
+		   uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(uapsd_disable,
+		 "disable U-APSD functionality bitmap 1: BSS 2: P2P Client (default: 3)");
 
 /*
  * set bt_coex_active to true, uCode will do kill/defer
@@ -2044,3 +2125,14 @@ module_param_named(fw_monitor, iwlwifi_mod_params.fw_monitor, bool, S_IRUGO);
 MODULE_PARM_DESC(fw_monitor,
 		 "firmware monitor - to debug FW (default: false - needs lots of memory)");
 
+module_param_named(d0i3_timeout, iwlwifi_mod_params.d0i3_entry_delay,
+		   uint, S_IRUGO);
+MODULE_PARM_DESC(d0i3_timeout, "Timeout to D0i3 entry when idle (ms)");
+
+module_param_named(disable_11ac, iwlwifi_mod_params.disable_11ac, bool,
+		   S_IRUGO);
+#ifdef CPTCFG_IWLWIFI_VHT_DEFAULT_DISABLE
+MODULE_PARM_DESC(disable_11ac, "Disable VHT capabilities (default: true)");
+#else
+MODULE_PARM_DESC(disable_11ac, "Disable VHT capabilities (default: false)");
+#endif

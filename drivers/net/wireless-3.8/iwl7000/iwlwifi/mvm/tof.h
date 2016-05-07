@@ -25,7 +25,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- * Intel Linux Wireless <ilw@linux.intel.com>
+ * Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -60,7 +60,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *****************************************************************************/
-#ifndef __tof
+#ifndef __tof_h__
 #define __tof_h__
 
 #include "fw-api-tof.h"
@@ -83,12 +83,17 @@ struct iwl_mvm_tof_data {
 	struct iwl_tof_config_cmd tof_cfg;
 	struct iwl_tof_range_req_cmd range_req;
 	struct iwl_tof_range_req_ext_cmd range_req_ext;
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+#define IWL_TOF_LCI_CIVIC_BUF_SIZE 512
 	struct iwl_tof_responder_config_cmd responder_cfg;
-#endif
+	struct iwl_tof_responder_dyn_config_cmd responder_dyn_cfg;
+	u8 lci_civic_buf[IWL_TOF_LCI_CIVIC_BUF_SIZE];
 	struct iwl_tof_range_rsp_ntfy range_resp;
 	u8 last_abort_id;
-	u16 active_range_request;
+#define IWL_MVM_TOF_RANGE_REQ_MAX_ID 256
+	u16 active_request_id;
+	u64 active_cookie;
+	struct cfg80211_ftm_request active_request;
+	u8 active_bssid_for_tsf[ETH_ALEN];
 #ifdef CPTCFG_IWLMVM_TOF_TSF_WA
 	struct rhashtable tsf_hash;
 	/* use this flag to minimize changes in mvm code needed for this WA */
@@ -99,15 +104,22 @@ struct iwl_mvm_tof_data {
 void iwl_mvm_tof_init(struct iwl_mvm *mvm);
 void iwl_mvm_tof_clean(struct iwl_mvm *mvm);
 int iwl_mvm_tof_config_cmd(struct iwl_mvm *mvm);
+int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
+			    struct ieee80211_vif *vif,
+			    struct cfg80211_ftm_request *req);
+int iwl_mvm_tof_abort_ftm(struct iwl_mvm *mvm, u64 cookie);
 int iwl_mvm_tof_range_abort_cmd(struct iwl_mvm *mvm, u8 id);
-int iwl_mvm_tof_range_request_cmd(struct iwl_mvm *mvm,
-				  struct ieee80211_vif *vif);
+int iwl_mvm_tof_range_request_cmd(struct iwl_mvm *mvm);
 void iwl_mvm_tof_resp_handler(struct iwl_mvm *mvm,
 			      struct iwl_rx_cmd_buffer *rxb);
-int iwl_mvm_tof_range_request_ext_cmd(struct iwl_mvm *mvm,
-				      struct ieee80211_vif *vif);
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
+int iwl_mvm_tof_range_request_ext_cmd(struct iwl_mvm *mvm);
 int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
 			      struct ieee80211_vif *vif);
-#endif
+int iwl_mvm_tof_responder_dyn_cfg_cmd(struct iwl_mvm *mvm,
+				      struct ieee80211_vif *vif);
+int iwl_mvm_tof_start_responder(struct iwl_mvm *mvm,
+				struct ieee80211_vif *vif,
+				struct cfg80211_ftm_responder_params *params);
+void iwl_mvm_tof_restart_responder(struct iwl_mvm *mvm,
+				   struct ieee80211_vif *vif);
 #endif /* __tof_h__ */

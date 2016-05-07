@@ -26,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -294,6 +294,9 @@
 
 /*********************** END TX SCHEDULER *************************************/
 
+/* tcp checksum offload */
+#define RX_EN_CSUM		(0x00a00d88)
+
 /* Oscillator clock */
 #define OSC_CLK				(0xa04068)
 #define OSC_CLK_FORCE_CONTROL		(0x8)
@@ -344,6 +347,12 @@ enum secure_load_status_reg {
 #define TXF_READ_MODIFY_DATA		(0xa00448)
 #define TXF_READ_MODIFY_ADDR		(0xa0044c)
 
+/* Radio registers access */
+#define RSP_RADIO_CMD			(0xa02804)
+#define RSP_RADIO_RDDAT			(0xa02814)
+#define RADIO_RSP_ADDR_POS		(6)
+#define RADIO_RSP_RD_CMD		(3)
+
 /* FW monitor */
 #define MON_BUFF_SAMPLE_CTL		(0xa03c00)
 #define MON_BUFF_BASE_ADDR		(0xa03c3c)
@@ -375,7 +384,9 @@ enum {
 };
 
 #define AUX_MISC_MASTER1_EN		0xA20818
-#define AUX_MISC_MASTER1_EN_SBE_MSK	0x1
+enum aux_misc_master1_en {
+	AUX_MISC_MASTER1_EN_SBE_MSK	= 0x1,
+};
 
 #define AUX_MISC_MASTER1_SMPHR_STATUS	0xA20800
 #define RSA_ENABLE			0xA24B08
@@ -393,4 +404,12 @@ enum {
 	LMPM_CHICK_EXTENDED_ADDR_SPACE = BIT(0),
 };
 
+/* FW chicken bits */
+#define LMPM_PAGE_PASS_NOTIF			0xA03824
+enum {
+	LMPM_PAGE_PASS_NOTIF_POS = BIT(20),
+};
+
+#define UREG_CHICK		(0xA05C00)
+#define UREG_CHICK_MSIX_ENABLE	BIT(25)
 #endif				/* __iwl_prph_h__ */

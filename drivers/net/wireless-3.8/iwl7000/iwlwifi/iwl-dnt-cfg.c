@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,13 +27,14 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
  *
  * Copyright(c) 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -65,6 +67,7 @@
 #include <linux/types.h>
 #include <linux/kthread.h>
 #include <linux/export.h>
+#include <linux/module.h>
 
 #include "iwl-drv.h"
 #include "iwl-config.h"
@@ -87,6 +90,8 @@ static ssize_t iwl_dnt_debugfs_log_read(struct file *file,
 					size_t count, loff_t *ppos)
 {
 	struct iwl_trans *trans = file->private_data;
+	struct iwl_dnt *dnt = trans->tmdev->dnt;
+	struct dnt_collect_db *db = dnt->dispatch.um_db;
 	unsigned char *temp_buf;
 	int ret = 0;
 
@@ -94,15 +99,30 @@ static ssize_t iwl_dnt_debugfs_log_read(struct file *file,
 	if (!temp_buf)
 		return -ENOMEM;
 
-	ret = iwl_dnt_dispatch_pull(trans, temp_buf, count, UCODE_MESSAGES);
-	if (ret < 0) {
-		IWL_DEBUG_INFO(trans, "Failed to retrieve debug data\n");
-		goto free_buf;
-	}
+	dnt->debugfs_counter++;
+	do {
+		/* wait for new logs */
+		wait_event_interruptible(db->waitq,
+					 (!trans->op_mode ||
+					  db->read_ptr != db->wr_ptr));
+		if (signal_pending(current) || !trans->op_mode)
+			break;
 
+		ret = iwl_dnt_dispatch_pull(trans, temp_buf, count,
+					    UCODE_MESSAGES);
+		if (ret < 0) {
+			IWL_DEBUG_INFO(trans,
+				       "Failed to retrieve debug data\n");
+			goto free_buf;
+		}
+	} while (!ret);
+
+	*ppos = 0;
 	ret = simple_read_from_buffer(user_buf, ret, ppos, temp_buf, count);
 free_buf:
 	kfree(temp_buf);
+	dnt->debugfs_counter--;
+	wake_up(&dnt->debugfs_waitq);
 	return ret;
 }
 
@@ -280,6 +300,7 @@ void iwl_dnt_init(struct iwl_trans *trans, struct dentry *dbgfs_dir)
 	err = iwl_dnt_conf_ucode_msgs_via_rx(trans, DEBUGFS);
 	if (err)
 		IWL_DEBUG_INFO(trans, "Failed to configure uCodeMessages\n");
+	init_waitqueue_head(&dnt->debugfs_waitq);
 #endif
 
 	if (!iwl_dnt_validate_configuration(trans)) {
@@ -301,10 +322,16 @@ void iwl_dnt_free(struct iwl_trans *trans)
 	if (!dnt)
 		return;
 
-	iwl_dnt_dispatch_free(dnt, trans);
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
 	debugfs_remove_recursive(dnt->debugfs_entry);
+	if (dnt->debugfs_counter) {
+		IWL_INFO(trans, "waiting for dnt debugfs release (cnt=%d)\n",
+			 dnt->debugfs_counter);
+		wake_up_interruptible(&dnt->dispatch.um_db->waitq);
+		wait_event(dnt->debugfs_waitq, dnt->debugfs_counter == 0);
+	}
 #endif
+	iwl_dnt_dispatch_free(dnt, trans);
 	kfree(dnt);
 }
 IWL_EXPORT_SYMBOL(iwl_dnt_free);

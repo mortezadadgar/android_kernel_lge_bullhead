@@ -26,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -86,6 +86,7 @@ struct iwl_dbg_cfg {
 #define IWL_DBG_CFG(type, name)		type name;
 #define IWL_DBG_CFG_NODEF(type, name)	type name;
 #define IWL_DBG_CFG_BIN(name)		struct iwl_dbg_cfg_bin name;
+#define IWL_DBG_CFG_STR(name)	const char *name;
 #define IWL_DBG_CFG_BINA(name, max)	struct iwl_dbg_cfg_bin name[max]; \
 					int n_ ## name;
 #define IWL_DBG_CFG_RANGE(type, name, min, max)	IWL_DBG_CFG(type, name)
@@ -103,6 +104,8 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG(u32, MVM_DEFAULT_PS_RX_DATA_TIMEOUT)
 	IWL_DBG_CFG(u32, MVM_WOWLAN_PS_TX_DATA_TIMEOUT)
 	IWL_DBG_CFG(u32, MVM_WOWLAN_PS_RX_DATA_TIMEOUT)
+	IWL_DBG_CFG(u32, MVM_SHORT_PS_TX_DATA_TIMEOUT)
+	IWL_DBG_CFG(u32, MVM_SHORT_PS_RX_DATA_TIMEOUT)
 	IWL_DBG_CFG(u32, MVM_UAPSD_TX_DATA_TIMEOUT)
 	IWL_DBG_CFG(u32, MVM_UAPSD_RX_DATA_TIMEOUT)
 	IWL_DBG_CFG(u32, MVM_UAPSD_QUEUES)
@@ -137,6 +140,9 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG(bool, MVM_FW_MCAST_FILTER_PASS_ALL)
 	IWL_DBG_CFG(bool, MVM_FW_BCAST_FILTER_PASS_ALL)
 	IWL_DBG_CFG(bool, MVM_TOF_IS_RESPONDER)
+	IWL_DBG_CFG(bool, MVM_P2P_LOWLATENCY_PS_ENABLE)
+	IWL_DBG_CFG(bool, MVM_SW_TX_CSUM_OFFLOAD)
+	IWL_DBG_CFG(bool, MVM_COLLECT_FW_ERR_DUMP)
 #ifdef CPTCFG_IWLMVM_TCM
 	IWL_DBG_CFG(u32, MVM_TCM_LOAD_MEDIUM_THRESH)
 	IWL_DBG_CFG(u32, MVM_TCM_LOAD_HIGH_THRESH)
@@ -147,7 +153,6 @@ struct iwl_dbg_cfg {
 #endif /* CPTCFG_IWLMVM_TCM */
 	IWL_DBG_CFG(u8, MVM_QUOTA_THRESHOLD)
 	IWL_DBG_CFG(u8, MVM_RS_RSSI_BASED_INIT_RATE)
-	IWL_DBG_CFG(u8, MVM_RS_DISABLE_P2P_MIMO)
 	IWL_DBG_CFG(u8, MVM_RS_80_20_FAR_RANGE_TWEAK)
 	IWL_DBG_CFG(u8, MVM_RS_NUM_TRY_BEFORE_ANT_TOGGLE)
 	IWL_DBG_CFG(u8, MVM_RS_HT_VHT_RETRIES_PER_RATE)
@@ -231,11 +236,12 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(u32, dbg_mon_buff_end_addr_reg_addr_b_step)
 	IWL_DBG_CFG_NODEF(u32, dbg_mon_wr_ptr_addr_b_step)
 #endif /* CPTCFG_IWLWIFI_DEVICE_TESTMODE */
+	IWL_DBG_CFG_STR(fw_dbg_conf)
 	IWL_DBG_CFG_NODEF(u8, wakelock_mode)
 	IWL_DBG_CFG_NODEF(u32, d0i3_debug)
 	IWL_DBG_CFG_NODEF(u32, valid_ants)
 	IWL_DBG_CFG_NODEF(u32, secure_boot_cfg)
-	IWL_MOD_PARAM(bool, uapsd_disable)
+	IWL_MOD_PARAM(u32, uapsd_disable)
 	IWL_MOD_PARAM(bool, d0i3_disable)
 	IWL_MOD_PARAM(bool, lar_disable)
 	IWL_MOD_PARAM(bool, fw_monitor)
@@ -245,12 +251,10 @@ struct iwl_dbg_cfg {
 	IWL_MOD_PARAM(int, ant_coupling)
 	IWL_MOD_PARAM(int, power_level)
 	IWL_MOD_PARAM(int, led_mode)
-	IWL_MOD_PARAM(int, amsdu_size_8K)
+	IWL_MOD_PARAM(int, amsdu_size)
 	IWL_MOD_PARAM(int, sw_crypto)
 	IWL_MOD_PARAM(uint, disable_11n)
-#ifdef CPTCFG_IWLMVM_WAKELOCK
-	IWL_DBG_CFG(u32, WAKELOCK_TIMEOUT_MS)
-#endif /* CPTCFG_IWLMVM_WAKELOCK */
+	IWL_MOD_PARAM(uint, d0i3_entry_delay)
 #ifdef CPTCFG_IWLWIFI_DEBUG
 	IWL_MOD_PARAM(u32, debug_level)
 #endif /* CPTCFG_IWLWIFI_DEBUG */
@@ -258,6 +262,7 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(bool, load_old_fw)
 #endif /* CPTCFG_IWLWIFI_DISALLOW_OLDER_FW */
 #undef IWL_DBG_CFG
+#undef IWL_DBG_CFG_STR
 #undef IWL_DBG_CFG_NODEF
 #undef IWL_DBG_CFG_BIN
 #undef IWL_DBG_CFG_BINA

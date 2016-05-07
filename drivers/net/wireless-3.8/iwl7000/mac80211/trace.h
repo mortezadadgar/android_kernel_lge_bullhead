@@ -80,7 +80,21 @@
 #define KEY_PR_FMT	" cipher:0x%x, flags=%#x, keyidx=%d, hw_key_idx=%d"
 #define KEY_PR_ARG	__entry->cipher, __entry->flags, __entry->keyidx, __entry->hw_key_idx
 
-
+#define AMPDU_ACTION_ENTRY	__field(enum ieee80211_ampdu_mlme_action, ieee80211_ampdu_mlme_action)	\
+				STA_ENTRY								\
+				__field(u16, tid)							\
+				__field(u16, ssn)							\
+				__field(u8, buf_size)							\
+				__field(bool, amsdu)							\
+				__field(u16, timeout)
+#define AMPDU_ACTION_ASSIGN	STA_NAMED_ASSIGN(params->sta);						\
+				__entry->tid = params->tid;						\
+				__entry->ssn = params->ssn;						\
+				__entry->buf_size = params->buf_size;					\
+				__entry->amsdu = params->amsdu;						\
+				__entry->timeout = params->timeout;
+#define AMPDU_ACTION_PR_FMT	STA_PR_FMT " tid %d, ssn %d, buf_size %u, amsdu %d, timeout %d"
+#define AMPDU_ACTION_PR_ARG	STA_PR_ARG, __entry->tid, __entry->ssn, __entry->buf_size, __entry->amsdu, __entry->timeout
 
 /*
  * Tracing for driver callbacks.
@@ -325,7 +339,6 @@ TRACE_EVENT(drv_config,
 		__field(u32, flags)
 		__field(int, power_level)
 		__field(int, dynamic_ps_timeout)
-		__field(int, max_sleep_period)
 		__field(u16, listen_interval)
 		__field(u8, long_frame_max_tx_count)
 		__field(u8, short_frame_max_tx_count)
@@ -339,7 +352,6 @@ TRACE_EVENT(drv_config,
 		__entry->flags = local->hw.conf.flags;
 		__entry->power_level = local->hw.conf.power_level;
 		__entry->dynamic_ps_timeout = local->hw.conf.dynamic_ps_timeout;
-		__entry->max_sleep_period = local->hw.conf.max_sleep_period;
 		__entry->listen_interval = local->hw.conf.listen_interval;
 		__entry->long_frame_max_tx_count =
 			local->hw.conf.long_frame_max_tx_count;
@@ -972,38 +984,25 @@ DEFINE_EVENT(local_only_evt, drv_tx_last_beacon,
 TRACE_EVENT(drv_ampdu_action,
 	TP_PROTO(struct ieee80211_local *local,
 		 struct ieee80211_sub_if_data *sdata,
-		 enum ieee80211_ampdu_mlme_action action,
-		 struct ieee80211_sta *sta, u16 tid,
-		 u16 *ssn, u8 buf_size, bool amsdu),
+		 struct ieee80211_ampdu_params *params),
 
-	TP_ARGS(local, sdata, action, sta, tid, ssn, buf_size, amsdu),
+	TP_ARGS(local, sdata, params),
 
 	TP_STRUCT__entry(
 		LOCAL_ENTRY
-		STA_ENTRY
-		__field(u32, action)
-		__field(u16, tid)
-		__field(u16, ssn)
-		__field(u8, buf_size)
-		__field(bool, amsdu)
 		VIF_ENTRY
+		AMPDU_ACTION_ENTRY
 	),
 
 	TP_fast_assign(
 		LOCAL_ASSIGN;
 		VIF_ASSIGN;
-		STA_ASSIGN;
-		__entry->action = action;
-		__entry->tid = tid;
-		__entry->ssn = ssn ? *ssn : 0;
-		__entry->buf_size = buf_size;
-		__entry->amsdu = amsdu;
+		AMPDU_ACTION_ASSIGN;
 	),
 
 	TP_printk(
-		LOCAL_PR_FMT VIF_PR_FMT STA_PR_FMT " action:%d tid:%d buf:%d amsdu:%d",
-		LOCAL_PR_ARG, VIF_PR_ARG, STA_PR_ARG, __entry->action,
-		__entry->tid, __entry->buf_size, __entry->amsdu
+		LOCAL_PR_FMT VIF_PR_FMT AMPDU_ACTION_PR_FMT,
+		LOCAL_PR_ARG, VIF_PR_ARG, AMPDU_ACTION_PR_ARG
 	)
 );
 
@@ -1222,34 +1221,6 @@ TRACE_EVENT(drv_get_ringparam,
 		LOCAL_PR_FMT " tx:%d tx_max %d rx %d rx_max %d",
 		LOCAL_PR_ARG,
 		__entry->tx, __entry->tx_max, __entry->rx, __entry->rx_max
-	)
-);
-
-TRACE_EVENT(drv_set_features,
-	TP_PROTO(struct ieee80211_local *local,
-		 struct ieee80211_sub_if_data *sdata,
-		 netdev_features_t features,
-		 netdev_features_t changed),
-
-	TP_ARGS(local, sdata, features, changed),
-
-	TP_STRUCT__entry(
-		LOCAL_ENTRY
-		VIF_ENTRY
-		__field(netdev_features_t, features)
-		__field(netdev_features_t, changed)
-	),
-
-	TP_fast_assign(
-		LOCAL_ASSIGN;
-		VIF_ASSIGN;
-		__entry->features = features;
-		__entry->changed = changed;
-	),
-
-	TP_printk(
-		LOCAL_PR_FMT VIF_PR_FMT " features=0x%llx, changed=0x%llx",
-		LOCAL_PR_ARG, VIF_PR_ARG, __entry->features, __entry->changed
 	)
 );
 
@@ -1715,6 +1686,140 @@ TRACE_EVENT(drv_get_expected_throughput,
 	)
 );
 
+TRACE_EVENT(drv_start_nan,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata,
+		 struct cfg80211_nan_conf *conf),
+
+	TP_ARGS(local, sdata, conf),
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		VIF_ENTRY
+		__field(u8, master_pref)
+		__field(u8, dual)
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		VIF_ASSIGN;
+		__entry->master_pref = conf->master_pref;
+		__entry->dual = conf->dual;
+	),
+
+	TP_printk(
+		LOCAL_PR_FMT  VIF_PR_FMT
+		", master preference: %u, dual: %d",
+		LOCAL_PR_ARG, VIF_PR_ARG, __entry->master_pref,
+		__entry->dual
+	)
+);
+
+TRACE_EVENT(drv_stop_nan,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata),
+
+	TP_ARGS(local, sdata),
+
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		VIF_ENTRY
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		VIF_ASSIGN;
+	),
+
+	TP_printk(
+		LOCAL_PR_FMT  VIF_PR_FMT,
+		LOCAL_PR_ARG, VIF_PR_ARG
+	)
+);
+
+TRACE_EVENT(drv_nan_change_conf,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata,
+		 struct cfg80211_nan_conf *conf,
+		 u32 changes),
+
+	TP_ARGS(local, sdata, conf, changes),
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		VIF_ENTRY
+		__field(u8, master_pref)
+		__field(u8, dual)
+		__field(u32, changes)
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		VIF_ASSIGN;
+		__entry->master_pref = conf->master_pref;
+		__entry->dual = conf->dual;
+		__entry->changes = changes;
+	),
+
+	TP_printk(
+		LOCAL_PR_FMT  VIF_PR_FMT
+		", master preference: %u, dual: %d, changes: 0x%x",
+		LOCAL_PR_ARG, VIF_PR_ARG, __entry->master_pref,
+		__entry->dual, __entry->changes
+	)
+);
+
+/* TODO: record more fields */
+TRACE_EVENT(drv_add_nan_func,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata,
+		 const struct cfg80211_nan_func *func),
+
+	TP_ARGS(local, sdata, func),
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		VIF_ENTRY
+		__field(u8, type)
+		__field(u8, inst_id)
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		VIF_ASSIGN;
+		__entry->type = func->type;
+		__entry->inst_id = func->instance_id;
+	),
+
+	TP_printk(
+		LOCAL_PR_FMT  VIF_PR_FMT
+		", type: %u, inst_id: %u",
+		LOCAL_PR_ARG, VIF_PR_ARG, __entry->type, __entry->inst_id
+	)
+);
+
+TRACE_EVENT(drv_rm_nan_func,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata,
+		 u8 instance_id),
+
+	TP_ARGS(local, sdata, instance_id),
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		VIF_ENTRY
+		__field(u8, instance_id)
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		VIF_ASSIGN;
+		__entry->instance_id = instance_id;
+	),
+
+	TP_printk(
+		LOCAL_PR_FMT  VIF_PR_FMT
+		", instance_id: %u",
+		LOCAL_PR_ARG, VIF_PR_ARG, __entry->instance_id
+	)
+);
+
 /*
  * Tracing for API calls that drivers call.
  */
@@ -2054,6 +2159,31 @@ TRACE_EVENT(api_eosp,
 	TP_printk(
 		LOCAL_PR_FMT STA_PR_FMT,
 		LOCAL_PR_ARG, STA_PR_ARG
+	)
+);
+
+TRACE_EVENT(api_send_eosp_nullfunc,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sta *sta,
+		 u8 tid),
+
+	TP_ARGS(local, sta, tid),
+
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		STA_ENTRY
+		__field(u8, tid)
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		STA_ASSIGN;
+		__entry->tid = tid;
+	),
+
+	TP_printk(
+		LOCAL_PR_FMT STA_PR_FMT " tid:%d",
+		LOCAL_PR_ARG, STA_PR_ARG, __entry->tid
 	)
 );
 
@@ -2403,6 +2533,12 @@ TRACE_EVENT(drv_wake_tx_queue,
 		LOCAL_PR_FMT  VIF_PR_FMT  STA_PR_FMT " ac:%d tid:%d",
 		LOCAL_PR_ARG, VIF_PR_ARG, STA_PR_ARG, __entry->ac, __entry->tid
 	)
+);
+
+DEFINE_EVENT(local_sdata_evt, drv_start_ftm_responder,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata),
+	TP_ARGS(local, sdata)
 );
 
 #endif /* !__MAC80211_DRIVER_TRACE || TRACE_HEADER_MULTI_READ */

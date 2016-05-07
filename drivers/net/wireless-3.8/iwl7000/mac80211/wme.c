@@ -149,9 +149,7 @@ u16 ieee80211_select_queue(struct ieee80211_sub_if_data *sdata,
 	struct sta_info *sta = NULL;
 	const u8 *ra = NULL;
 	bool qos = false;
-#if CFG80211_VERSION >= KERNEL_VERSION(3,14,0)
 	struct mac80211_qos_map *qos_map;
-#endif
 	u16 ret;
 
 	if (local->hw.queues < IEEE80211_NUM_ACS || skb->len < 6) {
@@ -191,10 +189,11 @@ u16 ieee80211_select_queue(struct ieee80211_sub_if_data *sdata,
 		break;
 #if CFG80211_VERSION >= KERNEL_VERSION(3,19,0)
 	case NL80211_IFTYPE_OCB:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
 		/* all stations are required to support WME */
 		qos = true;
 		break;
-#endif
 	default:
 		break;
 	}
@@ -218,13 +217,10 @@ u16 ieee80211_select_queue(struct ieee80211_sub_if_data *sdata,
 
 	/* use the data classifier to determine what 802.1d tag the
 	 * data frame has */
-#if CFG80211_VERSION >= KERNEL_VERSION(3,14,0)
 	qos_map = rcu_dereference(sdata->qos_map);
 	skb->priority = cfg80211_classify8021d(skb, qos_map ?
 					       &qos_map->qos_map : NULL);
-#else
-	skb->priority = cfg80211_classify8021d(skb);
-#endif
+
  downgrade:
 	ret = ieee80211_downgrade_queue(sdata, sta, skb);
  out:

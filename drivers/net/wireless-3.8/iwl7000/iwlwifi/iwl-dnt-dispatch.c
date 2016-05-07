@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,13 +27,14 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
  *
  * Copyright(c) 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -87,6 +89,7 @@ struct dnt_collect_db *iwl_dnt_dispatch_allocate_collect_db(struct iwl_dnt *dnt)
 	}
 
 	spin_lock_init(&db->db_lock);
+	init_waitqueue_head(&db->waitq);
 
 	return db;
 }
@@ -105,12 +108,11 @@ static int iwl_dnt_dispatch_get_list_data(struct dnt_collect_db *db,
 					   u8 *buffer, u32 buffer_size)
 {
 	struct dnt_collect_entry *cur_entry;
-	int i, cur_index = 0, data_offset = 0;
+	int data_offset = 0;
 
 	spin_lock_bh(&db->db_lock);
-	for (i = 0; i < ARRAY_SIZE(db->collect_array); i++) {
-		cur_index = (i + db->read_ptr) % IWL_DNT_ARRAY_SIZE;
-		cur_entry = &db->collect_array[cur_index];
+	while (db->read_ptr != db->wr_ptr) {
+		cur_entry = &db->collect_array[db->read_ptr];
 		if (data_offset + cur_entry->size > buffer_size)
 			break;
 		memcpy(buffer + data_offset, cur_entry->data, cur_entry->size);
@@ -118,9 +120,10 @@ static int iwl_dnt_dispatch_get_list_data(struct dnt_collect_db *db,
 		cur_entry->size = 0;
 		kfree(cur_entry->data);
 		cur_entry->data = NULL;
-	}
 
-	db->read_ptr = cur_index;
+		/* increment read_ptr */
+		db->read_ptr = (db->read_ptr + 1) % IWL_DNT_ARRAY_SIZE;
+	}
 	spin_unlock_bh(&db->db_lock);
 	return data_offset;
 }
@@ -169,6 +172,9 @@ int iwl_dnt_dispatch_pull(struct iwl_trans *trans, u8 *buffer, u32 buffer_size,
 	struct iwl_dnt *dnt = trans->tmdev->dnt;
 	int ret = 0;
 
+	if (!trans->op_mode)
+		return -EINVAL;
+
 	switch (input) {
 	case MONITOR:
 		ret = iwl_dnt_dispatch_pull_monitor(dnt, trans, buffer,
@@ -202,14 +208,9 @@ static int iwl_dnt_dispatch_collect_data(struct iwl_dnt *dnt,
 	 * if so it means that we complete a cycle in the array
 	 * hence replacing data in wr_ptr
 	 */
-	if (wr_entry->data) {
-		/*
-		 * since we overrun oldest data we should update read
-		 * ptr to the next oldest data
-		 */
-		db->read_ptr = (db->read_ptr + 1) % IWL_DNT_ARRAY_SIZE;
-		kfree(wr_entry->data);
-		wr_entry->data = NULL;
+	if (WARN_ON_ONCE(wr_entry->data)) {
+		spin_unlock(&db->db_lock);
+		return -ENOMEM;
 	}
 
 	wr_entry->size = data_size;
@@ -221,6 +222,20 @@ static int iwl_dnt_dispatch_collect_data(struct iwl_dnt *dnt,
 
 	memcpy(wr_entry->data, pkt->data, wr_entry->size);
 	db->wr_ptr = (db->wr_ptr + 1) % IWL_DNT_ARRAY_SIZE;
+
+	if (db->wr_ptr == db->read_ptr) {
+		/*
+		 * since we overrun oldest data we should update read
+		 * ptr to the next oldest data
+		 */
+		struct dnt_collect_entry *rd_entry =
+			&db->collect_array[db->read_ptr];
+
+		kfree(rd_entry->data);
+		rd_entry->data = NULL;
+		db->read_ptr = (db->read_ptr + 1) % IWL_DNT_ARRAY_SIZE;
+	}
+	wake_up_interruptible(&db->waitq);
 	spin_unlock(&db->db_lock);
 
 	return 0;

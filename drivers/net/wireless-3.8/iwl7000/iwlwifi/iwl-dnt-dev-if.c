@@ -26,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -86,31 +86,31 @@ static void iwl_dnt_dev_if_configure_mipi(struct iwl_trans *trans)
 	}
 
 	/* ABB_CguDTClkCtrl - set system trace and mtm clock souce as PLLA */
-	iowrite32(0x30303, (void __iomem *)0xe640110c);
+	iowrite32(0x30303, (void __force __iomem *)0xe640110c);
 
 	/* ABB_SpcuMemPower - set the power of the trace memory */
-	iowrite32(0x1, (void __iomem *)0xe640201c);
+	iowrite32(0x1, (void __force __iomem *)0xe640201c);
 
 	/* set MIPI2 PCL, PCL_26 - PCL_30 */
-	iowrite32(0x10, (void __iomem *)0xe6300274);
-	iowrite32(0x10, (void __iomem *)0xe6300278);
-	iowrite32(0x10, (void __iomem *)0xe630027c);
-	iowrite32(0x10, (void __iomem *)0xe6300280);
-	iowrite32(0x10, (void __iomem *)0xe6300284);
+	iowrite32(0x10, (void __force __iomem *)0xe6300274);
+	iowrite32(0x10, (void __force __iomem *)0xe6300278);
+	iowrite32(0x10, (void __force __iomem *)0xe630027c);
+	iowrite32(0x10, (void __force __iomem *)0xe6300280);
+	iowrite32(0x10, (void __force __iomem *)0xe6300284);
 
 	/* ARB0_CNF - enable generic arbiter */
-	iowrite32(0xc0000000, (void __iomem *)0xe6700108);
+	iowrite32(0xc0000000, (void __force __iomem *)0xe6700108);
 
 	/* enable WLAN arbiter */
-	iowrite32(0x80000006, (void __iomem *)0xe6700140);
+	iowrite32(0x80000006, (void __force __iomem *)0xe6700140);
 
 #ifdef IWL_MIPI_IDI
 	/* enable IDI arbiter for all channels - this code is
 	 * needed in case we'd like to look on IDI bus logs
 	 * via MIPI
 	 */
-	iowrite32(0xB0000004, (void __iomem *)0xe6700124);
-	iowrite32(0xC0000000, (void __iomem *)0xe6700128);
+	iowrite32(0xB0000004, (void __force __iomem *)0xe6700124);
+	iowrite32(0xC0000000, (void __force __iomem *)0xe6700128);
 #endif
 }
 
@@ -644,7 +644,7 @@ int iwl_dnt_dev_if_read_rx(struct iwl_dnt *dnt, struct iwl_trans *trans)
 
 	buf32 = (u32 *)crash->rx;
 
-	if (!iwl_trans_grab_nic_access(trans, false, &flags)) {
+	if (!iwl_trans_grab_nic_access(trans, &flags)) {
 		vfree(crash->rx);
 		return -EBUSY;
 	}

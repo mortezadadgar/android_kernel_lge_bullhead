@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -26,13 +27,14 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2014 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -74,6 +76,9 @@ struct iwl_mvm_quota_iterator_data {
 	int n_interfaces[MAX_BINDINGS];
 	int colors[MAX_BINDINGS];
 	int low_latency[MAX_BINDINGS];
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
+	int dbgfs_min[MAX_BINDINGS];
+#endif
 	int n_low_latency_bindings;
 	struct ieee80211_vif *disabled_vif;
 };
@@ -116,6 +121,10 @@ static void iwl_mvm_quota_iterator(void *_data, u8 *mac,
 			break;
 		return;
 	case NL80211_IFTYPE_P2P_DEVICE:
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	case NL80211_IFTYPE_NAN:
+		/* keep code in case of fall-through (spatch generated) */
+#endif
 		return;
 	default:
 		WARN_ON_ONCE(1);
@@ -128,6 +137,12 @@ static void iwl_mvm_quota_iterator(void *_data, u8 *mac,
 		WARN_ON_ONCE(data->colors[id] != mvmvif->phy_ctxt->color);
 
 	data->n_interfaces[id]++;
+
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
+	if (mvmvif->dbgfs_quota_min)
+		data->dbgfs_min[id] = max(data->dbgfs_min[id],
+					  mvmvif->dbgfs_quota_min);
+#endif
 
 	if (iwl_mvm_vif_low_latency(mvmvif) && !data->low_latency[id]) {
 		data->n_low_latency_bindings++;
@@ -287,6 +302,11 @@ int iwl_mvm_update_quotas(struct iwl_mvm *mvm,
 
 		if (data.n_interfaces[i] <= 0)
 			cmd.quotas[idx].quota = cpu_to_le32(0);
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
+		else if (data.dbgfs_min[i])
+			cmd.quotas[idx].quota =
+				cpu_to_le32(data.dbgfs_min[i] * QUOTA_100 / 100);
+#endif
 		else if (data.n_low_latency_bindings == 1 && n_non_lowlat &&
 			 data.low_latency[i])
 			/*

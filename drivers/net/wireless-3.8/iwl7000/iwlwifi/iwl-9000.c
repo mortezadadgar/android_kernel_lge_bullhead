@@ -55,7 +55,7 @@
 #include "iwl-agn-hw.h"
 
 /* Highest firmware API version supported */
-#define IWL9000_UCODE_API_MAX	16
+#define IWL9000_UCODE_API_MAX	21
 
 /* Oldest version we won't warn about */
 #define IWL9000_UCODE_API_OK	13
@@ -83,7 +83,7 @@
 
 static const struct iwl_base_params iwl9000_base_params = {
 	.eeprom_size = OTP_LOW_IMAGE_SIZE_FAMILY_9000,
-	.num_of_queues = IWLAGN_NUM_QUEUES,
+	.num_of_queues = 31,
 	.pll_cfg_val = 0,
 	.shadow_ram_support = true,
 	.led_compensation = 57,
@@ -130,7 +130,6 @@ static const struct iwl_tt_params iwl9000_tt_params = {
 	.base_params = &iwl9000_base_params,				\
 	.led_mode = IWL_LED_RF_STATE,					\
 	.nvm_hw_section_num = NVM_HW_SECTION_NUM_FAMILY_9000,		\
-	.d0i3 = true,							\
 	.non_shared_ant = ANT_A,					\
 	.dccm_offset = IWL9000_DCCM_OFFSET,				\
 	.dccm_len = IWL9000_DCCM_LEN,					\
@@ -139,10 +138,22 @@ static const struct iwl_tt_params iwl9000_tt_params = {
 	.smem_offset = IWL9000_SMEM_OFFSET,				\
 	.smem_len = IWL9000_SMEM_LEN,					\
 	.thermal_params = &iwl9000_tt_params,				\
-	.apmg_not_supported = true
+	.apmg_not_supported = true,					\
+	.mq_rx_supported = true,					\
+	.vht_mu_mimo_supported = true
 
-const struct iwl_cfg iwl9000_2ac_cfg = {
-		.name = "Intel(R) Dual Band Wireless AC 9000",
+const struct iwl_cfg iwl9260_2ac_cfg = {
+		.name = "Intel(R) Dual Band Wireless AC 9260",
+		.fw_name_pre = IWL9000_FW_PRE,
+		IWL_DEVICE_9000,
+		.ht_params = &iwl9000_ht_params,
+		.nvm_ver = IWL9000_NVM_VERSION,
+		.nvm_calib_ver = IWL9000_TX_POWER_VERSION,
+		.max_ht_ampdu_exponent = IEEE80211_HT_MAX_AMPDU_64K,
+};
+
+const struct iwl_cfg iwl5165_2ac_cfg = {
+		.name = "Intel(R) Dual Band Wireless AC 5165",
 		.fw_name_pre = IWL9000_FW_PRE,
 		IWL_DEVICE_9000,
 		.ht_params = &iwl9000_ht_params,

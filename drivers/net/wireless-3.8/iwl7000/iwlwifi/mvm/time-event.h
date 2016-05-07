@@ -26,7 +26,7 @@
  * in the file called COPYING.
  *
  * Contact Information:
- *  Intel Linux Wireless <ilw@linux.intel.com>
+ *  Intel Linux Wireless <linuxwifi@intel.com>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
  *
  * BSD LICENSE
@@ -115,7 +115,7 @@
  * needed by the driver.
  */
 
-#define IWL_MVM_TE_SESSION_PROTECTION_MAX_TIME_MS 500
+#define IWL_MVM_TE_SESSION_PROTECTION_MAX_TIME_MS 600
 #define IWL_MVM_TE_SESSION_PROTECTION_MIN_TIME_MS 400
 
 /**
@@ -215,6 +215,7 @@ void iwl_mvm_remove_time_event(struct iwl_mvm *mvm,
 void iwl_mvm_te_clear_data(struct iwl_mvm *mvm,
 			   struct iwl_mvm_time_event_data *te_data);
 
+void iwl_mvm_cleanup_roc_te(struct iwl_mvm *mvm);
 void iwl_mvm_roc_done_wk(struct work_struct *wk);
 
 /**
