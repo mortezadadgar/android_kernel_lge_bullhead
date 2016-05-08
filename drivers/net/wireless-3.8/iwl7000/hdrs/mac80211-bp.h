@@ -1495,7 +1495,7 @@ struct cfg80211_nan_func {
 	u64 cookie;
 };
 
-static inline void cfg80211_free_nan_func_members(struct cfg80211_nan_func *f)
+static inline void cfg80211_free_nan_func(struct cfg80211_nan_func *f)
 {
 }
 

@@ -966,7 +966,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 		list_for_each_entry_safe(func, tmp_func,
 					 &sdata->u.nan.functions_list, list) {
 			list_del(&func->list);
-			cfg80211_free_nan_func_members(&func->func);
+			cfg80211_free_nan_func(func->func);
 			kfree(func);
 		}
 		spin_unlock_bh(&sdata->u.nan.func_lock);

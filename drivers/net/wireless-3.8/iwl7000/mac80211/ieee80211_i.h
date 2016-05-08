@@ -1500,7 +1500,7 @@ struct ieee802_11_elems {
 /* NAN function entry */
 struct ieee80211_nan_func {
 	struct list_head list;
-	struct cfg80211_nan_func func;
+	struct cfg80211_nan_func *func;
 };
 
 static inline struct ieee80211_local *hw_to_local(

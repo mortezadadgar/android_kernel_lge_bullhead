@@ -241,7 +241,7 @@ static int ieee80211_add_nan_func(struct wiphy *wiphy,
 	if (!func)
 		return -ENOBUFS;
 
-	cfg80211_clone_nan_func_members(&func->func, nan_func);
+	func->func = nan_func;
 
 	spin_lock_bh(&sdata->u.nan.func_lock);
 	clear_bit(inst_id, sdata->u.nan.func_ids);
@@ -254,9 +254,6 @@ static int ieee80211_add_nan_func(struct wiphy *wiphy,
 		set_bit(inst_id, sdata->u.nan.func_ids);
 		list_del(&func->list);
 		spin_unlock_bh(&sdata->u.nan.func_lock);
-
-		cfg80211_free_nan_func_members(&func->func);
-		kfree(func);
 	}
 
 	return ret;
@@ -272,7 +269,7 @@ ieee80211_find_nan_func(struct ieee80211_sub_if_data *sdata, u8 instance_id)
 	lockdep_assert_held(&sdata->u.nan.func_lock);
 
 	list_for_each_entry(func, &sdata->u.nan.functions_list, list) {
-		if (func->func.instance_id == instance_id)
+		if (func->func->instance_id == instance_id)
 			return func;
 	}
 
@@ -290,7 +287,7 @@ ieee80211_find_nan_func_by_cookie(struct ieee80211_sub_if_data *sdata,
 	lockdep_assert_held(&sdata->u.nan.func_lock);
 
 	list_for_each_entry(func, &sdata->u.nan.functions_list, list) {
-		if (func->func.cookie == cookie)
+		if (func->func->cookie == cookie)
 			return func;
 	}
 
@@ -314,7 +311,7 @@ static void ieee80211_rm_nan_func(struct wiphy *wiphy,
 
 	func = ieee80211_find_nan_func_by_cookie(sdata, cookie);
 	if (func)
-		instance_id = func->func.instance_id;
+		instance_id = func->func->instance_id;
 
 	spin_unlock_bh(&sdata->u.nan.func_lock);
 
@@ -3742,11 +3739,11 @@ void ieee80211_nan_func_terminated(struct ieee80211_vif *vif,
 
 	WARN_ON(test_and_set_bit(inst_id, sdata->u.nan.func_ids));
 	list_del(&func->list);
-	cookie = func->func.cookie;
+	cookie = func->func->cookie;
 
 	spin_unlock_bh(&sdata->u.nan.func_lock);
 
-	cfg80211_free_nan_func_members(&func->func);
+	cfg80211_free_nan_func(func->func);
 	kfree(func);
 
 	wdev = ieee80211_vif_to_wdev(vif);
@@ -3782,7 +3779,7 @@ void ieee80211_nan_func_match(struct ieee80211_vif *vif,
 		spin_unlock_bh(&sdata->u.nan.func_lock);
 		return;
 	}
-	match->cookie = func->func.cookie;
+	match->cookie = func->func->cookie;
 
 	spin_unlock_bh(&sdata->u.nan.func_lock);
 

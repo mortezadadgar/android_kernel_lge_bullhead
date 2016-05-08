@@ -1784,7 +1784,7 @@ static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
 		list_add(&func->list, &sdata->u.nan.functions_list);
 		spin_unlock_bh(&sdata->u.nan.func_lock);
 		res = drv_add_nan_func(sdata->local, sdata,
-				       &func->func);
+				       func->func);
 		if (WARN_ON(res)) {
 			/* make sure all the functions are back in the list,
 			 * otherwise we leak memory
