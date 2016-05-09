@@ -20,6 +20,19 @@
 #include "drm.h"
 #include "gem.h"
 
+struct tegra_gem_importer {
+	struct device *dev;
+	void *drvdata;
+	void (*delete)(void *);
+};
+#define NUM_TEGRA_GEM_IMPORTER 5 /* FIXME: dynamically allocate more than this */
+
+struct tegra_gem_object {
+	struct drm_gem_object *gem;
+	struct tegra_gem_importer importer[NUM_TEGRA_GEM_IMPORTER];
+	struct mutex lock;
+};
+
 static inline struct tegra_bo *host1x_to_tegra_bo(struct host1x_bo *bo)
 {
 	return container_of(bo, struct tegra_bo, base);
@@ -527,7 +540,8 @@ static struct sg_table *
 tegra_gem_prime_map_dma_buf(struct dma_buf_attachment *attach,
 			    enum dma_data_direction dir)
 {
-	struct drm_gem_object *gem = attach->dmabuf->priv;
+	struct tegra_gem_object *priv = attach->dmabuf->priv;
+	struct drm_gem_object *gem = priv->gem;
 	struct tegra_bo *bo = to_tegra_bo(gem);
 	struct sg_table *sgt;
 
@@ -560,7 +574,8 @@ static void tegra_gem_prime_unmap_dma_buf(struct dma_buf_attachment *attach,
 					  struct sg_table *sgt,
 					  enum dma_data_direction dir)
 {
-	struct drm_gem_object *gem = attach->dmabuf->priv;
+	struct tegra_gem_object *priv = attach->dmabuf->priv;
+	struct drm_gem_object *gem = priv->gem;
 	struct tegra_bo *bo = to_tegra_bo(gem);
 
 	if (bo->pages)
@@ -572,7 +587,19 @@ static void tegra_gem_prime_unmap_dma_buf(struct dma_buf_attachment *attach,
 
 static void tegra_gem_prime_release(struct dma_buf *buf)
 {
-	drm_gem_dmabuf_release(buf);
+	struct tegra_gem_object *priv = buf->priv;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(priv->importer); i++) {
+		struct tegra_gem_importer *imp = &priv->importer[i];
+
+		if (imp->dev && imp->delete)
+			imp->delete(imp->drvdata);
+	}
+
+	drm_gem_object_unreference_unlocked(priv->gem);
+
+	kfree(priv);
 }
 
 static void *tegra_gem_prime_kmap_atomic(struct dma_buf *buf,
@@ -604,7 +631,8 @@ static int tegra_gem_prime_mmap(struct dma_buf *buf, struct vm_area_struct *vma)
 
 static void *tegra_gem_prime_vmap(struct dma_buf *buf)
 {
-	struct drm_gem_object *gem = buf->priv;
+	struct tegra_gem_object *priv = buf->priv;
+	struct drm_gem_object *gem = priv->gem;
 	struct tegra_bo *bo = to_tegra_bo(gem);
 
 	return bo->vaddr;
@@ -612,6 +640,67 @@ static void *tegra_gem_prime_vmap(struct dma_buf *buf)
 
 static void tegra_gem_prime_vunmap(struct dma_buf *buf, void *vaddr)
 {
+}
+
+
+static int tegra_gem_set_drvdata(struct dma_buf *dmabuf, struct device *dev,
+		void *drvdata, void (*delete)(void *))
+{
+	struct tegra_gem_object *priv = dmabuf->priv;
+	struct tegra_gem_importer *imp;
+	int i, empty = -1, err = 0;
+
+	mutex_lock(&priv->lock);
+	for (i = 0; i < ARRAY_SIZE(priv->importer); i++) {
+		imp = &priv->importer[i];
+		if ((empty == -1) && !imp->dev)
+			empty = i;
+
+		if (dev == imp->dev)
+			break;
+	}
+
+	if (i == ARRAY_SIZE(priv->importer)) {
+		if (empty == -1) {
+			WARN(1, "tegra_gem: Needs more importer space\n");
+			err = -ENOMEM;
+			goto out;
+		}
+		imp = &priv->importer[empty];
+		i = empty;
+	}
+
+	imp->dev = dev;
+	imp->drvdata = drvdata;
+	imp->delete = delete;
+out:
+	mutex_unlock(&priv->lock);
+	dev_dbg(dev, "%s() dmabuf=%p err=%d i=%d priv=%p\n",
+		__func__, dmabuf, err, i, priv);
+	return err;
+}
+
+static void *tegra_gem_get_drvdata(struct dma_buf *dmabuf,
+		struct device *dev)
+{
+	struct tegra_gem_object *priv = dmabuf->priv;
+	void *drvdata = NULL;
+	int i;
+
+	mutex_lock(&priv->lock);
+	for (i = 0; i < ARRAY_SIZE(priv->importer); i++) {
+		struct tegra_gem_importer *imp;
+
+		imp = &priv->importer[i];
+		if (dev == imp->dev) {
+			drvdata = imp->drvdata;
+			break;
+		}
+	}
+	mutex_unlock(&priv->lock);
+	dev_dbg(dev, "%s() dmabuf=%p i=%d priv=%p\n",
+		__func__, dmabuf, i, priv);
+	return drvdata;
 }
 
 static const struct dma_buf_ops tegra_gem_prime_dmabuf_ops = {
@@ -625,13 +714,23 @@ static const struct dma_buf_ops tegra_gem_prime_dmabuf_ops = {
 	.mmap = tegra_gem_prime_mmap,
 	.vmap = tegra_gem_prime_vmap,
 	.vunmap = tegra_gem_prime_vunmap,
+	.set_drvdata = tegra_gem_set_drvdata,
+	.get_drvdata = tegra_gem_get_drvdata,
 };
 
 struct dma_buf *tegra_gem_prime_export(struct drm_device *drm,
 				       struct drm_gem_object *gem,
 				       int flags)
 {
-	return dma_buf_export(gem, &tegra_gem_prime_dmabuf_ops, gem->size,
+	struct tegra_gem_object *priv;
+
+	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
+	if (!priv)
+		return ERR_PTR(-ENOMEM);
+
+	priv->gem = gem;
+	mutex_init(&priv->lock);
+	return dma_buf_export(priv, &tegra_gem_prime_dmabuf_ops, gem->size,
 			      flags);
 }
 
@@ -641,7 +740,8 @@ struct drm_gem_object *tegra_gem_prime_import(struct drm_device *drm,
 	struct tegra_bo *bo;
 
 	if (buf->ops == &tegra_gem_prime_dmabuf_ops) {
-		struct drm_gem_object *gem = buf->priv;
+		struct tegra_gem_object *priv = buf->priv;
+		struct drm_gem_object *gem = priv->gem;
 
 		if (gem->dev == drm) {
 			drm_gem_object_reference(gem);
