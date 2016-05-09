@@ -1206,9 +1206,6 @@ static int btusb_close(struct hci_dev *hdev)
 	    usb_get_intfdata(data->intf))
 		btusb_marvell_config_led(hdev, false);
 
-	if (!test_and_clear_bit(HCI_RUNNING, &hdev->flags))
-		return 0;
-
 	if (data->is_marvell_device) {
 		marvell_cmd_in_progress = false;
 		wake_up_interruptible(&marvell_wait_q);
