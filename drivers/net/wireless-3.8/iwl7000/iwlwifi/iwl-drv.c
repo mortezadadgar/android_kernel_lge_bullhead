@@ -410,7 +410,10 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 {
 	const char *name_pre = drv->cfg->fw_name_pre;
 	char tag[8];
+#if defined(CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES) && \
+	defined(CPTCFG_IWLWIFI_DEVICE_TESTMODE)
 	char fw_name_temp[32];
+#endif
 
 	if (first) {
 		drv->fw_index = drv->cfg->ucode_api_max;
