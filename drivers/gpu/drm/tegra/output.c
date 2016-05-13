@@ -20,20 +20,16 @@ static int tegra_connector_get_modes(struct drm_connector *connector)
 	struct edid *edid = NULL;
 	int err = 0;
 
-	/*
-	 * If the panel provides one or more modes, use them exclusively and
-	 * ignore any other means of obtaining a mode.
-	 */
-	if (output->panel) {
+
+	if (output->edid) {
+		edid = kmemdup(output->edid, sizeof(*edid), GFP_KERNEL);
+	} else if (output->ddc) {
+		edid = drm_get_edid(connector, output->ddc);
+	} else if (output->panel) {
 		err = output->panel->funcs->get_modes(output->panel);
 		if (err > 0)
 			return err;
 	}
-
-	if (output->edid)
-		edid = kmemdup(output->edid, sizeof(*edid), GFP_KERNEL);
-	else if (output->ddc)
-		edid = drm_get_edid(connector, output->ddc);
 
 	drm_mode_connector_update_edid_property(connector, edid);
 
