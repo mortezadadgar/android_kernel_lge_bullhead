@@ -828,12 +828,10 @@ struct ieee80211_if_mntr {
  */
 struct ieee80211_if_nan {
 	struct cfg80211_nan_conf nan_conf;
-	unsigned long func_ids[BITS_TO_LONGS(IEEE80211_MAX_NAN_INSTANCE_ID +
-					     1)];
 
-	/* protects functions_list */
+	/* protects function_inst_ids */
 	spinlock_t func_lock;
-	struct list_head functions_list;
+	struct idr function_inst_ids;
 };
 
 struct ieee80211_sub_if_data {
@@ -1495,12 +1493,6 @@ struct ieee802_11_elems {
 
 	/* whether a parse error occurred while retrieving these elements */
 	bool parse_error;
-};
-
-/* NAN function entry */
-struct ieee80211_nan_func {
-	struct list_head list;
-	struct cfg80211_nan_func *func;
 };
 
 static inline struct ieee80211_local *hw_to_local(

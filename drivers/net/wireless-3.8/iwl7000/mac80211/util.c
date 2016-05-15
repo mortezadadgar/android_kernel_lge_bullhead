@@ -1756,47 +1756,41 @@ static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata){
 #if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
 static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
 {
-	struct ieee80211_nan_func *func, *ftmp;
-	LIST_HEAD(tmp_list);
-	int res;
+	struct cfg80211_nan_func *func, **funcs;
+	int res, id, i = 0;
 
 	res = drv_start_nan(sdata->local, sdata,
 			    &sdata->u.nan.nan_conf);
 	if (WARN_ON(res))
 		return res;
 
+	funcs = kzalloc((sdata->local->hw.max_nan_de_entries + 1) *
+			sizeof(*funcs), GFP_KERNEL);
+	if (!funcs)
+		return -ENOMEM;
+
 	/* Add all the functions:
 	 * This is a little bit ugly. We need to call a potentially sleeping
-	 * callback for each entry in the list, so we can't hold the spinlock.
-	 * So we will copy everything to a temporary list and empty the
-	 * original one. And then we re-add the functions one by one
-	 * to the list.
+	 * callback for each NAN function, so we can't hold the spinlock.
 	 */
 	spin_lock_bh(&sdata->u.nan.func_lock);
-	list_splice_tail_init(&sdata->u.nan.functions_list, &tmp_list);
+
+	idr_for_each_entry(&sdata->u.nan.function_inst_ids, func, id)
+		funcs[i++] = func;
+
 	spin_unlock_bh(&sdata->u.nan.func_lock);
 
-	list_for_each_entry_safe(func, ftmp, &tmp_list, list) {
-		list_del(&func->list);
-
+	for (i = 0; funcs[i]; i++) {
 		/* TODO: need to adjust TTL of the function */
-		spin_lock_bh(&sdata->u.nan.func_lock);
-		list_add(&func->list, &sdata->u.nan.functions_list);
-		spin_unlock_bh(&sdata->u.nan.func_lock);
-		res = drv_add_nan_func(sdata->local, sdata,
-				       func->func);
-		if (WARN_ON(res)) {
-			/* make sure all the functions are back in the list,
-			 * otherwise we leak memory
-			 */
-			spin_lock_bh(&sdata->u.nan.func_lock);
-			list_splice_tail(&tmp_list,
-					 &sdata->u.nan.functions_list);
-			spin_unlock_bh(&sdata->u.nan.func_lock);
-
-			return -EIO;
-		}
+		res = drv_add_nan_func(sdata->local, sdata, funcs[i]);
+		if (WARN_ON(res))
+			ieee80211_nan_func_terminated(&sdata->vif,
+						      funcs[i]->instance_id,
+						      NL80211_NAN_FUNC_TERM_REASON_ERROR,
+						      GFP_KERNEL);
 	}
+
+	kfree(funcs);
 
 	return 0;
 }

@@ -161,12 +161,6 @@ static int ieee80211_start_nan(struct wiphy *wiphy,
 
 	memcpy(&sdata->u.nan.nan_conf, conf, sizeof(sdata->u.nan.nan_conf));
 
-	/* Only set max_nan_de_entries as available to honor the device's
-	 * limitations
-	 */
-	bitmap_set(sdata->u.nan.func_ids, 1,
-		   sdata->local->hw.max_nan_de_entries);
-
 	return ret;
 }
 #endif
@@ -220,9 +214,7 @@ static int ieee80211_add_nan_func(struct wiphy *wiphy,
 				  struct cfg80211_nan_func *nan_func)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
-	struct ieee80211_nan_func *func;
 	int ret;
-	int inst_id;
 
 	if (!ieee80211_viftype_nan(sdata->vif.type))
 		return -EOPNOTSUPP;
@@ -230,29 +222,25 @@ static int ieee80211_add_nan_func(struct wiphy *wiphy,
 	if (!ieee80211_sdata_running(sdata))
 		return -ENETDOWN;
 
-	inst_id = find_first_bit(sdata->u.nan.func_ids,
-				 IEEE80211_MAX_NAN_INSTANCE_ID + 1);
-	if (inst_id == IEEE80211_MAX_NAN_INSTANCE_ID + 1)
-		return -ENOBUFS;
-
-	nan_func->instance_id = inst_id;
-
-	func = kzalloc(sizeof(*func), GFP_KERNEL);
-	if (!func)
-		return -ENOBUFS;
-
-	func->func = nan_func;
-
 	spin_lock_bh(&sdata->u.nan.func_lock);
-	clear_bit(inst_id, sdata->u.nan.func_ids);
-	list_add(&func->list, &sdata->u.nan.functions_list);
+
+	ret = idr_alloc(&sdata->u.nan.function_inst_ids,
+			nan_func, 1, sdata->local->hw.max_nan_de_entries + 1,
+			GFP_ATOMIC);
 	spin_unlock_bh(&sdata->u.nan.func_lock);
+
+	if (ret < 0)
+		return ret;
+
+	nan_func->instance_id = ret;
+
+	WARN_ON(nan_func->instance_id == 0);
 
 	ret = drv_add_nan_func(sdata->local, sdata, nan_func);
 	if (ret) {
 		spin_lock_bh(&sdata->u.nan.func_lock);
-		set_bit(inst_id, sdata->u.nan.func_ids);
-		list_del(&func->list);
+		idr_remove(&sdata->u.nan.function_inst_ids,
+			   nan_func->instance_id);
 		spin_unlock_bh(&sdata->u.nan.func_lock);
 	}
 
@@ -261,33 +249,17 @@ static int ieee80211_add_nan_func(struct wiphy *wiphy,
 #endif
 
 #if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
-static struct ieee80211_nan_func *
-ieee80211_find_nan_func(struct ieee80211_sub_if_data *sdata, u8 instance_id)
-{
-	struct ieee80211_nan_func *func;
-
-	lockdep_assert_held(&sdata->u.nan.func_lock);
-
-	list_for_each_entry(func, &sdata->u.nan.functions_list, list) {
-		if (func->func->instance_id == instance_id)
-			return func;
-	}
-
-	return NULL;
-}
-#endif
-
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
-static struct ieee80211_nan_func *
+static struct cfg80211_nan_func *
 ieee80211_find_nan_func_by_cookie(struct ieee80211_sub_if_data *sdata,
 				  u64 cookie)
 {
-	struct ieee80211_nan_func *func;
+	struct cfg80211_nan_func *func;
+	int id;
 
 	lockdep_assert_held(&sdata->u.nan.func_lock);
 
-	list_for_each_entry(func, &sdata->u.nan.functions_list, list) {
-		if (func->func->cookie == cookie)
+	idr_for_each_entry(&sdata->u.nan.function_inst_ids, func, id) {
+		if (func->cookie == cookie)
 			return func;
 	}
 
@@ -300,7 +272,7 @@ static void ieee80211_rm_nan_func(struct wiphy *wiphy,
 				  struct wireless_dev *wdev, u64 cookie)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
-	struct ieee80211_nan_func *func;
+	struct cfg80211_nan_func *func;
 	u8 instance_id = 0;
 
 	if (!ieee80211_viftype_nan(sdata->vif.type) ||
@@ -311,7 +283,7 @@ static void ieee80211_rm_nan_func(struct wiphy *wiphy,
 
 	func = ieee80211_find_nan_func_by_cookie(sdata, cookie);
 	if (func)
-		instance_id = func->func->instance_id;
+		instance_id = func->instance_id;
 
 	spin_unlock_bh(&sdata->u.nan.func_lock);
 
@@ -3722,7 +3694,7 @@ void ieee80211_nan_func_terminated(struct ieee80211_vif *vif,
 				   gfp_t gfp)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
-	struct ieee80211_nan_func *func;
+	struct cfg80211_nan_func *func;
 	struct wireless_dev *wdev;
 	u64 cookie;
 
@@ -3731,20 +3703,18 @@ void ieee80211_nan_func_terminated(struct ieee80211_vif *vif,
 
 	spin_lock_bh(&sdata->u.nan.func_lock);
 
-	func = ieee80211_find_nan_func(sdata, inst_id);
+	func = idr_find(&sdata->u.nan.function_inst_ids, inst_id);
 	if (WARN_ON(!func)) {
 		spin_unlock_bh(&sdata->u.nan.func_lock);
 		return;
 	}
 
-	WARN_ON(test_and_set_bit(inst_id, sdata->u.nan.func_ids));
-	list_del(&func->list);
-	cookie = func->func->cookie;
+	cookie = func->cookie;
+	idr_remove(&sdata->u.nan.function_inst_ids, inst_id);
 
 	spin_unlock_bh(&sdata->u.nan.func_lock);
 
-	cfg80211_free_nan_func(func->func);
-	kfree(func);
+	cfg80211_free_nan_func(func);
 
 	wdev = ieee80211_vif_to_wdev(vif);
 	if (!WARN_ON_ONCE(!wdev))
@@ -3766,7 +3736,7 @@ void ieee80211_nan_func_match(struct ieee80211_vif *vif,
 			      gfp_t gfp)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
-	struct ieee80211_nan_func *func;
+	struct cfg80211_nan_func *func;
 	struct wireless_dev *wdev;
 
 	if (WARN_ON(!ieee80211_viftype_nan(vif->type)))
@@ -3774,12 +3744,12 @@ void ieee80211_nan_func_match(struct ieee80211_vif *vif,
 
 	spin_lock_bh(&sdata->u.nan.func_lock);
 
-	func = ieee80211_find_nan_func(sdata, match->inst_id);
+	func = idr_find(&sdata->u.nan.function_inst_ids,  match->inst_id);
 	if (WARN_ON(!func)) {
 		spin_unlock_bh(&sdata->u.nan.func_lock);
 		return;
 	}
-	match->cookie = func->func->cookie;
+	match->cookie = func->cookie;
 
 	spin_unlock_bh(&sdata->u.nan.func_lock);
 
