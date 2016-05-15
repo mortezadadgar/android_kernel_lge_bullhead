@@ -2415,7 +2415,8 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.cpu_dai_name	= "MultiMedia1",
 		.platform_name  = "msm-pcm-dsp.0",
 		.dynamic = 1,
-		.async_ops = ASYNC_DPCM_SND_SOC_PREPARE,
+		.async_ops = ASYNC_DPCM_SND_SOC_PREPARE |
+				ASYNC_DPCM_SND_SOC_HW_PARAMS,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			SND_SOC_DPCM_TRIGGER_POST},
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -2630,7 +2631,8 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.cpu_dai_name = "MultiMedia5",
 		.platform_name = "msm-pcm-dsp.1",
 		.dynamic = 1,
-		.async_ops = ASYNC_DPCM_SND_SOC_PREPARE,
+		.async_ops = ASYNC_DPCM_SND_SOC_PREPARE |
+				ASYNC_DPCM_SND_SOC_HW_PARAMS,
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
@@ -3177,6 +3179,8 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.codec_name = "tomtom_codec",
 		.codec_dai_name = "tomtom_rx1",
 		.no_pcm = 1,
+		.async_ops = ASYNC_DPCM_SND_SOC_PREPARE |
+				ASYNC_DPCM_SND_SOC_HW_PARAMS,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_RX,
 		.init = &msm_audrx_init,
 		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
@@ -3192,7 +3196,8 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.codec_name = "tomtom_codec",
 		.codec_dai_name = "tomtom_tx1",
 		.no_pcm = 1,
-		.async_ops = ASYNC_DPCM_SND_SOC_PREPARE,
+		.async_ops = ASYNC_DPCM_SND_SOC_PREPARE |
+				ASYNC_DPCM_SND_SOC_HW_PARAMS,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_TX,
 		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
 		.ignore_suspend = 1,
