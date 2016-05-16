@@ -617,7 +617,8 @@ static int tegra_dc_cursor_set2(struct drm_crtc *crtc, struct drm_file *file,
 		break;
 
 	default:
-		return -EINVAL;
+		if (handle)
+			return -EINVAL;
 	}
 
 	if (handle) {
