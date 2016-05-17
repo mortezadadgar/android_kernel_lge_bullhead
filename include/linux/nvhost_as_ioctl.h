@@ -119,6 +119,34 @@ struct nvhost_as_map_buffer_args {
 };
 
 /*
+ * Backported from NVGPU driver
+ *
+ * Mapping dmabuf fds into an address space:
+ *
+ * The caller requests a mapping to a particular page 'kind'.
+ *
+ * If 'page_size' is set to 0 the dmabuf's alignment/sizing will be used to
+ * determine the page size (largest possible).  The page size chosen will be
+ * returned back to the caller in the 'page_size' parameter in that case.
+ */
+struct nvhost_as_map_buffer_ex_args {
+	__u32 flags;		/* in/out */
+#define NV_KIND_DEFAULT -1
+	__s32 kind;		/* in (-1 represents default) */
+	__u32 dmabuf_fd;	/* in */
+	__u32 page_size;	/* inout, 0:= best fit to buffer */
+
+	__u64 buffer_offset;	/* in, offset of mapped buffer region */
+	__u64 mapping_size;	/* in, size of mapped buffer region */
+
+	__u64 offset;		/* in/out, we use this address if flag
+				 * FIXED_OFFSET is set. This will fail
+				 * if space is not properly allocated. The
+				 * actual virtual address to which we mapped
+				 * the buffer is returned in this field. */
+};
+
+/*
  * Unmapping a buffer:
  *
  * To unmap a previously mapped buffer set 'offset' to the offset returned in
@@ -139,11 +167,18 @@ struct nvhost_as_unmap_buffer_args {
 	_IOWR(NVHOST_AS_IOCTL_MAGIC, 4, struct nvhost_as_map_buffer_args)
 #define NVHOST_AS_IOCTL_UNMAP_BUFFER \
 	_IOWR(NVHOST_AS_IOCTL_MAGIC, 5, struct nvhost_as_unmap_buffer_args)
+/*
+ * The MAP_BUFFER_EX ioctl, which previously was NVGPU_AS_IOCTL_MAP_BUFFER_EX,
+ * is backported from NVGPU driver. The missing index '6' is for
+ * NVGPU_AS_IOCTL_ALLOC_SPACE ioctl, and we leave it as empty here.
+ */
+#define NVHOST_AS_IOCTL_MAP_BUFFER_EX \
+	_IOWR(NVHOST_AS_IOCTL_MAGIC, 7, struct nvhost_as_map_buffer_ex_args)
 
 #define NVHOST_AS_IOCTL_LAST		\
-	_IOC_NR(NVHOST_AS_IOCTL_UNMAP_BUFFER)
+	_IOC_NR(NVHOST_AS_IOCTL_MAP_BUFFER_EX)
 #define NVHOST_AS_IOCTL_MAX_ARG_SIZE	\
-	sizeof(struct nvhost_as_map_buffer_args)
+	sizeof(struct nvhost_as_map_buffer_ex_args)
 
 
 #endif

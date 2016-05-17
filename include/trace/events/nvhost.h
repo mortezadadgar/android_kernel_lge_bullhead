@@ -856,6 +856,18 @@ TRACE_EVENT(nvhost_as_ioctl_map_buffer,
 	TP_printk("name=%s ",  __entry->name)
 );
 
+TRACE_EVENT(nvhost_as_ioctl_map_buffer_ex,
+	TP_PROTO(const char *name),
+	TP_ARGS(name),
+	TP_STRUCT__entry(
+			 __field(const char *, name)
+			 ),
+	TP_fast_assign(
+		       __entry->name = name;
+		       ),
+	TP_printk("name=%s ",  __entry->name)
+);
+
 TRACE_EVENT(nvhost_as_ioctl_unmap_buffer,
 	TP_PROTO(const char *name),
 	TP_ARGS(name),

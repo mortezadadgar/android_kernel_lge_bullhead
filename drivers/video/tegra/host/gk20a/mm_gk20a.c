@@ -822,7 +822,7 @@ static void gmmu_select_page_size(struct buffer_attrs *bfr)
 static int setup_buffer_size_and_align(struct device *d,
 				       struct buffer_attrs *bfr,
 				       struct bfr_attr_query *query,
-				       u64 offset, u32 flags)
+				       u64 offset, u32 flags, int kind)
 {
 	/* buffer allocation size and alignment must be a multiple
 	   of one of the supported page sizes.*/
@@ -845,7 +845,7 @@ static int setup_buffer_size_and_align(struct device *d,
 		return -EINVAL;
 	}
 
-	bfr->kind_v = query[BFR_KIND].v;
+	bfr->kind_v = (kind == NV_KIND_DEFAULT) ? query[BFR_KIND].v : kind;
 
 	return 0;
 }
@@ -1012,7 +1012,7 @@ u64 gk20a_vm_map(struct vm_gk20a *vm,
 			struct mem_handle *r,
 			u64 offset_align,
 			u32 flags /*NVHOST_AS_MAP_BUFFER_FLAGS_*/,
-			u32 kind,
+			int kind,
 			struct sg_table **sgt,
 			bool user_mapped,
 			int rw_flag)
@@ -1115,7 +1115,8 @@ u64 gk20a_vm_map(struct vm_gk20a *vm,
 	}
 
 	/* validate/adjust bfr attributes */
-	err = setup_buffer_size_and_align(d, &bfr, query, offset_align, flags);
+	err = setup_buffer_size_and_align(d, &bfr, query, offset_align,
+			flags, kind);
 	if (unlikely(err))
 		goto clean_up;
 	if (unlikely(bfr.pgsz_idx < gmmu_page_size_small ||
@@ -1977,7 +1978,8 @@ static int gk20a_as_map_buffer(struct nvhost_as_share *as_share,
 			       int memmgr_fd,
 			       ulong mem_id,
 			       u64 *offset_align,
-			       u32 flags /*NVHOST_AS_MAP_BUFFER_FLAGS_*/)
+			       u32 flags, /*NVHOST_AS_MAP_BUFFER_FLAGS_*/
+			       int kind)
 {
 	int err = 0;
 	struct vm_gk20a *vm = (struct vm_gk20a *)as_share->priv;
@@ -1988,10 +1990,14 @@ static int gk20a_as_map_buffer(struct nvhost_as_share *as_share,
 
 	nvhost_dbg_fn("");
 
-	/* get ref to the memmgr (released on unmap_locked) */
-	memmgr = nvhost_memmgr_get_mgr_file(memmgr_fd);
-	if (IS_ERR(memmgr))
-		return 0;
+	if (memmgr_fd == -1) {
+		memmgr = (struct mem_mgr *)1;
+	} else {
+		/* get ref to the memmgr (released on unmap_locked) */
+		memmgr = nvhost_memmgr_get_mgr_file(memmgr_fd);
+		if (IS_ERR(memmgr))
+			return 0;
+	}
 
 	/* get ref to the mem handle (released on unmap_locked) */
 	r = nvhost_memmgr_get(memmgr, mem_id, g->dev);
@@ -2001,8 +2007,7 @@ static int gk20a_as_map_buffer(struct nvhost_as_share *as_share,
 	}
 
 	ret_va = gk20a_vm_map(vm, memmgr, r, *offset_align,
-			flags, 0/*no kind here, to be removed*/, NULL, true,
-			mem_flag_none);
+			flags, kind, NULL, true, mem_flag_none);
 	*offset_align = ret_va;
 	if (!ret_va) {
 		nvhost_memmgr_put(memmgr, r);

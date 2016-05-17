@@ -188,10 +188,6 @@ int nvhost_dmabuf_get_param(struct mem_mgr *memmgr, struct mem_handle *handle,
 			*result = NVMAP_HEAP_IOVMM;
 			return 0;
 		case NVMAP_HANDLE_PARAM_KIND:
-			/*
-			 * We probably need to change user space to set kind with
-			 * NVMAP_IOC_ALLOC_KIND ioctl before we call this.
-			 */
 			*result = 0xfe;
 			return 0;
 	}
