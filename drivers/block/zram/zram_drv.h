@@ -110,7 +110,6 @@ struct zram {
 	 * the number of pages zram can consume for storing compressed data
 	 */
 	unsigned long limit_pages;
-	int max_comp_streams;
 	struct zram_stats stats;
 	atomic_t refcount; /* refcount for zram_meta */
         /* wait all IO under all of cpu are done */
