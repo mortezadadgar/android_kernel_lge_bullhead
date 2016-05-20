@@ -1576,7 +1576,7 @@ static inline long ktime_get_seconds(void)
 static inline int
 cfg80211_sta_support_p2p_ps(struct station_parameters *params, bool p2p_go)
 {
-#if CFG80211_VERSION >= KERNEL_VERSION(4,6,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,7,0)
 	return params->support_p2p_ps;
 #endif
 	return p2p_go;
