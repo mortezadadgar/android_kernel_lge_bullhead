@@ -527,7 +527,9 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 		dev_err(sor->dev, "failed to set safe parent clock: %d\n", err);
 
 	memset(&config, 0, sizeof(config));
-	config.bits_per_pixel = output->connector.display_info.bpc * 3;
+
+	/* Our DT doesn't have that information, and DC harcodes 18 as well */
+	config.bits_per_pixel = 18;
 
 	err = tegra_sor_calc_config(sor, mode, &config, &link);
 	if (err < 0)
