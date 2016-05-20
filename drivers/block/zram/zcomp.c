@@ -90,11 +90,6 @@ ssize_t zcomp_available_show(const char *comp, char *buf)
 	return sz;
 }
 
-bool zcomp_set_max_streams(struct zcomp *comp, int num_strm)
-{
-	return true;
-}
-
 struct zcomp_strm *zcomp_strm_find(struct zcomp *comp)
 {
 	return *get_cpu_ptr(comp->stream);
