@@ -180,7 +180,11 @@ static int aio_setup_ring(struct kioctx *ctx)
 
 	ctx->mmap_size = nr_pages * PAGE_SIZE;
 	pr_debug("attempting mmap of %lu bytes\n", ctx->mmap_size);
-	down_write(&mm->mmap_sem);
+	if (down_write_killable(&mm->mmap_sem)) {
+		ctx->mmap_size = 0;
+		aio_free_ring(ctx);
+		return -EINTR;
+	}
 	ctx->mmap_base = do_mmap_pgoff(NULL, 0, ctx->mmap_size,
 				       PROT_READ|PROT_WRITE,
 				       MAP_ANONYMOUS|MAP_PRIVATE, 0, &populate);
