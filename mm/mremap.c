@@ -463,7 +463,8 @@ SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
 	unsigned long charged = 0;
 	bool locked = false;
 
-	down_write(&current->mm->mmap_sem);
+        if (down_write_killable(&current->mm->mmap_sem))
+                return -EINTR;
 
 	if (flags & ~(MREMAP_FIXED | MREMAP_MAYMOVE))
 		goto out;
