@@ -7505,6 +7505,47 @@ tANI_U32 dot11fUnpackIefils_wrapped_data(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tAN
 #define SigIefils_wrapped_data ( 0x008e )
 
 
+tANI_U32 dot11fUnpackIehs20vendor_ie(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEhs20vendor_ie *pDst)
+{
+    tANI_U32 status = DOT11F_PARSE_SUCCESS;
+    tANI_U8 tmp71__;
+    (void) pBuf; (void)ielen; /* Shutup the compiler */
+    if (pDst->present) status = DOT11F_DUPLICATE_IE;
+    pDst->present = 1;
+    tmp71__ = *pBuf;
+    pBuf += 1;
+    ielen -= 1;
+    pDst->dgaf_dis = tmp71__ >> 0 & 0x1;
+    pDst->hs_id_present = tmp71__ >> 1 & 0x3;
+    pDst->reserved = tmp71__ >> 3 & 0x1;
+    pDst->release_num = tmp71__ >> 4 & 0xf;
+    if ( ! ielen )
+    {
+        return 0U;
+    }
+    else
+    {
+        switch (pDst->hs_id_present)
+        {
+            case 1:
+                framesntohs(pCtx, &pDst->hs_id.pps_mo.pps_mo_id, pBuf, 0);
+                pBuf += 2;
+                ielen -= (tANI_U8)2;
+            break;
+            case 2:
+                framesntohs(pCtx, &pDst->hs_id.anqp_domain.anqp_domain_id, pBuf, 0);
+                pBuf += 2;
+                ielen -= (tANI_U8)2;
+            break;
+        }
+    }
+    (void)pCtx;
+    return status;
+} /* End dot11fUnpackIehs20vendor_ie. */
+
+#define SigIehs20vendor_ie ( 0x008f )
+
+
 tANI_U32 dot11fUnpackIesec_chan_offset_ele(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEsec_chan_offset_ele *pDst)
 {
     tANI_U32 status = DOT11F_PARSE_SUCCESS;
@@ -7521,7 +7562,7 @@ tANI_U32 dot11fUnpackIesec_chan_offset_ele(tpAniSirGlobal pCtx, tANI_U8 *pBuf, t
     return status;
 } /* End dot11fUnpackIesec_chan_offset_ele. */
 
-#define SigIesec_chan_offset_ele ( 0x008f )
+#define SigIesec_chan_offset_ele ( 0x0090 )
 
 
     static const tFFDefn FFS_vendor2_ie[ ] = {
@@ -7567,7 +7608,7 @@ tANI_U32 dot11fUnpackIevendor2_ie(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ie
     return status;
 } /* End dot11fUnpackIevendor2_ie. */
 
-#define SigIevendor2_ie ( 0x0090 )
+#define SigIevendor2_ie ( 0x0091 )
 
 
     static const tFFDefn FFS_AddBAReq[] = {
@@ -8233,6 +8274,7 @@ tANI_U32 dot11fUnpackAddTSResponse(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 
         {offsetof(tDot11fAssocRequest, QosMapSet), offsetof(tDot11fIEQosMapSet, present), 0, "QosMapSet" , 0, 2, 62, SigIeQosMapSet, {0, 0, 0, 0, 0}, 0, DOT11F_EID_QOSMAPSET, 0, 0, },
         {offsetof(tDot11fAssocRequest, vendor2_ie), offsetof(tDot11fIEvendor2_ie, present), 0, "vendor2_ie" , 0, 7, 28, SigIevendor2_ie, {0, 144, 76, 0, 0}, 3, DOT11F_EID_VENDOR2_IE, 0, 0, },
         {offsetof(tDot11fAssocRequest, QComVendorIE), offsetof(tDot11fIEQComVendorIE, present), 0, "QComVendorIE" , 0, 5, 12, SigIeQComVendorIE, {0, 160, 198, 0, 0}, 3, DOT11F_EID_QCOMVENDORIE, 0, 0, },
+        {offsetof(tDot11fAssocRequest, hs20vendor_ie), offsetof(tDot11fIEhs20vendor_ie, present), 0, "hs20vendor_ie" , 0, 7, 9, SigIehs20vendor_ie, {80, 111, 154, 16, 0}, 4, DOT11F_EID_HS20VENDOR_IE, 0, 0, },
     {0, 0, 0, NULL, 0, 0, 0, 0, {0, 0, 0, 0, 0}, 0, 0xff, 0, },    };
 
 tANI_U32 dot11fUnpackAssocRequest(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, tDot11fAssocRequest *pFrm)
@@ -8757,6 +8799,27 @@ tANI_U32 dot11fUnpackAssocRequest(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 n
             {
                 FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), ( tANI_U8* )&pFrm->QComVendorIE.Sub20Info.capability, 1);
                 FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), ( tANI_U8* )&pFrm->QComVendorIE.Sub20Info.csa_chanwidth, 1);
+            }
+        }
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("hs20vendor_ie:\n"));
+        if (!pFrm->hs20vendor_ie.present)
+        {
+            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("Not present.\n"));
+        }
+        else
+        {
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("dgaf_dis (1): %d\n"), pFrm->hs20vendor_ie.dgaf_dis);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("hs_id_present (2): %d\n"), pFrm->hs20vendor_ie.hs_id_present);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("reserved (1): %d\n"), pFrm->hs20vendor_ie.reserved);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("release_num (4): %d\n"), pFrm->hs20vendor_ie.release_num);
+            switch (pFrm->hs20vendor_ie.hs_id_present)
+            {
+                case 1:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.pps_mo.pps_mo_id, 2);
+                break;
+                case 2:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.anqp_domain.anqp_domain_id, 2);
+                break;
             }
         }
     }
@@ -10350,6 +10413,7 @@ tANI_U32 dot11fUnpackAuthentication(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32
         {offsetof(tDot11fBeacon, Vendor1IE), offsetof(tDot11fIEVendor1IE, present), 0, "Vendor1IE" , 0, 5, 5, SigIeVendor1IE, {0, 16, 24, 0, 0}, 3, DOT11F_EID_VENDOR1IE, 0, 0, },
         {offsetof(tDot11fBeacon, vendor2_ie), offsetof(tDot11fIEvendor2_ie, present), 0, "vendor2_ie" , 0, 7, 28, SigIevendor2_ie, {0, 144, 76, 0, 0}, 3, DOT11F_EID_VENDOR2_IE, 0, 0, },
         {offsetof(tDot11fBeacon, Vendor3IE), offsetof(tDot11fIEVendor3IE, present), 0, "Vendor3IE" , 0, 5, 5, SigIeVendor3IE, {0, 22, 50, 0, 0}, 3, DOT11F_EID_VENDOR3IE, 0, 0, },
+        {offsetof(tDot11fBeacon, hs20vendor_ie), offsetof(tDot11fIEhs20vendor_ie, present), 0, "hs20vendor_ie" , 0, 7, 9, SigIehs20vendor_ie, {80, 111, 154, 16, 0}, 4, DOT11F_EID_HS20VENDOR_IE, 0, 0, },
         {offsetof(tDot11fBeacon, ChannelSwitchWrapper), offsetof(tDot11fIEChannelSwitchWrapper, present), 0, "ChannelSwitchWrapper" , 0, 2, 14, SigIeChannelSwitchWrapper, {0, 0, 0, 0, 0}, 0, DOT11F_EID_CHANNELSWITCHWRAPPER, 0, 0, },
         {offsetof(tDot11fBeacon, QComVendorIE), offsetof(tDot11fIEQComVendorIE, present), 0, "QComVendorIE" , 0, 5, 12, SigIeQComVendorIE, {0, 160, 198, 0, 0}, 3, DOT11F_EID_QCOMVENDORIE, 0, 0, },
         {offsetof(tDot11fBeacon, ESEVersion), offsetof(tDot11fIEESEVersion, present), 0, "ESEVersion" , 0, 7, 7, SigIeESEVersion, {0, 64, 150, 3, 0}, 4, DOT11F_EID_ESEVERSION, 0, 0, },
@@ -11307,6 +11371,27 @@ tANI_U32 dot11fUnpackBeacon(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, t
         else
         {
         }
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("hs20vendor_ie:\n"));
+        if (!pFrm->hs20vendor_ie.present)
+        {
+            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("Not present.\n"));
+        }
+        else
+        {
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("dgaf_dis (1): %d\n"), pFrm->hs20vendor_ie.dgaf_dis);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("hs_id_present (2): %d\n"), pFrm->hs20vendor_ie.hs_id_present);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("reserved (1): %d\n"), pFrm->hs20vendor_ie.reserved);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("release_num (4): %d\n"), pFrm->hs20vendor_ie.release_num);
+            switch (pFrm->hs20vendor_ie.hs_id_present)
+            {
+                case 1:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.pps_mo.pps_mo_id, 2);
+                break;
+                case 2:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.anqp_domain.anqp_domain_id, 2);
+                break;
+            }
+        }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("ChannelSwitchWrapper:\n"));
         if (!pFrm->ChannelSwitchWrapper.present)
         {
@@ -11513,6 +11598,7 @@ tANI_U32 dot11fUnpackBeacon1(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, 
         {offsetof(tDot11fBeacon2, Vendor1IE), offsetof(tDot11fIEVendor1IE, present), 0, "Vendor1IE" , 0, 5, 5, SigIeVendor1IE, {0, 16, 24, 0, 0}, 3, DOT11F_EID_VENDOR1IE, 0, 0, },
         {offsetof(tDot11fBeacon2, vendor2_ie), offsetof(tDot11fIEvendor2_ie, present), 0, "vendor2_ie" , 0, 7, 28, SigIevendor2_ie, {0, 144, 76, 0, 0}, 3, DOT11F_EID_VENDOR2_IE, 0, 0, },
         {offsetof(tDot11fBeacon2, Vendor3IE), offsetof(tDot11fIEVendor3IE, present), 0, "Vendor3IE" , 0, 5, 5, SigIeVendor3IE, {0, 22, 50, 0, 0}, 3, DOT11F_EID_VENDOR3IE, 0, 0, },
+        {offsetof(tDot11fBeacon2, hs20vendor_ie), offsetof(tDot11fIEhs20vendor_ie, present), 0, "hs20vendor_ie" , 0, 7, 9, SigIehs20vendor_ie, {80, 111, 154, 16, 0}, 4, DOT11F_EID_HS20VENDOR_IE, 0, 0, },
         {offsetof(tDot11fBeacon2, ChannelSwitchWrapper), offsetof(tDot11fIEChannelSwitchWrapper, present), 0, "ChannelSwitchWrapper" , 0, 2, 14, SigIeChannelSwitchWrapper, {0, 0, 0, 0, 0}, 0, DOT11F_EID_CHANNELSWITCHWRAPPER, 0, 0, },
         {offsetof(tDot11fBeacon2, QComVendorIE), offsetof(tDot11fIEQComVendorIE, present), 0, "QComVendorIE" , 0, 5, 12, SigIeQComVendorIE, {0, 160, 198, 0, 0}, 3, DOT11F_EID_QCOMVENDORIE, 0, 0, },
         {offsetof(tDot11fBeacon2, ESEVersion), offsetof(tDot11fIEESEVersion, present), 0, "ESEVersion" , 0, 7, 7, SigIeESEVersion, {0, 64, 150, 3, 0}, 4, DOT11F_EID_ESEVERSION, 0, 0, },
@@ -12318,6 +12404,27 @@ tANI_U32 dot11fUnpackBeacon2(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, 
         else
         {
         }
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("hs20vendor_ie:\n"));
+        if (!pFrm->hs20vendor_ie.present)
+        {
+            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("Not present.\n"));
+        }
+        else
+        {
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("dgaf_dis (1): %d\n"), pFrm->hs20vendor_ie.dgaf_dis);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("hs_id_present (2): %d\n"), pFrm->hs20vendor_ie.hs_id_present);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("reserved (1): %d\n"), pFrm->hs20vendor_ie.reserved);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("release_num (4): %d\n"), pFrm->hs20vendor_ie.release_num);
+            switch (pFrm->hs20vendor_ie.hs_id_present)
+            {
+                case 1:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.pps_mo.pps_mo_id, 2);
+                break;
+                case 2:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.anqp_domain.anqp_domain_id, 2);
+                break;
+            }
+        }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("ChannelSwitchWrapper:\n"));
         if (!pFrm->ChannelSwitchWrapper.present)
         {
@@ -12444,6 +12551,7 @@ tANI_U32 dot11fUnpackBeacon2(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, 
         {offsetof(tDot11fBeaconIEs, Vendor1IE), offsetof(tDot11fIEVendor1IE, present), 0, "Vendor1IE" , 0, 5, 5, SigIeVendor1IE, {0, 16, 24, 0, 0}, 3, DOT11F_EID_VENDOR1IE, 0, 0, },
         {offsetof(tDot11fBeaconIEs, vendor2_ie), offsetof(tDot11fIEvendor2_ie, present), 0, "vendor2_ie" , 0, 7, 28, SigIevendor2_ie, {0, 144, 76, 0, 0}, 3, DOT11F_EID_VENDOR2_IE, 0, 0, },
         {offsetof(tDot11fBeaconIEs, Vendor3IE), offsetof(tDot11fIEVendor3IE, present), 0, "Vendor3IE" , 0, 5, 5, SigIeVendor3IE, {0, 22, 50, 0, 0}, 3, DOT11F_EID_VENDOR3IE, 0, 0, },
+        {offsetof(tDot11fBeaconIEs, hs20vendor_ie), offsetof(tDot11fIEhs20vendor_ie, present), 0, "hs20vendor_ie" , 0, 7, 9, SigIehs20vendor_ie, {80, 111, 154, 16, 0}, 4, DOT11F_EID_HS20VENDOR_IE, 0, 0, },
         {offsetof(tDot11fBeaconIEs, ChannelSwitchWrapper), offsetof(tDot11fIEChannelSwitchWrapper, present), 0, "ChannelSwitchWrapper" , 0, 2, 14, SigIeChannelSwitchWrapper, {0, 0, 0, 0, 0}, 0, DOT11F_EID_CHANNELSWITCHWRAPPER, 0, 0, },
         {offsetof(tDot11fBeaconIEs, QComVendorIE), offsetof(tDot11fIEQComVendorIE, present), 0, "QComVendorIE" , 0, 5, 12, SigIeQComVendorIE, {0, 160, 198, 0, 0}, 3, DOT11F_EID_QCOMVENDORIE, 0, 0, },
     {0, 0, 0, NULL, 0, 0, 0, 0, {0, 0, 0, 0, 0}, 0, 0xff, 0, },    };
@@ -13507,6 +13615,27 @@ tANI_U32 dot11fUnpackBeaconIEs(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf
         }
         else
         {
+        }
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("hs20vendor_ie:\n"));
+        if (!pFrm->hs20vendor_ie.present)
+        {
+            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("Not present.\n"));
+        }
+        else
+        {
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("dgaf_dis (1): %d\n"), pFrm->hs20vendor_ie.dgaf_dis);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("hs_id_present (2): %d\n"), pFrm->hs20vendor_ie.hs_id_present);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("reserved (1): %d\n"), pFrm->hs20vendor_ie.reserved);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("release_num (4): %d\n"), pFrm->hs20vendor_ie.release_num);
+            switch (pFrm->hs20vendor_ie.hs_id_present)
+            {
+                case 1:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.pps_mo.pps_mo_id, 2);
+                break;
+                case 2:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.anqp_domain.anqp_domain_id, 2);
+                break;
+            }
         }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("ChannelSwitchWrapper:\n"));
         if (!pFrm->ChannelSwitchWrapper.present)
@@ -15915,6 +16044,7 @@ tANI_U32 dot11fUnpackProbeRequest(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 n
         {offsetof(tDot11fProbeResponse, Vendor1IE), offsetof(tDot11fIEVendor1IE, present), 0, "Vendor1IE" , 0, 5, 5, SigIeVendor1IE, {0, 16, 24, 0, 0}, 3, DOT11F_EID_VENDOR1IE, 0, 0, },
         {offsetof(tDot11fProbeResponse, vendor2_ie), offsetof(tDot11fIEvendor2_ie, present), 0, "vendor2_ie" , 0, 7, 28, SigIevendor2_ie, {0, 144, 76, 0, 0}, 3, DOT11F_EID_VENDOR2_IE, 0, 0, },
         {offsetof(tDot11fProbeResponse, Vendor3IE), offsetof(tDot11fIEVendor3IE, present), 0, "Vendor3IE" , 0, 5, 5, SigIeVendor3IE, {0, 22, 50, 0, 0}, 3, DOT11F_EID_VENDOR3IE, 0, 0, },
+        {offsetof(tDot11fProbeResponse, hs20vendor_ie), offsetof(tDot11fIEhs20vendor_ie, present), 0, "hs20vendor_ie" , 0, 7, 9, SigIehs20vendor_ie, {80, 111, 154, 16, 0}, 4, DOT11F_EID_HS20VENDOR_IE, 0, 0, },
         {offsetof(tDot11fProbeResponse, ChannelSwitchWrapper), offsetof(tDot11fIEChannelSwitchWrapper, present), 0, "ChannelSwitchWrapper" , 0, 2, 14, SigIeChannelSwitchWrapper, {0, 0, 0, 0, 0}, 0, DOT11F_EID_CHANNELSWITCHWRAPPER, 0, 0, },
         {offsetof(tDot11fProbeResponse, QComVendorIE), offsetof(tDot11fIEQComVendorIE, present), 0, "QComVendorIE" , 0, 5, 12, SigIeQComVendorIE, {0, 160, 198, 0, 0}, 3, DOT11F_EID_QCOMVENDORIE, 0, 0, },
         {offsetof(tDot11fProbeResponse, ESEVersion), offsetof(tDot11fIEESEVersion, present), 0, "ESEVersion" , 0, 7, 7, SigIeESEVersion, {0, 64, 150, 3, 0}, 4, DOT11F_EID_ESEVERSION, 0, 0, },
@@ -16926,6 +17056,27 @@ tANI_U32 dot11fUnpackProbeResponse(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 
         else
         {
         }
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("hs20vendor_ie:\n"));
+        if (!pFrm->hs20vendor_ie.present)
+        {
+            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("Not present.\n"));
+        }
+        else
+        {
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("dgaf_dis (1): %d\n"), pFrm->hs20vendor_ie.dgaf_dis);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("hs_id_present (2): %d\n"), pFrm->hs20vendor_ie.hs_id_present);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("reserved (1): %d\n"), pFrm->hs20vendor_ie.reserved);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("release_num (4): %d\n"), pFrm->hs20vendor_ie.release_num);
+            switch (pFrm->hs20vendor_ie.hs_id_present)
+            {
+                case 1:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.pps_mo.pps_mo_id, 2);
+                break;
+                case 2:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.anqp_domain.anqp_domain_id, 2);
+                break;
+            }
+        }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("ChannelSwitchWrapper:\n"));
         if (!pFrm->ChannelSwitchWrapper.present)
         {
@@ -17413,6 +17564,7 @@ tANI_U32 dot11fUnpackRadioMeasurementRequest(tpAniSirGlobal pCtx, tANI_U8 *pBuf,
         {offsetof(tDot11fReAssocRequest, QosMapSet), offsetof(tDot11fIEQosMapSet, present), 0, "QosMapSet" , 0, 2, 62, SigIeQosMapSet, {0, 0, 0, 0, 0}, 0, DOT11F_EID_QOSMAPSET, 0, 0, },
         {offsetof(tDot11fReAssocRequest, vendor2_ie), offsetof(tDot11fIEvendor2_ie, present), 0, "vendor2_ie" , 0, 7, 28, SigIevendor2_ie, {0, 144, 76, 0, 0}, 3, DOT11F_EID_VENDOR2_IE, 0, 0, },
         {offsetof(tDot11fReAssocRequest, QComVendorIE), offsetof(tDot11fIEQComVendorIE, present), 0, "QComVendorIE" , 0, 5, 12, SigIeQComVendorIE, {0, 160, 198, 0, 0}, 3, DOT11F_EID_QCOMVENDORIE, 0, 0, },
+        {offsetof(tDot11fReAssocRequest, hs20vendor_ie), offsetof(tDot11fIEhs20vendor_ie, present), 0, "hs20vendor_ie" , 0, 7, 9, SigIehs20vendor_ie, {80, 111, 154, 16, 0}, 4, DOT11F_EID_HS20VENDOR_IE, 0, 0, },
     {0, 0, 0, NULL, 0, 0, 0, 0, {0, 0, 0, 0, 0}, 0, 0xff, 0, },    };
 
 tANI_U32 dot11fUnpackReAssocRequest(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, tDot11fReAssocRequest *pFrm)
@@ -18282,6 +18434,27 @@ tANI_U32 dot11fUnpackReAssocRequest(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32
             {
                 FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), ( tANI_U8* )&pFrm->QComVendorIE.Sub20Info.capability, 1);
                 FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), ( tANI_U8* )&pFrm->QComVendorIE.Sub20Info.csa_chanwidth, 1);
+            }
+        }
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("hs20vendor_ie:\n"));
+        if (!pFrm->hs20vendor_ie.present)
+        {
+            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("Not present.\n"));
+        }
+        else
+        {
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("dgaf_dis (1): %d\n"), pFrm->hs20vendor_ie.dgaf_dis);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("hs_id_present (2): %d\n"), pFrm->hs20vendor_ie.hs_id_present);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("reserved (1): %d\n"), pFrm->hs20vendor_ie.reserved);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("release_num (4): %d\n"), pFrm->hs20vendor_ie.release_num);
+            switch (pFrm->hs20vendor_ie.hs_id_present)
+            {
+                case 1:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.pps_mo.pps_mo_id, 2);
+                break;
+                case 2:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.anqp_domain.anqp_domain_id, 2);
+                break;
             }
         }
     }
@@ -22371,6 +22544,9 @@ static tANI_U32 UnpackCore(tpAniSirGlobal pCtx,
                 case SigIefils_wrapped_data:
                         status |= dot11fUnpackIefils_wrapped_data(pCtx, pBufRemaining, len, ( tDot11fIEfils_wrapped_data* )(pFrm + pIe->offset + sizeof(tDot11fIEfils_wrapped_data)*countOffset) );
                             break;
+                case SigIehs20vendor_ie:
+                        status |= dot11fUnpackIehs20vendor_ie(pCtx, pBufRemaining, len, ( tDot11fIEhs20vendor_ie* )(pFrm + pIe->offset + sizeof(tDot11fIEhs20vendor_ie)*countOffset) );
+                            break;
                 case SigIesec_chan_offset_ele:
                         status |= dot11fUnpackIesec_chan_offset_ele(pCtx, pBufRemaining, len, ( tDot11fIEsec_chan_offset_ele* )(pFrm + pIe->offset + sizeof(tDot11fIEsec_chan_offset_ele)*countOffset) );
                             break;
@@ -23492,6 +23668,31 @@ tANI_U32 dot11fGetPackedIEWscReassocRes(tpAniSirGlobal pCtx, tDot11fIEWscReassoc
     return status;
 } /* End dot11fGetPackedIEWscReassocRes. */
 
+tANI_U32 dot11fGetPackedIEhs20vendor_ie(tpAniSirGlobal pCtx, tDot11fIEhs20vendor_ie *pIe, tANI_U32 *pnNeeded)
+{
+    tANI_U32 status = DOT11F_PARSE_SUCCESS;
+    (void)pCtx;
+    while ( pIe->present )
+    {
+        *pnNeeded += 1;
+        if ( pIe->hs_id_present )
+        {
+            switch (pIe->hs_id_present)
+            {
+                case 1:
+                    *pnNeeded += 2;
+                break;
+                case 2:
+                    *pnNeeded += 2;
+                break;
+            }
+        }
+        else break;
+        break;
+    }
+    return status;
+} /* End dot11fGetPackedIEhs20vendor_ie. */
+
 tANI_U32 dot11fGetPackedIEvendor2_ie(tpAniSirGlobal pCtx, tDot11fIEvendor2_ie *pIe, tANI_U32 *pnNeeded)
 {
     tANI_U32 status = DOT11F_PARSE_SUCCESS;
@@ -24029,7 +24230,7 @@ static tANI_U32 GetPackedSizeCore(tpAniSirGlobal pCtx,
     (void)pCtx; /* Shutup the compiler if we have no FFs nor IEs... */
     i=0; n=0;
     pIe = &( IEs[0] );
-    while (0xff != pIe->eid || pIe->extn_eid)
+    while ( 0xff != pIe->eid || pIe->extn_eid)
     {
         pfFound = (tFRAMES_BOOL*)(pFrm + pIe->offset +
                                   pIe->presenceOffset);
@@ -24714,6 +24915,10 @@ static tANI_U32 GetPackedSizeCore(tpAniSirGlobal pCtx,
                             byteCount = ((tDot11fIEfils_wrapped_data* )(pFrm + pIe->offset + sizeof(tDot11fIEfils_wrapped_data) * i ))->num_wrapped_data;
                             pIePresent = ( (tDot11fIEfils_wrapped_data* )(pFrm + pIe->offset + offset * i  ))->present;
                             break;
+                case SigIehs20vendor_ie:
+                            offset = sizeof(tDot11fIEhs20vendor_ie);
+                            status |= dot11fGetPackedIEhs20vendor_ie(pCtx, ( tDot11fIEhs20vendor_ie* )(pFrm + pIe->offset + offset * i ), pnNeeded);
+                            break;
                 case SigIesec_chan_offset_ele:
                             offset = sizeof(tDot11fIEsec_chan_offset_ele);
                             byteCount = 1;
@@ -24975,13 +25180,13 @@ void dot11fPackFfAddBAParameterSet(tpAniSirGlobal pCtx,
                                    tDot11fFfAddBAParameterSet *pSrc,
                                    tANI_U8 *pBuf)
 {
-    tANI_U16 tmp71__;
-    tmp71__ = 0U;
-    tmp71__ |= ( pSrc->amsduSupported << 0 );
-    tmp71__ |= ( pSrc->policy << 1 );
-    tmp71__ |= ( pSrc->tid << 2 );
-    tmp71__ |= ( pSrc->bufferSize << 6 );
-    frameshtons(pCtx, pBuf, tmp71__, 0);
+    tANI_U16 tmp72__;
+    tmp72__ = 0U;
+    tmp72__ |= ( pSrc->amsduSupported << 0 );
+    tmp72__ |= ( pSrc->policy << 1 );
+    tmp72__ |= ( pSrc->tid << 2 );
+    tmp72__ |= ( pSrc->bufferSize << 6 );
+    frameshtons(pCtx, pBuf, tmp72__, 0);
     (void)pCtx;
 } /* End dot11fPackFfAddBAParameterSet. */
 
@@ -25005,11 +25210,11 @@ void dot11fPackFfBAStartingSequenceControl(tpAniSirGlobal pCtx,
                                            tDot11fFfBAStartingSequenceControl *pSrc,
                                            tANI_U8 *pBuf)
 {
-    tANI_U16 tmp72__;
-    tmp72__ = 0U;
-    tmp72__ |= ( pSrc->fragNumber << 0 );
-    tmp72__ |= ( pSrc->ssn << 4 );
-    frameshtons(pCtx, pBuf, tmp72__, 0);
+    tANI_U16 tmp73__;
+    tmp73__ = 0U;
+    tmp73__ |= ( pSrc->fragNumber << 0 );
+    tmp73__ |= ( pSrc->ssn << 4 );
+    frameshtons(pCtx, pBuf, tmp73__, 0);
     (void)pCtx;
 } /* End dot11fPackFfBAStartingSequenceControl. */
 
@@ -25033,25 +25238,25 @@ void dot11fPackFfCapabilities(tpAniSirGlobal pCtx,
                               tDot11fFfCapabilities *pSrc,
                               tANI_U8 *pBuf)
 {
-    tANI_U16 tmp73__;
-    tmp73__ = 0U;
-    tmp73__ |= ( pSrc->ess << 0 );
-    tmp73__ |= ( pSrc->ibss << 1 );
-    tmp73__ |= ( pSrc->cfPollable << 2 );
-    tmp73__ |= ( pSrc->cfPollReq << 3 );
-    tmp73__ |= ( pSrc->privacy << 4 );
-    tmp73__ |= ( pSrc->shortPreamble << 5 );
-    tmp73__ |= ( pSrc->pbcc << 6 );
-    tmp73__ |= ( pSrc->channelAgility << 7 );
-    tmp73__ |= ( pSrc->spectrumMgt << 8 );
-    tmp73__ |= ( pSrc->qos << 9 );
-    tmp73__ |= ( pSrc->shortSlotTime << 10 );
-    tmp73__ |= ( pSrc->apsd << 11 );
-    tmp73__ |= ( pSrc->rrm << 12 );
-    tmp73__ |= ( pSrc->dsssOfdm << 13 );
-    tmp73__ |= ( pSrc->delayedBA << 14 );
-    tmp73__ |= ( pSrc->immediateBA << 15 );
-    frameshtons(pCtx, pBuf, tmp73__, 0);
+    tANI_U16 tmp74__;
+    tmp74__ = 0U;
+    tmp74__ |= ( pSrc->ess << 0 );
+    tmp74__ |= ( pSrc->ibss << 1 );
+    tmp74__ |= ( pSrc->cfPollable << 2 );
+    tmp74__ |= ( pSrc->cfPollReq << 3 );
+    tmp74__ |= ( pSrc->privacy << 4 );
+    tmp74__ |= ( pSrc->shortPreamble << 5 );
+    tmp74__ |= ( pSrc->pbcc << 6 );
+    tmp74__ |= ( pSrc->channelAgility << 7 );
+    tmp74__ |= ( pSrc->spectrumMgt << 8 );
+    tmp74__ |= ( pSrc->qos << 9 );
+    tmp74__ |= ( pSrc->shortSlotTime << 10 );
+    tmp74__ |= ( pSrc->apsd << 11 );
+    tmp74__ |= ( pSrc->rrm << 12 );
+    tmp74__ |= ( pSrc->dsssOfdm << 13 );
+    tmp74__ |= ( pSrc->delayedBA << 14 );
+    tmp74__ |= ( pSrc->immediateBA << 15 );
+    frameshtons(pCtx, pBuf, tmp74__, 0);
     (void)pCtx;
 } /* End dot11fPackFfCapabilities. */
 
@@ -25075,12 +25280,12 @@ void dot11fPackFfDelBAParameterSet(tpAniSirGlobal pCtx,
                                    tDot11fFfDelBAParameterSet *pSrc,
                                    tANI_U8 *pBuf)
 {
-    tANI_U16 tmp74__;
-    tmp74__ = 0U;
-    tmp74__ |= ( pSrc->reserved << 0 );
-    tmp74__ |= ( pSrc->initiator << 11 );
-    tmp74__ |= ( pSrc->tid << 12 );
-    frameshtons(pCtx, pBuf, tmp74__, 0);
+    tANI_U16 tmp75__;
+    tmp75__ = 0U;
+    tmp75__ |= ( pSrc->reserved << 0 );
+    tmp75__ |= ( pSrc->initiator << 11 );
+    tmp75__ |= ( pSrc->tid << 12 );
+    frameshtons(pCtx, pBuf, tmp75__, 0);
     (void)pCtx;
 } /* End dot11fPackFfDelBAParameterSet. */
 
@@ -25128,13 +25333,13 @@ void dot11fPackFfOperatingMode(tpAniSirGlobal pCtx,
                                tDot11fFfOperatingMode *pSrc,
                                tANI_U8 *pBuf)
 {
-    tANI_U8 tmp75__;
-    tmp75__ = 0U;
-    tmp75__ |= ( pSrc->chanWidth << 0 );
-    tmp75__ |= ( pSrc->reserved << 2 );
-    tmp75__ |= ( pSrc->rxNSS << 4 );
-    tmp75__ |= ( pSrc->rxNSSType << 7 );
-    *pBuf = tmp75__;
+    tANI_U8 tmp76__;
+    tmp76__ = 0U;
+    tmp76__ |= ( pSrc->chanWidth << 0 );
+    tmp76__ |= ( pSrc->reserved << 2 );
+    tmp76__ |= ( pSrc->rxNSS << 4 );
+    tmp76__ |= ( pSrc->rxNSSType << 7 );
+    *pBuf = tmp76__;
     (void)pCtx;
 } /* End dot11fPackFfOperatingMode. */
 
@@ -25190,12 +25395,12 @@ void dot11fPackFfSMPowerModeSet(tpAniSirGlobal pCtx,
                                 tDot11fFfSMPowerModeSet *pSrc,
                                 tANI_U8 *pBuf)
 {
-    tANI_U8 tmp76__;
-    tmp76__ = 0U;
-    tmp76__ |= ( pSrc->PowerSave_En << 0 );
-    tmp76__ |= ( pSrc->Mode << 1 );
-    tmp76__ |= ( pSrc->reserved << 2 );
-    *pBuf = tmp76__;
+    tANI_U8 tmp77__;
+    tmp77__ = 0U;
+    tmp77__ |= ( pSrc->PowerSave_En << 0 );
+    tmp77__ |= ( pSrc->Mode << 1 );
+    tmp77__ |= ( pSrc->reserved << 2 );
+    *pBuf = tmp77__;
     (void)pCtx;
 } /* End dot11fPackFfSMPowerModeSet. */
 
@@ -25235,19 +25440,19 @@ void dot11fPackFfTSInfo(tpAniSirGlobal pCtx,
                         tDot11fFfTSInfo *pSrc,
                         tANI_U8 *pBuf)
 {
-    tANI_U32 tmp77__;
-    tmp77__ = 0U;
-    tmp77__ |= ( pSrc->traffic_type << 0 );
-    tmp77__ |= ( pSrc->tsid << 1 );
-    tmp77__ |= ( pSrc->direction << 5 );
-    tmp77__ |= ( pSrc->access_policy << 7 );
-    tmp77__ |= ( pSrc->aggregation << 9 );
-    tmp77__ |= ( pSrc->psb << 10 );
-    tmp77__ |= ( pSrc->user_priority << 11 );
-    tmp77__ |= ( pSrc->tsinfo_ack_pol << 14 );
-    tmp77__ |= ( pSrc->schedule << 16 );
-    tmp77__ |= ( pSrc->unused << 17 );
-    frameshtonl(pCtx, pBuf, tmp77__, 0);
+    tANI_U32 tmp78__;
+    tmp78__ = 0U;
+    tmp78__ |= ( pSrc->traffic_type << 0 );
+    tmp78__ |= ( pSrc->tsid << 1 );
+    tmp78__ |= ( pSrc->direction << 5 );
+    tmp78__ |= ( pSrc->access_policy << 7 );
+    tmp78__ |= ( pSrc->aggregation << 9 );
+    tmp78__ |= ( pSrc->psb << 10 );
+    tmp78__ |= ( pSrc->user_priority << 11 );
+    tmp78__ |= ( pSrc->tsinfo_ack_pol << 14 );
+    tmp78__ |= ( pSrc->schedule << 16 );
+    tmp78__ |= ( pSrc->unused << 17 );
+    frameshtonl(pCtx, pBuf, tmp78__, 0);
     (void)pCtx;
 } /* End dot11fPackFfTSInfo. */
 
@@ -25303,13 +25508,13 @@ void dot11fPackFfext_chan_switch_ann_action(tpAniSirGlobal pCtx,
                                             tDot11fFfext_chan_switch_ann_action *pSrc,
                                             tANI_U8 *pBuf)
 {
-    tANI_U32 tmp78__;
-    tmp78__ = 0U;
-    tmp78__ |= ( pSrc->switch_mode << 0 );
-    tmp78__ |= ( pSrc->op_class << 8 );
-    tmp78__ |= ( pSrc->new_channel << 16 );
-    tmp78__ |= ( pSrc->switch_count << 24 );
-    frameshtonl(pCtx, pBuf, tmp78__, 0);
+    tANI_U32 tmp79__;
+    tmp79__ = 0U;
+    tmp79__ |= ( pSrc->switch_mode << 0 );
+    tmp79__ |= ( pSrc->op_class << 8 );
+    tmp79__ |= ( pSrc->new_channel << 16 );
+    tmp79__ |= ( pSrc->switch_count << 24 );
+    frameshtonl(pCtx, pBuf, tmp79__, 0);
     (void)pCtx;
 } /* End dot11fPackFfext_chan_switch_ann_action. */
 
@@ -25382,7 +25587,7 @@ tANI_U32 dot11fPackTlvVersion2(tpAniSirGlobal pCtx,
     tANI_U8* pTlvLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp79__;
+    tANI_U8 tmp80__;
     nNeeded += 3;
     if ( nNeeded > nBuf ) return DOT11F_BUFFER_OVERFLOW;
     while ( pSrc->present )
@@ -25391,14 +25596,13 @@ tANI_U32 dot11fPackTlvVersion2(tpAniSirGlobal pCtx,
         pBuf += 1; *pnConsumed += 1;
         pTlvLen = pBuf;
         pBuf += 1; *pnConsumed += 1;
-
-        tmp79__ = 0U;
-        tmp79__ |= ( pSrc->minor << 0 );
-        tmp79__ |= ( pSrc->major << 4 );
+        tmp80__ = 0U;
+        tmp80__ |= ( pSrc->minor << 0 );
+        tmp80__ |= ( pSrc->major << 4 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp79__;
+        *pBuf = tmp80__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
@@ -26607,7 +26811,7 @@ tANI_U32 dot11fPackTlvVersion(tpAniSirGlobal pCtx,
     tANI_U8* pTlvLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp80__;
+    tANI_U8 tmp81__;
     nNeeded += 5;
     if ( nNeeded > nBuf ) return DOT11F_BUFFER_OVERFLOW;
     while ( pSrc->present )
@@ -26616,13 +26820,13 @@ tANI_U32 dot11fPackTlvVersion(tpAniSirGlobal pCtx,
         pBuf += 2; *pnConsumed += 2;
         pTlvLen = pBuf;
         pBuf += 2; *pnConsumed += 2;
-        tmp80__ = 0U;
-        tmp80__ |= ( pSrc->minor << 0 );
-        tmp80__ |= ( pSrc->major << 4 );
+        tmp81__ = 0U;
+        tmp81__ |= ( pSrc->minor << 0 );
+        tmp81__ |= ( pSrc->major << 4 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp80__;
+        *pBuf = tmp81__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
@@ -26765,7 +26969,7 @@ tANI_U32 dot11fPackIeGTK(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U16 tmp81__;
+    tANI_U16 tmp82__;
     nNeeded  +=  (pSrc->num_key + 11);
     while ( pSrc->present )
     {
@@ -26774,13 +26978,13 @@ tANI_U32 dot11fPackIeGTK(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp81__ = 0U;
-        tmp81__ |= ( pSrc->keyId << 0 );
-        tmp81__ |= ( pSrc->reserved << 2 );
+        tmp82__ = 0U;
+        tmp82__ |= ( pSrc->keyId << 0 );
+        tmp82__ |= ( pSrc->reserved << 2 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp81__, 0);
+        frameshtons(pCtx, pBuf, tmp82__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
@@ -27268,11 +27472,11 @@ tANI_U32 dot11fPackIeRRMEnabledCap(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp82__;
     tANI_U8 tmp83__;
     tANI_U8 tmp84__;
     tANI_U8 tmp85__;
     tANI_U8 tmp86__;
+    tANI_U8 tmp87__;
     nNeeded  += 5;
     while ( pSrc->present )
     {
@@ -27281,31 +27485,15 @@ tANI_U32 dot11fPackIeRRMEnabledCap(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp82__ = 0U;
-        tmp82__ |= ( pSrc->LinkMeasurement << 0 );
-        tmp82__ |= ( pSrc->NeighborRpt << 1 );
-        tmp82__ |= ( pSrc->parallel << 2 );
-        tmp82__ |= ( pSrc->repeated << 3 );
-        tmp82__ |= ( pSrc->BeaconPassive << 4 );
-        tmp82__ |= ( pSrc->BeaconActive << 5 );
-        tmp82__ |= ( pSrc->BeaconTable << 6 );
-        tmp82__ |= ( pSrc->BeaconRepCond << 7 );
-        if (unlikely(nBuf < 1))
-            return DOT11F_INCOMPLETE_IE;
-
-        *pBuf = tmp82__;
-        *pnConsumed += 1;
-        pBuf += 1;
-        nBuf -=  1 ;
         tmp83__ = 0U;
-        tmp83__ |= ( pSrc->FrameMeasurement << 0 );
-        tmp83__ |= ( pSrc->ChannelLoad << 1 );
-        tmp83__ |= ( pSrc->NoiseHistogram << 2 );
-        tmp83__ |= ( pSrc->statistics << 3 );
-        tmp83__ |= ( pSrc->LCIMeasurement << 4 );
-        tmp83__ |= ( pSrc->LCIAzimuth << 5 );
-        tmp83__ |= ( pSrc->TCMCapability << 6 );
-        tmp83__ |= ( pSrc->triggeredTCM << 7 );
+        tmp83__ |= ( pSrc->LinkMeasurement << 0 );
+        tmp83__ |= ( pSrc->NeighborRpt << 1 );
+        tmp83__ |= ( pSrc->parallel << 2 );
+        tmp83__ |= ( pSrc->repeated << 3 );
+        tmp83__ |= ( pSrc->BeaconPassive << 4 );
+        tmp83__ |= ( pSrc->BeaconActive << 5 );
+        tmp83__ |= ( pSrc->BeaconTable << 6 );
+        tmp83__ |= ( pSrc->BeaconRepCond << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -27314,10 +27502,14 @@ tANI_U32 dot11fPackIeRRMEnabledCap(tpAniSirGlobal pCtx,
         pBuf += 1;
         nBuf -=  1 ;
         tmp84__ = 0U;
-        tmp84__ |= ( pSrc->APChanReport << 0 );
-        tmp84__ |= ( pSrc->RRMMIBEnabled << 1 );
-        tmp84__ |= ( pSrc->operatingChanMax << 2 );
-        tmp84__ |= ( pSrc->nonOperatinChanMax << 5 );
+        tmp84__ |= ( pSrc->FrameMeasurement << 0 );
+        tmp84__ |= ( pSrc->ChannelLoad << 1 );
+        tmp84__ |= ( pSrc->NoiseHistogram << 2 );
+        tmp84__ |= ( pSrc->statistics << 3 );
+        tmp84__ |= ( pSrc->LCIMeasurement << 4 );
+        tmp84__ |= ( pSrc->LCIAzimuth << 5 );
+        tmp84__ |= ( pSrc->TCMCapability << 6 );
+        tmp84__ |= ( pSrc->triggeredTCM << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -27326,12 +27518,10 @@ tANI_U32 dot11fPackIeRRMEnabledCap(tpAniSirGlobal pCtx,
         pBuf += 1;
         nBuf -=  1 ;
         tmp85__ = 0U;
-        tmp85__ |= ( pSrc->MeasurementPilot << 0 );
-        tmp85__ |= ( pSrc->MeasurementPilotEnabled << 3 );
-        tmp85__ |= ( pSrc->NeighborTSFOffset << 4 );
-        tmp85__ |= ( pSrc->RCPIMeasurement << 5 );
-        tmp85__ |= ( pSrc->RSNIMeasurement << 6 );
-        tmp85__ |= ( pSrc->BssAvgAccessDelay << 7 );
+        tmp85__ |= ( pSrc->APChanReport << 0 );
+        tmp85__ |= ( pSrc->RRMMIBEnabled << 1 );
+        tmp85__ |= ( pSrc->operatingChanMax << 2 );
+        tmp85__ |= ( pSrc->nonOperatinChanMax << 5 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -27340,14 +27530,25 @@ tANI_U32 dot11fPackIeRRMEnabledCap(tpAniSirGlobal pCtx,
         pBuf += 1;
         nBuf -=  1 ;
         tmp86__ = 0U;
-        tmp86__ |= ( pSrc->BSSAvailAdmission << 0 );
-        tmp86__ |= ( pSrc->AntennaInformation << 1 );
-        tmp86__ |= ( pSrc->fine_time_meas_rpt << 2 );
-        tmp86__ |= ( pSrc->lci_capability << 3 );
-        tmp86__ |= ( pSrc->reserved << 4 );
+        tmp86__ |= ( pSrc->MeasurementPilot << 0 );
+        tmp86__ |= ( pSrc->MeasurementPilotEnabled << 3 );
+        tmp86__ |= ( pSrc->NeighborTSFOffset << 4 );
+        tmp86__ |= ( pSrc->RCPIMeasurement << 5 );
+        tmp86__ |= ( pSrc->RSNIMeasurement << 6 );
+        tmp86__ |= ( pSrc->BssAvgAccessDelay << 7 );
         *pBuf = tmp86__;
         *pnConsumed += 1;
-        // fieldsEndFlag  = 1 
+        pBuf += 1;
+        nBuf -=  1 ;
+        tmp87__ = 0U;
+        tmp87__ |= ( pSrc->BSSAvailAdmission << 0 );
+        tmp87__ |= ( pSrc->AntennaInformation << 1 );
+        tmp87__ |= ( pSrc->fine_time_meas_rpt << 2 );
+        tmp87__ |= ( pSrc->lci_capability << 3 );
+        tmp87__ |= ( pSrc->reserved << 4 );
+        *pBuf = tmp87__;
+        *pnConsumed += 1;
+        // fieldsEndFlag  = 1
         nBuf -=  1 ;
         break;
     }
@@ -27428,7 +27629,7 @@ tANI_U32 dot11fPackIeSchedule(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U16 tmp87__;
+    tANI_U16 tmp88__;
     nNeeded  += 14;
     while ( pSrc->present )
     {
@@ -27437,15 +27638,15 @@ tANI_U32 dot11fPackIeSchedule(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp87__ = 0U;
-        tmp87__ |= ( pSrc->aggregation << 0 );
-        tmp87__ |= ( pSrc->tsid << 1 );
-        tmp87__ |= ( pSrc->direction << 5 );
-        tmp87__ |= ( pSrc->reserved << 7 );
+        tmp88__ = 0U;
+        tmp88__ |= ( pSrc->aggregation << 0 );
+        tmp88__ |= ( pSrc->tsid << 1 );
+        tmp88__ |= ( pSrc->direction << 5 );
+        tmp88__ |= ( pSrc->reserved << 7 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp87__, 0);
+        frameshtons(pCtx, pBuf, tmp88__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
@@ -27645,9 +27846,9 @@ tANI_U32 dot11fPackIeTSPEC(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U16 tmp88__;
-    tANI_U8 tmp89__;
-    tANI_U16 tmp90__;
+    tANI_U16 tmp89__;
+    tANI_U8 tmp90__;
+    tANI_U16 tmp91__;
     nNeeded  += 55;
     while ( pSrc->present )
     {
@@ -27656,39 +27857,39 @@ tANI_U32 dot11fPackIeTSPEC(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp88__ = 0U;
-        tmp88__ |= ( pSrc->traffic_type << 0 );
-        tmp88__ |= ( pSrc->tsid << 1 );
-        tmp88__ |= ( pSrc->direction << 5 );
-        tmp88__ |= ( pSrc->access_policy << 7 );
-        tmp88__ |= ( pSrc->aggregation << 9 );
-        tmp88__ |= ( pSrc->psb << 10 );
-        tmp88__ |= ( pSrc->user_priority << 11 );
-        tmp88__ |= ( pSrc->tsinfo_ack_pol << 14 );
+        tmp89__ = 0U;
+        tmp89__ |= ( pSrc->traffic_type << 0 );
+        tmp89__ |= ( pSrc->tsid << 1 );
+        tmp89__ |= ( pSrc->direction << 5 );
+        tmp89__ |= ( pSrc->access_policy << 7 );
+        tmp89__ |= ( pSrc->aggregation << 9 );
+        tmp89__ |= ( pSrc->psb << 10 );
+        tmp89__ |= ( pSrc->user_priority << 11 );
+        tmp89__ |= ( pSrc->tsinfo_ack_pol << 14 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp88__, 0);
+        frameshtons(pCtx, pBuf, tmp89__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
-        tmp89__ = 0U;
-        tmp89__ |= ( pSrc->schedule << 0 );
-        tmp89__ |= ( pSrc->unused << 1 );
+        tmp90__ = 0U;
+        tmp90__ |= ( pSrc->schedule << 0 );
+        tmp90__ |= ( pSrc->unused << 1 );       
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp89__;
+        *pBuf = tmp90__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
-        tmp90__ = 0U;
-        tmp90__ |= ( pSrc->size << 0 );
-        tmp90__ |= ( pSrc->fixed << 15 );
+        tmp91__ = 0U;
+        tmp91__ |= ( pSrc->size << 0 );
+        tmp91__ |= ( pSrc->fixed << 15 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp90__, 0);
+        frameshtons(pCtx, pBuf, tmp91__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
@@ -27753,9 +27954,9 @@ tANI_U32 dot11fPackIeVHTCaps(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U32 tmp91__;
-    tANI_U16 tmp92__;
+    tANI_U32 tmp92__;
     tANI_U16 tmp93__;
+    tANI_U16 tmp94__;
     nNeeded  += 12;
     while ( pSrc->present )
     {
@@ -27764,57 +27965,57 @@ tANI_U32 dot11fPackIeVHTCaps(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp91__ = 0U;
-        tmp91__ |= ( pSrc->maxMPDULen << 0 );
-        tmp91__ |= ( pSrc->supportedChannelWidthSet << 2 );
-        tmp91__ |= ( pSrc->ldpcCodingCap << 4 );
-        tmp91__ |= ( pSrc->shortGI80MHz << 5 );
-        tmp91__ |= ( pSrc->shortGI160and80plus80MHz << 6 );
-        tmp91__ |= ( pSrc->txSTBC << 7 );
-        tmp91__ |= ( pSrc->rxSTBC << 8 );
-        tmp91__ |= ( pSrc->suBeamFormerCap << 11 );
-        tmp91__ |= ( pSrc->suBeamformeeCap << 12 );
-        tmp91__ |= ( pSrc->csnofBeamformerAntSup << 13 );
-        tmp91__ |= ( pSrc->numSoundingDim << 16 );
-        tmp91__ |= ( pSrc->muBeamformerCap << 19 );
-        tmp91__ |= ( pSrc->muBeamformeeCap << 20 );
-        tmp91__ |= ( pSrc->vhtTXOPPS << 21 );
-        tmp91__ |= ( pSrc->htcVHTCap << 22 );
-        tmp91__ |= ( pSrc->maxAMPDULenExp << 23 );
-        tmp91__ |= ( pSrc->vhtLinkAdaptCap << 26 );
-        tmp91__ |= ( pSrc->rxAntPattern << 28 );
-        tmp91__ |= ( pSrc->txAntPattern << 29 );
-        tmp91__ |= ( pSrc->reserved1 << 30 );
+        tmp92__ = 0U;
+        tmp92__ |= ( pSrc->maxMPDULen << 0 );
+        tmp92__ |= ( pSrc->supportedChannelWidthSet << 2 );
+        tmp92__ |= ( pSrc->ldpcCodingCap << 4 );
+        tmp92__ |= ( pSrc->shortGI80MHz << 5 );
+        tmp92__ |= ( pSrc->shortGI160and80plus80MHz << 6 );
+        tmp92__ |= ( pSrc->txSTBC << 7 );
+        tmp92__ |= ( pSrc->rxSTBC << 8 );
+        tmp92__ |= ( pSrc->suBeamFormerCap << 11 );
+        tmp92__ |= ( pSrc->suBeamformeeCap << 12 );
+        tmp92__ |= ( pSrc->csnofBeamformerAntSup << 13 );
+        tmp92__ |= ( pSrc->numSoundingDim << 16 );
+        tmp92__ |= ( pSrc->muBeamformerCap << 19 );
+        tmp92__ |= ( pSrc->muBeamformeeCap << 20 );
+        tmp92__ |= ( pSrc->vhtTXOPPS << 21 );
+        tmp92__ |= ( pSrc->htcVHTCap << 22 );
+        tmp92__ |= ( pSrc->maxAMPDULenExp << 23 );
+        tmp92__ |= ( pSrc->vhtLinkAdaptCap << 26 );
+        tmp92__ |= ( pSrc->rxAntPattern << 28 );
+        tmp92__ |= ( pSrc->txAntPattern << 29 );
+        tmp92__ |= ( pSrc->reserved1 << 30 );
         if (unlikely(nBuf < 4))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtonl(pCtx, pBuf, tmp91__, 0);
+        frameshtonl(pCtx, pBuf, tmp92__, 0);
         *pnConsumed += 4;
         pBuf += 4;
         nBuf -=  4 ;
         frameshtons(pCtx, pBuf, pSrc->rxMCSMap, 0);
         *pnConsumed += 2;
         pBuf += 2;
-        tmp92__ = 0U;
-        tmp92__ |= ( pSrc->rxHighSupDataRate << 0 );
-        tmp92__ |= ( pSrc->reserved2 << 13 );
+        tmp93__ = 0U;
+        tmp93__ |= ( pSrc->rxHighSupDataRate << 0 );
+        tmp93__ |= ( pSrc->reserved2 << 13 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp92__, 0);
+        frameshtons(pCtx, pBuf, tmp93__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
         frameshtons(pCtx, pBuf, pSrc->txMCSMap, 0);
         *pnConsumed += 2;
         pBuf += 2;
-        tmp93__ = 0U;
-        tmp93__ |= ( pSrc->txSupDataRate << 0 );
-        tmp93__ |= ( pSrc->reserved3 << 13 );
+        tmp94__ = 0U;
+        tmp94__ |= ( pSrc->txSupDataRate << 0 );
+        tmp94__ |= ( pSrc->reserved3 << 13 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp93__, 0);
+        frameshtons(pCtx, pBuf, tmp94__, 0);
         *pnConsumed += 2;
         // fieldsEndFlag  = 1 
         nBuf -=  2 ;
@@ -27876,7 +28077,7 @@ tANI_U32 dot11fPackIeWMMSchedule(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U16 tmp94__;
+    tANI_U16 tmp95__;
     nNeeded  += 15;
     while ( pSrc->present )
     {
@@ -27898,15 +28099,15 @@ tANI_U32 dot11fPackIeWMMSchedule(tpAniSirGlobal pCtx,
         *pBuf = pSrc->version;
         *pnConsumed += 1;
         pBuf += 1;
-        tmp94__ = 0U;
-        tmp94__ |= ( pSrc->aggregation << 0 );
-        tmp94__ |= ( pSrc->tsid << 1 );
-        tmp94__ |= ( pSrc->direction << 5 );
-        tmp94__ |= ( pSrc->reserved << 7 );
+        tmp95__ = 0U;
+        tmp95__ |= ( pSrc->aggregation << 0 );
+        tmp95__ |= ( pSrc->tsid << 1 );
+        tmp95__ |= ( pSrc->direction << 5 );
+        tmp95__ |= ( pSrc->reserved << 7 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp94__, 0);
+        frameshtons(pCtx, pBuf, tmp95__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
@@ -28145,9 +28346,9 @@ tANI_U32 dot11fPackIeWMMTSPEC(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U16 tmp95__;
-    tANI_U8 tmp96__;
-    tANI_U16 tmp97__;
+    tANI_U16 tmp96__;
+    tANI_U8 tmp97__;
+    tANI_U16 tmp98__;
     nNeeded  += 38;
     while ( pSrc->present )
     {
@@ -28169,39 +28370,39 @@ tANI_U32 dot11fPackIeWMMTSPEC(tpAniSirGlobal pCtx,
         *pBuf = pSrc->version;
         *pnConsumed += 1;
         pBuf += 1;
-        tmp95__ = 0U;
-        tmp95__ |= ( pSrc->traffic_type << 0 );
-        tmp95__ |= ( pSrc->tsid << 1 );
-        tmp95__ |= ( pSrc->direction << 5 );
-        tmp95__ |= ( pSrc->access_policy << 7 );
-        tmp95__ |= ( pSrc->aggregation << 9 );
-        tmp95__ |= ( pSrc->psb << 10 );
-        tmp95__ |= ( pSrc->user_priority << 11 );
-        tmp95__ |= ( pSrc->tsinfo_ack_pol << 14 );
+        tmp96__ = 0U;
+        tmp96__ |= ( pSrc->traffic_type << 0 );
+        tmp96__ |= ( pSrc->tsid << 1 );
+        tmp96__ |= ( pSrc->direction << 5 );
+        tmp96__ |= ( pSrc->access_policy << 7 );
+        tmp96__ |= ( pSrc->aggregation << 9 );
+        tmp96__ |= ( pSrc->psb << 10 );
+        tmp96__ |= ( pSrc->user_priority << 11 );
+        tmp96__ |= ( pSrc->tsinfo_ack_pol << 14 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp95__, 0);
+        frameshtons(pCtx, pBuf, tmp96__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
-        tmp96__ = 0U;
-        tmp96__ |= ( pSrc->tsinfo_rsvd << 0 );
-        tmp96__ |= ( pSrc->burst_size_defn << 7 );
+        tmp97__ = 0U;
+        tmp97__ |= ( pSrc->tsinfo_rsvd << 0 );
+        tmp97__ |= ( pSrc->burst_size_defn << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp96__;
+        *pBuf = tmp97__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
-        tmp97__ = 0U;
-        tmp97__ |= ( pSrc->size << 0 );
-        tmp97__ |= ( pSrc->fixed << 15 );
+        tmp98__ = 0U;
+        tmp98__ |= ( pSrc->size << 0 );
+        tmp98__ |= ( pSrc->fixed << 15 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp97__, 0);
+        frameshtons(pCtx, pBuf, tmp98__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
@@ -28571,7 +28772,6 @@ tANI_U32 dot11fPackIeEDCAParamSet(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp98__;
     tANI_U8 tmp99__;
     tANI_U8 tmp100__;
     tANI_U8 tmp101__;
@@ -28579,6 +28779,7 @@ tANI_U32 dot11fPackIeEDCAParamSet(tpAniSirGlobal pCtx,
     tANI_U8 tmp103__;
     tANI_U8 tmp104__;
     tANI_U8 tmp105__;
+    tANI_U8 tmp106__;
     nNeeded  += 18;
     while ( pSrc->present )
     {
@@ -28593,30 +28794,18 @@ tANI_U32 dot11fPackIeEDCAParamSet(tpAniSirGlobal pCtx,
         *pBuf = pSrc->reserved;
         *pnConsumed += 1;
         pBuf += 1;
-        tmp98__ = 0U;
-        tmp98__ |= ( pSrc->acbe_aifsn << 0 );
-        tmp98__ |= ( pSrc->acbe_acm << 4 );
-        tmp98__ |= ( pSrc->acbe_aci << 5 );
-        tmp98__ |= ( pSrc->unused1 << 7 );
-        *pBuf = tmp98__;
-        *pnConsumed += 1;
-        pBuf += 1;
-        nBuf -=  1 ;
         tmp99__ = 0U;
-        tmp99__ |= ( pSrc->acbe_acwmin << 0 );
-        tmp99__ |= ( pSrc->acbe_acwmax << 4 );
+        tmp99__ |= ( pSrc->acbe_aifsn << 0 );
+        tmp99__ |= ( pSrc->acbe_acm << 4 );
+        tmp99__ |= ( pSrc->acbe_aci << 5 );
+        tmp99__ |= ( pSrc->unused1 << 7 );
         *pBuf = tmp99__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
-        frameshtons(pCtx, pBuf, pSrc->acbe_txoplimit, 0);
-        *pnConsumed += 2;
-        pBuf += 2;
         tmp100__ = 0U;
-        tmp100__ |= ( pSrc->acbk_aifsn << 0 );
-        tmp100__ |= ( pSrc->acbk_acm << 4 );
-        tmp100__ |= ( pSrc->acbk_aci << 5 );
-        tmp100__ |= ( pSrc->unused2 << 7 );
+        tmp100__ |= ( pSrc->acbe_acwmin << 0 );
+        tmp100__ |= ( pSrc->acbe_acwmax << 4 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -28624,9 +28813,14 @@ tANI_U32 dot11fPackIeEDCAParamSet(tpAniSirGlobal pCtx,
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
+        frameshtons(pCtx, pBuf, pSrc->acbe_txoplimit, 0);
+        *pnConsumed += 2;
+        pBuf += 2;
         tmp101__ = 0U;
-        tmp101__ |= ( pSrc->acbk_acwmin << 0 );
-        tmp101__ |= ( pSrc->acbk_acwmax << 4 );
+        tmp101__ |= ( pSrc->acbk_aifsn << 0 );
+        tmp101__ |= ( pSrc->acbk_acm << 4 );
+        tmp101__ |= ( pSrc->acbk_aci << 5 );
+        tmp101__ |= ( pSrc->unused2 << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -28634,14 +28828,9 @@ tANI_U32 dot11fPackIeEDCAParamSet(tpAniSirGlobal pCtx,
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
-        frameshtons(pCtx, pBuf, pSrc->acbk_txoplimit, 0);
-        *pnConsumed += 2;
-        pBuf += 2;
         tmp102__ = 0U;
-        tmp102__ |= ( pSrc->acvi_aifsn << 0 );
-        tmp102__ |= ( pSrc->acvi_acm << 4 );
-        tmp102__ |= ( pSrc->acvi_aci << 5 );
-        tmp102__ |= ( pSrc->unused3 << 7 );
+        tmp102__ |= ( pSrc->acbk_acwmin << 0 );
+        tmp102__ |= ( pSrc->acbk_acwmax << 4 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -28649,9 +28838,14 @@ tANI_U32 dot11fPackIeEDCAParamSet(tpAniSirGlobal pCtx,
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
+        frameshtons(pCtx, pBuf, pSrc->acbk_txoplimit, 0);
+        *pnConsumed += 2;
+        pBuf += 2;
         tmp103__ = 0U;
-        tmp103__ |= ( pSrc->acvi_acwmin << 0 );
-        tmp103__ |= ( pSrc->acvi_acwmax << 4 );
+        tmp103__ |= ( pSrc->acvi_aifsn << 0 );
+        tmp103__ |= ( pSrc->acvi_acm << 4 );
+        tmp103__ |= ( pSrc->acvi_aci << 5 );
+        tmp103__ |= ( pSrc->unused3 << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -28659,14 +28853,9 @@ tANI_U32 dot11fPackIeEDCAParamSet(tpAniSirGlobal pCtx,
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
-        frameshtons(pCtx, pBuf, pSrc->acvi_txoplimit, 0);
-        *pnConsumed += 2;
-        pBuf += 2;
         tmp104__ = 0U;
-        tmp104__ |= ( pSrc->acvo_aifsn << 0 );
-        tmp104__ |= ( pSrc->acvo_acm << 4 );
-        tmp104__ |= ( pSrc->acvo_aci << 5 );
-        tmp104__ |= ( pSrc->unused4 << 7 );
+        tmp104__ |= ( pSrc->acvi_acwmin << 0 );
+        tmp104__ |= ( pSrc->acvi_acwmax << 4 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -28674,13 +28863,25 @@ tANI_U32 dot11fPackIeEDCAParamSet(tpAniSirGlobal pCtx,
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
+        frameshtons(pCtx, pBuf, pSrc->acvi_txoplimit, 0);
+        *pnConsumed += 2;
+        pBuf += 2;
         tmp105__ = 0U;
-        tmp105__ |= ( pSrc->acvo_acwmin << 0 );
-        tmp105__ |= ( pSrc->acvo_acwmax << 4 );
+        tmp105__ |= ( pSrc->acvo_aifsn << 0 );
+        tmp105__ |= ( pSrc->acvo_acm << 4 );
+        tmp105__ |= ( pSrc->acvo_aci << 5 );
+        tmp105__ |= ( pSrc->unused4 << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
         *pBuf = tmp105__;
+        *pnConsumed += 1;
+        pBuf += 1;
+        nBuf -=  1 ;
+        tmp106__ = 0U;
+        tmp106__ |= ( pSrc->acvo_acwmin << 0 );
+        tmp106__ |= ( pSrc->acvo_acwmax << 4 );
+        *pBuf = tmp106__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
@@ -28706,7 +28907,7 @@ tANI_U32 dot11fPackIeERPInfo(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp106__;
+    tANI_U8 tmp107__;
     nNeeded  += 1;
     while ( pSrc->present )
     {
@@ -28715,15 +28916,15 @@ tANI_U32 dot11fPackIeERPInfo(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp106__ = 0U;
-        tmp106__ |= ( pSrc->non_erp_present << 0 );
-        tmp106__ |= ( pSrc->use_prot << 1 );
-        tmp106__ |= ( pSrc->barker_preamble << 2 );
-        tmp106__ |= ( pSrc->unused << 3 );
+        tmp107__ = 0U;
+        tmp107__ |= ( pSrc->non_erp_present << 0 );
+        tmp107__ |= ( pSrc->use_prot << 1 );
+        tmp107__ |= ( pSrc->barker_preamble << 2 );
+        tmp107__ |= ( pSrc->unused << 3 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp106__;
+        *pBuf = tmp107__;
         *pnConsumed += 1;
         // fieldsEndFlag  = 1 
         nBuf -=  1 ;
@@ -28784,7 +28985,7 @@ tANI_U32 dot11fPackIeESERadMgmtCap(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp107__;
+    tANI_U8 tmp108__;
     nNeeded  += 2;
     while ( pSrc->present )
     {
@@ -28804,13 +29005,13 @@ tANI_U32 dot11fPackIeESERadMgmtCap(tpAniSirGlobal pCtx,
         *pBuf = pSrc->mgmt_state;
         *pnConsumed += 1;
         pBuf += 1;
-        tmp107__ = 0U;
-        tmp107__ |= ( pSrc->mbssid_mask << 0 );
-        tmp107__ |= ( pSrc->reserved << 3 );
+        tmp108__ = 0U;
+        tmp108__ |= ( pSrc->mbssid_mask << 0 );
+        tmp108__ |= ( pSrc->reserved << 3 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp107__;
+        *pBuf = tmp108__;
         *pnConsumed += 1;
         // fieldsEndFlag  = 1 
         nBuf -=  1 ;
@@ -29171,7 +29372,7 @@ tANI_U32 dot11fPackIeFTInfo(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U16 tmp108__;
+    tANI_U16 tmp109__;
     tANI_U32 status = DOT11F_PARSE_SUCCESS;
     status = dot11fGetPackedIEFTInfo(pCtx, pSrc, &nNeeded);
     if ( ! DOT11F_SUCCEEDED( status ) ) return status;
@@ -29182,13 +29383,13 @@ tANI_U32 dot11fPackIeFTInfo(tpAniSirGlobal pCtx,
         ++pBuf; --nBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; --nBuf; ++(*pnConsumed);
-        tmp108__ = 0U;
-        tmp108__ |= ( pSrc->reserved << 0 );
-        tmp108__ |= ( pSrc->IECount << 8 );
+        tmp109__ = 0U;
+        tmp109__ |= ( pSrc->reserved << 0 );
+        tmp109__ |= ( pSrc->IECount << 8 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp108__, 0);
+        frameshtons(pCtx, pBuf, tmp109__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
@@ -29227,7 +29428,7 @@ tANI_U32 dot11fPackIeHT2040BSSCoexistence(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp109__;
+    tANI_U8 tmp110__;
     nNeeded  += 1;
     while ( pSrc->present )
     {
@@ -29236,17 +29437,17 @@ tANI_U32 dot11fPackIeHT2040BSSCoexistence(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp109__ = 0U;
-        tmp109__ |= ( pSrc->infoRequest << 0 );
-        tmp109__ |= ( pSrc->fortyMHzIntolerant << 1 );
-        tmp109__ |= ( pSrc->twentyMHzBssWidthReq << 2 );
-        tmp109__ |= ( pSrc->obssScanExemptionReq << 3 );
-        tmp109__ |= ( pSrc->obssScanExemptionGrant << 4 );
-        tmp109__ |= ( pSrc->unused << 5 );
+        tmp110__ = 0U;
+        tmp110__ |= ( pSrc->infoRequest << 0 );
+        tmp110__ |= ( pSrc->fortyMHzIntolerant << 1 );
+        tmp110__ |= ( pSrc->twentyMHzBssWidthReq << 2 );
+        tmp110__ |= ( pSrc->obssScanExemptionReq << 3 );
+        tmp110__ |= ( pSrc->obssScanExemptionGrant << 4 );
+        tmp110__ |= ( pSrc->unused << 5 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp109__;
+        *pBuf = tmp110__;
         *pnConsumed += 1;
         // fieldsEndFlag  = 1 
         nBuf -=  1 ;
@@ -29302,11 +29503,11 @@ tANI_U32 dot11fPackIeHTCaps(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U16 tmp110__;
-    tANI_U8 tmp111__;
-    tANI_U16 tmp112__;
-    tANI_U32 tmp113__;
-    tANI_U8 tmp114__;
+    tANI_U16 tmp111__;
+    tANI_U8 tmp112__;
+    tANI_U16 tmp113__;
+    tANI_U32 tmp114__;
+    tANI_U8 tmp115__;
     nNeeded  +=  (pSrc->num_rsvd + 26);
     while ( pSrc->present )
     {
@@ -29315,92 +29516,92 @@ tANI_U32 dot11fPackIeHTCaps(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp110__ = 0U;
-        tmp110__ |= ( pSrc->advCodingCap << 0 );
-        tmp110__ |= ( pSrc->supportedChannelWidthSet << 1 );
-        tmp110__ |= ( pSrc->mimoPowerSave << 2 );
-        tmp110__ |= ( pSrc->greenField << 4 );
-        tmp110__ |= ( pSrc->shortGI20MHz << 5 );
-        tmp110__ |= ( pSrc->shortGI40MHz << 6 );
-        tmp110__ |= ( pSrc->txSTBC << 7 );
-        tmp110__ |= ( pSrc->rxSTBC << 8 );
-        tmp110__ |= ( pSrc->delayedBA << 10 );
-        tmp110__ |= ( pSrc->maximalAMSDUsize << 11 );
-        tmp110__ |= ( pSrc->dsssCckMode40MHz << 12 );
-        tmp110__ |= ( pSrc->psmp << 13 );
-        tmp110__ |= ( pSrc->stbcControlFrame << 14 );
-        tmp110__ |= ( pSrc->lsigTXOPProtection << 15 );
+        tmp111__ = 0U;
+        tmp111__ |= ( pSrc->advCodingCap << 0 );
+        tmp111__ |= ( pSrc->supportedChannelWidthSet << 1 );
+        tmp111__ |= ( pSrc->mimoPowerSave << 2 );
+        tmp111__ |= ( pSrc->greenField << 4 );
+        tmp111__ |= ( pSrc->shortGI20MHz << 5 );
+        tmp111__ |= ( pSrc->shortGI40MHz << 6 );
+        tmp111__ |= ( pSrc->txSTBC << 7 );
+        tmp111__ |= ( pSrc->rxSTBC << 8 );
+        tmp111__ |= ( pSrc->delayedBA << 10 );
+        tmp111__ |= ( pSrc->maximalAMSDUsize << 11 );
+        tmp111__ |= ( pSrc->dsssCckMode40MHz << 12 );
+        tmp111__ |= ( pSrc->psmp << 13 );
+        tmp111__ |= ( pSrc->stbcControlFrame << 14 );
+        tmp111__ |= ( pSrc->lsigTXOPProtection << 15 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp110__, 0);
+        frameshtons(pCtx, pBuf, tmp111__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
-        tmp111__ = 0U;
-        tmp111__ |= ( pSrc->maxRxAMPDUFactor << 0 );
-        tmp111__ |= ( pSrc->mpduDensity << 2 );
-        tmp111__ |= ( pSrc->reserved1 << 5 );
+        tmp112__ = 0U;
+        tmp112__ |= ( pSrc->maxRxAMPDUFactor << 0 );
+        tmp112__ |= ( pSrc->mpduDensity << 2 );
+        tmp112__ |= ( pSrc->reserved1 << 5 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp111__;
+        *pBuf = tmp112__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
         DOT11F_MEMCPY(pCtx, pBuf, pSrc->supportedMCSSet, 16);
         *pnConsumed += 16;
         pBuf += 16;
-        tmp112__ = 0U;
-        tmp112__ |= ( pSrc->pco << 0 );
-        tmp112__ |= ( pSrc->transitionTime << 1 );
-        tmp112__ |= ( pSrc->reserved2 << 3 );
-        tmp112__ |= ( pSrc->mcsFeedback << 8 );
-        tmp112__ |= ( pSrc->reserved3 << 10 );
+        tmp113__ = 0U;
+        tmp113__ |= ( pSrc->pco << 0 );
+        tmp113__ |= ( pSrc->transitionTime << 1 );
+        tmp113__ |= ( pSrc->reserved2 << 3 );
+        tmp113__ |= ( pSrc->mcsFeedback << 8 );
+        tmp113__ |= ( pSrc->reserved3 << 10 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp112__, 0);
+        frameshtons(pCtx, pBuf, tmp113__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
-        tmp113__ = 0U;
-        tmp113__ |= ( pSrc->txBF << 0 );
-        tmp113__ |= ( pSrc->rxStaggeredSounding << 1 );
-        tmp113__ |= ( pSrc->txStaggeredSounding << 2 );
-        tmp113__ |= ( pSrc->rxZLF << 3 );
-        tmp113__ |= ( pSrc->txZLF << 4 );
-        tmp113__ |= ( pSrc->implicitTxBF << 5 );
-        tmp113__ |= ( pSrc->calibration << 6 );
-        tmp113__ |= ( pSrc->explicitCSITxBF << 8 );
-        tmp113__ |= ( pSrc->explicitUncompressedSteeringMatrix << 9 );
-        tmp113__ |= ( pSrc->explicitBFCSIFeedback << 10 );
-        tmp113__ |= ( pSrc->explicitUncompressedSteeringMatrixFeedback << 13 );
-        tmp113__ |= ( pSrc->explicitCompressedSteeringMatrixFeedback << 16 );
-        tmp113__ |= ( pSrc->csiNumBFAntennae << 19 );
-        tmp113__ |= ( pSrc->uncompressedSteeringMatrixBFAntennae << 21 );
-        tmp113__ |= ( pSrc->compressedSteeringMatrixBFAntennae << 23 );
-        tmp113__ |= ( pSrc->reserved4 << 25 );
+        tmp114__ = 0U;
+        tmp114__ |= ( pSrc->txBF << 0 );
+        tmp114__ |= ( pSrc->rxStaggeredSounding << 1 );
+        tmp114__ |= ( pSrc->txStaggeredSounding << 2 );
+        tmp114__ |= ( pSrc->rxZLF << 3 );
+        tmp114__ |= ( pSrc->txZLF << 4 );
+        tmp114__ |= ( pSrc->implicitTxBF << 5 );
+        tmp114__ |= ( pSrc->calibration << 6 );
+        tmp114__ |= ( pSrc->explicitCSITxBF << 8 );
+        tmp114__ |= ( pSrc->explicitUncompressedSteeringMatrix << 9 );
+        tmp114__ |= ( pSrc->explicitBFCSIFeedback << 10 );
+        tmp114__ |= ( pSrc->explicitUncompressedSteeringMatrixFeedback << 13 );
+        tmp114__ |= ( pSrc->explicitCompressedSteeringMatrixFeedback << 16 );
+        tmp114__ |= ( pSrc->csiNumBFAntennae << 19 );
+        tmp114__ |= ( pSrc->uncompressedSteeringMatrixBFAntennae << 21 );
+        tmp114__ |= ( pSrc->compressedSteeringMatrixBFAntennae << 23 );
+        tmp114__ |= ( pSrc->reserved4 << 25 );
         if (unlikely(nBuf < 4))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtonl(pCtx, pBuf, tmp113__, 0);
+        frameshtonl(pCtx, pBuf, tmp114__, 0);
         *pnConsumed += 4;
         pBuf += 4;
         nBuf -=  4 ;
-        tmp114__ = 0U;
-        tmp114__ |= ( pSrc->antennaSelection << 0 );
-        tmp114__ |= ( pSrc->explicitCSIFeedbackTx << 1 );
-        tmp114__ |= ( pSrc->antennaIndicesFeedbackTx << 2 );
-        tmp114__ |= ( pSrc->explicitCSIFeedback << 3 );
-        tmp114__ |= ( pSrc->antennaIndicesFeedback << 4 );
-        tmp114__ |= ( pSrc->rxAS << 5 );
-        tmp114__ |= ( pSrc->txSoundingPPDUs << 6 );
-        tmp114__ |= ( pSrc->reserved5 << 7 );
+        tmp115__ = 0U;
+        tmp115__ |= ( pSrc->antennaSelection << 0 );
+        tmp115__ |= ( pSrc->explicitCSIFeedbackTx << 1 );
+        tmp115__ |= ( pSrc->antennaIndicesFeedbackTx << 2 );
+        tmp115__ |= ( pSrc->explicitCSIFeedback << 3 );
+        tmp115__ |= ( pSrc->antennaIndicesFeedback << 4 );
+        tmp115__ |= ( pSrc->rxAS << 5 );
+        tmp115__ |= ( pSrc->txSoundingPPDUs << 6 );
+        tmp115__ |= ( pSrc->reserved5 << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp114__;
+        *pBuf = tmp115__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
@@ -29426,9 +29627,9 @@ tANI_U32 dot11fPackIeHTInfo(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp115__;
-    tANI_U16 tmp116__;
+    tANI_U8 tmp116__;
     tANI_U16 tmp117__;
+    tANI_U16 tmp118__;
     nNeeded  +=  (pSrc->num_rsvd + 22);
     while ( pSrc->present )
     {
@@ -29440,44 +29641,44 @@ tANI_U32 dot11fPackIeHTInfo(tpAniSirGlobal pCtx,
         *pBuf = pSrc->primaryChannel;
         *pnConsumed += 1;
         pBuf += 1;
-        tmp115__ = 0U;
-        tmp115__ |= ( pSrc->secondaryChannelOffset << 0 );
-        tmp115__ |= ( pSrc->recommendedTxWidthSet << 2 );
-        tmp115__ |= ( pSrc->rifsMode << 3 );
-        tmp115__ |= ( pSrc->controlledAccessOnly << 4 );
-        tmp115__ |= ( pSrc->serviceIntervalGranularity << 5 );
+        tmp116__ = 0U;
+        tmp116__ |= ( pSrc->secondaryChannelOffset << 0 );
+        tmp116__ |= ( pSrc->recommendedTxWidthSet << 2 );
+        tmp116__ |= ( pSrc->rifsMode << 3 );
+        tmp116__ |= ( pSrc->controlledAccessOnly << 4 );
+        tmp116__ |= ( pSrc->serviceIntervalGranularity << 5 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp115__;
+        *pBuf = tmp116__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
-        tmp116__ = 0U;
-        tmp116__ |= ( pSrc->opMode << 0 );
-        tmp116__ |= ( pSrc->nonGFDevicesPresent << 2 );
-        tmp116__ |= ( pSrc->transmitBurstLimit << 3 );
-        tmp116__ |= ( pSrc->obssNonHTStaPresent << 4 );
-        tmp116__ |= ( pSrc->reserved << 5 );
-        if (unlikely(nBuf < 2))
-            return DOT11F_INCOMPLETE_IE;
-
-        frameshtons(pCtx, pBuf, tmp116__, 0);
-        *pnConsumed += 2;
-        pBuf += 2;
-        nBuf -=  2 ;
         tmp117__ = 0U;
-        tmp117__ |= ( pSrc->basicSTBCMCS << 0 );
-        tmp117__ |= ( pSrc->dualCTSProtection << 7 );
-        tmp117__ |= ( pSrc->secondaryBeacon << 8 );
-        tmp117__ |= ( pSrc->lsigTXOPProtectionFullSupport << 9 );
-        tmp117__ |= ( pSrc->pcoActive << 10 );
-        tmp117__ |= ( pSrc->pcoPhase << 11 );
-        tmp117__ |= ( pSrc->reserved2 << 12 );
+        tmp117__ |= ( pSrc->opMode << 0 );
+        tmp117__ |= ( pSrc->nonGFDevicesPresent << 2 );
+        tmp117__ |= ( pSrc->transmitBurstLimit << 3 );
+        tmp117__ |= ( pSrc->obssNonHTStaPresent << 4 );
+        tmp117__ |= ( pSrc->reserved << 5 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
         frameshtons(pCtx, pBuf, tmp117__, 0);
+        *pnConsumed += 2;
+        pBuf += 2;
+        nBuf -=  2 ;
+        tmp118__ = 0U;
+        tmp118__ |= ( pSrc->basicSTBCMCS << 0 );
+        tmp118__ |= ( pSrc->dualCTSProtection << 7 );
+        tmp118__ |= ( pSrc->secondaryBeacon << 8 );
+        tmp118__ |= ( pSrc->lsigTXOPProtectionFullSupport << 9 );
+        tmp118__ |= ( pSrc->pcoActive << 10 );
+        tmp118__ |= ( pSrc->pcoPhase << 11 );
+        tmp118__ |= ( pSrc->reserved2 << 12 );
+        if (unlikely(nBuf < 2))
+            return DOT11F_INCOMPLETE_IE;
+
+        frameshtons(pCtx, pBuf, tmp118__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
@@ -29572,9 +29773,9 @@ tANI_U32 dot11fPackIeMeasurementReport(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp118__;
     tANI_U8 tmp119__;
     tANI_U8 tmp120__;
+    tANI_U8 tmp121__;
     tANI_U32 status = DOT11F_PARSE_SUCCESS;
     status = dot11fGetPackedIEMeasurementReport(pCtx, pSrc, &nNeeded);
     if ( ! DOT11F_SUCCEEDED( status ) ) return status;
@@ -29588,15 +29789,15 @@ tANI_U32 dot11fPackIeMeasurementReport(tpAniSirGlobal pCtx,
         *pBuf = pSrc->token;
         *pnConsumed += 1;
         pBuf += 1;
-        tmp118__ = 0U;
-        tmp118__ |= ( pSrc->late << 0 );
-        tmp118__ |= ( pSrc->incapable << 1 );
-        tmp118__ |= ( pSrc->refused << 2 );
-        tmp118__ |= ( pSrc->unused << 3 );
+        tmp119__ = 0U;
+        tmp119__ |= ( pSrc->late << 0 );
+        tmp119__ |= ( pSrc->incapable << 1 );
+        tmp119__ |= ( pSrc->refused << 2 );
+        tmp119__ |= ( pSrc->unused << 3 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp118__;
+        *pBuf = tmp119__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
@@ -29616,17 +29817,17 @@ tANI_U32 dot11fPackIeMeasurementReport(tpAniSirGlobal pCtx,
                     frameshtons(pCtx, pBuf, pSrc->report.Basic.meas_duration, 0);
                     *pnConsumed += 2;
                     pBuf += 2;
-                    tmp119__ = 0U;
-                    tmp119__ |= ( pSrc->report.Basic.bss << 0 );
-                    tmp119__ |= ( pSrc->report.Basic.ofdm_preamble << 1 );
-                    tmp119__ |= ( pSrc->report.Basic.unid_signal << 2 );
-                    tmp119__ |= ( pSrc->report.Basic.rader << 3 );
-                    tmp119__ |= ( pSrc->report.Basic.unmeasured << 4 );
-                    tmp119__ |= ( pSrc->report.Basic.unused << 5 );
+                    tmp120__ = 0U;
+                    tmp120__ |= ( pSrc->report.Basic.bss << 0 );
+                    tmp120__ |= ( pSrc->report.Basic.ofdm_preamble << 1 );
+                    tmp120__ |= ( pSrc->report.Basic.unid_signal << 2 );
+                    tmp120__ |= ( pSrc->report.Basic.rader << 3 );
+                    tmp120__ |= ( pSrc->report.Basic.unmeasured << 4 );
+                    tmp120__ |= ( pSrc->report.Basic.unused << 5 );
                     if (unlikely(nBuf < 1))
                         return DOT11F_INCOMPLETE_IE;
 
-                    *pBuf = tmp119__;
+                    *pBuf = tmp120__;
                     *pnConsumed += 1;
                     // fieldsEndFlag  = 1 
                     nBuf -=  1 ;
@@ -29693,13 +29894,13 @@ tANI_U32 dot11fPackIeMeasurementReport(tpAniSirGlobal pCtx,
                     frameshtons(pCtx, pBuf, pSrc->report.Beacon.meas_duration, 0);
                     *pnConsumed += 2;
                     pBuf += 2;
-                    tmp120__ = 0U;
-                    tmp120__ |= ( pSrc->report.Beacon.condensed_PHY << 0 );
-                    tmp120__ |= ( pSrc->report.Beacon.reported_frame_type << 7 );
+                    tmp121__ = 0U;
+                    tmp121__ |= ( pSrc->report.Beacon.condensed_PHY << 0 );
+                    tmp121__ |= ( pSrc->report.Beacon.reported_frame_type << 7 );
                     if (unlikely(nBuf < 1))
                         return DOT11F_INCOMPLETE_IE;
 
-                    *pBuf = tmp120__;
+                    *pBuf = tmp121__;
                     *pnConsumed += 1;
                     pBuf += 1;
                     nBuf -=  1 ;
@@ -29748,7 +29949,7 @@ tANI_U32 dot11fPackIeMeasurementRequest(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp121__;
+    tANI_U8 tmp122__;
     tANI_U32 status = DOT11F_PARSE_SUCCESS;
     status = dot11fGetPackedIEMeasurementRequest(pCtx, pSrc, &nNeeded);
     if ( ! DOT11F_SUCCEEDED( status ) ) return status;
@@ -29762,17 +29963,17 @@ tANI_U32 dot11fPackIeMeasurementRequest(tpAniSirGlobal pCtx,
         *pBuf = pSrc->measurement_token;
         *pnConsumed += 1;
         pBuf += 1;
-        tmp121__ = 0U;
-        tmp121__ |= ( pSrc->parallel << 0 );
-        tmp121__ |= ( pSrc->enable << 1 );
-        tmp121__ |= ( pSrc->request << 2 );
-        tmp121__ |= ( pSrc->report << 3 );
-        tmp121__ |= ( pSrc->durationMandatory << 4 );
-        tmp121__ |= ( pSrc->unused << 5 );
+        tmp122__ = 0U;
+        tmp122__ |= ( pSrc->parallel << 0 );
+        tmp122__ |= ( pSrc->enable << 1 );
+        tmp122__ |= ( pSrc->request << 2 );
+        tmp122__ |= ( pSrc->report << 3 );
+        tmp122__ |= ( pSrc->durationMandatory << 4 );
+        tmp122__ |= ( pSrc->unused << 5 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp121__;
+        *pBuf = tmp122__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
@@ -29861,7 +30062,7 @@ tANI_U32 dot11fPackIeMobilityDomain(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp122__;
+    tANI_U8 tmp123__;
     nNeeded  += 3;
     while ( pSrc->present )
     {
@@ -29873,14 +30074,14 @@ tANI_U32 dot11fPackIeMobilityDomain(tpAniSirGlobal pCtx,
         frameshtons(pCtx, pBuf, pSrc->MDID, 0);
         *pnConsumed += 2;
         pBuf += 2;
-        tmp122__ = 0U;
-        tmp122__ |= ( pSrc->overDSCap << 0 );
-        tmp122__ |= ( pSrc->resourceReqCap << 1 );
-        tmp122__ |= ( pSrc->reserved << 2 );
+        tmp123__ = 0U;
+        tmp123__ |= ( pSrc->overDSCap << 0 );
+        tmp123__ |= ( pSrc->resourceReqCap << 1 );
+        tmp123__ |= ( pSrc->reserved << 2 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp122__;
+        *pBuf = tmp123__;
         *pnConsumed += 1;
         // fieldsEndFlag  = 1 
         nBuf -=  1 ;
@@ -29903,8 +30104,8 @@ tANI_U32 dot11fPackIeNeighborReport(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp123__;
     tANI_U8 tmp124__;
+    tANI_U8 tmp125__;
     tANI_U32 status = DOT11F_PARSE_SUCCESS;
     status = dot11fGetPackedIENeighborReport(pCtx, pSrc, &nNeeded);
     if ( ! DOT11F_SUCCEEDED( status ) ) return status;
@@ -29918,30 +30119,30 @@ tANI_U32 dot11fPackIeNeighborReport(tpAniSirGlobal pCtx,
         DOT11F_MEMCPY(pCtx, pBuf, pSrc->bssid, 6);
         *pnConsumed += 6;
         pBuf += 6;
-        tmp123__ = 0U;
-        tmp123__ |= ( pSrc->APReachability << 0 );
-        tmp123__ |= ( pSrc->Security << 2 );
-        tmp123__ |= ( pSrc->KeyScope << 3 );
-        tmp123__ |= ( pSrc->SpecMgmtCap << 4 );
-        tmp123__ |= ( pSrc->QosCap << 5 );
-        tmp123__ |= ( pSrc->apsd << 6 );
-        tmp123__ |= ( pSrc->rrm << 7 );
-        if (unlikely(nBuf < 1))
-            return DOT11F_INCOMPLETE_IE;
-
-        *pBuf = tmp123__;
-        *pnConsumed += 1;
-        pBuf += 1;
-        nBuf -=  1 ;
         tmp124__ = 0U;
-        tmp124__ |= ( pSrc->DelayedBA << 0 );
-        tmp124__ |= ( pSrc->ImmBA << 1 );
-        tmp124__ |= ( pSrc->MobilityDomain << 2 );
-        tmp124__ |= ( pSrc->reserved << 3 );
+        tmp124__ |= ( pSrc->APReachability << 0 );
+        tmp124__ |= ( pSrc->Security << 2 );
+        tmp124__ |= ( pSrc->KeyScope << 3 );
+        tmp124__ |= ( pSrc->SpecMgmtCap << 4 );
+        tmp124__ |= ( pSrc->QosCap << 5 );
+        tmp124__ |= ( pSrc->apsd << 6 );
+        tmp124__ |= ( pSrc->rrm << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
         *pBuf = tmp124__;
+        *pnConsumed += 1;
+        pBuf += 1;
+        nBuf -=  1 ;
+        tmp125__ = 0U;
+        tmp125__ |= ( pSrc->DelayedBA << 0 );
+        tmp125__ |= ( pSrc->ImmBA << 1 );
+        tmp125__ |= ( pSrc->MobilityDomain << 2 );
+        tmp125__ |= ( pSrc->reserved << 3 );
+        if (unlikely(nBuf < 1))
+            return DOT11F_INCOMPLETE_IE;
+
+        *pBuf = tmp125__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
@@ -30031,7 +30232,7 @@ tANI_U32 dot11fPackIeOperatingMode(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp125__;
+    tANI_U8 tmp126__;
     nNeeded  += 1;
     while ( pSrc->present )
     {
@@ -30040,15 +30241,15 @@ tANI_U32 dot11fPackIeOperatingMode(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp125__ = 0U;
-        tmp125__ |= ( pSrc->chanWidth << 0 );
-        tmp125__ |= ( pSrc->reserved << 2 );
-        tmp125__ |= ( pSrc->rxNSS << 4 );
-        tmp125__ |= ( pSrc->rxNSSType << 7 );
+        tmp126__ = 0U;
+        tmp126__ |= ( pSrc->chanWidth << 0 );
+        tmp126__ |= ( pSrc->reserved << 2 );
+        tmp126__ |= ( pSrc->rxNSS << 4 );
+        tmp126__ |= ( pSrc->rxNSSType << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp125__;
+        *pBuf = tmp126__;
         *pnConsumed += 1;
         // fieldsEndFlag  = 1 
         nBuf -=  1 ;
@@ -31002,7 +31203,7 @@ tANI_U32 dot11fPackIePUBufferStatus(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp126__;
+    tANI_U8 tmp127__;
     nNeeded  += 1;
     while ( pSrc->present )
     {
@@ -31011,16 +31212,16 @@ tANI_U32 dot11fPackIePUBufferStatus(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp126__ = 0U;
-        tmp126__ |= ( pSrc->ac_bk_traffic_aval << 0 );
-        tmp126__ |= ( pSrc->ac_be_traffic_aval << 1 );
-        tmp126__ |= ( pSrc->ac_vi_traffic_aval << 2 );
-        tmp126__ |= ( pSrc->ac_vo_traffic_aval << 3 );
-        tmp126__ |= ( pSrc->reserved << 4 );
+        tmp127__ = 0U;
+        tmp127__ |= ( pSrc->ac_bk_traffic_aval << 0 );
+        tmp127__ |= ( pSrc->ac_be_traffic_aval << 1 );
+        tmp127__ |= ( pSrc->ac_vi_traffic_aval << 2 );
+        tmp127__ |= ( pSrc->ac_vo_traffic_aval << 3 );
+        tmp127__ |= ( pSrc->reserved << 4 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp126__;
+        *pBuf = tmp127__;
         *pnConsumed += 1;
         // fieldsEndFlag  = 1 
         nBuf -=  1 ;
@@ -31184,7 +31385,7 @@ tANI_U32 dot11fPackIeQOSCapsAp(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp127__;
+    tANI_U8 tmp128__;
     nNeeded  += 1;
     while ( pSrc->present )
     {
@@ -31193,16 +31394,16 @@ tANI_U32 dot11fPackIeQOSCapsAp(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp127__ = 0U;
-        tmp127__ |= ( pSrc->count << 0 );
-        tmp127__ |= ( pSrc->qack << 4 );
-        tmp127__ |= ( pSrc->qreq << 5 );
-        tmp127__ |= ( pSrc->txopreq << 6 );
-        tmp127__ |= ( pSrc->reserved << 7 );
+        tmp128__ = 0U;
+        tmp128__ |= ( pSrc->count << 0 );
+        tmp128__ |= ( pSrc->qack << 4 );
+        tmp128__ |= ( pSrc->qreq << 5 );
+        tmp128__ |= ( pSrc->txopreq << 6 );
+        tmp128__ |= ( pSrc->reserved << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp127__;
+        *pBuf = tmp128__;
         *pnConsumed += 1;
         // fieldsEndFlag  = 1 
         nBuf -=  1 ;
@@ -31225,7 +31426,7 @@ tANI_U32 dot11fPackIeQOSCapsStation(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp128__;
+    tANI_U8 tmp129__;
     nNeeded  += 1;
     while ( pSrc->present )
     {
@@ -31234,18 +31435,18 @@ tANI_U32 dot11fPackIeQOSCapsStation(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp128__ = 0U;
-        tmp128__ |= ( pSrc->acvo_uapsd << 0 );
-        tmp128__ |= ( pSrc->acvi_uapsd << 1 );
-        tmp128__ |= ( pSrc->acbk_uapsd << 2 );
-        tmp128__ |= ( pSrc->acbe_uapsd << 3 );
-        tmp128__ |= ( pSrc->qack << 4 );
-        tmp128__ |= ( pSrc->max_sp_length << 5 );
-        tmp128__ |= ( pSrc->more_data_ack << 7 );
+        tmp129__ = 0U;
+        tmp129__ |= ( pSrc->acvo_uapsd << 0 );
+        tmp129__ |= ( pSrc->acvi_uapsd << 1 );
+        tmp129__ |= ( pSrc->acbk_uapsd << 2 );
+        tmp129__ |= ( pSrc->acbe_uapsd << 3 );
+        tmp129__ |= ( pSrc->qack << 4 );
+        tmp129__ |= ( pSrc->max_sp_length << 5 );
+        tmp129__ |= ( pSrc->more_data_ack << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp128__;
+        *pBuf = tmp129__;
         *pnConsumed += 1;
         // fieldsEndFlag  = 1 
         nBuf -=  1 ;
@@ -31896,7 +32097,7 @@ tANI_U32 dot11fPackIeWAPI(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U16 tmp129__;
+    tANI_U16 tmp130__;
     tANI_U32 status = DOT11F_PARSE_SUCCESS;
     status = dot11fGetPackedIEWAPI(pCtx, pSrc, &nNeeded);
     if ( ! DOT11F_SUCCEEDED( status ) ) return status;
@@ -31925,13 +32126,13 @@ tANI_U32 dot11fPackIeWAPI(tpAniSirGlobal pCtx,
         DOT11F_MEMCPY(pCtx, pBuf, pSrc->multicast_cipher_suite, 4);
         *pnConsumed += 4;
         pBuf += 4;
-        tmp129__ = 0U;
-        tmp129__ |= ( pSrc->preauth << 0 );
-        tmp129__ |= ( pSrc->reserved << 1 );
+        tmp130__ = 0U;
+        tmp130__ |= ( pSrc->preauth << 0 );
+        tmp130__ |= ( pSrc->reserved << 1 );
         if (unlikely(nBuf < 2))
             return DOT11F_INCOMPLETE_IE;
 
-        frameshtons(pCtx, pBuf, tmp129__, 0);
+        frameshtons(pCtx, pBuf, tmp130__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
@@ -32074,7 +32275,7 @@ tANI_U32 dot11fPackIeWMMCaps(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp130__;
+    tANI_U8 tmp131__;
     nNeeded  += 2;
     while ( pSrc->present )
     {
@@ -32096,16 +32297,16 @@ tANI_U32 dot11fPackIeWMMCaps(tpAniSirGlobal pCtx,
         *pBuf = pSrc->version;
         *pnConsumed += 1;
         pBuf += 1;
-        tmp130__ = 0U;
-        tmp130__ |= ( pSrc->reserved << 0 );
-        tmp130__ |= ( pSrc->qack << 4 );
-        tmp130__ |= ( pSrc->queue_request << 5 );
-        tmp130__ |= ( pSrc->txop_request << 6 );
-        tmp130__ |= ( pSrc->more_ack << 7 );
+        tmp131__ = 0U;
+        tmp131__ |= ( pSrc->reserved << 0 );
+        tmp131__ |= ( pSrc->qack << 4 );
+        tmp131__ |= ( pSrc->queue_request << 5 );
+        tmp131__ |= ( pSrc->txop_request << 6 );
+        tmp131__ |= ( pSrc->more_ack << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
-        *pBuf = tmp130__;
+        *pBuf = tmp131__;
         *pnConsumed += 1;
         // fieldsEndFlag  = 1 
         nBuf -=  1 ;
@@ -32124,58 +32325,6 @@ tANI_U32 dot11fPackIeWMMInfoAp(tpAniSirGlobal pCtx,
                                tANI_U8 *pBuf,
                                tANI_U32 nBuf,
                                tANI_U32 *pnConsumed)
-{
-    tANI_U8* pIeLen = 0;
-    tANI_U32 nConsumedOnEntry = *pnConsumed;
-    tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp131__;
-    nNeeded  += 2;
-    while ( pSrc->present )
-    {
-        if ( nNeeded > nBuf ) return DOT11F_BUFFER_OVERFLOW;
-        *pBuf = 221;
-        ++pBuf; ++(*pnConsumed);
-        pIeLen = pBuf;
-        ++pBuf; ++(*pnConsumed);
-        *pBuf = 0x0;
-        ++pBuf; ++(*pnConsumed);
-        *pBuf = 0x50;
-        ++pBuf; ++(*pnConsumed);
-        *pBuf = 0xf2;
-        ++pBuf; ++(*pnConsumed);
-        *pBuf = 0x2;
-        ++pBuf; ++(*pnConsumed);
-        *pBuf = 0x0;
-        ++pBuf; ++(*pnConsumed);
-        *pBuf = pSrc->version;
-        *pnConsumed += 1;
-        pBuf += 1;
-        tmp131__ = 0U;
-        tmp131__ |= ( pSrc->param_set_count << 0 );
-        tmp131__ |= ( pSrc->reserved << 4 );
-        tmp131__ |= ( pSrc->uapsd << 7 );
-        if (unlikely(nBuf < 1))
-            return DOT11F_INCOMPLETE_IE;
-
-        *pBuf = tmp131__;
-        *pnConsumed += 1;
-        // fieldsEndFlag  = 1 
-        nBuf -=  1 ;
-        break;
-    }
-    (void)pCtx;
-    if (pIeLen)
-    {
-        *pIeLen = *pnConsumed - nConsumedOnEntry - 2;
-    }
-    return DOT11F_PARSE_SUCCESS;
-} /* End dot11fPackIeWMMInfoAp. */
-
-tANI_U32 dot11fPackIeWMMInfoStation(tpAniSirGlobal pCtx,
-                                    tDot11fIEWMMInfoStation *pSrc,
-                                    tANI_U8 *pBuf,
-                                    tANI_U32 nBuf,
-                                    tANI_U32 *pnConsumed)
 {
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
@@ -32203,17 +32352,69 @@ tANI_U32 dot11fPackIeWMMInfoStation(tpAniSirGlobal pCtx,
         *pnConsumed += 1;
         pBuf += 1;
         tmp132__ = 0U;
-        tmp132__ |= ( pSrc->acvo_uapsd << 0 );
-        tmp132__ |= ( pSrc->acvi_uapsd << 1 );
-        tmp132__ |= ( pSrc->acbk_uapsd << 2 );
-        tmp132__ |= ( pSrc->acbe_uapsd << 3 );
-        tmp132__ |= ( pSrc->reserved1 << 4 );
-        tmp132__ |= ( pSrc->max_sp_length << 5 );
-        tmp132__ |= ( pSrc->reserved2 << 7 );
+        tmp132__ |= ( pSrc->param_set_count << 0 );
+        tmp132__ |= ( pSrc->reserved << 4 );
+        tmp132__ |= ( pSrc->uapsd << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
         *pBuf = tmp132__;
+        *pnConsumed += 1;
+        // fieldsEndFlag  = 1 
+        nBuf -=  1 ;
+        break;
+    }
+    (void)pCtx;
+    if (pIeLen)
+    {
+        *pIeLen = *pnConsumed - nConsumedOnEntry - 2;
+    }
+    return DOT11F_PARSE_SUCCESS;
+} /* End dot11fPackIeWMMInfoAp. */
+
+tANI_U32 dot11fPackIeWMMInfoStation(tpAniSirGlobal pCtx,
+                                    tDot11fIEWMMInfoStation *pSrc,
+                                    tANI_U8 *pBuf,
+                                    tANI_U32 nBuf,
+                                    tANI_U32 *pnConsumed)
+{
+    tANI_U8* pIeLen = 0;
+    tANI_U32 nConsumedOnEntry = *pnConsumed;
+    tANI_U32 nNeeded = 0U;
+    tANI_U8 tmp133__;
+    nNeeded  += 2;
+    while ( pSrc->present )
+    {
+        if ( nNeeded > nBuf ) return DOT11F_BUFFER_OVERFLOW;
+        *pBuf = 221;
+        ++pBuf; ++(*pnConsumed);
+        pIeLen = pBuf;
+        ++pBuf; ++(*pnConsumed);
+        *pBuf = 0x0;
+        ++pBuf; ++(*pnConsumed);
+        *pBuf = 0x50;
+        ++pBuf; ++(*pnConsumed);
+        *pBuf = 0xf2;
+        ++pBuf; ++(*pnConsumed);
+        *pBuf = 0x2;
+        ++pBuf; ++(*pnConsumed);
+        *pBuf = 0x0;
+        ++pBuf; ++(*pnConsumed);
+        *pBuf = pSrc->version;
+        *pnConsumed += 1;
+        pBuf += 1;
+        tmp133__ = 0U;
+        tmp133__ |= ( pSrc->acvo_uapsd << 0 );
+        tmp133__ |= ( pSrc->acvi_uapsd << 1 );
+        tmp133__ |= ( pSrc->acbk_uapsd << 2 );
+        tmp133__ |= ( pSrc->acbe_uapsd << 3 );
+        tmp133__ |= ( pSrc->reserved1 << 4 );
+        tmp133__ |= ( pSrc->max_sp_length << 5 );
+        tmp133__ |= ( pSrc->reserved2 << 7 );
+        if (unlikely(nBuf < 1))
+            return DOT11F_INCOMPLETE_IE;
+
+        *pBuf = tmp133__;
         *pnConsumed += 1;
         // fieldsEndFlag  = 1 
         nBuf -=  1 ;
@@ -32236,7 +32437,6 @@ tANI_U32 dot11fPackIeWMMParams(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U8 tmp133__;
     tANI_U8 tmp134__;
     tANI_U8 tmp135__;
     tANI_U8 tmp136__;
@@ -32244,6 +32444,7 @@ tANI_U32 dot11fPackIeWMMParams(tpAniSirGlobal pCtx,
     tANI_U8 tmp138__;
     tANI_U8 tmp139__;
     tANI_U8 tmp140__;
+    tANI_U8 tmp141__;
     nNeeded  += 19;
     while ( pSrc->present )
     {
@@ -32271,30 +32472,18 @@ tANI_U32 dot11fPackIeWMMParams(tpAniSirGlobal pCtx,
         *pBuf = pSrc->reserved2;
         *pnConsumed += 1;
         pBuf += 1;
-        tmp133__ = 0U;
-        tmp133__ |= ( pSrc->acbe_aifsn << 0 );
-        tmp133__ |= ( pSrc->acbe_acm << 4 );
-        tmp133__ |= ( pSrc->acbe_aci << 5 );
-        tmp133__ |= ( pSrc->unused1 << 7 );
-        *pBuf = tmp133__;
-        *pnConsumed += 1;
-        pBuf += 1;
-        nBuf -=  1 ;
         tmp134__ = 0U;
-        tmp134__ |= ( pSrc->acbe_acwmin << 0 );
-        tmp134__ |= ( pSrc->acbe_acwmax << 4 );
+        tmp134__ |= ( pSrc->acbe_aifsn << 0 );
+        tmp134__ |= ( pSrc->acbe_acm << 4 );
+        tmp134__ |= ( pSrc->acbe_aci << 5 );
+        tmp134__ |= ( pSrc->unused1 << 7 );
         *pBuf = tmp134__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
-        frameshtons(pCtx, pBuf, pSrc->acbe_txoplimit, 0);
-        *pnConsumed += 2;
-        pBuf += 2;
         tmp135__ = 0U;
-        tmp135__ |= ( pSrc->acbk_aifsn << 0 );
-        tmp135__ |= ( pSrc->acbk_acm << 4 );
-        tmp135__ |= ( pSrc->acbk_aci << 5 );
-        tmp135__ |= ( pSrc->unused2 << 7 );
+        tmp135__ |= ( pSrc->acbe_acwmin << 0 );
+        tmp135__ |= ( pSrc->acbe_acwmax << 4 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -32302,9 +32491,14 @@ tANI_U32 dot11fPackIeWMMParams(tpAniSirGlobal pCtx,
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
+        frameshtons(pCtx, pBuf, pSrc->acbe_txoplimit, 0);
+        *pnConsumed += 2;
+        pBuf += 2;
         tmp136__ = 0U;
-        tmp136__ |= ( pSrc->acbk_acwmin << 0 );
-        tmp136__ |= ( pSrc->acbk_acwmax << 4 );
+        tmp136__ |= ( pSrc->acbk_aifsn << 0 );
+        tmp136__ |= ( pSrc->acbk_acm << 4 );
+        tmp136__ |= ( pSrc->acbk_aci << 5 );
+        tmp136__ |= ( pSrc->unused2 << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -32312,14 +32506,9 @@ tANI_U32 dot11fPackIeWMMParams(tpAniSirGlobal pCtx,
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
-        frameshtons(pCtx, pBuf, pSrc->acbk_txoplimit, 0);
-        *pnConsumed += 2;
-        pBuf += 2;
         tmp137__ = 0U;
-        tmp137__ |= ( pSrc->acvi_aifsn << 0 );
-        tmp137__ |= ( pSrc->acvi_acm << 4 );
-        tmp137__ |= ( pSrc->acvi_aci << 5 );
-        tmp137__ |= ( pSrc->unused3 << 7 );
+        tmp137__ |= ( pSrc->acbk_acwmin << 0 );
+        tmp137__ |= ( pSrc->acbk_acwmax << 4 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -32327,9 +32516,14 @@ tANI_U32 dot11fPackIeWMMParams(tpAniSirGlobal pCtx,
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
+        frameshtons(pCtx, pBuf, pSrc->acbk_txoplimit, 0);
+        *pnConsumed += 2;
+        pBuf += 2;
         tmp138__ = 0U;
-        tmp138__ |= ( pSrc->acvi_acwmin << 0 );
-        tmp138__ |= ( pSrc->acvi_acwmax << 4 );
+        tmp138__ |= ( pSrc->acvi_aifsn << 0 );
+        tmp138__ |= ( pSrc->acvi_acm << 4 );
+        tmp138__ |= ( pSrc->acvi_aci << 5 );
+        tmp138__ |= ( pSrc->unused3 << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -32337,14 +32531,9 @@ tANI_U32 dot11fPackIeWMMParams(tpAniSirGlobal pCtx,
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
-        frameshtons(pCtx, pBuf, pSrc->acvi_txoplimit, 0);
-        *pnConsumed += 2;
-        pBuf += 2;
         tmp139__ = 0U;
-        tmp139__ |= ( pSrc->acvo_aifsn << 0 );
-        tmp139__ |= ( pSrc->acvo_acm << 4 );
-        tmp139__ |= ( pSrc->acvo_aci << 5 );
-        tmp139__ |= ( pSrc->unused4 << 7 );
+        tmp139__ |= ( pSrc->acvi_acwmin << 0 );
+        tmp139__ |= ( pSrc->acvi_acwmax << 4 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
@@ -32352,13 +32541,25 @@ tANI_U32 dot11fPackIeWMMParams(tpAniSirGlobal pCtx,
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
+        frameshtons(pCtx, pBuf, pSrc->acvi_txoplimit, 0);
+        *pnConsumed += 2;
+        pBuf += 2;
         tmp140__ = 0U;
-        tmp140__ |= ( pSrc->acvo_acwmin << 0 );
-        tmp140__ |= ( pSrc->acvo_acwmax << 4 );
+        tmp140__ |= ( pSrc->acvo_aifsn << 0 );
+        tmp140__ |= ( pSrc->acvo_acm << 4 );
+        tmp140__ |= ( pSrc->acvo_aci << 5 );
+        tmp140__ |= ( pSrc->unused4 << 7 );
         if (unlikely(nBuf < 1))
             return DOT11F_INCOMPLETE_IE;
 
         *pBuf = tmp140__;
+        *pnConsumed += 1;
+        pBuf += 1;
+        nBuf -=  1 ;
+        tmp141__ = 0U;
+        tmp141__ |= ( pSrc->acvo_acwmin << 0 );
+        tmp141__ |= ( pSrc->acvo_acwmax << 4 );
+        *pBuf = tmp141__;
         *pnConsumed += 1;
         pBuf += 1;
         nBuf -=  1 ;
@@ -32983,7 +33184,7 @@ tANI_U32 dot11fPackIefils_indication(tpAniSirGlobal pCtx,
     tANI_U8* pIeLen = 0;
     tANI_U32 nConsumedOnEntry = *pnConsumed;
     tANI_U32 nNeeded = 0U;
-    tANI_U16 tmp141__;
+    tANI_U16 tmp142__;
     nNeeded  +=  (pSrc->num_variable_data + 2);
     while ( pSrc->present )
     {
@@ -32992,17 +33193,17 @@ tANI_U32 dot11fPackIefils_indication(tpAniSirGlobal pCtx,
         ++pBuf; ++(*pnConsumed);
         pIeLen = pBuf;
         ++pBuf; ++(*pnConsumed);
-        tmp141__ = 0U;
-        tmp141__ |= ( pSrc->public_key_identifiers_cnt << 0 );
-        tmp141__ |= ( pSrc->realm_identifiers_cnt << 3 );
-        tmp141__ |= ( pSrc->is_ip_config_supported << 6 );
-        tmp141__ |= ( pSrc->is_cache_id_present << 7 );
-        tmp141__ |= ( pSrc->is_hessid_present << 8 );
-        tmp141__ |= ( pSrc->is_fils_sk_auth_supported << 9 );
-        tmp141__ |= ( pSrc->is_fils_sk_auth_pfs_supported << 10 );
-        tmp141__ |= ( pSrc->is_pk_auth_supported << 11 );
-        tmp141__ |= ( pSrc->reserved << 12 );
-        frameshtons(pCtx, pBuf, tmp141__, 0);
+        tmp142__ = 0U;
+        tmp142__ |= ( pSrc->public_key_identifiers_cnt << 0 );
+        tmp142__ |= ( pSrc->realm_identifiers_cnt << 3 );
+        tmp142__ |= ( pSrc->is_ip_config_supported << 6 );
+        tmp142__ |= ( pSrc->is_cache_id_present << 7 );
+        tmp142__ |= ( pSrc->is_hessid_present << 8 );
+        tmp142__ |= ( pSrc->is_fils_sk_auth_supported << 9 );
+        tmp142__ |= ( pSrc->is_fils_sk_auth_pfs_supported << 10 );
+        tmp142__ |= ( pSrc->is_pk_auth_supported << 11 );
+        tmp142__ |= ( pSrc->reserved << 12 );
+        frameshtons(pCtx, pBuf, tmp142__, 0);
         *pnConsumed += 2;
         pBuf += 2;
         nBuf -=  2 ;
@@ -33216,6 +33417,69 @@ tANI_U32 dot11fPackIefils_wrapped_data(tpAniSirGlobal pCtx,
     }
     return DOT11F_PARSE_SUCCESS;
 } /* End dot11fPackIefils_wrapped_data. */
+
+tANI_U32 dot11fPackIehs20vendor_ie(tpAniSirGlobal pCtx,
+                                   tDot11fIEhs20vendor_ie *pSrc,
+                                   tANI_U8 *pBuf,
+                                   tANI_U32 nBuf,
+                                   tANI_U32 *pnConsumed)
+{
+    tANI_U8* pIeLen = 0;
+    tANI_U32 nConsumedOnEntry = *pnConsumed;
+    tANI_U32 nNeeded = 0U;
+    tANI_U8 tmp143__;
+    tANI_U32 status = DOT11F_PARSE_SUCCESS;
+    status = dot11fGetPackedIEhs20vendor_ie(pCtx, pSrc, &nNeeded);
+    if ( ! DOT11F_SUCCEEDED( status ) ) return status;
+    while ( pSrc->present )
+    {
+        if ( nNeeded > nBuf ) return DOT11F_BUFFER_OVERFLOW;
+        *pBuf = 221;
+        ++pBuf; ++(*pnConsumed);
+        pIeLen = pBuf;
+        ++pBuf; ++(*pnConsumed);
+        *pBuf = 0x50;
+        ++pBuf; ++(*pnConsumed);
+        *pBuf = 0x6f;
+        ++pBuf; ++(*pnConsumed);
+        *pBuf = 0x9a;
+        ++pBuf; ++(*pnConsumed);
+        *pBuf = 0x10;
+        ++pBuf; ++(*pnConsumed);
+        tmp143__ = 0U;
+        tmp143__ |= ( pSrc->dgaf_dis << 0 );
+        tmp143__ |= ( pSrc->hs_id_present << 1 );
+        tmp143__ |= ( pSrc->reserved << 3 );
+        tmp143__ |= ( pSrc->release_num << 4 );
+        *pBuf = tmp143__;
+        *pnConsumed += 1;
+        pBuf += 1;
+        nBuf -=  1 ;
+        if ( pSrc->hs_id_present )        {
+            switch (pSrc->hs_id_present)
+            {
+                case 1:
+                    frameshtons(pCtx, pBuf, pSrc->hs_id.pps_mo.pps_mo_id, 0);
+                    *pnConsumed += 2;
+                    // fieldsEndFlag = 1
+                break;
+                case 2:
+                    frameshtons(pCtx, pBuf, pSrc->hs_id.anqp_domain.anqp_domain_id, 0);
+                    *pnConsumed += 2;
+                    // fieldsEndFlag = 1
+                break;
+            }
+        }
+        else break;
+        break;
+    }
+    (void)pCtx;
+    if (pIeLen)
+    {
+        *pIeLen = *pnConsumed - nConsumedOnEntry - 2;
+    }
+    return status;
+} /* End dot11fPackIehs20vendor_ie. */
 
 tANI_U32 dot11fPackIesec_chan_offset_ele(tpAniSirGlobal pCtx,
                                          tDot11fIEsec_chan_offset_ele *pSrc,
@@ -34381,6 +34645,27 @@ tANI_U32 dot11fPackAssocRequest(tpAniSirGlobal pCtx, tDot11fAssocRequest *pFrm, 
             {
                 FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), ( tANI_U8* )&pFrm->QComVendorIE.Sub20Info.capability, 1);
                 FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), ( tANI_U8* )&pFrm->QComVendorIE.Sub20Info.csa_chanwidth, 1);
+            }
+        }
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("hs20vendor_ie:\n"));
+        if (!pFrm->hs20vendor_ie.present)
+        {
+            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("Not present.\n"));
+        }
+        else
+        {
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("dgaf_dis (1): %d\n"), pFrm->hs20vendor_ie.dgaf_dis);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("hs_id_present (2): %d\n"), pFrm->hs20vendor_ie.hs_id_present);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("reserved (1): %d\n"), pFrm->hs20vendor_ie.reserved);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("release_num (4): %d\n"), pFrm->hs20vendor_ie.release_num);
+            switch (pFrm->hs20vendor_ie.hs_id_present)
+            {
+                case 1:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.pps_mo.pps_mo_id, 2);
+                break;
+                case 2:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.anqp_domain.anqp_domain_id, 2);
+                break;
             }
         }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_ASSOCREQUEST), FRFL("to:\n"));
@@ -36809,6 +37094,27 @@ tANI_U32 dot11fPackBeacon(tpAniSirGlobal pCtx, tDot11fBeacon *pFrm, tANI_U8 *pBu
         else
         {
         }
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("hs20vendor_ie:\n"));
+        if (!pFrm->hs20vendor_ie.present)
+        {
+            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("Not present.\n"));
+        }
+        else
+        {
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("dgaf_dis (1): %d\n"), pFrm->hs20vendor_ie.dgaf_dis);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("hs_id_present (2): %d\n"), pFrm->hs20vendor_ie.hs_id_present);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("reserved (1): %d\n"), pFrm->hs20vendor_ie.reserved);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("release_num (4): %d\n"), pFrm->hs20vendor_ie.release_num);
+            switch (pFrm->hs20vendor_ie.hs_id_present)
+            {
+                case 1:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.pps_mo.pps_mo_id, 2);
+                break;
+                case 2:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.anqp_domain.anqp_domain_id, 2);
+                break;
+            }
+        }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("ChannelSwitchWrapper:\n"));
         if (!pFrm->ChannelSwitchWrapper.present)
         {
@@ -37759,6 +38065,27 @@ tANI_U32 dot11fPackBeacon2(tpAniSirGlobal pCtx, tDot11fBeacon2 *pFrm, tANI_U8 *p
         }
         else
         {
+        }
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("hs20vendor_ie:\n"));
+        if (!pFrm->hs20vendor_ie.present)
+        {
+            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("Not present.\n"));
+        }
+        else
+        {
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("dgaf_dis (1): %d\n"), pFrm->hs20vendor_ie.dgaf_dis);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("hs_id_present (2): %d\n"), pFrm->hs20vendor_ie.hs_id_present);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("reserved (1): %d\n"), pFrm->hs20vendor_ie.reserved);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("release_num (4): %d\n"), pFrm->hs20vendor_ie.release_num);
+            switch (pFrm->hs20vendor_ie.hs_id_present)
+            {
+                case 1:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.pps_mo.pps_mo_id, 2);
+                break;
+                case 2:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.anqp_domain.anqp_domain_id, 2);
+                break;
+            }
         }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("ChannelSwitchWrapper:\n"));
         if (!pFrm->ChannelSwitchWrapper.present)
@@ -38891,6 +39218,27 @@ tANI_U32 dot11fPackBeaconIEs(tpAniSirGlobal pCtx, tDot11fBeaconIEs *pFrm, tANI_U
         }
         else
         {
+        }
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("hs20vendor_ie:\n"));
+        if (!pFrm->hs20vendor_ie.present)
+        {
+            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("Not present.\n"));
+        }
+        else
+        {
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("dgaf_dis (1): %d\n"), pFrm->hs20vendor_ie.dgaf_dis);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("hs_id_present (2): %d\n"), pFrm->hs20vendor_ie.hs_id_present);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("reserved (1): %d\n"), pFrm->hs20vendor_ie.reserved);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("release_num (4): %d\n"), pFrm->hs20vendor_ie.release_num);
+            switch (pFrm->hs20vendor_ie.hs_id_present)
+            {
+                case 1:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.pps_mo.pps_mo_id, 2);
+                break;
+                case 2:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.anqp_domain.anqp_domain_id, 2);
+                break;
+            }
         }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("ChannelSwitchWrapper:\n"));
         if (!pFrm->ChannelSwitchWrapper.present)
@@ -41973,6 +42321,27 @@ tANI_U32 dot11fPackProbeResponse(tpAniSirGlobal pCtx, tDot11fProbeResponse *pFrm
         else
         {
         }
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("hs20vendor_ie:\n"));
+        if (!pFrm->hs20vendor_ie.present)
+        {
+            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("Not present.\n"));
+        }
+        else
+        {
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("dgaf_dis (1): %d\n"), pFrm->hs20vendor_ie.dgaf_dis);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("hs_id_present (2): %d\n"), pFrm->hs20vendor_ie.hs_id_present);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("reserved (1): %d\n"), pFrm->hs20vendor_ie.reserved);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("release_num (4): %d\n"), pFrm->hs20vendor_ie.release_num);
+            switch (pFrm->hs20vendor_ie.hs_id_present)
+            {
+                case 1:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.pps_mo.pps_mo_id, 2);
+                break;
+                case 2:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.anqp_domain.anqp_domain_id, 2);
+                break;
+            }
+        }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("ChannelSwitchWrapper:\n"));
         if (!pFrm->ChannelSwitchWrapper.present)
         {
@@ -43235,6 +43604,27 @@ tANI_U32 dot11fPackReAssocRequest(tpAniSirGlobal pCtx, tDot11fReAssocRequest *pF
             {
                 FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), ( tANI_U8* )&pFrm->QComVendorIE.Sub20Info.capability, 1);
                 FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), ( tANI_U8* )&pFrm->QComVendorIE.Sub20Info.csa_chanwidth, 1);
+            }
+        }
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("hs20vendor_ie:\n"));
+        if (!pFrm->hs20vendor_ie.present)
+        {
+            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("Not present.\n"));
+        }
+        else
+        {
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("dgaf_dis (1): %d\n"), pFrm->hs20vendor_ie.dgaf_dis);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("hs_id_present (2): %d\n"), pFrm->hs20vendor_ie.hs_id_present);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("reserved (1): %d\n"), pFrm->hs20vendor_ie.reserved);
+            FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("release_num (4): %d\n"), pFrm->hs20vendor_ie.release_num);
+            switch (pFrm->hs20vendor_ie.hs_id_present)
+            {
+                case 1:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.pps_mo.pps_mo_id, 2);
+                break;
+                case 2:
+                    FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), ( tANI_U8* )&pFrm->hs20vendor_ie.hs_id.anqp_domain.anqp_domain_id, 2);
+                break;
             }
         }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_REASSOCREQUEST), FRFL("to:\n"));
@@ -46487,7 +46877,7 @@ static tANI_U32 PackCore(tpAniSirGlobal pCtx,
     }
 
     pIe = &( IEs[0] );
-    while (0xff != pIe->eid || pIe->extn_eid)
+    while ( 0xff != pIe->eid || pIe->extn_eid)
     {
         pfFound = (tFRAMES_BOOL*)(pSrc + pIe->offset + 
                                   pIe->presenceOffset);
@@ -46931,6 +47321,9 @@ static tANI_U32 PackCore(tpAniSirGlobal pCtx,
                         break;
                     case SigIefils_wrapped_data:
                         status |= dot11fPackIefils_wrapped_data(pCtx, ( tDot11fIEfils_wrapped_data* )(pSrc + pIe->offset + sizeof(tDot11fIEfils_wrapped_data) * i ),  pBufRemaining, nBufRemaining, &len);
+                        break;
+                    case SigIehs20vendor_ie:
+                        status |= dot11fPackIehs20vendor_ie(pCtx, ( tDot11fIEhs20vendor_ie* )(pSrc + pIe->offset + sizeof(tDot11fIEhs20vendor_ie) * i ),  pBufRemaining, nBufRemaining, &len);
                         break;
                     case SigIesec_chan_offset_ele:
                         status |= dot11fPackIesec_chan_offset_ele(pCtx, ( tDot11fIEsec_chan_offset_ele* )(pSrc + pIe->offset + sizeof(tDot11fIEsec_chan_offset_ele) * i ),  pBufRemaining, nBufRemaining, &len);
