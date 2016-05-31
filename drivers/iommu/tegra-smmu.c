@@ -902,11 +902,23 @@ static int smmu_iommu_attach_dev(struct iommu_domain *domain,
 	struct smmu_as *as = domain->priv;
 	struct smmu_device *smmu = as->smmu;
 	struct smmu_client *client, *c;
+	unsigned long swgroups[2];
 	int err;
 
 	client = find_smmu_client(smmu, dev->of_node);
-	if (!client)
-		return -ENOMEM;
+	if (!client) {
+		err = smmu_of_get_swgroups(dev, swgroups);
+		if (err)
+			return -ENODEV;
+
+		err = register_smmu_client(smmu_handle, dev, swgroups);
+		if (err) {
+			dev_err(dev, "failed to add client %s\n", dev_name(dev));
+			return -EINVAL;
+		}
+
+		client = find_smmu_client(smmu, dev->of_node);
+	}
 
 	client->as = as;
 	err = smmu_client_enable_swgroups(client, client->swgroups);
@@ -1062,10 +1074,18 @@ enum {
 	NUM_OF_STATIC_MAPS,
 };
 
+/*
+ * Some smmu clients handle IOMMU stuffs by themselves.
+ * So we reserve some AS for them here.
+ * Currently we reserve 1 AS for TegraDRM.
+ */
+#define NUM_OF_RESERVED_AS	1
+
 int tegra_smmu_get_asid(struct device *dev)
 {
 	int err;
 	unsigned long swgroups[2];
+	struct smmu_client *client = NULL;
 
 	err = smmu_of_get_swgroups(dev, swgroups);
 	if (err) {
@@ -1078,7 +1098,9 @@ int tegra_smmu_get_asid(struct device *dev)
 	else if (test_bit(TEGRA_SWGROUP_AVPC, swgroups))
 		return SYSTEM_AVPC;
 
-	return SYSTEM_DEFAULT;
+	client = find_smmu_client(smmu_handle, dev->of_node);
+	BUG_ON(!client || !client->as);
+	return client->as->asid;
 }
 EXPORT_SYMBOL(tegra_smmu_get_asid);
 
@@ -1087,18 +1109,23 @@ static int smmu_iommu_bound_driver(struct device *dev)
 	int err;
 	unsigned long swgroups[2];
 	struct dma_iommu_mapping *map = NULL;
+	struct smmu_client *client = NULL;
 
 	err = smmu_of_get_swgroups(dev, swgroups);
 	if (err)
 		return -ENODEV;
 
-	if (!find_smmu_client(smmu_handle, dev->of_node)) {
+	client = find_smmu_client(smmu_handle, dev->of_node);
+	if (!client) {
 		err = register_smmu_client(smmu_handle, dev, swgroups);
 		if (err) {
 			dev_err(dev, "failed to add client %s\n",
 				dev_name(dev));
 			return -EINVAL;
 		}
+	} else if (client->as) {
+		/* This smmu client calls iommu_attach_device itself. */
+		return 0;
 	}
 
 	if (test_bit(TEGRA_SWGROUP_PPCS, swgroups))
@@ -1485,7 +1512,7 @@ static void tegra_smmu_create_default_map(struct smmu_device *smmu)
 {
 	int i;
 
-	for (i = 0; i < smmu->num_as; i++) {
+	for (i = 0; i < (smmu->num_as - NUM_OF_RESERVED_AS); i++) {
 		dma_addr_t base = smmu->iovmm_base;
 		size_t size = smmu->page_count << PAGE_SHIFT;
 

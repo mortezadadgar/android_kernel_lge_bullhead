@@ -25,8 +25,8 @@ struct tegra_drm_file {
 };
 
 static struct platform_device *tegra_drm_pdev;
-
 static struct drm_driver tegra_drm_driver;
+struct iommu_domain *tegradrm_iommu_domain;
 
 static int tegra_drm_load(struct drm_device *drm, unsigned long flags)
 {
@@ -38,16 +38,8 @@ static int tegra_drm_load(struct drm_device *drm, unsigned long flags)
 	if (!tegra)
 		return -ENOMEM;
 
-	if (iommu_present(&platform_bus_type)) {
-		tegra->domain = iommu_domain_alloc(&platform_bus_type);
-		if (IS_ERR(tegra->domain)) {
-			err = PTR_ERR(tegra->domain);
-			goto free;
-		}
-
-		DRM_DEBUG("IOMMU context initialized\n");
-		drm_mm_init(&tegra->mm, 0, SZ_2G);
-	}
+	tegra->domain = tegradrm_iommu_domain;
+	drm_mm_init(&tegra->mm, 0, SZ_2G);
 
 	dev_set_drvdata(drm->dev, tegra);
 	mutex_init(&tegra->clients_lock);
@@ -93,12 +85,8 @@ fbdev:
 	tegra_drm_fb_free(drm);
 config:
 	drm_mode_config_cleanup(drm);
-
-	if (tegra->domain) {
-		iommu_domain_free(tegra->domain);
+	if (tegra->domain)
 		drm_mm_takedown(&tegra->mm);
-	}
-free:
 	kfree(tegra);
 	return err;
 }
@@ -115,10 +103,9 @@ static int tegra_drm_unload(struct drm_device *drm)
 
 	drm_host1x_exit(&tegra_drm_driver, device);
 
-	if (tegra->domain) {
-		iommu_domain_free(tegra->domain);
+	if (tegra->domain)
 		drm_mm_takedown(&tegra->mm);
-	}
+	kfree(tegra);
 
 	return 0;
 }
@@ -744,6 +731,18 @@ static int __init host1x_drm_init(void)
 {
 	int err;
 
+	/*
+	 * Will get the last smmu AS here because smmu probes before tegradrm.
+	 * And smmu driver will allocate (num_as - NUM_OF_RESERVED_AS) domains when probe.
+	 */
+	if (iommu_present(&platform_bus_type)) {
+		tegradrm_iommu_domain = iommu_domain_alloc(&platform_bus_type);
+		if (IS_ERR(tegradrm_iommu_domain)) {
+			err = PTR_ERR(tegradrm_iommu_domain);
+			return err;
+		}
+	}
+
 	err = platform_driver_register(&tegra_dpaux_driver);
 	if (err < 0)
 		goto out;
@@ -797,6 +796,9 @@ static void __exit host1x_drm_exit(void)
 	platform_driver_unregister(&tegra_sor_driver);
 	platform_driver_unregister(&tegra_dc_driver);
 	platform_driver_unregister(&tegra_dpaux_driver);
+
+	if (tegradrm_iommu_domain)
+		iommu_domain_free(tegradrm_iommu_domain);
 }
 module_exit(host1x_drm_exit);
 
