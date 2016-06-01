@@ -634,6 +634,45 @@ static int tegra_dc_cursor_set2(struct drm_crtc *crtc, struct drm_file *file,
 #ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
 		unsigned long high = (bo->paddr & 0xfffffffc) >> 32;
 #endif
+		int i;
+
+		if (!dc->shadow_cursor)
+			dc->shadow_cursor =
+				tegra_bo_create(crtc->dev, bo->size, 0);
+
+		if (dc->shadow_cursor->size < bo->size) {
+			drm_gem_object_release(&bo->gem);
+			kfree(bo);
+			dc->shadow_cursor =
+				tegra_bo_create(crtc->dev, bo->size, 0);
+		}
+
+		/* Convert DRM_FORMAT_ARGB8888 to DRM_FORMAT_RGBA8888 */
+		for (i = 0; i < bo->num_pages; i++) {
+			void *c_addr, *s_addr;
+			int j;
+
+			c_addr = kmap(bo->pages[i]);
+			if (!c_addr)
+				return -ENOMEM;
+
+			s_addr = kmap(dc->shadow_cursor->pages[i]);
+			if (!s_addr) {
+				kunmap(bo->pages[i]);
+				return -ENOMEM;
+			}
+
+			for (j = 0; j < PAGE_SIZE / 4; j++)
+				asm volatile ("ROR %[Rd], %[Rs], %[Imm]" :
+					      [Rd] "=r" (*((int *)s_addr + j)) :
+					      [Rs] "r" (*((int *)c_addr + j)),
+					      [Imm] "i" (24));
+
+			kunmap(bo->pages[i]);
+			kunmap(dc->shadow_cursor->pages[i]);
+		}
+
+		addr = (dc->shadow_cursor->paddr & 0xfffffc00) >> 10;
 
 		tegra_dc_writel(dc, value | addr, DC_DISP_CURSOR_START_ADDR);
 

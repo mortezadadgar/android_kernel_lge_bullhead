@@ -126,6 +126,7 @@ struct tegra_dc {
 	const struct tegra_dc_soc_info *soc;
 
 	struct iommu_domain *domain;
+	struct tegra_bo *shadow_cursor;
 };
 
 static inline struct tegra_dc *
