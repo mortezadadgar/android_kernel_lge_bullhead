@@ -88,7 +88,7 @@ enum iwl_nan_subcmd_ids {
  * @cluster_id: cluster id, if 0 the fw will choose one for us.
  * @dual_band: enables dual band operation.
  * @beacon_template_id: beacon template id for NAN
- * @nan_state: nan state (DEBUG)
+ * @nan_state: NAN state (DEBUG)
  * @chan24: override default 2.4GHz channel (DEBUG)
  * @chan52: override default 5.2GHz channel (DEBUG)
  * @hop_count: fake hop count (DEBUG)
@@ -262,7 +262,7 @@ enum iwl_fw_config_flags {
  *
  * @id_n_color: id and color of the mac used for further availability
  * @faw_ci: channel to be available on
- * @type: type of post nan availability (enum %iwl_fw_post_nan_type)
+ * @type: type of post NAN availability (enum %iwl_fw_post_nan_type)
  * @slots: number of 16TU slots to be available on (should be < 32)
  * @flags: NAN_FAW_FLAG_*
  * @op_class: operating class which corresponds to faw_ci
