@@ -2,6 +2,9 @@
 # Makefile for the linux memory manager.
 #
 
+# Since __builtin_frame_address does work as used, disable the warning.
+CFLAGS_usercopy.o += $(call cc-disable-warning, frame-address)
+
 mmu-y			:= nommu.o
 mmu-$(CONFIG_MMU)	:= fremap.o highmem.o madvise.o memory.o mincore.o \
 			   mlock.o mmap.o mprotect.o mremap.o msync.o rmap.o \
@@ -66,3 +69,4 @@ obj-$(CONFIG_GENERIC_EARLY_IOREMAP) += early_ioremap.o
 obj-$(CONFIG_ZPOOL)	+= zpool.o
 obj-$(CONFIG_ZSMALLOC)	+= zsmalloc.o
 CFLAGS_kmemleak.o += -DCONFIG_DEBUG_FS
+obj-$(CONFIG_HARDENED_USERCOPY) += usercopy.o
