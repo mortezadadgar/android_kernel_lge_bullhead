@@ -360,6 +360,7 @@ iwl_mvm_tof_set_responder(struct iwl_mvm *mvm,
 	/* By default it's 0 - IWL_TOF_ALGO_TYPE_MAX_LIKE */
 	cmd->algo_type = mvm->tof_data.tof_algo_type;
 	cmd->asap_mode = iwlmvm_mod_params.ftm_resp_asap;
+	cmd->notify_mcsi = IWL_TOF_MCSI_ENABLED;
 }
 
 int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
@@ -578,6 +579,7 @@ int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
 
 		/* By default it's 0 - IWL_TOF_ALGO_TYPE_MAX_LIKE */
 		cmd_target->algo_type = mvm->tof_data.tof_algo_type;
+		cmd_target->notify_mcsi = IWL_TOF_MCSI_ENABLED;
 	}
 
 	mvm->tof_data.active_cookie = cookie;
@@ -618,12 +620,12 @@ static void iwl_mvm_debug_range_req(struct iwl_mvm *mvm)
 	IWL_DEBUG_INFO(mvm,
 		       "Sending FTM request, params:\n  request id: %hhu\n"
 		       "  initiator: %hhu\n  OSLD: %hhu\n  TO: %hhu\n"
-		       "  report policy: %hhu\n  LDD: %hhu\n"
+		       "  report policy: %hhu\n"
 		       "  num of aps: %hhu\n  mac rand: %hhu\n"
 		       "  mac temp: %pM\n  mac mask: %pM\n",
 		       req->request_id, req->initiator,
 		       req->one_sided_los_disable, req->req_timeout,
-		       req->report_policy, req->los_det_disable, req->num_of_ap,
+		       req->report_policy, req->num_of_ap,
 		       req->macaddr_random, req->macaddr_template,
 		       req->macaddr_mask);
 
@@ -639,13 +641,15 @@ static void iwl_mvm_debug_range_req(struct iwl_mvm *mvm)
 			       "    samples/burst: %hhu\n"
 			       "    retries/sample: %hhu\n    tsf delta: %u\n"
 			       "    location: %hhu\n    asap: %hhu\n"
-			       "    dyn ack: %hhu\n    rssi: %hhd\n",
+			       "    dyn ack: %hhu\n    rssi: %hhd\n"
+			       "    notify MCSI: %hhu\n",
 			       i, ap.channel_num, ap.bandwidth, ap.tsf_delta,
 			       ap.ctrl_ch_position, ap.bssid, ap.measure_type,
 			       ap.num_of_bursts, le16_to_cpu(ap.burst_period),
 			       ap.samples_per_burst, ap.retries_per_sample,
 			       le32_to_cpu(ap.tsf_delta), ap.location_req,
-			       ap.asap_mode, ap.enable_dyn_ack, ap.rssi);
+			       ap.asap_mode, ap.enable_dyn_ack, ap.rssi,
+			       ap.notify_mcsi);
 	}
 }
 
@@ -853,13 +857,10 @@ iwl_mvm_get_target_status(enum iwl_tof_entry_status status)
 	switch (status) {
 	case IWL_TOF_ENTRY_SUCCESS:
 		return NL80211_FTM_RESP_SUCCESS;
-	case IWL_TOF_ENTRY_NOT_MEASURED:
+	case IWL_TOF_ENTRY_TIMING_MEASURE_TIMEOUT:
 		return NL80211_FTM_RESP_NOT_MEASURED;
-	case IWL_TOF_ENTRY_UNAVAILABLE:
+	case IWL_TOF_ENTRY_NO_RESPONSE:
 		return NL80211_FTM_RESP_TARGET_UNAVAILABLE;
-	case IWL_TOF_ENTRY_PROTOCOL_ERR:
-	case IWL_TOF_ENTRY_INTERNAL_ERR:
-	case IWL_TOF_ENTRY_INVALID:
 	default:
 		return NL80211_FTM_RESP_FAIL;
 	}

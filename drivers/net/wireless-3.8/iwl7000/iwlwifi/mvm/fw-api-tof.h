@@ -119,6 +119,14 @@ enum iwl_tof_algo_type {
 	IWL_TOF_ALGO_TYPE_INVALID,
 }; /* ALGO_TYPE_E */
 
+/*
+ * enum iwl_tof_mcsi_ntfy - Enable/Disable MCSI notifications
+ */
+enum iwl_tof_mcsi_ntfy {
+	IWL_TOF_MCSI_DISABLED = 0,
+	IWL_TOF_MCSI_ENABLED = 1,
+};
+
 /**
  * struct iwl_tof_responder_config_cmd - ToF AP mode (for debug)
  * @burst_period: future use: (currently hard coded in the LMAC)
@@ -158,7 +166,7 @@ enum iwl_tof_algo_type {
  *		to this field
  * @bssid: Current AP BSSID
  * @algo_type: &enum iwl_tof_algo_type
- * @reserved: For alignment and future use
+ * @notify_mcsi: &enum iwl_tof_mcsi_ntfy.
  */
 struct iwl_tof_responder_config_cmd {
 	__le32 sub_grp_cmd_id;
@@ -181,7 +189,7 @@ struct iwl_tof_responder_config_cmd {
 	__le16 toa_offset;
 	u8 bssid[ETH_ALEN];
 	u8 algo_type;
-	u8 reserved;
+	u8 notify_mcsi;
 } __packed; /* TOF_RESPONDER_CONFIG_CMD_API_S_VER_4 */
 
 /**
@@ -268,6 +276,7 @@ enum iwl_tof_location_query {
  * @rssi: Last received value
  *	  leagal values: -128-0 (0x7f). above 0x0 indicating an invalid value.
  * @algo_type: &enum iwl_tof_algo_type
+ * @notify_mcsi: &enum iwl_tof_mcsi_ntfy.
  * @reserved: For alignment and future use
  */
 struct iwl_tof_range_req_ap_entry {
@@ -287,8 +296,9 @@ struct iwl_tof_range_req_ap_entry {
 	u8 enable_dyn_ack;
 	s8 rssi;
 	u8 algo_type;
-	u8 reserved[3];
-} __packed; /* LOCATION_RANGE_REQ_AP_ENTRY_CMD_API_S_VER_2 */
+	u8 notify_mcsi;
+	u16 reserved;
+} __packed; /* LOCATION_RANGE_REQ_AP_ENTRY_CMD_API_S_VER_3 */
 
 /**
  * enum iwl_tof_response_mode
@@ -333,13 +343,13 @@ struct iwl_tof_range_req_cmd {
 	u8 one_sided_los_disable;
 	u8 req_timeout;
 	u8 report_policy;
-	u8 los_det_disable;
+	u8 reserved0;
 	u8 num_of_ap;
 	u8 macaddr_random;
 	u8 range_req_bssid[ETH_ALEN];
 	u8 macaddr_template[ETH_ALEN];
 	u8 macaddr_mask[ETH_ALEN];
-	u16 reserved;
+	u16 reserved1;
 	struct iwl_tof_range_req_ap_entry ap[IWL_MVM_TOF_MAX_APS];
 } __packed;
 
@@ -355,20 +365,47 @@ struct iwl_tof_gen_resp_cmd {
  * enum iwl_tof_entry_status
  *
  * @IWL_TOF_ENTRY_SUCCESS: successful measurement.
- * @IWL_TOF_ENTRY_NOT_MEASURED: not measured due to timeout/abort.
- * @IWL_TOF_ENTRY_UNAVAILABLE: peer is unavailable.
- * @IWL_TOF_ENTRY_PROTOCOL_ERR: fail due to protocol error.
- * @IWL_TOF_ENTRY_INTERNAL_ERR: fail due to internal error.
- * @IWL_TOF_ENTRY_INVALID: request received in an invalid state.
+ * @IWL_TOF_ENTRY_GENERAL_FAILURE: General failure.
+ * @IWL_TOF_ENTRY_NO_RESPONSE: Responder didn't reply to the request.
+ * @IWL_TOF_ENTRY_REQUEST_REJECTED: Responder rejected the request.
+ * @IWL_TOF_ENTRY_NOT_SCHEDULED: Time event was scheduled but not called yet.
+ * @IWL_TOF_ENTRY_TIMING_MEASURE_TIMEOUT: Time event triggered but no
+ *	measurement was completed.
+ * @IWL_TOF_ENTRY_TARGET_DIFF_CH_CANNOT_CHANGE: No range due inability to switch
+ *	from the primary channel.
+ * @IWL_TOF_ENTRY_RANGE_NOT_SUPPORTED: Device doesn't support FTM.
+ * @IWL_TOF_ENTRY_REQUEST_ABORT_UNKNOWN_REASON: Request aborted due to unknown
+ *	reason.
+ * @IWL_TOF_ENTRY_LOCATION_INVALID_T1_T4_TIME_STAMP: Failure due to invalid
+ *	T1/T4.
+ * @IWL_TOF_ENTRY_11MC_PROTOCOL_FAILURE: Failure due to invalid FTM frame
+ *	structure.
+ * @IWL_TOF_ENTRY_REQUEST_CANNOT_SCHED: Request cannot be scheduled.
+ * @IWL_TOF_ENTRY_RESPONDER_CANNOT_COLABORATE: Responder cannot serve the
+ *	initiator for some period, period supplied in @refusal_period.
+ * @IWL_TOF_ENTRY_BAD_REQUEST_ARGS: Bad request arguments.
+ * @IWL_TOF_ENTRY_WIFI_NOT_ENABLED: Wifi not enabled.
+ * @IWL_TOF_ENTRY_RESPONDER_OVERRIDE_PARAMS: Responder override the original
+ *	parameters within the current session.
  */
 enum iwl_tof_entry_status {
-	IWL_TOF_ENTRY_SUCCESS,
-	IWL_TOF_ENTRY_NOT_MEASURED,
-	IWL_TOF_ENTRY_UNAVAILABLE,
-	IWL_TOF_ENTRY_PROTOCOL_ERR,
-	IWL_TOF_ENTRY_INTERNAL_ERR,
-	IWL_TOF_ENTRY_INVALID = 0xff,
-}; /* LOCATION_MEASUREMENT_STATUS */
+	IWL_TOF_ENTRY_SUCCESS = 0,
+	IWL_TOF_ENTRY_GENERAL_FAILURE = 1,
+	IWL_TOF_ENTRY_NO_RESPONSE = 2,
+	IWL_TOF_ENTRY_REQUEST_REJECTED = 3,
+	IWL_TOF_ENTRY_NOT_SCHEDULED = 4,
+	IWL_TOF_ENTRY_TIMING_MEASURE_TIMEOUT = 5,
+	IWL_TOF_ENTRY_TARGET_DIFF_CH_CANNOT_CHANGE = 6,
+	IWL_TOF_ENTRY_RANGE_NOT_SUPPORTED = 7,
+	IWL_TOF_ENTRY_REQUEST_ABORT_UNKNOWN_REASON = 8,
+	IWL_TOF_ENTRY_LOCATION_INVALID_T1_T4_TIME_STAMP = 9,
+	IWL_TOF_ENTRY_11MC_PROTOCOL_FAILURE = 10,
+	IWL_TOF_ENTRY_REQUEST_CANNOT_SCHED = 11,
+	IWL_TOF_ENTRY_RESPONDER_CANNOT_COLABORATE = 12,
+	IWL_TOF_ENTRY_BAD_REQUEST_ARGS = 13,
+	IWL_TOF_ENTRY_WIFI_NOT_ENABLED = 14,
+	IWL_TOF_ENTRY_RESPONDER_OVERRIDE_PARAMS = 15,
+}; /* LOCATION_RANGE_RSP_AP_ENTRY_NTFY_API_S_VER_2 */
 
 /**
  * struct iwl_tof_range_rsp_ap_entry_ntfy - AP parameters (response)
@@ -383,6 +420,8 @@ enum iwl_tof_entry_status {
  * @rssi: RSSI as uploaded in the Channel Estimation notification
  * @rssi_spread: The Difference between the maximum and the minimum RSSI values
  *	        measured for current AP in the current session
+ * @refusal_period: refusal period in case of
+ *	@IWL_TOF_ENTRY_RESPONDER_CANNOT_COLABORATE [sec]
  * @range: Measured range [cm]
  * @range_variance: Measured range variance [cm]
  * @timestamp: The GP2 Clock [usec] where Channel Estimation notification was
@@ -397,26 +436,27 @@ struct iwl_tof_range_rsp_ap_entry_ntfy {
 	__le32 rtt_spread;
 	s8 rssi;
 	u8 rssi_spread;
-	__le16 reserved;
+	u8 reserved;
+	u8 refusal_period;
 	__le32 range;
 	__le32 range_variance;
 	__le32 timestamp;
-} __packed;
+} __packed; /* LOCATION_RANGE_RSP_AP_ETRY_NTFY_API_S_VER_2 */
 
 /**
  * enum iwl_tof_response_status - tof response status
  *
- * @IWL_TOF_RESPONSE_SUCCESS: successful response.
+ * @IWL_TOF_RESPONSE_SUCCESS: successful range.
  * @IWL_TOF_RESPONSE_TIMEOUT: request aborted due to timeout expiration.
  *	partial result of ranges done so far is included in the response.
- * @IWL_TOF_RESPONSE_ABORTED: Aborted due to tof service unavailable.
- *	In case of one-sided, this also the status in case a nested request was
- *	sent.
+ * @IWL_TOF_RESPONSE_ABORTED: Measurement aborted by command.
+ * @IWL_TOF_RESPONSE_FAILED: Measurement request command failed.
  */
 enum iwl_tof_response_status {
-	IWL_TOF_RESPONSE_SUCCESS,
-	IWL_TOF_RESPONSE_TIMEOUT,
-	IWL_TOF_RESPONSE_ABORTED,
+	IWL_TOF_RESPONSE_SUCCESS = 0,
+	IWL_TOF_RESPONSE_TIMEOUT = 1,
+	IWL_TOF_RESPONSE_ABORTED = 4,
+	IWL_TOF_RESPONSE_FAILED  = 5,
 }; /* LOCATION_RNG_RSP_STATUS */
 
 /**
