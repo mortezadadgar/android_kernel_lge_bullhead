@@ -33,6 +33,15 @@
 			<  7102 /*  931 MHz */ >;
         };
 
+	qcom,gpu-bwmon {
+		compatible = "qcom,bimc-bwmon";
+		reg = <0xfc390000 0x300>, <0xfc381000 0x200>;
+		reg-names = "base", "global_base";
+		interrupts = <0 183 4>;
+		qcom,mport = <2>;
+		qcom,target-dev = <&gpubw>;
+	};
+
 	msm_gpu: qcom,kgsl-3d0@fdb00000 {
 		label = "kgsl-3d0";
 		compatible = "qcom,kgsl-3d0", "qcom,kgsl-3d";
@@ -49,6 +58,9 @@
 		qcom,idle-timeout = <80>; //msec
 		qcom,strtstp-sleepwake;
 
+		qcom,pm-qos-active-latency = <501>;
+		qcom,pm-qos-wakeup-latency = <101>;
+
 		/*
 		 * Clocks = KGSL_CLK_CORE | KGSL_CLK_IFACE
 		 * KGSL_CLK_RBBMTIMER
@@ -63,6 +75,7 @@
 		/* Bus Scale Settings */
                 qcom,gpubw-dev = <&gpubw>;
 		qcom,bus-control;
+		qcom,bus-width = <32>;
                 /*
                  * qcom,msm-bus structures below define
                  * GPU msm client and its vote data for
