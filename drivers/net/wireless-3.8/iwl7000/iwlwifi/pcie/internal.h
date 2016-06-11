@@ -566,20 +566,6 @@ static inline void iwl_enable_hw_int_msk_msix(struct iwl_trans *trans, u32 msk)
 	trans_pcie->hw_mask = msk;
 }
 
-static inline void iwl_enable_fw_load_int(struct iwl_trans *trans)
-{
-	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
-
-	IWL_DEBUG_ISR(trans, "Enabling FW load interrupt\n");
-	if (!trans_pcie->msix_enabled) {
-		trans_pcie->inta_mask = CSR_INT_BIT_FH_TX;
-		iwl_write32(trans, CSR_INT_MASK, trans_pcie->inta_mask);
-	} else {
-		iwl_enable_hw_int_msk_msix(trans,
-					   MSIX_FH_INT_CAUSES_D2S_CH0_NUM);
-	}
-}
-
 static inline void iwl_enable_rfkill_int(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
