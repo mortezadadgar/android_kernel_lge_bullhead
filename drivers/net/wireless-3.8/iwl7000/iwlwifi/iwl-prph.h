@@ -423,6 +423,7 @@ enum {
 };
 
 #define UREG_CHICK		(0xA05C00)
+#define UREG_CHICK_MSI_ENABLE	BIT(24)
 #define UREG_CHICK_MSIX_ENABLE	BIT(25)
 
 #define SD_REG_VER			0xA29600
