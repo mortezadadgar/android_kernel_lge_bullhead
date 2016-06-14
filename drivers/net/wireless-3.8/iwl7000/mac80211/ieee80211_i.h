@@ -823,11 +823,11 @@ struct ieee80211_if_mntr {
 /**
  * struct ieee80211_if_nan - NAN state
  *
- * @nan_conf: current nan configuration
+ * @nan_conf: current NAN configuration
  * @func_ids: a bitmap of available instance_id's
  */
 struct ieee80211_if_nan {
-	struct cfg80211_nan_conf nan_conf;
+	struct cfg80211_nan_conf conf;
 
 	/* protects function_inst_ids */
 	spinlock_t func_lock;

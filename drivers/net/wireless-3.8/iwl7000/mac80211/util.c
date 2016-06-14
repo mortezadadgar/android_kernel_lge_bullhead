@@ -1760,7 +1760,7 @@ static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
 	int res, id, i = 0;
 
 	res = drv_start_nan(sdata->local, sdata,
-			    &sdata->u.nan.nan_conf);
+			    &sdata->u.nan.conf);
 	if (WARN_ON(res))
 		return res;
 

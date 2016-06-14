@@ -159,7 +159,7 @@ static int ieee80211_start_nan(struct wiphy *wiphy,
 	if (ret)
 		ieee80211_sdata_stop(sdata);
 
-	memcpy(&sdata->u.nan.nan_conf, conf, sizeof(sdata->u.nan.nan_conf));
+	sdata->u.nan.conf = *conf;
 
 	return ret;
 }
@@ -192,7 +192,8 @@ static int ieee80211_nan_change_conf(struct wiphy *wiphy,
 	if (!ieee80211_sdata_running(sdata))
 		return -ENETDOWN;
 
-	memcpy(&new_conf, &sdata->u.nan.nan_conf, sizeof(new_conf));
+	new_conf = sdata->u.nan.conf;
+
 	if (changes & CFG80211_NAN_CONF_CHANGED_PREF)
 		new_conf.master_pref = conf->master_pref;
 
@@ -201,8 +202,7 @@ static int ieee80211_nan_change_conf(struct wiphy *wiphy,
 
 	ret = drv_nan_change_conf(sdata->local, sdata, &new_conf, changes);
 	if (!ret)
-		memcpy(&sdata->u.nan.nan_conf, &new_conf,
-		       sizeof(sdata->u.nan.nan_conf));
+		sdata->u.nan.conf = new_conf;
 
 	return ret;
 }

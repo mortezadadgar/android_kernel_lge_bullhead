@@ -3438,7 +3438,10 @@ enum ieee80211_reconfig_type {
  * @stop_nan: leave the NAN cluster.
  * @nan_change_conf: change NAN configuration. The data in cfg80211_nan_conf
  *	contains full new configuration and changes specify which parameters
- *	are changed with respect to the last nan config.
+ *	are changed with respect to the last NAN config.
+ *	The driver gets both full configuration and the changed parameters since
+ *	some devices may need the full configuration while others need only the
+ *	changed parameters.
  * @add_nan_func: Add a NAN function. Returns 0 on success. The data in
  *	cfg80211_nan_func must not be referenced outside the scope of
  *	this call.
@@ -3702,7 +3705,7 @@ struct ieee80211_ops {
 			struct ieee80211_vif *vif);
 	int (*nan_change_conf)(struct ieee80211_hw *hw,
 			       struct ieee80211_vif *vif,
-			       struct cfg80211_nan_conf *conf, u8 changes);
+			       struct cfg80211_nan_conf *conf, u32 changes);
 	int (*add_nan_func)(struct ieee80211_hw *hw,
 			    struct ieee80211_vif *vif,
 			    const struct cfg80211_nan_func *nan_func);
@@ -5801,7 +5804,7 @@ void ieee80211_nan_func_terminated(struct ieee80211_vif *vif,
 /**
  * ieee80211_nan_func_match - notify about NAN function match event.
  *
- * This function is used to notify mac80211 about nan function match. The
+ * This function is used to notify mac80211 about NAN function match. The
  * cookie inside the match struct will be assigned by mac80211.
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
