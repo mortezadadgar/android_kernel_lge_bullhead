@@ -29,6 +29,7 @@
 #include <linux/kmemleak.h>
 #include <asm/div64.h>
 
+#include <linux/msm_iommu_domains.h>
 #include <soc/qcom/event_timer.h>
 #include <linux/msm-bus.h>
 #include "mdss.h"
