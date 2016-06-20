@@ -975,7 +975,6 @@ static int iwl_mvm_config_ltr(struct iwl_mvm *mvm)
 				    sizeof(cmd), &cmd);
 }
 
-#ifdef CONFIG_ACPI
 #define ACPI_WRDS_METHOD	"WRDS"
 #define ACPI_WRDS_WIFI		(0x07)
 #define ACPI_WRDS_TABLE_SIZE	10
@@ -985,6 +984,7 @@ struct iwl_mvm_sar_table {
 	u8 values[ACPI_WRDS_TABLE_SIZE];
 };
 
+#ifdef CONFIG_ACPI
 static int iwl_mvm_sar_get_wrds(struct iwl_mvm *mvm, union acpi_object *wrds,
 				struct iwl_mvm_sar_table *sar_table)
 {
@@ -1085,11 +1085,11 @@ static int iwl_mvm_sar_get_table(struct iwl_mvm *mvm,
 }
 #else /* CONFIG_ACPI */
 static int iwl_mvm_sar_get_table(struct iwl_mvm *mvm,
-				 struct iwl_mvm_sar_table sar_table)
+				 struct iwl_mvm_sar_table *sar_table)
 {
 	return -ENOENT;
 }
-#endif
+#endif /* CONFIG_ACPI */
 
 static int iwl_mvm_sar_init(struct iwl_mvm *mvm)
 {
