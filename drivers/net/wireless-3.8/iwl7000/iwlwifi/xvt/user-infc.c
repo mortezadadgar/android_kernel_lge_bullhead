@@ -881,8 +881,6 @@ static int iwl_xvt_modulated_tx(struct iwl_xvt *xvt,
 	xvt->tot_tx = tx_req->times;
 	xvt->tx_counter = 0;
 	for (tx_count = 0; tx_count < tx_req->times; tx_count++) {
-		struct ieee80211_tx_info *info;
-
 		if (xvt->fw_error) {
 			IWL_ERR(xvt, "FW Error while sending Tx\n");
 			return -ENODEV;
@@ -893,7 +891,6 @@ static int iwl_xvt_modulated_tx(struct iwl_xvt *xvt,
 			return -ENOMEM;
 		}
 		memcpy(skb_put(skb, tx_req->len), tx_req->data, tx_req->len);
-		info = IEEE80211_SKB_CB(skb);
 
 		dev_cmd = iwl_xvt_set_mod_tx_params(xvt, skb,
 						    tx_req->sta_id,
@@ -935,7 +932,6 @@ static int iwl_xvt_modulated_tx(struct iwl_xvt *xvt,
 
 		local_bh_disable();
 
-		memset(info->driver_data, 0, sizeof(info->driver_data));
 		err = iwl_trans_tx(xvt->trans, skb, dev_cmd,
 				   IWL_XVT_DEFAULT_TX_QUEUE);
 

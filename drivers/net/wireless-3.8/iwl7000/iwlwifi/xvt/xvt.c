@@ -184,6 +184,8 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 	if (xvt->trans->cfg->mq_rx_supported)
 		trans_cfg.rx_buf_size = IWL_AMSDU_4K;
 
+	trans_cfg.cb_data_offs = 0;
+
 	/* Configure transport layer */
 	iwl_trans_configure(xvt->trans, &trans_cfg);
 	trans->command_groups = trans_cfg.command_groups;
