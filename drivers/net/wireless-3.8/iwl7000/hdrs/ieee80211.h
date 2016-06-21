@@ -2318,6 +2318,7 @@ enum ieee80211_sa_query_action {
 #define WLAN_AKM_SUITE_FT_OVER_SAE	0x000FAC09
 
 #define WLAN_MAX_KEY_LEN		32
+#define WLAN_PSK_LEN			32
 
 #define WLAN_PMKID_LEN			16
 
