@@ -1137,6 +1137,7 @@ struct iwl_mvm {
 #endif
 
 	u32 ciphers[IWL_MVM_NUM_CIPHERS];
+	struct ieee80211_cipher_scheme cs[IWL_UCODE_MAX_CS];
 	struct iwl_mvm_tof_data tof_data;
 
 #ifdef CPTCFG_IWLMVM_VENDOR_CMDS
