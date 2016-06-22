@@ -47,10 +47,14 @@ struct tegra_dpaux {
 	struct work_struct work;
 	struct list_head list;
 
+	bool enabled;
+
 	struct drm_minor *minor;
 	struct drm_info_list *debugfs_files;
 	struct dentry *debugfs;
 };
+
+int tegra_dpaux_enable(struct tegra_dpaux *dpaux);
 
 static inline struct tegra_dpaux *
 host1x_client_to_dpaux(struct host1x_client *client)
@@ -123,6 +127,7 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 	unsigned long status;
 	ssize_t ret = 0;
 	u32 value;
+	bool restore_dpaux_state = false;
 
 	/* Tegra has 4x4 byte DP AUX transmit and receive FIFOs. */
 	if (msg->size > 16)
@@ -184,6 +189,11 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 		return -EINVAL;
 	}
 
+	if (!dpaux->enabled) {
+		restore_dpaux_state = true;
+		tegra_dpaux_enable(dpaux);
+	}
+
 	tegra_dpaux_writel(dpaux, msg->address, DPAUX_DP_AUXADDR);
 	tegra_dpaux_writel(dpaux, value, DPAUX_DP_AUXCTL);
 
@@ -198,20 +208,26 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 	tegra_dpaux_writel(dpaux, value, DPAUX_DP_AUXCTL);
 
 	status = wait_for_completion_timeout(&dpaux->complete, timeout);
-	if (!status)
-		return -ETIMEDOUT;
+	if (!status) {
+		ret = -ETIMEDOUT;
+		goto out;
+	}
 
 	/* read status and clear errors */
 	value = tegra_dpaux_readl(dpaux, DPAUX_DP_AUXSTAT);
 	tegra_dpaux_writel(dpaux, 0xf00, DPAUX_DP_AUXSTAT);
 
-	if (value & DPAUX_DP_AUXSTAT_TIMEOUT_ERROR)
-		return -ETIMEDOUT;
+	if (value & DPAUX_DP_AUXSTAT_TIMEOUT_ERROR) {
+		ret = -ETIMEDOUT;
+		goto out;
+	}
 
 	if ((value & DPAUX_DP_AUXSTAT_RX_ERROR) ||
 	    (value & DPAUX_DP_AUXSTAT_SINKSTAT_ERROR) ||
-	    (value & DPAUX_DP_AUXSTAT_NO_STOP_ERROR))
-		return -EIO;
+	    (value & DPAUX_DP_AUXSTAT_NO_STOP_ERROR)) {
+		ret = -EIO;
+		goto out;
+	}
 
 	switch ((value & DPAUX_DP_AUXSTAT_REPLY_TYPE_MASK) >> 16) {
 	case 0x00:
@@ -247,6 +263,9 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 		}
 	}
 
+out:
+	if (restore_dpaux_state)
+		tegra_dpaux_disable(dpaux);
 	return ret;
 }
 
@@ -640,6 +659,9 @@ int tegra_dpaux_enable(struct tegra_dpaux *dpaux)
 {
 	unsigned long value;
 
+	if (dpaux->enabled)
+		return 0;
+
 	value = DPAUX_HYBRID_PADCTL_AUX_CMH(2) |
 		DPAUX_HYBRID_PADCTL_AUX_DRVZ(4) |
 		DPAUX_HYBRID_PADCTL_AUX_DRVI(0x18) |
@@ -651,6 +673,7 @@ int tegra_dpaux_enable(struct tegra_dpaux *dpaux)
 	value &= ~DPAUX_HYBRID_SPARE_PAD_POWER_DOWN;
 	tegra_dpaux_writel(dpaux, value, DPAUX_HYBRID_SPARE);
 
+	dpaux->enabled = true;
 	return 0;
 }
 
@@ -658,10 +681,14 @@ int tegra_dpaux_disable(struct tegra_dpaux *dpaux)
 {
 	unsigned long value;
 
+	if (!dpaux->enabled)
+		return 0;
+
 	value = tegra_dpaux_readl(dpaux, DPAUX_HYBRID_SPARE);
 	value |= DPAUX_HYBRID_SPARE_PAD_POWER_DOWN;
 	tegra_dpaux_writel(dpaux, value, DPAUX_HYBRID_SPARE);
 
+	dpaux->enabled = false;
 	return 0;
 }
 
