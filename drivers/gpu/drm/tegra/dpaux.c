@@ -7,6 +7,7 @@
  */
 
 #include <linux/clk.h>
+#include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
@@ -45,6 +46,10 @@ struct tegra_dpaux {
 	struct completion complete;
 	struct work_struct work;
 	struct list_head list;
+
+	struct drm_minor *minor;
+	struct drm_info_list *debugfs_files;
+	struct dentry *debugfs;
 };
 
 static inline struct tegra_dpaux *
@@ -276,6 +281,133 @@ static irqreturn_t tegra_dpaux_irq(int irq, void *data)
 	return ret;
 }
 
+static int tegra_dpaux_show_regs(struct seq_file *s, void *data)
+{
+	struct drm_info_node *node = s->private;
+	struct tegra_dpaux *dpaux = node->info_ent->data;
+
+#define DUMP_REG(name)						\
+	seq_printf(s, "%-40s %#05x %08lx\n", #name, name,	\
+		   tegra_dpaux_readl(dpaux, name))
+
+	DUMP_REG(DPAUX_CTXSW);
+	DUMP_REG(DPAUX_INTR_EN_AUX);
+	DUMP_REG(DPAUX_INTR_AUX);
+	DUMP_REG(DPAUX_DP_AUXADDR);
+	DUMP_REG(DPAUX_DP_AUXCTL);
+	DUMP_REG(DPAUX_DP_AUXSTAT);
+	DUMP_REG(DPAUX_DP_AUX_SINKSTAT_LO);
+	DUMP_REG(DPAUX_DP_AUX_SINKSTAT_HI);
+	DUMP_REG(DPAUX_HPD_CONFIG);
+	DUMP_REG(DPAUX_HPD_IRQ_CONFIG);
+	DUMP_REG(DPAUX_DP_AUX_CONFIG);
+	DUMP_REG(DPAUX_HYBRID_PADCTL);
+	DUMP_REG(DPAUX_HYBRID_SPARE);
+	DUMP_REG(DPAUX_SCRATCH_REG0);
+	DUMP_REG(DPAUX_SCRATCH_REG1);
+	DUMP_REG(DPAUX_SCRATCH_REG2);
+
+#undef DUMP_REG
+
+	return 0;
+}
+
+static struct drm_info_list debugfs_files[] = {
+	{ "regs", tegra_dpaux_show_regs, 0, NULL },
+};
+
+static int tegra_dpaux_debugfs_init(struct tegra_dpaux *dpaux,
+					struct drm_minor *minor)
+{
+	unsigned int i;
+	int err;
+
+	dpaux->debugfs = debugfs_create_dir("dpaux", minor->debugfs_root);
+	if (!dpaux->debugfs)
+		return -ENOMEM;
+
+	dpaux->debugfs_files = kmemdup(debugfs_files, sizeof(debugfs_files),
+				    GFP_KERNEL);
+	if (!dpaux->debugfs_files) {
+		err = -ENOMEM;
+		goto remove;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(debugfs_files); i++)
+		dpaux->debugfs_files[i].data = dpaux;
+
+	err = drm_debugfs_create_files(dpaux->debugfs_files,
+				       ARRAY_SIZE(debugfs_files),
+				       dpaux->debugfs, minor);
+	if (err < 0)
+		goto free;
+
+	dpaux->minor = minor;
+
+	return 0;
+
+free:
+	kfree(dpaux->debugfs_files);
+	dpaux->debugfs_files = NULL;
+remove:
+	debugfs_remove(dpaux->debugfs);
+	dpaux->debugfs = NULL;
+
+	return err;
+}
+
+static int tegra_dpaux_debugfs_exit(struct tegra_dpaux *dpaux)
+{
+	drm_debugfs_remove_files(dpaux->debugfs_files, ARRAY_SIZE(debugfs_files),
+				 dpaux->minor);
+	dpaux->minor = NULL;
+
+	kfree(dpaux->debugfs_files);
+	dpaux->debugfs_files = NULL;
+
+	debugfs_remove(dpaux->debugfs);
+	dpaux->debugfs = NULL;
+
+	return 0;
+}
+
+static int tegra_dpaux_init(struct host1x_client *client)
+{
+	struct tegra_drm *tegra = dev_get_drvdata(client->parent);
+	struct tegra_dpaux *dpaux = host1x_client_to_dpaux(client);
+	int err;
+
+	if (IS_ENABLED(CONFIG_DEBUG_FS)) {
+		err = tegra_dpaux_debugfs_init(dpaux, tegra->drm->primary);
+		if (err < 0)
+			dev_err(dpaux->dev, "debugfs setup failed: %d\n", err);
+		return err;
+	}
+
+	return 0;
+}
+
+static int tegra_dpaux_exit(struct host1x_client *client)
+{
+	struct tegra_dpaux *dpaux = host1x_client_to_dpaux(client);
+	int err;
+
+	if (IS_ENABLED(CONFIG_DEBUG_FS)) {
+		err = tegra_dpaux_debugfs_exit(dpaux);
+		if (err < 0)
+			dev_err(dpaux->dev,
+				"debugfs cleanup failed: %d\n", err);
+		return err;
+	}
+
+	return 0;
+}
+
+static const struct host1x_client_ops dpaux_client_ops = {
+	.init = tegra_dpaux_init,
+	.exit = tegra_dpaux_exit,
+};
+
 static int tegra_dpaux_probe(struct platform_device *pdev)
 {
 	struct tegra_dpaux *dpaux;
@@ -293,7 +425,7 @@ static int tegra_dpaux_probe(struct platform_device *pdev)
 			return -ENOMEM;
 
 		INIT_LIST_HEAD(&dpaux->client.list);
-		dpaux->client.ops = NULL;
+		dpaux->client.ops = &dpaux_client_ops;
 		dpaux->client.dev = &pdev->dev;
 	}
 
