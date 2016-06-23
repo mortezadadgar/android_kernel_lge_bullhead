@@ -85,10 +85,11 @@ SECTIONS
 #ifdef CONFIG_STRICT_MEMORY_RWX
 	. = ALIGN(1<<SECTION_SHIFT);
 #endif
+	_etext = .;			/* End of text and rodata section */
+
 	RO_DATA(PAGE_SIZE)
 	EXCEPTION_TABLE(8)
 	NOTES
-	_etext = .;			/* End of text and rodata section */
 
 #ifdef CONFIG_STRICT_MEMORY_RWX
 	. = ALIGN(1<<SECTION_SHIFT);
