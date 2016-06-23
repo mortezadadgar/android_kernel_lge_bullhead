@@ -126,6 +126,8 @@ SECTIONS
 #ifdef CONFIG_STRICT_MEMORY_RWX
 	. = ALIGN(1<<SECTION_SHIFT);
 #endif
+	_etext = .;			/* End of text section */
+
 	RO_DATA(PAGE_SIZE)
 
 	. = ALIGN(4);
@@ -155,8 +157,6 @@ SECTIONS
 #endif
 
 	NOTES
-
-	_etext = .;			/* End of text and rodata section */
 
 #ifndef CONFIG_XIP_KERNEL
 #ifdef CONFIG_STRICT_MEMORY_RWX
