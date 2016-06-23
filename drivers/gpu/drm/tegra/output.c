@@ -314,7 +314,17 @@ int tegra_output_init(struct drm_device *drm, struct tegra_output *output)
 	drm_mode_connector_attach_encoder(&output->connector, &output->encoder);
 	drm_sysfs_connector_add(&output->connector);
 
-	output->encoder.possible_crtcs = 0x3;
+	switch (output->type) {
+	case TEGRA_OUTPUT_EDP:
+		output->encoder.possible_crtcs = 0x1;
+		break;
+	case TEGRA_OUTPUT_HDMI:
+		output->encoder.possible_crtcs = 0x2;
+		break;
+	default:
+		output->encoder.possible_crtcs = 0x3;
+		break;
+	}
 
 	return 0;
 }
