@@ -787,36 +787,16 @@ void nvhost_syncpt_set_manager(struct nvhost_syncpt *sp, int id, bool client)
 /* public sync point API */
 u32 nvhost_syncpt_incr_max_ext(struct platform_device *dev, u32 id, u32 incrs)
 {
-	struct platform_device *pdev;
-	struct nvhost_syncpt *sp;
-
-	if (!nvhost_get_parent(dev)) {
-		dev_err(&dev->dev, "Incr max called with wrong dev\n");
-		return 0;
-	}
-
-	/* get the parent */
-	pdev = to_platform_device(dev->dev.parent);
-	sp = &(nvhost_get_host(pdev)->syncpt);
-
+	struct nvhost_master *master = nvhost_get_host(dev);
+	struct nvhost_syncpt *sp = &master->syncpt;
 	return nvhost_syncpt_incr_max(sp, id, incrs);
 }
 EXPORT_SYMBOL(nvhost_syncpt_incr_max_ext);
 
 void nvhost_syncpt_cpu_incr_ext(struct platform_device *dev, u32 id)
 {
-	struct platform_device *pdev;
-	struct nvhost_syncpt *sp;
-
-	if (!nvhost_get_parent(dev)) {
-		dev_err(&dev->dev, "Incr called with wrong dev\n");
-		return;
-	}
-
-	/* get the parent */
-	pdev = to_platform_device(dev->dev.parent);
-	sp = &(nvhost_get_host(pdev)->syncpt);
-
+	struct nvhost_master *master = nvhost_get_host(dev);
+	struct nvhost_syncpt *sp = &master->syncpt;
 	nvhost_syncpt_cpu_incr(sp, id);
 }
 EXPORT_SYMBOL(nvhost_syncpt_cpu_incr_ext);
@@ -833,18 +813,8 @@ void nvhost_syncpt_cpu_set_wait_base(struct platform_device *pdev, u32 id,
 
 u32 nvhost_syncpt_read_ext(struct platform_device *dev, u32 id)
 {
-	struct platform_device *pdev;
-	struct nvhost_syncpt *sp;
-
-	if (!nvhost_get_parent(dev)) {
-		dev_err(&dev->dev, "Read called with wrong dev\n");
-		return 0;
-	}
-
-	/* get the parent */
-	pdev = to_platform_device(dev->dev.parent);
-	sp = &(nvhost_get_host(pdev)->syncpt);
-
+	struct nvhost_master *master = nvhost_get_host(dev);
+	struct nvhost_syncpt *sp = &master->syncpt;
 	return nvhost_syncpt_read(sp, id);
 }
 EXPORT_SYMBOL(nvhost_syncpt_read_ext);
@@ -852,18 +822,8 @@ EXPORT_SYMBOL(nvhost_syncpt_read_ext);
 int nvhost_syncpt_wait_timeout_ext(struct platform_device *dev, u32 id,
 	u32 thresh, u32 timeout, u32 *value, struct timespec *ts)
 {
-	struct platform_device *pdev;
-	struct nvhost_syncpt *sp;
-
-	if (!nvhost_get_parent(dev)) {
-		dev_err(&dev->dev, "Wait called with wrong dev\n");
-		return -EINVAL;
-	}
-
-	/* get the parent */
-	pdev = to_platform_device(dev->dev.parent);
-	sp = &(nvhost_get_host(pdev)->syncpt);
-
+	struct nvhost_master *master = nvhost_get_host(dev);
+	struct nvhost_syncpt *sp = &master->syncpt;
 	return nvhost_syncpt_wait_timeout(sp, id, thresh, timeout, value, ts,
 			true);
 }
@@ -873,23 +833,14 @@ int nvhost_syncpt_create_fence_single_ext(struct platform_device *dev,
 	u32 id, u32 thresh, const char *name, int *fence_fd)
 {
 #ifdef CONFIG_TEGRA_GRHOST_SYNC
-	struct platform_device *pdev;
-	struct nvhost_syncpt *sp;
+	struct nvhost_master *master = nvhost_get_host(dev);
+	struct nvhost_syncpt *sp = &master->syncpt;
 	struct nvhost_ctrl_sync_fence_info pts = {id, thresh};
-
-	if (!nvhost_get_parent(dev)) {
-		dev_err(&dev->dev, "Create Fence called with wrong dev\n");
-		return -EINVAL;
-	}
 
 	if (id == NVSYNCPT_INVALID) {
 		dev_err(&dev->dev, "Create Fence called with invalid id\n");
 		return -EINVAL;
 	}
-
-	/* get the parent */
-	pdev = to_platform_device(dev->dev.parent);
-	sp = &(nvhost_get_host(pdev)->syncpt);
 
 	return nvhost_sync_create_fence(sp, &pts, 1, name, fence_fd);
 #else
