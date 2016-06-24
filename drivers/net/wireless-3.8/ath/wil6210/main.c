@@ -72,7 +72,7 @@ static void _wil6210_disconnect(struct wil6210_priv *wil, void *bssid)
 	switch (wdev->sme_state) {
 	case CFG80211_SME_CONNECTED:
 		cfg80211_disconnected(ndev, WLAN_STATUS_UNSPECIFIED_FAILURE,
-				      NULL, 0, GFP_KERNEL);
+				      NULL, 0, false, GFP_KERNEL);
 		break;
 	case CFG80211_SME_CONNECTING:
 		cfg80211_connect_result(ndev, bssid, NULL, 0, NULL, 0,
