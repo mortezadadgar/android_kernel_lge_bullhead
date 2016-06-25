@@ -376,6 +376,7 @@ static struct drm_driver vgem_driver = {
 	.gem_prime_export	= drm_gem_prime_export,
 	.gem_prime_import	= drm_gem_prime_import,
 	.gem_prime_import_sg_table	= vgem_gem_prime_import_sg_table,
+	.gem_prime_mmap			= vgem_gem_prime_mmap,
 	.name	= DRIVER_NAME,
 	.desc	= DRIVER_DESC,
 	.date	= DRIVER_DATE,

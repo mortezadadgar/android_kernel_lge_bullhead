@@ -99,6 +99,34 @@ struct dma_buf *vgem_gem_prime_export(struct drm_device *dev,
 			      obj->size, flags);
 }
 
+int vgem_gem_prime_mmap(struct drm_gem_object *gobj,
+			struct vm_area_struct *vma)
+{
+	struct drm_device *dev = gobj->dev;
+	struct drm_vgem_gem_object *obj = to_vgem_bo(gobj);
+	int ret;
+
+	mutex_lock(&dev->struct_mutex);
+
+	ret = vgem_gem_get_pages(obj);
+	if (ret)
+		goto out_unlock;
+
+	ret = drm_gem_mmap_obj(gobj, gobj->size, vma);
+	if (ret < 0)
+		goto out_unlock;
+
+	vma->vm_flags |= VM_MIXEDMAP;
+	vma->vm_flags &= ~VM_PFNMAP;
+
+	mutex_unlock(&dev->struct_mutex);
+	return 0;
+
+out_unlock:
+	mutex_unlock(&dev->struct_mutex);
+	return ret;
+}
+
 struct drm_gem_object *
 vgem_gem_prime_import_sg_table(struct drm_device *dev,
 			       size_t size,
