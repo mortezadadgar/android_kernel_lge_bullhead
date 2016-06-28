@@ -382,10 +382,10 @@ static int iwl_vendor_set_nic_txpower_limit(struct wiphy *wiphy,
 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 	struct iwl_dev_tx_power_cmd cmd = {
-		.v2.set_mode = cpu_to_le32(IWL_TX_POWER_MODE_SET_DEVICE),
-		.v2.dev_24 = cpu_to_le16(IWL_DEV_MAX_TX_POWER),
-		.v2.dev_52_low = cpu_to_le16(IWL_DEV_MAX_TX_POWER),
-		.v2.dev_52_high = cpu_to_le16(IWL_DEV_MAX_TX_POWER),
+		.v3.v2.set_mode = cpu_to_le32(IWL_TX_POWER_MODE_SET_DEVICE),
+		.v3.v2.dev_24 = cpu_to_le16(IWL_DEV_MAX_TX_POWER),
+		.v3.v2.dev_52_low = cpu_to_le16(IWL_DEV_MAX_TX_POWER),
+		.v3.v2.dev_52_high = cpu_to_le16(IWL_DEV_MAX_TX_POWER),
 	};
 	struct nlattr *tb[NUM_IWL_MVM_VENDOR_ATTR];
 	int len = sizeof(cmd);
@@ -400,7 +400,7 @@ static int iwl_vendor_set_nic_txpower_limit(struct wiphy *wiphy,
 
 		if (txp < 0 || txp > IWL_DEV_MAX_TX_POWER)
 			return -EINVAL;
-		cmd.v2.dev_24 = cpu_to_le16(txp);
+		cmd.v3.v2.dev_24 = cpu_to_le16(txp);
 	}
 
 	if (tb[IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L]) {
@@ -408,7 +408,7 @@ static int iwl_vendor_set_nic_txpower_limit(struct wiphy *wiphy,
 
 		if (txp < 0 || txp > IWL_DEV_MAX_TX_POWER)
 			return -EINVAL;
-		cmd.v2.dev_52_low = cpu_to_le16(txp);
+		cmd.v3.v2.dev_52_low = cpu_to_le16(txp);
 	}
 
 	if (tb[IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H]) {
@@ -416,13 +416,15 @@ static int iwl_vendor_set_nic_txpower_limit(struct wiphy *wiphy,
 
 		if (txp < 0 || txp > IWL_DEV_MAX_TX_POWER)
 			return -EINVAL;
-		cmd.v2.dev_52_high = cpu_to_le16(txp);
+		cmd.v3.v2.dev_52_high = cpu_to_le16(txp);
 	}
 
 	mvm->txp_cmd = cmd;
 
+	if (!fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TX_POWER_ACK))
+		len = sizeof(cmd.v3);
 	if (!fw_has_api(&mvm->fw->ucode_capa, IWL_UCODE_TLV_API_TX_POWER_CHAIN))
-		len = sizeof(cmd.v2);
+		len = sizeof(cmd.v3.v2);
 
 	mutex_lock(&mvm->mutex);
 	err = iwl_mvm_send_cmd_pdu(mvm, REDUCE_TX_POWER_CMD, 0, len, &cmd);
