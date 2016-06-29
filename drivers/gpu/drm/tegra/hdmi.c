@@ -879,6 +879,13 @@ static int tegra_output_hdmi_enable(struct tegra_output *output)
 		 */
 	}
 
+	if (hdmi->dvi)
+		tegra_hdmi_writel(hdmi, 0,
+				  HDMI_NV_PDISP_SOR_AUDIO_HDA_PRESENSE);
+	else
+		tegra_hdmi_writel(hdmi, 3,
+				  HDMI_NV_PDISP_SOR_AUDIO_HDA_PRESENSE);
+
 	rekey = HDMI_REKEY_DEFAULT;
 	value = HDMI_CTRL_REKEY(rekey);
 	value |= HDMI_CTRL_MAX_AC_PACKET((h_sync_width + h_back_porch +
