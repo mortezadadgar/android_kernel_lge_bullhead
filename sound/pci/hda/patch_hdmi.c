@@ -37,7 +37,7 @@
 #include <sound/asoundef.h>
 #include <sound/tlv.h>
 
-#if defined(CONFIG_TEGRA_DC)
+#if defined(CONFIG_TEGRA_DC) || defined(CONFIG_DRM_TEGRA)
 #include <linux/platform_data/tegra_hdmi_audio.h>
 #endif
 
@@ -1660,7 +1660,7 @@ static int generic_hdmi_playback_pcm_prepare(struct hda_pcm_stream *hinfo,
 	per_pin->channels = substream->runtime->channels;
 	per_pin->setup = true;
 
-#if defined(CONFIG_TEGRA_DC)
+#if defined(CONFIG_TEGRA_DC) || defined(CONFIG_DRM_TEGRA)
 	if (codec->preset->id == 0x10de0028) {
 		int err = 0;
 		/* Set hdmi:audio freq and source selection*/

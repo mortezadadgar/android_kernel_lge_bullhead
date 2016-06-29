@@ -64,6 +64,7 @@ struct tegra_hdmi {
 	struct drm_minor *minor;
 	struct dentry *debugfs;
 };
+static struct tegra_hdmi *hdmi_last;
 
 static inline struct tegra_hdmi *
 host1x_client_to_hdmi(struct host1x_client *client)
@@ -78,6 +79,16 @@ static inline struct tegra_hdmi *to_hdmi(struct tegra_output *output)
 
 #define HDMI_AUDIOCLK_FREQ 216000000
 #define HDMI_REKEY_DEFAULT 56
+
+enum {
+	AUDIO_FREQ_32K = 32000,
+	AUDIO_FREQ_44_1K = 44100,
+	AUDIO_FREQ_48K = 48000,
+	AUDIO_FREQ_88_2K = 88200,
+	AUDIO_FREQ_96K = 96000,
+	AUDIO_FREQ_176_4K = 176400,
+	AUDIO_FREQ_192K = 192000,
+};
 
 enum {
 	AUTO = 0,
@@ -570,6 +581,38 @@ static int tegra_hdmi_setup_audio(struct tegra_hdmi *hdmi, unsigned int pclk)
 
 	return 0;
 }
+
+int tegra_hdmi_setup_audio_freq_source(unsigned audio_freq,
+				       unsigned audio_source)
+{
+	struct tegra_hdmi *hdmi = hdmi_last;
+
+	if (!hdmi)
+		return -EAGAIN;
+
+	/* check for know freq */
+	if (AUDIO_FREQ_32K == audio_freq ||
+		AUDIO_FREQ_44_1K == audio_freq ||
+		AUDIO_FREQ_48K == audio_freq ||
+		AUDIO_FREQ_88_2K == audio_freq ||
+		AUDIO_FREQ_96K == audio_freq ||
+		AUDIO_FREQ_176_4K == audio_freq ||
+		AUDIO_FREQ_192K == audio_freq) {
+
+		/* Store it for using it in enable */
+		hdmi->audio_freq = audio_freq;
+		hdmi->audio_source = audio_source;
+
+		/* If we can program HDMI, then proceed */
+		if (hdmi->enabled)
+			tegra_hdmi_setup_audio(hdmi, audio_freq);
+	} else {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(tegra_hdmi_setup_audio_freq_source);
 
 static inline unsigned long tegra_hdmi_subpack(const u8 *ptr, size_t size)
 {
@@ -1482,6 +1525,7 @@ static int tegra_hdmi_probe(struct platform_device *pdev)
 		hdmi->client.ops = &hdmi_client_ops;
 		hdmi->client.dev = &pdev->dev;
 	}
+	hdmi_last = hdmi;
 
 	err = drm_host1x_register(&hdmi->client);
 	if (err < 0) {
@@ -1582,6 +1626,7 @@ static int tegra_hdmi_remove(struct platform_device *pdev)
 	clk_disable_unprepare(hdmi->clk);
 
 	kfree(hdmi);
+	hdmi_last = NULL;
 	return 0;
 }
 
