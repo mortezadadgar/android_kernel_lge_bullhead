@@ -2125,12 +2125,6 @@ enum ieee80211_tdls_actioncode {
 #define WLAN_EXT_CAPA8_MAX_MSDU_IN_AMSDU_LSB	BIT(7)
 #define WLAN_EXT_CAPA9_MAX_MSDU_IN_AMSDU_MSB	BIT(0)
 
-/*
- * Fine Timing Measurement Initiator - bit 71 of @WLAN_EID_EXT_CAPABILITY
- * information element
- */
-#define WLAN_EXT_CAPA9_FTM_INITIATOR	BIT(7)
-
 /* TDLS specific payload type in the LLC/SNAP header */
 #define WLAN_TDLS_SNAP_RFTYPE	0x2
 
