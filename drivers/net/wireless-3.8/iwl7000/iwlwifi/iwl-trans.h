@@ -655,6 +655,8 @@ struct iwl_trans_ops {
 	void (*txq_set_shared_mode)(struct iwl_trans *trans, u32 txq_id,
 				    bool shared);
 
+	dma_addr_t (*get_txq_byte_table)(struct iwl_trans *trans, int txq_id);
+
 	int (*wait_tx_queue_empty)(struct iwl_trans *trans, u32 txq_bm);
 	void (*freeze_txq_timer)(struct iwl_trans *trans, unsigned long txqs,
 				 bool freeze);
@@ -1101,6 +1103,14 @@ static inline void iwl_trans_txq_set_shared_mode(struct iwl_trans *trans,
 {
 	if (trans->ops->txq_set_shared_mode)
 		trans->ops->txq_set_shared_mode(trans, queue, shared_mode);
+}
+
+static inline dma_addr_t iwl_trans_get_txq_byte_table(struct iwl_trans *trans,
+						      int queue)
+{
+	if (trans->ops->get_txq_byte_table)
+		return trans->ops->get_txq_byte_table(trans, queue);
+	return DMA_ERROR_CODE;
 }
 
 static inline void iwl_trans_txq_enable(struct iwl_trans *trans, int queue,
