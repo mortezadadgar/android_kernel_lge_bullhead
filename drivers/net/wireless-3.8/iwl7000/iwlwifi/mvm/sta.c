@@ -1797,6 +1797,7 @@ int iwl_mvm_sta_rx_agg(struct iwl_mvm *mvm, struct ieee80211_sta *sta,
 			ret = -EINVAL;
 			goto out_free;
 		}
+
 		baid = (u8)((status & IWL_ADD_STA_BAID_MASK) >>
 			    IWL_ADD_STA_BAID_SHIFT);
 		baid_data->baid = baid;
