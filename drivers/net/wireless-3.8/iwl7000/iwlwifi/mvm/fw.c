@@ -400,6 +400,10 @@ static int iwl_send_paging_cmd(struct iwl_mvm *mvm, const struct fw_img *fw)
 	};
 	int blk_idx, size = sizeof(paging_cmd);
 
+	/* A bit hard coded - but this is the old API and will be deprecated */
+	if (!iwl_mvm_has_new_tx_api(mvm))
+		size -= NUM_OF_FW_PAGING_BLOCKS * 4;
+
 	/* loop for for all paging blocks + CSS block */
 	for (blk_idx = 0; blk_idx < mvm->num_of_paging_blk + 1; blk_idx++) {
 		dma_addr_t addr = mvm->fw_paging_db[blk_idx].fw_paging_phys;
@@ -414,11 +418,6 @@ static int iwl_send_paging_cmd(struct iwl_mvm *mvm, const struct fw_img *fw)
 			__le32 phy_addr = cpu_to_le32(addr);
 
 			paging_cmd.device_phy_addr.addr32[blk_idx] = phy_addr;
-			/*
-			 * A bit hard coded - but this is the old API and will
-			 * be deprecated.
-			 */
-			size -= NUM_OF_FW_PAGING_BLOCKS * 4;
 		}
 	}
 
