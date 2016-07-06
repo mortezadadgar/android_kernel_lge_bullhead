@@ -656,6 +656,9 @@ static int tegra124_powergate_clean(struct notifier_block *self,
 {
 	is_mc_ready = true;
 
+	if (!is_clk_inited)
+		tegra124_powergate_init_clk();
+
 	/* Powergate venc/dis/disb/sor to get a clean hardware environment. */
 	WARN(do_powergate(TEGRA_POWERGATE_VENC), "Powergate VENC failed.");
 	WARN(do_powergate(TEGRA_POWERGATE_DISB), "Powergate DISB failed.");
