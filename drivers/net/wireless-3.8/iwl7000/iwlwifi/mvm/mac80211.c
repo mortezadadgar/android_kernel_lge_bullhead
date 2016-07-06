@@ -604,9 +604,6 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 		BIT(NL80211_IFTYPE_P2P_DEVICE) |
 		BIT(NL80211_IFTYPE_ADHOC);
 
-	/* 4-addr with AP/client is supported */
-	hw->wiphy->flags |= WIPHY_FLAG_4ADDR_AP | WIPHY_FLAG_4ADDR_STATION;
-
 	hw->wiphy->flags |= WIPHY_FLAG_IBSS_RSN;
 	hw->wiphy->regulatory_flags |= REGULATORY_ENABLE_RELAX_NO_IR;
 	if (iwl_mvm_is_lar_supported(mvm))

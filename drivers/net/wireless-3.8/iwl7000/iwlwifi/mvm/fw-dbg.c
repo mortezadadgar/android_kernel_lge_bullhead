@@ -71,7 +71,7 @@
 #include "iwl-csr.h"
 
 static ssize_t iwl_mvm_read_coredump(char *buffer, loff_t offset, size_t count,
-				     const void *data, size_t datalen)
+				     void *data, size_t datalen)
 {
 	const struct iwl_mvm_dump_ptrs *dump_ptrs = data;
 	ssize_t bytes_read;
@@ -104,7 +104,7 @@ static ssize_t iwl_mvm_read_coredump(char *buffer, loff_t offset, size_t count,
 	return bytes_read + bytes_read_trans;
 }
 
-static void iwl_mvm_free_coredump(const void *data)
+static void iwl_mvm_free_coredump(void *data)
 {
 	const struct iwl_mvm_dump_ptrs *fw_error_dump = data;
 
@@ -817,8 +817,9 @@ dump_trans_data:
 		file_len += fw_error_dump->trans_ptr->len;
 	dump_file->file_len = cpu_to_le32(file_len);
 
-	dev_coredumpm(mvm->trans->dev, THIS_MODULE, fw_error_dump, 0,
-		      GFP_KERNEL, iwl_mvm_read_coredump, iwl_mvm_free_coredump);
+	dev_coredumpm(mvm->trans->dev, THIS_MODULE, (void *)fw_error_dump, 0,
+		      GFP_KERNEL, (void *)iwl_mvm_read_coredump,
+		      (void *)iwl_mvm_free_coredump);
 
 out:
 	iwl_mvm_free_fw_dump_desc(mvm);
