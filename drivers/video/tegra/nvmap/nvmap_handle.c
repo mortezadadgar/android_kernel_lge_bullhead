@@ -1136,8 +1136,11 @@ struct nvmap_handle_ref *nvmap_duplicate_handle_id(struct nvmap_client *client,
 	ref = __nvmap_validate_id_locked(client, (unsigned long)h);
 
 	if (ref) {
-		/* handle already duplicated in client; just increment
-		 * the reference count rather than re-duplicating it */
+		/*
+		 * Handle already duplicated in client; just increment
+		 * the reference count rather than re-duplicating it
+		 * The handle of foreign dmabuf should have been duplicated.
+		 */
 		atomic_inc(&ref->dupes);
 		nvmap_ref_unlock(client);
 		return ref;

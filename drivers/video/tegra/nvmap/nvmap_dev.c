@@ -605,9 +605,11 @@ static void destroy_client(struct nvmap_client *client)
 			dma_buf_put(ref->handle->dmabuf);
 		rb_erase(&ref->node, &client->handle_refs);
 
-		dupes = atomic_read(&ref->dupes);
-		while (dupes--)
-			nvmap_handle_put(ref->handle);
+		if (!ref->is_foreign) {
+			dupes = atomic_read(&ref->dupes);
+			while (dupes--)
+				nvmap_handle_put(ref->handle);
+		}
 
 		kfree(ref);
 	}
