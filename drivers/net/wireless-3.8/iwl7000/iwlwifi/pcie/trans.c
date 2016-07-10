@@ -2962,7 +2962,7 @@ struct iwl_trans *iwl_trans_pcie_alloc(struct pci_dev *pdev,
 	int ret, addr_size;
 
 	trans = iwl_trans_alloc(sizeof(struct iwl_trans_pcie),
-				&pdev->dev, cfg, &trans_ops_pcie, 0);
+				&pdev->dev, cfg, &trans_ops_pcie);
 	if (!trans)
 		return ERR_PTR(-ENOMEM);
 
