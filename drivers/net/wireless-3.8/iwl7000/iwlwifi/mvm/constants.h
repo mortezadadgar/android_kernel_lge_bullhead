@@ -152,6 +152,7 @@
 #define IWL_MVM_RS_TPC_SR_FORCE_INCREASE	75	/* percent */
 #define IWL_MVM_RS_TPC_SR_NO_INCREASE		85	/* percent */
 #define IWL_MVM_RS_TPC_TX_POWER_STEP		3
+#define IWL_MVM_ENABLE_DQA			0
 #else /* CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES */
 #define IWL_MVM_DEFAULT_PS_TX_DATA_TIMEOUT	(mvm->trans->dbg_cfg.MVM_DEFAULT_PS_TX_DATA_TIMEOUT)
 #define IWL_MVM_DEFAULT_PS_RX_DATA_TIMEOUT	(mvm->trans->dbg_cfg.MVM_DEFAULT_PS_RX_DATA_TIMEOUT)
@@ -228,6 +229,8 @@
 #define IWL_MVM_RS_TPC_SR_FORCE_INCREASE	(mvm->trans->dbg_cfg.MVM_RS_TPC_SR_FORCE_INCREASE)
 #define IWL_MVM_RS_TPC_SR_NO_INCREASE		(mvm->trans->dbg_cfg.MVM_RS_TPC_SR_NO_INCREASE)
 #define IWL_MVM_RS_TPC_TX_POWER_STEP		(mvm->trans->dbg_cfg.MVM_RS_TPC_TX_POWER_STEP)
+#define IWL_MVM_ENABLE_DQA			(mvm->trans->dbg_cfg.MVM_ENABLE_DQA)
+
 #endif /* CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES */
 
 /* Default values for the FTM range_request_ext command: */
