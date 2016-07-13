@@ -39,8 +39,8 @@
 #ifndef __SIR_API_H
 #define __SIR_API_H
 
-// Take care to avoid redefinition of this type, if it is
-// already defined in "halWmmApi.h"
+/* Take care to avoid redefinition of this type, if it is */
+/* already defined in "halWmmApi.h" */
 #if !defined(_HALMAC_WMM_API_H)
 typedef struct sAniSirGlobal *tpAniSirGlobal;
 #endif
@@ -1247,6 +1247,11 @@ typedef struct sSirSmeJoinRsp
 #endif
 
     bool supported_nss_1x1;
+    tDot11fIEHTCaps ht_caps;
+    tDot11fIEVHTCaps vht_caps;
+    tDot11fIEHTInfo ht_operation;
+    tDot11fIEVHTOperation vht_operation;
+    tDot11fIEhs20vendor_ie hs20vendor_ie;
     /* Add new members before 'frames' to avoid memory corruption of 'frames' */
     tANI_U8         frames[ 1 ];
 } tSirSmeJoinRsp, *tpSirSmeJoinRsp;
