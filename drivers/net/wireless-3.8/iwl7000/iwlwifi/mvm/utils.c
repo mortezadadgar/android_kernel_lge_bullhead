@@ -1426,10 +1426,8 @@ static unsigned long iwl_mvm_calc_tcm_stats(struct iwl_mvm *mvm,
 	for (mac = 0; mac < NUM_MAC_INDEX_DRIVER; mac++) {
 		struct iwl_mvm_tcm_mac *mdata = &mvm->tcm.data[mac];
 		u32 vo_vi_pkts = 0;
-		u32 airtime = mdata->rx.airtime;
+		u32 airtime = mdata->rx.airtime + mdata->tx.airtime;
 
-		for (ac = IEEE80211_AC_VO; ac <= IEEE80211_AC_BK; ac++)
-			airtime += mdata->tx.airtime[ac];
 		total_airtime += airtime;
 
 		load = iwl_mvm_tcm_load(mvm, airtime, elapsed);

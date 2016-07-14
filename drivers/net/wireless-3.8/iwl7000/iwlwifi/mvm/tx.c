@@ -1207,7 +1207,7 @@ static void iwl_mvm_tx_airtime(struct iwl_mvm *mvm,
 	if (time_after(jiffies, mvm->tcm.ts + MVM_TCM_PERIOD))
 		iwl_mvm_recalc_tcm(mvm);
 	mdata->tx.pkts[ac] += frame_count;
-	mdata->tx.airtime[ac] += airtime;
+	mdata->tx.airtime += airtime;
 }
 #endif
 
