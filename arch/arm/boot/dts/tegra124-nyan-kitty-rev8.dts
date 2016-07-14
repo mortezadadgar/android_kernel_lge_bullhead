@@ -42,6 +42,7 @@
 		};
 
 		dpaux: dpaux@545c0000 {
+			vdd-supply = <&_3v3_run>;
 			status = "okay";
 		};
 	};
