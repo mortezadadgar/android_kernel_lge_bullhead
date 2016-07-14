@@ -854,6 +854,34 @@ static bool iwl_mvm_txq_should_update(struct iwl_mvm *mvm, int txq_id)
 	return false;
 }
 
+#ifdef CPTCFG_IWLMVM_TCM
+static void iwl_mvm_tx_airtime(struct iwl_mvm *mvm,
+			       struct iwl_mvm_sta *mvmsta,
+			       int airtime)
+{
+	int mac = mvmsta->mac_id_n_color & FW_CTXT_ID_MSK;
+	struct iwl_mvm_tcm_mac *mdata = &mvm->tcm.data[mac];
+
+	if (mvm->tcm.paused)
+		return;
+
+	if (time_after(jiffies, mvm->tcm.ts + MVM_TCM_PERIOD))
+		iwl_mvm_recalc_tcm(mvm);
+
+	mdata->tx.airtime += airtime;
+}
+
+static void iwl_mvm_tx_pkt_queued(struct iwl_mvm *mvm,
+				  struct iwl_mvm_sta *mvmsta, int tid)
+{
+	u32 ac = tid_to_mac80211_ac[tid];
+	int mac = mvmsta->mac_id_n_color & FW_CTXT_ID_MSK;
+	struct iwl_mvm_tcm_mac *mdata = &mvm->tcm.data[mac];
+
+	mdata->tx.pkts[ac]++;
+}
+#endif
+
 /*
  * Sets the fields in the Tx cmd that are crypto related
  */
@@ -1002,6 +1030,11 @@ static int iwl_mvm_tx_mpdu(struct iwl_mvm *mvm, struct sk_buff *skb,
 	/* Increase pending frames count if this isn't AMPDU */
 	if (!is_ampdu)
 		atomic_inc(&mvm->pending_frames[mvmsta->sta_id]);
+
+#ifdef CPTCFG_IWLMVM_TCM
+	iwl_mvm_tx_pkt_queued(mvm, mvmsta,
+			      tid == IWL_TID_NON_QOS ? 0 : tid);
+#endif
 
 	return 0;
 
@@ -1191,25 +1224,6 @@ void iwl_mvm_hwrate_to_tx_rate(u32 rate_n_flags,
 							     band);
 	}
 }
-
-#ifdef CPTCFG_IWLMVM_TCM
-static void iwl_mvm_tx_airtime(struct iwl_mvm *mvm,
-			       struct iwl_mvm_sta *mvmsta,
-			       int tid, int airtime, u8 frame_count)
-{
-	u32 ac = tid_to_mac80211_ac[tid];
-	int mac = mvmsta->mac_id_n_color & FW_CTXT_ID_MSK;
-	struct iwl_mvm_tcm_mac *mdata = &mvm->tcm.data[mac];
-
-	if (mvm->tcm.paused)
-		return;
-
-	if (time_after(jiffies, mvm->tcm.ts + MVM_TCM_PERIOD))
-		iwl_mvm_recalc_tcm(mvm);
-	mdata->tx.pkts[ac] += frame_count;
-	mdata->tx.airtime += airtime;
-}
-#endif
 
 /**
  * translate ucode response to mac80211 tx status control values
@@ -1404,9 +1418,7 @@ static void iwl_mvm_rx_tx_cmd_single(struct iwl_mvm *mvm,
 
 #ifdef CPTCFG_IWLMVM_TCM
 		iwl_mvm_tx_airtime(mvm, mvmsta,
-				   tid == IWL_TID_NON_QOS ? 0 : tid,
-				   le16_to_cpu(tx_resp->wireless_media_time),
-				   1);
+				   le16_to_cpu(tx_resp->wireless_media_time));
 #endif
 
 		if (tid != IWL_TID_NON_QOS) {
@@ -1602,9 +1614,8 @@ static void iwl_mvm_rx_tx_cmd_agg(struct iwl_mvm *mvm,
 			le16_to_cpu(tx_resp->wireless_media_time);
 
 #ifdef CPTCFG_IWLMVM_TCM
-		iwl_mvm_tx_airtime(mvm, mvmsta, tid,
-				   le16_to_cpu(tx_resp->wireless_media_time),
-				   tx_resp->frame_count);
+		iwl_mvm_tx_airtime(mvm, mvmsta,
+				   le16_to_cpu(tx_resp->wireless_media_time));
 #endif
 	}
 
