@@ -723,17 +723,25 @@ static int tegra_drm_platform_suspend(struct device *dev)
 {
 	struct tegra_drm *tegra = dev_get_drvdata(dev);
 	struct drm_device *drm = tegra->drm;
-	struct drm_connector *connector;
+	struct drm_encoder *encoder;
+	struct drm_crtc *crtc;
+	struct drm_encoder_helper_funcs *encoder_funcs = NULL;
+	struct drm_crtc_helper_funcs *crtc_funcs = NULL;
 
 	drm_modeset_lock_all(drm);
-	list_for_each_entry(connector, &drm->mode_config.connector_list, head) {
-		int old_dpms = connector->dpms;
+	list_for_each_entry(encoder, &drm->mode_config.encoder_list, head) {
+		if (!drm_helper_encoder_in_use(encoder))
+			continue;
 
-		if (connector->funcs->dpms)
-			connector->funcs->dpms(connector, DRM_MODE_DPMS_OFF);
+		encoder_funcs = encoder->helper_private;
+		if (encoder_funcs->disable)
+			(*encoder_funcs->disable)(encoder);
 
-		/* Set the old mode back to the connector for resume */
-		connector->dpms = old_dpms;
+		list_for_each_entry(crtc, &drm->mode_config.crtc_list, head) {
+			crtc_funcs = crtc->helper_private;
+			if (encoder->crtc == crtc && crtc_funcs->disable)
+				(*crtc_funcs->disable)(crtc);
+		}
 	}
 	drm_modeset_unlock_all(drm);
 
