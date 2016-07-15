@@ -33,6 +33,7 @@ struct tegra_sor {
 	struct clk *clk;
 
 	struct tegra_dpaux *dpaux;
+	struct tegra_dc *dc;
 
 	struct mutex lock;
 	bool enabled;
@@ -496,6 +497,7 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	int err = 0;
 	bool write_active = false;
 
+	sor->dc = dc;
 	mutex_lock(&sor->lock);
 
 	if (sor->enabled)
@@ -1161,6 +1163,9 @@ static enum drm_connector_status
 tegra_output_sor_detect(struct tegra_output *output)
 {
 	struct tegra_sor *sor = to_sor(output);
+
+	if (sor->dc)
+		tegra_dc_unpowergate_with_check(sor->dc);
 
 	if (sor->dpaux)
 		return tegra_dpaux_detect(sor->dpaux);

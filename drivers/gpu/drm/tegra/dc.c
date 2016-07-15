@@ -66,6 +66,12 @@ static inline void tegra_dc_unpowergate_locked(struct tegra_dc *dc)
 		dev_err(dc->dev, "could not unpowergate %d\n", ret);
 }
 
+void tegra_dc_unpowergate_with_check(struct tegra_dc *dc)
+{
+	if (!tegra_powergate_is_powered(tegra_dc_get_powergate_id(dc)))
+		tegra_dc_unpowergate_locked(dc);
+}
+
 static inline struct tegra_plane *to_tegra_plane(struct drm_plane *plane)
 {
 	return container_of(plane, struct tegra_plane, base);
@@ -1037,8 +1043,7 @@ static void tegra_crtc_prepare(struct drm_crtc *crtc)
 	unsigned int syncpt;
 	unsigned long value;
 
-	if (!tegra_powergate_is_powered(tegra_dc_get_powergate_id(dc)))
-		tegra_dc_unpowergate_locked(dc);
+	tegra_dc_unpowergate_with_check(dc);
 
 	/* hardware initialization */
 	reset_control_deassert(dc->rst);

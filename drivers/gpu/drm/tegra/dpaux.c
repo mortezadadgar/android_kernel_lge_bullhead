@@ -54,8 +54,6 @@ struct tegra_dpaux {
 	struct dentry *debugfs;
 };
 
-int tegra_dpaux_enable(struct tegra_dpaux *dpaux);
-
 static inline struct tegra_dpaux *
 host1x_client_to_dpaux(struct host1x_client *client)
 {

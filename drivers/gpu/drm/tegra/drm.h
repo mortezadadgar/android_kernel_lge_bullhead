@@ -263,6 +263,8 @@ static inline int tegra_output_check_mode(struct tegra_output *output,
 	return output ? -ENOSYS : -EINVAL;
 }
 
+void tegra_dc_unpowergate_with_check(struct tegra_dc *dc);
+
 /* from bus.c */
 int drm_host1x_init(struct drm_driver *driver, struct host1x_device *device);
 void drm_host1x_exit(struct drm_driver *driver, struct host1x_device *device);
