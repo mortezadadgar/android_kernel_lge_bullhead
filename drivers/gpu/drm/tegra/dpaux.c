@@ -209,6 +209,7 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 
 	status = wait_for_completion_timeout(&dpaux->complete, timeout);
 	if (!status) {
+		WARN(1, "dpaux transfer timeout.\n");
 		ret = -ETIMEDOUT;
 		goto out;
 	}
@@ -661,6 +662,12 @@ int tegra_dpaux_enable(struct tegra_dpaux *dpaux)
 
 	if (dpaux->enabled)
 		return 0;
+
+	/* enable and clear all interrupts */
+	value = DPAUX_INTR_AUX_DONE | DPAUX_INTR_IRQ_EVENT |
+		DPAUX_INTR_UNPLUG_EVENT | DPAUX_INTR_PLUG_EVENT;
+	tegra_dpaux_writel(dpaux, value, DPAUX_INTR_EN_AUX);
+	tegra_dpaux_writel(dpaux, value, DPAUX_INTR_AUX);
 
 	value = DPAUX_HYBRID_PADCTL_AUX_CMH(2) |
 		DPAUX_HYBRID_PADCTL_AUX_DRVZ(4) |

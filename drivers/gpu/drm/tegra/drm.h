@@ -127,6 +127,8 @@ struct tegra_dc {
 
 	struct iommu_domain *domain;
 	struct tegra_bo *shadow_cursor;
+
+	bool enabled;
 };
 
 static inline struct tegra_dc *
