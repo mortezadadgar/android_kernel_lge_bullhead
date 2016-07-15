@@ -108,7 +108,18 @@ static void tegra_connector_destroy(struct drm_connector *connector)
 	drm_connector_clear(connector);
 }
 
+static void tegra_connector_dpms(struct drm_connector *connector, int mode)
+{
+	/*
+	 * We don't make use of connector->dpms.
+	 * But we need this function otherwise kernel crashes in
+	 * drm_crtc_helper_set_config because it calls connector->dpms
+	 * without checking whether it is defined.
+	 */
+}
+
 static const struct drm_connector_funcs connector_funcs = {
+	.dpms = tegra_connector_dpms,
 	.detect = tegra_connector_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.destroy = tegra_connector_destroy,
