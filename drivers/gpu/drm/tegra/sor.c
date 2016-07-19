@@ -494,6 +494,7 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	struct drm_dp_aux *aux;
 	unsigned long value;
 	int err = 0;
+	bool write_active = false;
 
 	mutex_lock(&sor->lock);
 
@@ -807,13 +808,10 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	value = tegra_dc_readl(dc, DC_CMD_STATE_ACCESS);
 	value |= WRITE_MUX;
 	tegra_dc_writel(dc, value, DC_CMD_STATE_ACCESS);
+	write_active = true;
 
 	tegra_dc_writel(dc, VSYNC_H_POSITION(1), DC_DISP_DISP_TIMING_OPTIONS);
 	tegra_dc_writel(dc, DISP_CTRL_MODE_C_DISPLAY, DC_CMD_DISPLAY_COMMAND);
-
-	value = tegra_dc_readl(dc, DC_CMD_STATE_ACCESS);
-	value &= ~WRITE_MUX;
-	tegra_dc_writel(dc, value, DC_CMD_STATE_ACCESS);
 
 	/*
 	 * configure panel (24bpp, vsync-, hsync-, DP-A protocol, complete
@@ -910,6 +908,11 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	sor->enabled = true;
 
 unlock:
+	if (write_active) {
+		value = tegra_dc_readl(dc, DC_CMD_STATE_ACCESS);
+		value &= ~WRITE_MUX;
+		tegra_dc_writel(dc, value, DC_CMD_STATE_ACCESS);
+	}
 	mutex_unlock(&sor->lock);
 	return err;
 }
