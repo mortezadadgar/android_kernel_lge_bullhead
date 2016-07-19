@@ -144,6 +144,7 @@ struct iwl_mvm_scan_params {
 	struct cfg80211_match_set *match_sets;
 	int n_scan_plans;
 	struct cfg80211_sched_scan_plan *scan_plans;
+	u32 measurement_dwell;
 };
 
 static u8 iwl_mvm_scan_rx_ant(struct iwl_mvm *mvm)
@@ -244,6 +245,29 @@ iwl_mvm_scan_type iwl_mvm_get_scan_type(struct iwl_mvm *mvm, bool p2p_device)
 
 	return IWL_SCAN_TYPE_WILD;
 }
+
+#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+static int
+iwl_mvm_get_measurement_dwell(struct iwl_mvm *mvm,
+			      struct cfg80211_scan_request *req,
+			      struct iwl_mvm_scan_params *params)
+{
+	if (!req->duration)
+		return 0;
+
+	if (req->duration_mandatory &&
+	    req->duration > scan_timing[params->type].max_out_time) {
+		IWL_DEBUG_SCAN(mvm,
+			       "Measurement scan - too long dwell %hu (max out time %u)\n",
+			       req->duration,
+			       scan_timing[params->type].max_out_time);
+		return -EOPNOTSUPP;
+	}
+
+	return min_t(u32, (u32)req->duration,
+		     scan_timing[params->type].max_out_time);
+}
+#endif
 
 static inline bool iwl_mvm_rrm_scan_needed(struct iwl_mvm *mvm)
 {
@@ -1046,9 +1070,15 @@ static void iwl_mvm_scan_umac_dwell(struct iwl_mvm *mvm,
 				    struct iwl_scan_req_umac *cmd,
 				    struct iwl_mvm_scan_params *params)
 {
-	cmd->extended_dwell = scan_timing[params->type].dwell_extended;
-	cmd->active_dwell = scan_timing[params->type].dwell_active;
-	cmd->passive_dwell = scan_timing[params->type].dwell_passive;
+	if (params->measurement_dwell) {
+		cmd->active_dwell = params->measurement_dwell;
+		cmd->passive_dwell = params->measurement_dwell;
+		cmd->extended_dwell = params->measurement_dwell;
+	} else {
+		cmd->active_dwell = scan_timing[params->type].dwell_active;
+		cmd->passive_dwell = scan_timing[params->type].dwell_passive;
+		cmd->extended_dwell = scan_timing[params->type].dwell_extended;
+	}
 	cmd->fragmented_dwell = scan_timing[params->type].dwell_fragmented;
 	cmd->max_out_time = cpu_to_le32(scan_timing[params->type].max_out_time);
 	cmd->suspend_time = cpu_to_le32(scan_timing[params->type].suspend_time);
@@ -1080,11 +1110,11 @@ iwl_mvm_umac_scan_cfg_channels(struct iwl_mvm *mvm,
 	}
 }
 
-static u32 iwl_mvm_scan_umac_flags(struct iwl_mvm *mvm,
+static u16 iwl_mvm_scan_umac_flags(struct iwl_mvm *mvm,
 				   struct iwl_mvm_scan_params *params,
 				   struct ieee80211_vif *vif)
 {
-	int flags = 0;
+	u16 flags = 0;
 
 	if (params->n_ssids == 0)
 		flags = IWL_UMAC_SCAN_GEN_FLAGS_PASSIVE;
@@ -1105,6 +1135,9 @@ static u32 iwl_mvm_scan_umac_flags(struct iwl_mvm *mvm,
 
 	if (!iwl_mvm_is_regular_scan(params))
 		flags |= IWL_UMAC_SCAN_GEN_FLAGS_PERIODIC;
+
+	if (params->measurement_dwell)
+		flags |= IWL_UMAC_SCAN_GEN_FLAGS_ITER_COMPLETE;
 
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
 	if (mvm->scan_iter_notif_enabled)
@@ -1132,6 +1165,7 @@ static int iwl_mvm_scan_umac(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			mvm->fw->ucode_capa.n_scan_channels;
 	int uid, i;
 	u32 ssid_bitmap = 0;
+	struct iwl_mvm_vif *scan_vif = iwl_mvm_vif_from_mac80211(vif);
 
 	lockdep_assert_held(&mvm->mutex);
 
@@ -1149,8 +1183,9 @@ static int iwl_mvm_scan_umac(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	mvm->scan_uid_status[uid] = type;
 
 	cmd->uid = cpu_to_le32(uid);
-	cmd->general_flags = cpu_to_le32(iwl_mvm_scan_umac_flags(mvm, params,
+	cmd->general_flags = cpu_to_le16(iwl_mvm_scan_umac_flags(mvm, params,
 								 vif));
+	cmd->scan_start_mac_id = scan_vif->id;
 
 	if (type == IWL_MVM_SCAN_SCHED || type == IWL_MVM_SCAN_NETDETECT)
 		cmd->flags = cpu_to_le32(IWL_UMAC_SCAN_FLAG_PREEMPTIVE);
@@ -1302,6 +1337,14 @@ int iwl_mvm_reg_scan_start(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		iwl_mvm_get_scan_type(mvm,
 				      vif->type == NL80211_IFTYPE_P2P_DEVICE);
 
+#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+	ret = iwl_mvm_get_measurement_dwell(mvm, req, &params);
+	if (ret < 0)
+		return ret;
+
+	params.measurement_dwell = ret;
+#endif
+
 	iwl_mvm_build_scan_probe(mvm, vif, ies, &params);
 
 	if (fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_UMAC_SCAN)) {
@@ -1328,6 +1371,7 @@ int iwl_mvm_reg_scan_start(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 
 	IWL_DEBUG_SCAN(mvm, "Scan request was sent successfully\n");
 	mvm->scan_status |= IWL_MVM_SCAN_REGULAR;
+	mvm->scan_vif = iwl_mvm_vif_from_mac80211(vif);
 	iwl_mvm_ref(mvm, IWL_MVM_REF_SCAN);
 
 	queue_delayed_work(system_wq, &mvm->scan_timeout_dwork,
@@ -1462,9 +1506,12 @@ void iwl_mvm_rx_umac_scan_complete_notif(struct iwl_mvm *mvm,
 	if (mvm->scan_uid_status[uid] == IWL_MVM_SCAN_REGULAR) {
 		struct cfg80211_scan_info info = {
 			.aborted = aborted,
+			.scan_start_tsf = mvm->scan_start,
 		};
 
+		memcpy(info.tsf_bssid, mvm->scan_vif->bssid, ETH_ALEN);
 		ieee80211_scan_completed(mvm->hw, &info);
+		mvm->scan_vif = NULL;
 		iwl_mvm_unref(mvm, IWL_MVM_REF_SCAN);
 		cancel_delayed_work(&mvm->scan_timeout_dwork);
 	} else if (mvm->scan_uid_status[uid] == IWL_MVM_SCAN_SCHED) {
@@ -1498,6 +1545,8 @@ void iwl_mvm_rx_umac_scan_iter_complete_notif(struct iwl_mvm *mvm,
 	struct iwl_umac_scan_iter_complete_notif *notif = (void *)pkt->data;
 	u8 buf[256];
 
+	mvm->scan_start = le64_to_cpu(notif->start_tsf);
+
 	IWL_DEBUG_SCAN(mvm,
 		       "UMAC Scan iteration complete: status=0x%x scanned_channels=%d channels list: %s\n",
 		       notif->status, notif->scanned_channels,
@@ -1510,6 +1559,10 @@ void iwl_mvm_rx_umac_scan_iter_complete_notif(struct iwl_mvm *mvm,
 		ieee80211_sched_scan_results(mvm->hw);
 		mvm->sched_scan_pass_all = SCHED_SCAN_PASS_ALL_ENABLED;
 	}
+
+	IWL_DEBUG_SCAN(mvm,
+		       "UMAC Scan iteration complete: scan started at %llu (TSF)\n",
+		       mvm->scan_start);
 }
 
 static int iwl_mvm_umac_scan_abort(struct iwl_mvm *mvm, int type)
