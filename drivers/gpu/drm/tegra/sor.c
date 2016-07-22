@@ -14,6 +14,7 @@
 #include <linux/tegra-powergate.h>
 
 #include <drm/drm_dp_helper.h>
+#include <drm/drm_panel.h>
 
 #include "dc.h"
 #include "drm.h"
@@ -1163,14 +1164,23 @@ static enum drm_connector_status
 tegra_output_sor_detect(struct tegra_output *output)
 {
 	struct tegra_sor *sor = to_sor(output);
+	enum drm_connector_status ret;
 
 	if (sor->dc)
 		tegra_dc_unpowergate_with_check(sor->dc);
 
-	if (sor->dpaux)
-		return tegra_dpaux_detect(sor->dpaux);
+	if (output->panel)
+		drm_panel_enable(output->panel);
 
-	return connector_status_unknown;
+	if (sor->dpaux)
+		ret = tegra_dpaux_detect(sor->dpaux);
+	else
+		ret = connector_status_unknown;
+
+	if (output->panel)
+		drm_panel_disable(output->panel);
+
+	return ret;
 }
 
 static const struct tegra_output_ops sor_ops = {
