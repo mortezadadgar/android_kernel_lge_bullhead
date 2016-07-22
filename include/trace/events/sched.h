@@ -1092,6 +1092,9 @@ TRACE_EVENT(sched_contrib_scale_f,
 		  __entry->cpu, __entry->freq_scale_factor,
 		  __entry->cpu_scale_factor)
 );
+
+#ifdef CONFIG_SMP
+
 /*
  * Tracepoint for accounting sched averages for cpus.
  */
@@ -1336,6 +1339,8 @@ TRACE_EVENT(sched_tune_config,
 		__entry->pb_nrg_gain, __entry->pb_cap_gain,
 		__entry->pc_nrg_gain, __entry->pc_cap_gain)
 );
+
+#endif /* CONFIG_SMP */
 
 #endif /* _TRACE_SCHED_H */
 

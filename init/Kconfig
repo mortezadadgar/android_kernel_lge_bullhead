@@ -1166,6 +1166,7 @@ config SCHED_AUTOGROUP
 
 config SCHED_TUNE
 	bool "Tasks boosting for energy-aware scheduler (EXPERIMENTAL)"
+	depends on SMP
 	help
 	  This option enable the system-wide support for task boosting.
 	  When this support is enabled a new sysctl interface is exposed to
