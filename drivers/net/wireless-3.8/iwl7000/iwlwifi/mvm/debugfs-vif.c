@@ -615,63 +615,6 @@ static ssize_t iwl_dbgfs_tof_responder_params_write(struct ieee80211_vif *vif,
 
 	mutex_lock(&mvm->mutex);
 
-	data = iwl_dbgfs_is_match("burst_period=", buf);
-	if (data) {
-		ret = kstrtou32(data, 10, &value);
-		if (!ret)
-			mvm->tof_data.responder_cfg.burst_period =
-							cpu_to_le16(value);
-		goto out;
-	}
-
-	data = iwl_dbgfs_is_match("min_delta_ftm=", buf);
-	if (data) {
-		ret = kstrtou32(data, 10, &value);
-		if (ret == 0)
-			mvm->tof_data.responder_cfg.min_delta_ftm = value;
-		goto out;
-	}
-
-	data = iwl_dbgfs_is_match("burst_duration=", buf);
-	if (data) {
-		ret = kstrtou32(data, 10, &value);
-		if (ret == 0)
-			mvm->tof_data.responder_cfg.burst_duration = value;
-		goto out;
-	}
-
-	data = iwl_dbgfs_is_match("num_of_burst_exp=", buf);
-	if (data) {
-		ret = kstrtou32(data, 10, &value);
-		if (ret == 0)
-			mvm->tof_data.responder_cfg.num_of_burst_exp = value;
-		goto out;
-	}
-
-	data = iwl_dbgfs_is_match("abort_responder=", buf);
-	if (data) {
-		ret = kstrtou32(data, 10, &value);
-		if (ret == 0)
-			mvm->tof_data.responder_cfg.abort_responder = value;
-		goto out;
-	}
-
-	data = iwl_dbgfs_is_match("get_ch_est=", buf);
-	if (data) {
-		ret = kstrtou32(data, 10, &value);
-		if (ret == 0)
-			mvm->tof_data.responder_cfg.get_ch_est = value;
-		goto out;
-	}
-
-	data = iwl_dbgfs_is_match("recv_sta_req_params=", buf);
-	if (data) {
-		ret = kstrtou32(data, 10, &value);
-		if (ret == 0)
-			mvm->tof_data.responder_cfg.recv_sta_req_params = value;
-		goto out;
-	}
-
 	data = iwl_dbgfs_is_match("channel_num=", buf);
 	if (data) {
 		ret = kstrtou32(data, 10, &value);
@@ -704,15 +647,6 @@ static ssize_t iwl_dbgfs_tof_responder_params_write(struct ieee80211_vif *vif,
 			ret = -EINVAL;
 			goto out;
 		}
-	}
-
-	data = iwl_dbgfs_is_match("tsf_timer_offset_msecs=", buf);
-	if (data) {
-		ret = kstrtou32(data, 10, &value);
-		if (ret == 0)
-			mvm->tof_data.responder_cfg.tsf_timer_offset_msecs =
-							cpu_to_le16(value);
-		goto out;
 	}
 
 	data = iwl_dbgfs_is_match("toa_offset=", buf);
@@ -751,30 +685,6 @@ static ssize_t iwl_dbgfs_tof_responder_params_write(struct ieee80211_vif *vif,
 		goto out;
 	}
 
-	data = iwl_dbgfs_is_match("ftm_per_burst=", buf);
-	if (data) {
-		ret = kstrtou32(data, 10, &value);
-		if (ret == 0)
-			mvm->tof_data.responder_cfg.ftm_per_burst = value;
-		goto out;
-	}
-
-	data = iwl_dbgfs_is_match("ftm_resp_ts_avail=", buf);
-	if (data) {
-		ret = kstrtou32(data, 10, &value);
-		if (ret == 0)
-			mvm->tof_data.responder_cfg.ftm_resp_ts_avail = value;
-		goto out;
-	}
-
-	data = iwl_dbgfs_is_match("asap_mode=", buf);
-	if (data) {
-		ret = kstrtou32(data, 10, &value);
-		if (ret == 0)
-			mvm->tof_data.responder_cfg.asap_mode = value;
-		goto out;
-	}
-
 	data = iwl_dbgfs_is_match("send_responder_cfg=", buf);
 	if (data) {
 		ret = kstrtou32(data, 10, &value);
@@ -806,10 +716,6 @@ static ssize_t iwl_dbgfs_tof_responder_params_read(struct file *file,
 
 	mutex_lock(&mvm->mutex);
 
-	pos += scnprintf(buf + pos, bufsz - pos, "burst_period = %d\n",
-			 le16_to_cpu(cmd->burst_period));
-	pos += scnprintf(buf + pos, bufsz - pos, "burst_duration = %d\n",
-			 cmd->burst_duration);
 	pos += scnprintf(buf + pos, bufsz - pos, "bandwidth = %d\n",
 			 cmd->bandwidth);
 	pos += scnprintf(buf + pos, bufsz - pos, "channel_num = %d\n",
@@ -818,26 +724,7 @@ static ssize_t iwl_dbgfs_tof_responder_params_read(struct file *file,
 			 cmd->ctrl_ch_position);
 	pos += scnprintf(buf + pos, bufsz - pos, "bssid = %pM\n",
 			 cmd->bssid);
-	pos += scnprintf(buf + pos, bufsz - pos, "min_delta_ftm = %d\n",
-			 cmd->min_delta_ftm);
-	pos += scnprintf(buf + pos, bufsz - pos, "num_of_burst_exp = %d\n",
-			 cmd->num_of_burst_exp);
 	pos += scnprintf(buf + pos, bufsz - pos, "rate = %d\n", cmd->rate);
-	pos += scnprintf(buf + pos, bufsz - pos, "abort_responder = %d\n",
-			 cmd->abort_responder);
-	pos += scnprintf(buf + pos, bufsz - pos, "get_ch_est = %d\n",
-			 cmd->get_ch_est);
-	pos += scnprintf(buf + pos, bufsz - pos, "recv_sta_req_params = %d\n",
-			 cmd->recv_sta_req_params);
-	pos += scnprintf(buf + pos, bufsz - pos, "ftm_per_burst = %d\n",
-			 cmd->ftm_per_burst);
-	pos += scnprintf(buf + pos, bufsz - pos, "ftm_resp_ts_avail = %d\n",
-			 cmd->ftm_resp_ts_avail);
-	pos += scnprintf(buf + pos, bufsz - pos, "asap_mode = %d\n",
-			 cmd->asap_mode);
-	pos += scnprintf(buf + pos, bufsz - pos,
-			 "tsf_timer_offset_msecs = %d\n",
-			 le16_to_cpu(cmd->tsf_timer_offset_msecs));
 	pos += scnprintf(buf + pos, bufsz - pos, "toa_offset = %d\n",
 			 le16_to_cpu(cmd->toa_offset));
 
@@ -1309,16 +1196,18 @@ static ssize_t iwl_dbgfs_tof_toa_offset_write(struct ieee80211_vif *vif,
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_mvm *mvm = mvmvif->mvm;
-	u16 toa_offset;
+	s16 toa_offset;
 	int ret;
 
-	ret = kstrtou16(buf, 0, &toa_offset);
+	ret = kstrtos16(buf, 0, &toa_offset);
 	if (ret)
 		return ret;
 
 	mutex_lock(&mvm->mutex);
 
-	mvm->tof_data.toa_offset = toa_offset;
+	mvm->tof_data.responder_cfg.toa_offset = cpu_to_le16(toa_offset);
+	mvm->tof_data.responder_cfg.cmd_valid_fields =
+		cpu_to_le32(IWL_TOF_RESPONDER_CMD_VALID_TOA_OFFSET);
 
 	ret = iwl_mvm_tof_responder_cmd(mvm, vif);
 

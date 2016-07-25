@@ -128,69 +128,78 @@ enum iwl_tof_mcsi_ntfy {
 };
 
 /**
+ * enum iwl_tof_responder_cmd_valid_field -
+ * valid fields in the responder cfg cmd
+ */
+enum iwl_tof_responder_cmd_valid_field {
+	IWL_TOF_RESPONDER_CMD_VALID_CHAN_INFO = BIT(0),
+	IWL_TOF_RESPONDER_CMD_VALID_TOA_OFFSET = BIT(1),
+	IWL_TOF_RESPONDER_CMD_VALID_COMMON_CALIB = BIT(2),
+	IWL_TOF_RESPONDER_CMD_VALID_SPECIFIC_CALIB = BIT(3),
+	IWL_TOF_RESPONDER_CMD_VALID_BSSID = BIT(4),
+	IWL_TOF_RESPONDER_CMD_VALID_TX_ANT = BIT(5),
+	IWL_TOF_RESPONDER_CMD_VALID_ALGO_TYPE = BIT(6),
+	IWL_TOF_RESPONDER_CMD_VALID_NON_ASAP_SUPPORT = BIT(7),
+	IWL_TOF_RESPONDER_CMD_VALID_STATISTICS_REPORT_SUPPORT = BIT(8),
+	IWL_TOF_RESPONDER_CMD_VALID_MCSI_NOTIF_SUPPORT = BIT(9),
+	IWL_TOF_RESPONDER_CMD_VALID_FAST_ALGO_SUPPORT = BIT(10),
+	IWL_TOF_RESPONDER_CMD_VALID_RETRY_ON_ALGO_FAIL = BIT(11),
+	IWL_TOF_RESPONDER_CMD_VALID_STA_ID = BIT(12),
+};
+
+/**
+ * enum iwl_tof_responder_cfg_flags - responder configuration flags
+ */
+enum iwl_tof_responder_cfg_flags {
+	IWL_TOF_RESPONDER_FLAGS_NON_ASAP_SUPPORT = BIT(0),
+	IWL_TOF_RESPONDER_FLAGS_REPORT_STATISTICS = BIT(1),
+	IWL_TOF_RESPONDER_FLAGS_REPORT_MCSI = BIT(2),
+	IWL_TOF_RESPONDER_FLAGS_ALGO_TYPE = BIT(3) | BIT(4) | BIT(5),
+	IWL_TOF_RESPONDER_FLAGS_TOA_OFFSET_MODE = BIT(6),
+	IWL_TOF_RESPONDER_FLAGS_COMMON_CALIB_MODE = BIT(7),
+	IWL_TOF_RESPONDER_FLAGS_SPECIFIC_CALIB_MODE = BIT(8),
+	IWL_TOF_RESPONDER_FLAGS_FAST_ALGO_SUPPORT = BIT(9),
+	IWL_TOF_RESPONDER_FLAGS_RETRY_ON_ALGO_FAIL = BIT(10),
+	IWL_TOF_RESPONDER_FLAGS_FTM_TX_ANT = RATE_MCS_ANT_ABC_MSK,
+};
+
+/**
  * struct iwl_tof_responder_config_cmd - ToF AP mode (for debug)
- * @burst_period: future use: (currently hard coded in the LMAC)
- *		  The interval between two sequential bursts.
- * @min_delta_ftm: future use: (currently hard coded in the LMAC)
- *		   The minimum delay between two sequential FTM Responses
- *		   in the same burst.
- * @burst_duration: future use: (currently hard coded in the LMAC)
- *		   The total time for all FTMs handshake in the same burst.
- *		   Affect the time events duration in the LMAC.
- * @num_of_burst_exp: future use: (currently hard coded in the LMAC)
- *		   The number of bursts for the current ToF request. Affect
- *		   the number of events allocations in the current iteration.
- * @get_ch_est: for xVT only, NA for driver
- * @abort_responder: when set to '1' - Responder will terminate its activity
- *		     (all other fields in the command are ignored)
- * @recv_sta_req_params: 1 - Responder will ignore the other Responder's
- *			 params and use the recomended Initiator params.
- *			 0 - otherwise
- * @channel_num: current AP Channel
+ * @cmd_valid_fields: &iwl_tof_responder_cmd_valid_field
+ * @responder_cfg_flags: &iwl_tof_responder_cfg_flags
  * @bandwidth: current AP Bandwidth: &enum iwl_tof_bandwidth
  * @rate: current AP rate
+ * @channel_num: current AP Channel
  * @ctrl_ch_position: coding of the control channel position relative to
  *	     the center frequency.
  *	     40MHz  0 below center, 1 above center
  *	     80MHz  bits [0..1]: 0  the near 20MHz to the center,
  *				 1  the far  20MHz to the center
  *		    bit[2]  as above 40MHz
- * @ftm_per_burst: FTMs per Burst
- * @ftm_resp_ts_avail: '0' - we don't measure over the Initial FTM Response,
- *		  '1' - we measure over the Initial FTM Response
- * @asap_mode: ASAP / Non ASAP mode for the current WLS station
  * @sta_id: index of the AP STA when in AP mode
- * @tsf_timer_offset_msecs: The dictated time offset (mSec) from the AP's TSF
  * @toa_offset: Artificial addition [pSec] for the ToA - to be used for debug
  *		purposes, simulating station movement by adding various values
  *		to this field
+ * @common_calib - XVT: common calibration value
+ * @specific_calib - XVT: specific calibration value
  * @bssid: Current AP BSSID
- * @algo_type: &enum iwl_tof_algo_type
- * @notify_mcsi: &enum iwl_tof_mcsi_ntfy.
  */
 struct iwl_tof_responder_config_cmd {
 	__le32 sub_grp_cmd_id;
-	__le16 burst_period;
-	u8 min_delta_ftm;
-	u8 burst_duration;
-	u8 num_of_burst_exp;
-	u8 get_ch_est;
-	u8 abort_responder;
-	u8 recv_sta_req_params;
-	u8 channel_num;
+	__le32 cmd_valid_fields;
+	__le32 responder_cfg_flags;
 	u8 bandwidth;
 	u8 rate;
+	u8 channel_num;
 	u8 ctrl_ch_position;
-	u8 ftm_per_burst;
-	u8 ftm_resp_ts_avail;
-	u8 asap_mode;
 	u8 sta_id;
-	__le16 tsf_timer_offset_msecs;
+	u8 reserved1;
 	__le16 toa_offset;
+	__le16 common_calib;
+	__le16 specific_calib;
 	u8 bssid[ETH_ALEN];
-	u8 algo_type;
-	u8 notify_mcsi;
-} __packed; /* TOF_RESPONDER_CONFIG_CMD_API_S_VER_4 */
+	__le16 reserved2;
+} __packed; /* TOF_RESPONDER_CONFIG_CMD_API_S_VER_5 */
 
 /**
  * struct iwl_tof_responder_dyn_config_cmd - Dynamic responder settings

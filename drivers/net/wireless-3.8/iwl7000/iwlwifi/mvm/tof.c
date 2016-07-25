@@ -318,6 +318,7 @@ int iwl_mvm_tof_range_abort_cmd(struct iwl_mvm *mvm, u8 id)
 				    0, sizeof(cmd), &cmd);
 }
 
+/* Initializes responder_cfg command. (TOF_RESPONDER_CONFIG_CMD_API in FW) */
 static void
 iwl_mvm_tof_set_responder(struct iwl_mvm *mvm,
 			  struct ieee80211_vif *vif,
@@ -329,7 +330,6 @@ iwl_mvm_tof_set_responder(struct iwl_mvm *mvm,
 	memset(cmd, 0, sizeof(*cmd));
 
 	cmd->sub_grp_cmd_id = cpu_to_le32(TOF_RESPONDER_CONFIG_CMD);
-	cmd->abort_responder = 0;
 
 	cmd->channel_num = def->chan->hw_value;
 
@@ -357,10 +357,17 @@ iwl_mvm_tof_set_responder(struct iwl_mvm *mvm,
 		WARN_ON(1);
 	}
 
-	/* By default it's 0 - IWL_TOF_ALGO_TYPE_MAX_LIKE */
-	cmd->algo_type = mvm->tof_data.tof_algo_type;
-	cmd->asap_mode = iwlmvm_mod_params.ftm_resp_asap;
-	cmd->notify_mcsi = IWL_TOF_MCSI_ENABLED;
+	cmd->cmd_valid_fields =
+		cpu_to_le32(IWL_TOF_RESPONDER_CMD_VALID_CHAN_INFO |
+			   /* ftm_resp_asap == true means asap ONLY mode,
+			    * meaning non-ASAP not supported.
+			    */
+			   (iwlmvm_mod_params.ftm_resp_asap ?
+			    0 : IWL_TOF_RESPONDER_CMD_VALID_NON_ASAP_SUPPORT));
+
+	cmd->responder_cfg_flags =
+		cpu_to_le32(iwlmvm_mod_params.ftm_resp_asap ?
+			    0 : IWL_TOF_RESPONDER_FLAGS_NON_ASAP_SUPPORT);
 }
 
 int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
@@ -380,10 +387,14 @@ int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
 		return -EIO;
 	}
 
+	/* sta_id and mac address are always present in the responder
+	 * configuration cmd
+	 */
 	cmd->sta_id = mvmvif->bcast_sta.sta_id;
-	cmd->toa_offset = cpu_to_le16(mvm->tof_data.toa_offset);
-
 	memcpy(cmd->bssid, vif->addr, ETH_ALEN);
+	cmd->cmd_valid_fields |= cpu_to_le32(
+					IWL_TOF_RESPONDER_CMD_VALID_BSSID |
+					IWL_TOF_RESPONDER_CMD_VALID_STA_ID);
 	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CMD,
 						    IWL_ALWAYS_LONG_GROUP, 0),
 				    0, sizeof(*cmd), cmd);
