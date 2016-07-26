@@ -90,12 +90,12 @@ ssize_t zcomp_available_show(const char *comp, char *buf)
 	return sz;
 }
 
-struct zcomp_strm *zcomp_strm_find(struct zcomp *comp)
+struct zcomp_strm *zcomp_stream_get(struct zcomp *comp)
 {
 	return *get_cpu_ptr(comp->stream);
 }
 
-void zcomp_strm_release(struct zcomp *comp, struct zcomp_strm *zstrm)
+void zcomp_stream_put(struct zcomp *comp)
 {
 	put_cpu_ptr(comp->stream);
 }
