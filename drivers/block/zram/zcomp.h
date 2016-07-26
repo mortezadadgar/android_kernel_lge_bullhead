@@ -44,8 +44,8 @@ ssize_t zcomp_available_show(const char *comp, char *buf);
 struct zcomp *zcomp_create(const char *comp);
 void zcomp_destroy(struct zcomp *comp);
 
-struct zcomp_strm *zcomp_strm_find(struct zcomp *comp);
-void zcomp_strm_release(struct zcomp *comp, struct zcomp_strm *zstrm);
+struct zcomp_strm *zcomp_stream_get(struct zcomp *comp);
+void zcomp_stream_put(struct zcomp *comp);
 
 int zcomp_compress(struct zcomp_strm *zstrm,
 		const void *src, unsigned int *dst_len);
