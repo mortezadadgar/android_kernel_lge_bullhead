@@ -486,6 +486,8 @@ static int do_group_powergate(int id)
 
 	switch (id) {
 	case TEGRA_POWERGATE_DIS:
+		if (WARN_ON(counta <= countvenc || counta <= countb))
+			return -EINVAL;
 		counta = atomic_dec_return(&ref_count_dispa);
 		countsor = atomic_dec_return(&ref_count_sor);
 		break;
@@ -500,6 +502,8 @@ static int do_group_powergate(int id)
 		countsor = atomic_dec_return(&ref_count_sor);
 		break;
 	case TEGRA_POWERGATE_SOR:
+		if (WARN_ON(countsor <= counta || countsor <= countb))
+			return -EINVAL;
 		countsor = atomic_dec_return(&ref_count_sor);
 		break;
 	default:
