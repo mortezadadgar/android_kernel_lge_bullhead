@@ -201,7 +201,7 @@ config INTEL_POWERCLAMP
 
 config TEGRA_SOCTHERM
 	bool "Enable Tegra soc_therm"
-        depends on (TEGRA_DC && (ARCH_TEGRA_114_SOC || ARCH_TEGRA_124_SOC))
+        depends on (ARCH_TEGRA_114_SOC || ARCH_TEGRA_124_SOC)
         default y
         help
           Enables use of soc_therm for thermal management.
