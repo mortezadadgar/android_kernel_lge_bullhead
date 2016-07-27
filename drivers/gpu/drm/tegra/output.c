@@ -147,6 +147,28 @@ int tegra_output_panel_disable(struct tegra_output *output)
 	return drm_panel_disable(output->panel);
 }
 
+int tegra_output_panel_prepare(struct tegra_output *output)
+{
+	if (!output->panel)
+		return 0;
+
+	if (++output->panel_prepare_count != 1)
+		return 0;
+
+	return drm_panel_prepare(output->panel);
+}
+
+int tegra_output_panel_unprepare(struct tegra_output *output)
+{
+	if (!output->panel)
+		return 0;
+
+	if (--output->panel_prepare_count != 0)
+		return 0;
+
+	return drm_panel_unprepare(output->panel);
+}
+
 static void drm_encoder_clear(struct drm_encoder *encoder)
 {
 	memset(encoder, 0, sizeof(*encoder));
@@ -168,14 +190,16 @@ static void tegra_encoder_disable(struct drm_encoder *encoder)
 
 	tegra_output_panel_disable(output);
 	tegra_output_disable(output);
+	tegra_output_panel_unprepare(output);
 }
 
 static void tegra_encoder_enable(struct drm_encoder *encoder)
 {
 	struct tegra_output *output = encoder_to_output(encoder);
 
-	tegra_output_panel_enable(output);
+	tegra_output_panel_prepare(output);
 	tegra_output_enable(output);
+	tegra_output_panel_enable(output);
 }
 
 static bool tegra_encoder_mode_fixup(struct drm_encoder *encoder,

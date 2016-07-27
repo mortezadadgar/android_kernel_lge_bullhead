@@ -1169,14 +1169,14 @@ tegra_output_sor_detect(struct tegra_output *output)
 	if (sor->dc)
 		tegra_dc_unpowergate_with_check(sor->dc);
 
-	tegra_output_panel_enable(output);
+	tegra_output_panel_prepare(output);
 
 	if (sor->dpaux)
 		ret = tegra_dpaux_detect(sor->dpaux);
 	else
 		ret = connector_status_unknown;
 
-	tegra_output_panel_disable(output);
+	tegra_output_panel_unprepare(output);
 
 	return ret;
 }

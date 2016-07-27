@@ -209,6 +209,7 @@ struct tegra_output {
 
 	struct drm_panel *panel;
 	int panel_enable_count;
+	int panel_prepare_count;
 	struct i2c_adapter *ddc;
 	const struct edid *edid;
 	unsigned int hpd_irq;
@@ -289,6 +290,8 @@ int tegra_output_init(struct drm_device *drm, struct tegra_output *output);
 int tegra_output_exit(struct tegra_output *output);
 int tegra_output_panel_enable(struct tegra_output *output);
 int tegra_output_panel_disable(struct tegra_output *output);
+int tegra_output_panel_prepare(struct tegra_output *output);
+int tegra_output_panel_unprepare(struct tegra_output *output);
 
 /* from dpaux.c */
 struct tegra_dpaux;
