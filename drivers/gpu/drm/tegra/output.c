@@ -125,6 +125,28 @@ static const struct drm_connector_funcs connector_funcs = {
 	.destroy = tegra_connector_destroy,
 };
 
+int tegra_output_panel_enable(struct tegra_output *output)
+{
+	if (!output->panel)
+		return 0;
+
+	if (++output->panel_enable_count != 1)
+		return 0;
+
+	return drm_panel_enable(output->panel);
+}
+
+int tegra_output_panel_disable(struct tegra_output *output)
+{
+	if (!output->panel)
+		return 0;
+
+	if (--output->panel_enable_count != 0)
+		return 0;
+
+	return drm_panel_disable(output->panel);
+}
+
 static void drm_encoder_clear(struct drm_encoder *encoder)
 {
 	memset(encoder, 0, sizeof(*encoder));
@@ -143,18 +165,16 @@ static const struct drm_encoder_funcs encoder_funcs = {
 static void tegra_encoder_disable(struct drm_encoder *encoder)
 {
 	struct tegra_output *output = encoder_to_output(encoder);
-	struct drm_panel *panel = output->panel;
 
-	drm_panel_disable(panel);
+	tegra_output_panel_disable(output);
 	tegra_output_disable(output);
 }
 
 static void tegra_encoder_enable(struct drm_encoder *encoder)
 {
 	struct tegra_output *output = encoder_to_output(encoder);
-	struct drm_panel *panel = output->panel;
 
-	drm_panel_enable(panel);
+	tegra_output_panel_enable(output);
 	tegra_output_enable(output);
 }
 
@@ -167,12 +187,6 @@ static bool tegra_encoder_mode_fixup(struct drm_encoder *encoder,
 
 static void tegra_encoder_prepare(struct drm_encoder *encoder)
 {
-	tegra_encoder_disable(encoder);
-}
-
-static void tegra_encoder_commit(struct drm_encoder *encoder)
-{
-	tegra_encoder_enable(encoder);
 }
 
 static void tegra_encoder_mode_set(struct drm_encoder *encoder,
@@ -185,7 +199,7 @@ static const struct drm_encoder_helper_funcs encoder_helper_funcs = {
 	.disable = tegra_encoder_disable,
 	.mode_fixup = tegra_encoder_mode_fixup,
 	.prepare = tegra_encoder_prepare,
-	.commit = tegra_encoder_commit,
+	.commit = tegra_encoder_enable,
 	.mode_set = tegra_encoder_mode_set,
 };
 
