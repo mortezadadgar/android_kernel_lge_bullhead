@@ -400,6 +400,10 @@ static const struct panel_desc auo_b133xtn01 = {
 		.width = 293,
 		.height = 165,
 	},
+	.delay = {
+		.disable = 10,
+		.unprepare = 500,
+	}
 };
 
 static const struct drm_display_mode chunghwa_claa101wa01a_mode = {
