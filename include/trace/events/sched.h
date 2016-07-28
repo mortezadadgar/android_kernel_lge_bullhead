@@ -1195,14 +1195,14 @@ TRACE_EVENT(sched_task_fits,
  */
 TRACE_EVENT(sched_boost_cpu,
 
-	TP_PROTO(int cpu, unsigned long usage, unsigned long margin),
+	TP_PROTO(int cpu, unsigned long usage, long margin),
 
 	TP_ARGS(cpu, usage, margin),
 
 	TP_STRUCT__entry(
 		__field( int,		cpu			)
 		__field( unsigned long,	usage			)
-		__field( unsigned long,	margin			)
+		__field( unsigned ,	margin			)
 	),
 
 	TP_fast_assign(
@@ -1211,7 +1211,7 @@ TRACE_EVENT(sched_boost_cpu,
 		__entry->margin	= margin;
 	),
 
-	TP_printk("cpu=%d usage=%lu margin=%lu",
+	TP_printk("cpu=%d usage=%lu margin=%ld",
 		  __entry->cpu,
 		  __entry->usage,
 		  __entry->margin)

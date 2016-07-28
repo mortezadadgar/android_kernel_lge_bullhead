@@ -205,10 +205,11 @@ static struct schedtune *allocated_group[BOOSTGROUPS_COUNT] = {
  */
 struct boost_groups {
 	/* Maximum boost value for all RUNNABLE tasks on a CPU */
-	unsigned boost_max;
+	bool idle;
+	int boost_max;
 	struct {
 		/* The boost for tasks on that boost group */
-		unsigned boost;
+		int boost;
 		/* Count of RUNNABLE tasks on that boost group */
 		unsigned tasks;
 	} group[BOOSTGROUPS_COUNT];
@@ -221,7 +222,7 @@ static void
 schedtune_cpu_update(int cpu)
 {
 	struct boost_groups *bg;
-	unsigned boost_max;
+	int boost_max;
 	int idx;
 
 	bg = &per_cpu(cpu_boost_groups, cpu);
@@ -235,9 +236,13 @@ schedtune_cpu_update(int cpu)
 		 */
 		if (bg->group[idx].tasks == 0)
 			continue;
+
 		boost_max = max(boost_max, bg->group[idx].boost);
 	}
-
+	/* Ensures boost_max is non-negative when all cgroup boost values
+	 * are neagtive. Avoids under-accounting of cpu capacity which may cause
+	 * task stacking and frequency spikes.*/
+	boost_max = max(boost_max, 0);
 	bg->boost_max = boost_max;
 }
 
@@ -383,7 +388,7 @@ int schedtune_task_boost(struct task_struct *p)
 	return task_boost;
 }
 
-static u64
+static s64
 boost_read(struct cgroup *cgrp, struct cftype *cft)
 {
 	struct schedtune *st = cgroup_st(cgrp);
@@ -393,11 +398,13 @@ boost_read(struct cgroup *cgrp, struct cftype *cft)
 
 static int
 boost_write(struct cgroup *cgrp, struct cftype *cft,
-	    u64 boost)
+	    s64 boost)
 {
 	struct schedtune *st = cgroup_st(cgrp);
+	unsigned threshold_idx;
+	int boost_pct;
 
-	if (boost < 0 || boost > 100)
+	if (boost < -100 || boost > 100)
 		return -EINVAL;
 
 	st->boost = boost;
@@ -419,8 +426,8 @@ boost_write(struct cgroup *cgrp, struct cftype *cft,
 static struct cftype files[] = {
 	{
 		.name = "boost",
-		.read_u64 = boost_read,
-		.write_u64 = boost_write,
+		.read_s64 = boost_read,
+		.write_s64 = boost_write,
 	},
 	{ }	/* terminate */
 };
