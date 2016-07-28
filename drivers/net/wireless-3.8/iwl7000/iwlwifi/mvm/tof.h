@@ -126,8 +126,14 @@ int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
 int iwl_mvm_tof_abort_ftm(struct iwl_mvm *mvm, u64 cookie);
 int iwl_mvm_tof_range_abort_cmd(struct iwl_mvm *mvm, u8 id);
 int iwl_mvm_tof_range_request_cmd(struct iwl_mvm *mvm);
-void iwl_mvm_tof_resp_handler(struct iwl_mvm *mvm,
-			      struct iwl_rx_cmd_buffer *rxb);
+void iwl_mvm_tof_range_resp(struct iwl_mvm *mvm,
+			    struct iwl_rx_cmd_buffer *rxb);
+void iwl_mvm_tof_mcsi_notif(struct iwl_mvm *mvm,
+			    struct iwl_rx_cmd_buffer *rxb);
+void iwl_mvm_tof_responder_stats(struct iwl_mvm *mvm,
+				 struct iwl_rx_cmd_buffer *rxb);
+void iwl_mvm_tof_lc_notif(struct iwl_mvm *mvm,
+			  struct iwl_rx_cmd_buffer *rxb);
 int iwl_mvm_tof_range_request_ext_cmd(struct iwl_mvm *mvm);
 int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
 			      struct ieee80211_vif *vif);

@@ -65,22 +65,18 @@
 
 #include "fw-api.h"
 
-/* ToF sub-group command IDs */
-enum iwl_mvm_tof_sub_grp_ids {
-	TOF_RANGE_REQ_CMD = 0x1,
-	TOF_CONFIG_CMD = 0x2,
-	TOF_RANGE_ABORT_CMD = 0x3,
-	TOF_RANGE_REQ_EXT_CMD = 0x4,
-	TOF_RESPONDER_CONFIG_CMD = 0x5,
-	TOF_NW_INITIATED_RES_SEND_CMD = 0x6,
-	TOF_NEIGHBOR_REPORT_REQ_CMD = 0x7,
-	TOF_RESPONDER_DYN_CONFIG_CMD = 0x8,
-	TOF_RESPONDER_STATS = 0x9,
-	TOF_LC_NOTIF = 0xF9,
-	TOF_NEIGHBOR_REPORT_RSP_NOTIF = 0xFC,
-	TOF_NW_INITIATED_REQ_RCVD_NOTIF = 0xFD,
-	TOF_RANGE_RESPONSE_NOTIF = 0xFE,
-	TOF_MCSI_DEBUG_NOTIF = 0xFB,
+/* TOF commands */
+enum iwl_tof_subcmd_ids {
+	TOF_RANGE_REQ_CMD = 0x0,
+	TOF_CONFIG_CMD = 0x1,
+	TOF_RANGE_ABORT_CMD = 0x2,
+	TOF_RANGE_REQ_EXT_CMD = 0x3,
+	TOF_RESPONDER_CONFIG_CMD = 0x4,
+	TOF_RESPONDER_DYN_CONFIG_CMD = 0x5,
+	TOF_LC_NOTIF = 0xFC,
+	TOF_RESPONDER_STATS = 0xFD,
+	TOF_MCSI_DEBUG_NOTIF = 0xFE,
+	TOF_RANGE_RESPONSE_NOTIF = 0xFF,
 };
 
 /**
@@ -91,7 +87,6 @@ enum iwl_mvm_tof_sub_grp_ids {
  * @is_buf_required: 1 channel estimation buffer required, 0 - otherwise
  */
 struct iwl_tof_config_cmd {
-	__le32 sub_grp_cmd_id;
 	u8 tof_disabled;
 	u8 one_sided_disabled;
 	u8 is_debug_mode;
@@ -185,7 +180,6 @@ enum iwl_tof_responder_cfg_flags {
  * @bssid: Current AP BSSID
  */
 struct iwl_tof_responder_config_cmd {
-	__le32 sub_grp_cmd_id;
 	__le32 cmd_valid_fields;
 	__le32 responder_cfg_flags;
 	u8 bandwidth;
@@ -211,7 +205,6 @@ struct iwl_tof_responder_config_cmd {
  *	4-multiple long buffer.
  */
 struct iwl_tof_responder_dyn_config_cmd {
-	__le32 sub_grp_cmd_id;
 	__le32 lci_len;
 	__le32 civic_len;
 	u8 lci_civic[];
@@ -230,7 +223,6 @@ struct iwl_tof_responder_dyn_config_cmd {
  *			value to be sent to the AP
  */
 struct iwl_tof_range_req_ext_cmd {
-	__le32 sub_grp_cmd_id;
 	__le16 tsf_timer_offset_msec;
 	__le16 reserved;
 	u8 min_delta_ftm;
@@ -346,7 +338,6 @@ enum iwl_tof_response_mode {
  *		  Bits set to 1 shall be randomized by the UMAC
  */
 struct iwl_tof_range_req_cmd {
-	__le32 sub_grp_cmd_id;
 	u8 request_id;
 	u8 initiator;
 	u8 one_sided_los_disable;
@@ -360,14 +351,6 @@ struct iwl_tof_range_req_cmd {
 	u8 macaddr_mask[ETH_ALEN];
 	u16 reserved1;
 	struct iwl_tof_range_req_ap_entry ap[IWL_MVM_TOF_MAX_APS];
-} __packed;
-
-/**
- * struct iwl_tof_gen_resp_cmd - generic ToF response
- */
-struct iwl_tof_gen_resp_cmd {
-	__le32 sub_grp_cmd_id;
-	u8 data[];
 } __packed;
 
 /**
@@ -523,7 +506,6 @@ struct iwl_tof_neighbor_report {
  * @request_id: corresponds to a range request
  */
 struct iwl_tof_range_abort_cmd {
-	__le32 sub_grp_cmd_id;
 	u8 request_id;
 	u8 reserved[3];
 } __packed;

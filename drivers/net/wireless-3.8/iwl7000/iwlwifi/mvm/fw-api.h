@@ -212,10 +212,6 @@ enum {
 
 	CONFIG_2G_COEX_CMD = 0x71,
 
-	/* ToF - 802.11mc FTM */
-	TOF_CMD = 0x10,
-	TOF_NOTIFICATION = 0x11,
-
 	/* Power - legacy power table command */
 	POWER_TABLE_CMD = 0x77,
 	PSM_UAPSD_AP_MISBEHAVING_NOTIFICATION = 0x78,
@@ -355,6 +351,7 @@ enum {
 	DATA_PATH_GROUP = 0x5,
 	SCAN_GROUP = 0x6,
 	NAN_GROUP = 0x7,
+	TOF_GROUP = 0x8,
 	PROT_OFFLOAD_GROUP = 0xb,
 };
 
