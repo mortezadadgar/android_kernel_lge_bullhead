@@ -1231,6 +1231,73 @@ static ssize_t iwl_dbgfs_tof_toa_offset_read(struct file *file,
 	return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
 }
 
+static ssize_t iwl_dbgfs_tof_responder_config_write(
+					struct ieee80211_vif *vif,
+					char *buf, size_t count,
+					loff_t *ppos)
+{
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm *mvm = mvmvif->mvm;
+	u32 cmd_valid_fields;
+	u32 responder_cfg_flags;
+	int ret = 0;
+	char *data;
+
+	mutex_lock(&mvm->mutex);
+
+	data = iwl_dbgfs_is_match("cmd_valid_fields=", buf);
+	if (data) {
+		ret = kstrtou32(data, 0, &cmd_valid_fields);
+		if (ret == 0)
+			mvm->tof_data.responder_cfg.cmd_valid_fields =
+				cpu_to_le32(cmd_valid_fields);
+		else
+			goto out;
+	}
+
+	data = iwl_dbgfs_is_match("responder_cfg_flags=", buf);
+	if (data) {
+		ret = kstrtou32(data, 0, &responder_cfg_flags);
+		if (ret == 0)
+			mvm->tof_data.responder_cfg.responder_cfg_flags =
+				cpu_to_le32(responder_cfg_flags);
+		else
+			goto out;
+	}
+
+	data = iwl_dbgfs_is_match("responder_cfg_cmd_send=", buf);
+	if (data) {
+		ret = kstrtou32(data, 0, &responder_cfg_flags);
+		if (ret == 0)
+			ret = iwl_mvm_tof_responder_cmd(mvm, vif);
+	}
+
+out:
+	mutex_unlock(&mvm->mutex);
+
+	return ret ?: count;
+}
+
+static ssize_t iwl_dbgfs_tof_responder_config_read(
+					struct file *file,
+					char __user *user_buf,
+					size_t count, loff_t *ppos)
+{
+	struct ieee80211_vif *vif = file->private_data;
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm *mvm = mvmvif->mvm;
+	char buf[128];
+	int ret;
+
+	ret = snprintf(buf,
+		       sizeof(buf),
+		       "responder_cfg_flags=0x%x\ncmd_valid_fields=0x%x\n",
+		       mvm->tof_data.responder_cfg.responder_cfg_flags,
+		       mvm->tof_data.responder_cfg.cmd_valid_fields);
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
+}
+
 static ssize_t iwl_dbgfs_tof_enable_dyn_ack_write(struct ieee80211_vif *vif,
 						  char *buf, size_t count,
 						  loff_t *ppos)
@@ -1546,6 +1613,7 @@ MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_enable, 32);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_range_request, 512);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_algo_type, 10);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_toa_offset, 10);
+MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_responder_config, 64);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_enable_dyn_ack, 8);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_range_req_ext, 32);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_range_abort, 32);
@@ -1620,6 +1688,9 @@ void iwl_mvm_vif_dbgfs_register(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 		MVM_DEBUGFS_ADD_FILE_VIF(tof_algo_type, mvmvif->dbgfs_dir,
 					 S_IRUSR | S_IWUSR);
 		MVM_DEBUGFS_ADD_FILE_VIF(tof_toa_offset, mvmvif->dbgfs_dir,
+					 S_IRUSR | S_IWUSR);
+		MVM_DEBUGFS_ADD_FILE_VIF(tof_responder_config,
+					 mvmvif->dbgfs_dir,
 					 S_IRUSR | S_IWUSR);
 		MVM_DEBUGFS_ADD_FILE_VIF(tof_enable_dyn_ack, mvmvif->dbgfs_dir,
 					 S_IRUSR | S_IWUSR);
