@@ -95,6 +95,7 @@ int iwl_mvm_start_nan(struct ieee80211_hw *hw,
 	struct iwl_nan_cfg_cmd cmd = {};
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 	int ret = 0;
+	u16 cdw = 0;
 
 	IWL_DEBUG_MAC80211(IWL_MAC80211_GET_MVM(hw), "Start NAN\n");
 
@@ -120,11 +121,18 @@ int iwl_mvm_start_nan(struct ieee80211_hw *hw,
 
 		cmd.dual_band = cpu_to_le32(1);
 		cmd.chan52 = NAN_CHANNEL_52;
+
+		/* available on each dw on 5GHZ */
+		cdw |= 1 << 3;
 	}
 
 	cmd.chan24 = NAN_CHANNEL_24;
 	cmd.warmup_timer = cpu_to_le32(NAN_WARMUP_TIMEOUT_USEC);
 	cmd.op_bands = 3;
+
+	/* available on each DW in on 2.4GHZ */
+	cdw |= 1;
+	cmd.cdw = cpu_to_le16(cdw);
 
 	ret = iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(NAN_CONFIG_CMD,
 						   NAN_GROUP, 0),
@@ -264,6 +272,7 @@ int iwl_mvm_add_nan_func(struct ieee80211_hw *hw,
 	cmd->action = cpu_to_le32(FW_CTXT_ACTION_ADD);
 	cmd->type = iwl_fw_nan_func_type(nan_func->type);
 	cmd->instance_id = nan_func->instance_id;
+	cmd->dw_interval = 1;
 
 	memcpy(&cmd->service_id, nan_func->service_id, sizeof(cmd->service_id));
 
@@ -469,7 +478,7 @@ void iwl_mvm_nan_match(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb)
 	match.inst_id = ev->instance_id;
 	match.peer_inst_id = ev->peer_instance;
 	match.addr = ev->peer_mac_addr;
-	match.info = ev->service_info;
+	match.info = ev->buf;
 	match.info_len = ev->service_info_len;
 	ieee80211_nan_func_match(mvm->nan_vif, &match,
 				 GFP_ATOMIC);
