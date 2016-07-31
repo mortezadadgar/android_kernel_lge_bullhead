@@ -1298,6 +1298,49 @@ static ssize_t iwl_dbgfs_tof_responder_config_read(
 	return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
 }
 
+static ssize_t iwl_dbgfs_tof_initiator_config_write(
+					      struct ieee80211_vif *vif,
+					      char *buf, size_t count,
+					      loff_t *ppos)
+{
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm *mvm = mvmvif->mvm;
+	u32 initiator_cfg_flags;
+	int ret = 0;
+	char *data;
+
+	mutex_lock(&mvm->mutex);
+
+	/* expected string is "initiator_cfg_flags=0x123" */
+	data = iwl_dbgfs_is_match("initiator_cfg_flags=", buf);
+	if (data) {
+		ret = kstrtou32(data, 0, &initiator_cfg_flags);
+		if (ret == 0)
+			mvm->tof_data.range_req.initiator_flags =
+				cpu_to_le32(initiator_cfg_flags);
+	}
+
+	mutex_unlock(&mvm->mutex);
+
+	return ret ?: count;
+}
+
+static ssize_t iwl_dbgfs_tof_initiator_config_read(struct file *file,
+						   char __user *user_buf,
+						   size_t count, loff_t *ppos)
+{
+	struct ieee80211_vif *vif = file->private_data;
+	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm *mvm = mvmvif->mvm;
+	char buf[32];
+	int ret;
+
+	ret = snprintf(buf, sizeof(buf), "initiator_cfg_flags=0x%x\n",
+		       mvm->tof_data.range_req.initiator_flags);
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
+}
+
 static ssize_t iwl_dbgfs_tof_enable_dyn_ack_write(struct ieee80211_vif *vif,
 						  char *buf, size_t count,
 						  loff_t *ppos)
@@ -1614,6 +1657,7 @@ MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_range_request, 512);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_algo_type, 10);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_toa_offset, 10);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_responder_config, 64);
+MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_initiator_config, 64);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_enable_dyn_ack, 8);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_range_req_ext, 32);
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(tof_range_abort, 32);
@@ -1690,6 +1734,9 @@ void iwl_mvm_vif_dbgfs_register(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 		MVM_DEBUGFS_ADD_FILE_VIF(tof_toa_offset, mvmvif->dbgfs_dir,
 					 S_IRUSR | S_IWUSR);
 		MVM_DEBUGFS_ADD_FILE_VIF(tof_responder_config,
+					 mvmvif->dbgfs_dir,
+					 S_IRUSR | S_IWUSR);
+		MVM_DEBUGFS_ADD_FILE_VIF(tof_initiator_config,
 					 mvmvif->dbgfs_dir,
 					 S_IRUSR | S_IWUSR);
 		MVM_DEBUGFS_ADD_FILE_VIF(tof_enable_dyn_ack, mvmvif->dbgfs_dir,

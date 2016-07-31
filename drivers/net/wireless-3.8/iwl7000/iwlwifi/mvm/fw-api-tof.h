@@ -109,6 +109,7 @@ enum iwl_tof_bandwidth {
 enum iwl_tof_algo_type {
 	IWL_TOF_ALGO_TYPE_MAX_LIKE	= 0,
 	IWL_TOF_ALGO_TYPE_LINEAR_REG	= 1,
+	IWL_TOF_ALGO_TYPE_FFT		= 2,
 
 	/* Keep last */
 	IWL_TOF_ALGO_TYPE_INVALID,
@@ -318,7 +319,39 @@ enum iwl_tof_response_mode {
 };
 
 /**
+ * enum iwl_tof_initiator_flags
+ * @IWL_TOF_INITIATOR_FLAGS_DYNAMIC_ACK: send ack on all band (1)
+ *					 os send duplicated ack on 20 band
+ * @IWL_TOF_INITIATOR_FLAGS_REQ_MODE: ASAP or NON ASAP measurement mode
+ * @IWL_TOF_INITIATOR_FLAGS_REPORT_MCSI: report MCSI notification to host
+ * @IWL_TOF_INITIATOR_FLAGS_ALGO_TYPE: location Algorithm to execute
+ * @IWL_TOF_INITIATOR_FLAGS_PAPD_CALIB: run calib PAPD mode
+ * @IWL_TOF_INITIATOR_FLAGS_COMMON_CALIB_OVERRIDE: force common calib.
+ *						   field 'common_calib' shall
+ *						   be used.
+ * @IWL_TOF_INITIATOR_FLAGS_SPECIFIC_CALIB_OVERRIDE: force specific calib
+ *						     field 'specific_calib'
+ *						     shall be used.
+ * @IWL_TOF_INITIATOR_FLAGS_FAST_ALGO_SUPPORT: support fast algo, meaning run
+ *					       the algo on ant A or B only,
+ *					       instead of A+B.
+ * @IWL_TOF_INITIATOR_FLAGS_FTM_RX_ANT: force rx ant
+ */
+enum iwl_tof_initiator_flags {
+	IWL_TOF_INITIATOR_FLAGS_DYNAMIC_ACK = BIT(0),
+	IWL_TOF_INITIATOR_FLAGS_REQ_MODE = BIT(1),
+	IWL_TOF_INITIATOR_FLAGS_REPORT_MCSI = BIT(2),
+	IWL_TOF_INITIATOR_FLAGS_ALGO_TYPE = BIT(3) | BIT(4) | BIT(5),
+	IWL_TOF_INITIATOR_FLAGS_PAPD_CALIB = BIT(6),
+	IWL_TOF_INITIATOR_FLAGS_COMMON_CALIB_OVERRIDE = BIT(7),
+	IWL_TOF_INITIATOR_FLAGS_SPECIFIC_CALIB_OVERRIDE = BIT(8),
+	IWL_TOF_INITIATOR_FLAGS_FAST_ALGO_SUPPORT = BIT(9),
+	IWL_TOF_INITIATOR_FLAGS_FTM_RX_ANT = RATE_MCS_ANT_ABC_MSK,
+};
+
+/**
  * struct iwl_tof_range_req_cmd - start measurement cmd
+ * @initiator_flags: see flags @ iwl_tof_initiator_flags
  * @request_id: A Token incremented per request. The same Token will be
  *		sent back in the range response
  * @initiator: 0- NW initiated,  1 - Client Initiated
@@ -336,8 +369,13 @@ enum iwl_tof_response_mode {
  *	            '1' Use MAC Address randomization according to the below
  * @macaddr_mask: Bits set to 0 shall be copied from the MAC address template.
  *		  Bits set to 1 shall be randomized by the UMAC
+ * @ftm_rx_chains: Rx chain to open to receive Responder's FTMs (XVT)
+ * @ftm_tx_chains: Tx chain to send the ack to the Responder FTM (XVT)
+ * @common_calib: The common calib value to inject to this measurement calc
+ * @specific_calib: The specific calib value to inject to this measurement calc
  */
 struct iwl_tof_range_req_cmd {
+	__le32 initiator_flags;
 	u8 request_id;
 	u8 initiator;
 	u8 one_sided_los_disable;
@@ -349,7 +387,10 @@ struct iwl_tof_range_req_cmd {
 	u8 range_req_bssid[ETH_ALEN];
 	u8 macaddr_template[ETH_ALEN];
 	u8 macaddr_mask[ETH_ALEN];
-	u16 reserved1;
+	u8 ftm_rx_chains;
+	u8 ftm_tx_chains;
+	__le16 common_calib;
+	__le16 specific_calib;
 	struct iwl_tof_range_req_ap_entry ap[IWL_MVM_TOF_MAX_APS];
 } __packed;
 
@@ -418,6 +459,12 @@ enum iwl_tof_entry_status {
  * @range_variance: Measured range variance [cm]
  * @timestamp: The GP2 Clock [usec] where Channel Estimation notification was
  *	       uploaded by the LMAC
+ * @t2t3_initiator: as calculated from the algo in the initiator
+ * @t1t4_responder: as calculated from the algo in the responder
+ * @common_calib: Calib val that was used in for this AP measurement
+ * @specific_calib: val that was used in for this AP measurement
+ * @papd_calib_output: The result of the tof papd calibration that was injected
+ *                     into the algorithm.
  */
 struct iwl_tof_range_rsp_ap_entry_ntfy {
 	u8 bssid[ETH_ALEN];
@@ -433,7 +480,12 @@ struct iwl_tof_range_rsp_ap_entry_ntfy {
 	__le32 range;
 	__le32 range_variance;
 	__le32 timestamp;
-} __packed; /* LOCATION_RANGE_RSP_AP_ETRY_NTFY_API_S_VER_2 */
+	__le32 t2t3_initiator;
+	__le32 t1t4_responder;
+	__le16 common_calib;
+	__le16 specific_calib;
+	__le32 papd_calib_output;
+} __packed; /* LOCATION_RANGE_RSP_AP_ETRY_NTFY_API_S_VER_3 */
 
 /**
  * enum iwl_tof_response_status - tof response status
