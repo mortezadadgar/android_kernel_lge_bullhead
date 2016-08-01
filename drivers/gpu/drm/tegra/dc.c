@@ -66,7 +66,7 @@ static inline void tegra_dc_unpowergate_locked(struct tegra_dc *dc)
 		dev_err(dc->dev, "could not unpowergate %d\n", ret);
 }
 
-void tegra_dc_unpowergate_with_check(struct tegra_dc *dc)
+static void tegra_dc_unpowergate_with_check(struct tegra_dc *dc)
 {
 	if (!tegra_powergate_is_powered(tegra_dc_get_powergate_id(dc)))
 		tegra_dc_unpowergate_locked(dc);
