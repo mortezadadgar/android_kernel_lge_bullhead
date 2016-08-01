@@ -825,30 +825,26 @@ static void tegra_crtc_disable(struct drm_crtc *crtc)
 	struct drm_device *drm = crtc->dev;
 	struct drm_plane *plane;
 
-	if (dc->enabled) {
-		list_for_each_entry(plane, &drm->mode_config.plane_list, head) {
-			if (plane->crtc == crtc) {
-				tegra_plane_disable(plane);
-				plane->crtc = NULL;
+	if (!dc->enabled)
+		return;
 
-				if (plane->fb) {
-					drm_framebuffer_unreference(plane->fb);
-					plane->fb = NULL;
-				}
+	list_for_each_entry(plane, &drm->mode_config.plane_list, head) {
+		if (plane->crtc == crtc) {
+			tegra_plane_disable(plane);
+			plane->crtc = NULL;
+
+			if (plane->fb) {
+				drm_framebuffer_unreference(plane->fb);
+				plane->fb = NULL;
 			}
 		}
-
-		drm_vblank_off(drm, dc->pipe);
-		if (dc->emc_clk)
-			clk_set_rate(dc->emc_clk, 0);
-		dc->enabled = false;
 	}
 
-	/*
-	 * DC may has power but not enabled, e.g: dc.1 connects with HDMI while
-	 * HDMI monitor is not present.
-	 * So here we powergate dc regardless whether it's enabled.
-	 */
+	drm_vblank_off(drm, dc->pipe);
+	if (dc->emc_clk)
+		clk_set_rate(dc->emc_clk, 0);
+	dc->enabled = false;
+
 	tegra_dc_powergate_locked(dc);
 }
 
@@ -1637,9 +1633,6 @@ static int tegra_dc_probe(struct platform_device *pdev)
 	err = tegra_dc_parse_dt(dc);
 	if (err < 0)
 		return err;
-
-	tegra_dc_powergate_locked(dc);
-	tegra_dc_unpowergate_locked(dc);
 
 	dc->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(dc->clk)) {

@@ -15,6 +15,7 @@
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/reset.h>
+#include <linux/tegra-powergate.h>
 #include <linux/workqueue.h>
 
 #include <drm/drm_dp_helper.h>
@@ -688,6 +689,8 @@ int tegra_dpaux_enable(struct tegra_dpaux *dpaux)
 	if (dpaux->enabled)
 		return 0;
 
+	tegra_unpowergate_partition(TEGRA_POWERGATE_SOR);
+
 	/* enable and clear all interrupts */
 	value = DPAUX_INTR_AUX_DONE | DPAUX_INTR_IRQ_EVENT |
 		DPAUX_INTR_UNPLUG_EVENT | DPAUX_INTR_PLUG_EVENT;
@@ -720,6 +723,7 @@ int tegra_dpaux_disable(struct tegra_dpaux *dpaux)
 	value |= DPAUX_HYBRID_SPARE_PAD_POWER_DOWN;
 	tegra_dpaux_writel(dpaux, value, DPAUX_HYBRID_SPARE);
 
+	tegra_powergate_partition(TEGRA_POWERGATE_SOR);
 	dpaux->enabled = false;
 	return 0;
 }
