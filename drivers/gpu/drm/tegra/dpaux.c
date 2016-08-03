@@ -42,8 +42,6 @@ struct tegra_dpaux {
 	struct clk *clk;
 
 	struct completion complete;
-	struct completion plugged_complete;
-	spinlock_t plugged_lock;
 	struct work_struct work;
 	struct list_head list;
 
@@ -286,14 +284,7 @@ static irqreturn_t tegra_dpaux_irq(int irq, void *data)
 	value = tegra_dpaux_readl(dpaux, DPAUX_INTR_AUX);
 	tegra_dpaux_writel(dpaux, value, DPAUX_INTR_AUX);
 
-	if (value & (DPAUX_INTR_PLUG_EVENT)) {
-		spin_lock(&dpaux->plugged_lock);
-		complete(&dpaux->plugged_complete);
-		spin_unlock(&dpaux->plugged_lock);
-		schedule_work(&dpaux->work);
-	}
-
-	if (value & (DPAUX_INTR_UNPLUG_EVENT))
+	if (value & (DPAUX_INTR_PLUG_EVENT | DPAUX_INTR_UNPLUG_EVENT))
 		schedule_work(&dpaux->work);
 
 	if (value & DPAUX_INTR_IRQ_EVENT) {
@@ -463,8 +454,6 @@ static int tegra_dpaux_probe(struct platform_device *pdev)
 
 	INIT_WORK(&dpaux->work, tegra_dpaux_hotplug);
 	init_completion(&dpaux->complete);
-	init_completion(&dpaux->plugged_complete);
-	spin_lock_init(&dpaux->plugged_lock);
 	INIT_LIST_HEAD(&dpaux->list);
 	dpaux->dev = &pdev->dev;
 
@@ -643,44 +632,37 @@ int tegra_dpaux_detach(struct tegra_dpaux *dpaux)
 enum drm_connector_status tegra_dpaux_detect(struct tegra_dpaux *dpaux)
 {
 	unsigned long value;
-	/*
-	 * Typical plugged latency is 250us, plus Linux interrupt latency,
-	 * 5ms should be enough here.
-	 */
-	unsigned long timeout = msecs_to_jiffies(5);
-	unsigned long status;
+	unsigned long timeout;
 	bool restore_dpaux_state = false;
 	enum drm_connector_status ret = connector_status_disconnected;
-	unsigned long flags;
 
 	if (!dpaux->enabled) {
 		restore_dpaux_state = true;
 		tegra_dpaux_enable(dpaux);
 	}
 
-	value = tegra_dpaux_readl(dpaux, DPAUX_DP_AUXSTAT);
-	if (likely(value & DPAUX_DP_AUXSTAT_HPD_STATUS)) {
-		ret = connector_status_connected;
-		goto out;
-	}
-
-	spin_lock_irqsave(&dpaux->plugged_lock, flags);
-	if (completion_done(&dpaux->plugged_complete)) {
-		ret = connector_status_connected;
-		spin_unlock_irqrestore(&dpaux->plugged_lock, flags);
-		goto out;
-	} else {
-		INIT_COMPLETION(dpaux->plugged_complete);
-		spin_unlock_irqrestore(&dpaux->plugged_lock, flags);
-
-		status = wait_for_completion_timeout(&dpaux->plugged_complete,
-							timeout);
-		if (!status) {
-			WARN(1, "dpaux detected panel timeout.\n");
-			ret = connector_status_disconnected;
+	/*
+	 * Typical plugged latency is 250us, but we use usleep below which
+	 * involves kernel schedule, so set a somewhat big timeout here.
+	 */
+	timeout = jiffies + msecs_to_jiffies(250);
+	while (time_before(jiffies, timeout)) {
+		value = tegra_dpaux_readl(dpaux, DPAUX_DP_AUXSTAT);
+		if (value & DPAUX_DP_AUXSTAT_HPD_STATUS) {
+			ret = connector_status_connected;
 			goto out;
 		}
+
+		usleep_range(1000, 2000);
+	}
+
+	/* Recheck in case the polling is skipped due to process schedule */
+	value = tegra_dpaux_readl(dpaux, DPAUX_DP_AUXSTAT);
+	if (value & DPAUX_DP_AUXSTAT_HPD_STATUS) {
 		ret = connector_status_connected;
+	} else {
+		WARN(1, "dpaux detected panel timeout.\n");
+		ret = connector_status_disconnected;
 	}
 
 out:
