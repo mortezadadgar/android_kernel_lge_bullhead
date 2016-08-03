@@ -950,22 +950,22 @@ void iwl_mvm_rx_mpdu_mq(struct iwl_mvm *mvm, struct napi_struct *napi,
 			mvm->sched_scan_pass_all = SCHED_SCAN_PASS_ALL_FOUND;
 
 #ifdef CPTCFG_IWLMVM_TOF_TSF_WA
-			if (fw_has_capa(&mvm->fw->ucode_capa,
-					IWL_UCODE_TLV_CAPA_TOF_SUPPORT) &&
-			    (ieee80211_is_beacon(hdr->frame_control) ||
-			     ieee80211_is_probe_resp(hdr->frame_control)))
+		if (fw_has_capa(&mvm->fw->ucode_capa,
+				IWL_UCODE_TLV_CAPA_TOF_SUPPORT) &&
+		    (ieee80211_is_beacon(hdr->frame_control) ||
+		     ieee80211_is_probe_resp(hdr->frame_control)))
 			iwl_mvm_tof_update_tsf(mvm, pkt);
 #endif
 #ifdef CPTCFG_IWLMVM_VENDOR_CMDS
-			if (desc->mac_context == MAC_CONTEXT_INFO_GSCAN &&
-			    (ieee80211_is_beacon(hdr->frame_control) ||
-			     ieee80211_is_probe_resp(hdr->frame_control))) {
-				struct ieee80211_mgmt *mgmt = (void *)(hdr);
+		if (desc->mac_context == MAC_CONTEXT_INFO_GSCAN &&
+		    (ieee80211_is_beacon(hdr->frame_control) ||
+		     ieee80211_is_probe_resp(hdr->frame_control))) {
+			struct ieee80211_mgmt *mgmt = (void *)(hdr);
 
-				iwl_mvm_handle_gscan_beacon_probe(mvm, len,
-								  rx_status,
-								  mgmt);
-			} else
+			iwl_mvm_handle_gscan_beacon_probe(mvm, len,
+							  rx_status,
+							  mgmt);
+		} else
 #endif
 		if (unlikely(ieee80211_is_beacon(hdr->frame_control) ||
 			     ieee80211_is_probe_resp(hdr->frame_control)))
