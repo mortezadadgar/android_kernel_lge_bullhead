@@ -653,17 +653,18 @@ enum drm_connector_status tegra_dpaux_detect(struct tegra_dpaux *dpaux)
 	enum drm_connector_status ret = connector_status_disconnected;
 	unsigned long flags;
 
-	value = tegra_dpaux_readl(dpaux, DPAUX_DP_AUXSTAT);
-
-	if (likely(value & DPAUX_DP_AUXSTAT_HPD_STATUS))
-		return connector_status_connected;
-
-	spin_lock_irqsave(&dpaux->plugged_lock, flags);
 	if (!dpaux->enabled) {
 		restore_dpaux_state = true;
 		tegra_dpaux_enable(dpaux);
 	}
 
+	value = tegra_dpaux_readl(dpaux, DPAUX_DP_AUXSTAT);
+	if (likely(value & DPAUX_DP_AUXSTAT_HPD_STATUS)) {
+		ret = connector_status_connected;
+		goto out;
+	}
+
+	spin_lock_irqsave(&dpaux->plugged_lock, flags);
 	if (completion_done(&dpaux->plugged_complete)) {
 		ret = connector_status_connected;
 		spin_unlock_irqrestore(&dpaux->plugged_lock, flags);
@@ -724,6 +725,12 @@ int tegra_dpaux_disable(struct tegra_dpaux *dpaux)
 
 	if (!dpaux->enabled)
 		return 0;
+
+	/* disable and clear all interrupts */
+	value = DPAUX_INTR_AUX_DONE | DPAUX_INTR_IRQ_EVENT |
+		DPAUX_INTR_UNPLUG_EVENT | DPAUX_INTR_PLUG_EVENT;
+	tegra_dpaux_writel(dpaux, 0, DPAUX_INTR_EN_AUX);
+	tegra_dpaux_writel(dpaux, value, DPAUX_INTR_AUX);
 
 	value = tegra_dpaux_readl(dpaux, DPAUX_HYBRID_SPARE);
 	value |= DPAUX_HYBRID_SPARE_PAD_POWER_DOWN;
