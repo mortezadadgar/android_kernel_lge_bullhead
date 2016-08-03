@@ -77,15 +77,6 @@ struct iwl_xvt_alive_data {
 	u32 scd_base_addr;
 };
 
-static inline const struct fw_img *
-iwl_get_ucode_image(struct iwl_xvt *xvt, enum iwl_ucode_type ucode_type)
-{
-	if (ucode_type >= IWL_UCODE_TYPE_MAX)
-		return NULL;
-
-	return &xvt->fw->img[ucode_type];
-}
-
 void iwl_xvt_free_fw_paging(struct iwl_xvt *xvt)
 {
 	int i;
@@ -431,7 +422,7 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 	static const u16 alive_cmd[] = { XVT_ALIVE };
 
 	xvt->cur_ucode = ucode_type;
-	fw = iwl_get_ucode_image(xvt, ucode_type);
+	fw = iwl_get_ucode_image(xvt->fw, ucode_type);
 
 	if (!fw)
 		return -EINVAL;
