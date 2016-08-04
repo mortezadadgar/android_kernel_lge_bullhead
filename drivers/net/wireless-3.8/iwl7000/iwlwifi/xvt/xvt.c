@@ -253,7 +253,8 @@ static void iwl_xvt_rx_tx_cmd_handler(struct iwl_xvt *xvt,
 		skb = __skb_dequeue(&skbs);
 		cb_dev_cmd = (void *)skb->cb;
 		xvt->tx_counter++;
-		iwl_trans_free_tx_cmd(xvt->trans, *cb_dev_cmd);
+		if (cb_dev_cmd && *cb_dev_cmd)
+			iwl_trans_free_tx_cmd(xvt->trans, *cb_dev_cmd);
 		kfree_skb(skb);
 	}
 	if (xvt->tot_tx == xvt->tx_counter)
