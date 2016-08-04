@@ -110,6 +110,7 @@
 			compatible = "auo,b133xtn01.2", "simple-panel";
 			backlight = <&backlight>;
 			ddc-i2c-bus = <&dpaux>;
+			power-supply = <&avdd_lcd>;
 		};
 
 		dpaux: dpaux@545c0000 {

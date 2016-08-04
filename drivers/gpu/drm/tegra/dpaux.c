@@ -15,7 +15,6 @@
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/reset.h>
-#include <linux/regulator/consumer.h>
 #include <linux/workqueue.h>
 
 #include <drm/drm_dp_helper.h>
@@ -40,8 +39,6 @@ struct tegra_dpaux {
 	struct reset_control *rst;
 	struct clk *clk_parent;
 	struct clk *clk;
-
-	struct regulator *vdd;
 
 	struct completion complete;
 	struct completion plugged_complete;
@@ -510,13 +507,6 @@ static int tegra_dpaux_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	dpaux->vdd = devm_regulator_get(&pdev->dev, "vdd");
-	if (IS_ERR(dpaux->vdd)) {
-		dev_err(&pdev->dev, "failed to get vdd regulator: %ld\n",
-			PTR_ERR(dpaux->vdd));
-		return PTR_ERR(dpaux->vdd);
-	}
-
 	err = devm_request_irq(dpaux->dev, dpaux->irq, tegra_dpaux_irq, 0,
 			       dev_name(dpaux->dev), dpaux);
 	if (err < 0) {
@@ -602,18 +592,13 @@ struct tegra_dpaux *tegra_dpaux_find_by_of_node(struct device_node *np)
 int tegra_dpaux_attach(struct tegra_dpaux *dpaux, struct tegra_output *output)
 {
 	unsigned long timeout;
-	int err;
 
 	output->connector.polled = DRM_CONNECTOR_POLL_HPD;
 	output->ddc = &dpaux->aux.ddc;
 	dpaux->output = output;
 
-	err = regulator_enable(dpaux->vdd);
-	if (err < 0)
-		return err;
-
+	tegra_output_panel_prepare(output);
 	timeout = jiffies + msecs_to_jiffies(250);
-
 	while (time_before(jiffies, timeout)) {
 		enum drm_connector_status status;
 
@@ -630,14 +615,9 @@ int tegra_dpaux_attach(struct tegra_dpaux *dpaux, struct tegra_output *output)
 int tegra_dpaux_detach(struct tegra_dpaux *dpaux)
 {
 	unsigned long timeout;
-	int err;
 
-	err = regulator_disable(dpaux->vdd);
-	if (err < 0)
-		return err;
-
+	tegra_output_panel_unprepare(dpaux->output);
 	timeout = jiffies + msecs_to_jiffies(250);
-
 	while (time_before(jiffies, timeout)) {
 		enum drm_connector_status status;
 
