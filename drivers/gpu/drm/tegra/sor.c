@@ -1164,8 +1164,8 @@ tegra_output_sor_detect(struct tegra_output *output)
 	struct tegra_sor *sor = to_sor(output);
 	enum drm_connector_status ret;
 
+	mutex_lock(&sor->lock);
 	tegra_unpowergate_partition(TEGRA_POWERGATE_SOR);
-
 	tegra_output_panel_prepare(output);
 
 	if (sor->dpaux)
@@ -1174,8 +1174,8 @@ tegra_output_sor_detect(struct tegra_output *output)
 		ret = connector_status_unknown;
 
 	tegra_output_panel_unprepare(output);
-
 	tegra_powergate_partition(TEGRA_POWERGATE_SOR);
+	mutex_unlock(&sor->lock);
 
 	return ret;
 }
