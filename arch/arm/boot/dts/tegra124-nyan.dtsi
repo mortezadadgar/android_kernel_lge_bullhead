@@ -34,6 +34,12 @@
 			hdmi-hpd-gpios = <&gpio TEGRA_GPIO(N, 7) GPIO_ACTIVE_HIGH>;
 		};
 
+		hdmi@54280000 {
+			vdd-supply = <&avdd_hdmi_pex>;
+			pll-supply = <&avdd_hdmi_pll>;
+			hdmi-supply = <&vdd_hdmi_5v0>;
+		};
+
 		gk20a@57000000 {
 			vddgpu-supply = <&vdd_gpu>;
 		};
