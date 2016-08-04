@@ -1107,6 +1107,7 @@ static void iwl_mvm_rx(struct iwl_op_mode *op_mode,
 {
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
+	u16 cmd = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
 
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	/*
@@ -1118,9 +1119,9 @@ static void iwl_mvm_rx(struct iwl_op_mode *op_mode,
 	iwl_tm_mvm_send_rx(mvm, rxb);
 #endif
 
-	if (likely(pkt->hdr.cmd == REPLY_RX_MPDU_CMD))
+	if (likely(cmd == WIDE_ID(LEGACY_GROUP, REPLY_RX_MPDU_CMD)))
 		iwl_mvm_rx_rx_mpdu(mvm, napi, rxb);
-	else if (pkt->hdr.cmd == REPLY_RX_PHY_CMD)
+	else if (cmd == WIDE_ID(LEGACY_GROUP, REPLY_RX_PHY_CMD))
 		iwl_mvm_rx_rx_phy_cmd(mvm, rxb);
 	else
 		iwl_mvm_rx_common(mvm, rxb, pkt);
@@ -1132,6 +1133,7 @@ static void iwl_mvm_rx_mq(struct iwl_op_mode *op_mode,
 {
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
+	u16 cmd = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
 
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	/*
@@ -1143,12 +1145,12 @@ static void iwl_mvm_rx_mq(struct iwl_op_mode *op_mode,
 	iwl_tm_mvm_send_rx(mvm, rxb);
 #endif
 
-	if (likely(pkt->hdr.cmd == REPLY_RX_MPDU_CMD))
+	if (likely(cmd == WIDE_ID(LEGACY_GROUP, REPLY_RX_MPDU_CMD)))
 		iwl_mvm_rx_mpdu_mq(mvm, napi, rxb, 0);
-	else if (unlikely(pkt->hdr.group_id == DATA_PATH_GROUP &&
-			  pkt->hdr.cmd == RX_QUEUES_NOTIFICATION))
+	else if (unlikely(cmd == WIDE_ID(DATA_PATH_GROUP,
+					 RX_QUEUES_NOTIFICATION)))
 		iwl_mvm_rx_queue_notif(mvm, rxb, 0);
-	else if (pkt->hdr.cmd == FRAME_RELEASE)
+	else if (cmd == WIDE_ID(LEGACY_GROUP, FRAME_RELEASE))
 		iwl_mvm_rx_frame_release(mvm, napi, rxb, 0);
 	else
 		iwl_mvm_rx_common(mvm, rxb, pkt);
@@ -1840,13 +1842,14 @@ static void iwl_mvm_rx_mq_rss(struct iwl_op_mode *op_mode,
 {
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	u16 cmd = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
 
-	if (unlikely(pkt->hdr.cmd == FRAME_RELEASE))
+	if (unlikely(cmd == WIDE_ID(LEGACY_GROUP, FRAME_RELEASE)))
 		iwl_mvm_rx_frame_release(mvm, napi, rxb, queue);
-	else if (unlikely(pkt->hdr.cmd == RX_QUEUES_NOTIFICATION &&
-			  pkt->hdr.group_id == DATA_PATH_GROUP))
+	else if (unlikely(cmd == WIDE_ID(DATA_PATH_GROUP,
+					 RX_QUEUES_NOTIFICATION)))
 		iwl_mvm_rx_queue_notif(mvm, rxb, queue);
-	else if (likely(pkt->hdr.cmd == REPLY_RX_MPDU_CMD))
+	else if (likely(cmd == WIDE_ID(LEGACY_GROUP, REPLY_RX_MPDU_CMD)))
 		iwl_mvm_rx_mpdu_mq(mvm, napi, rxb, queue);
 }
 
