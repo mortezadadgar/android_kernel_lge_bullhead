@@ -190,6 +190,12 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 		tegra_dpaux_enable(dpaux);
 	}
 
+	if (tegra_dpaux_detect(dpaux) != connector_status_connected) {
+		WARN(1, "wait HPD failed in dpaux transfer.\n");
+		ret = -ETIMEDOUT;
+		goto out;
+	}
+
 	tegra_dpaux_writel(dpaux, msg->address, DPAUX_DP_AUXADDR);
 	tegra_dpaux_writel(dpaux, value, DPAUX_DP_AUXCTL);
 
@@ -205,7 +211,7 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 
 	status = wait_for_completion_timeout(&dpaux->complete, timeout);
 	if (!status) {
-		WARN(1, "dpaux transfer timeout.\n");
+		WARN(1, "wait dpaux transfer complete timeout.\n");
 		ret = -ETIMEDOUT;
 		goto out;
 	}
@@ -215,6 +221,7 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 	tegra_dpaux_writel(dpaux, 0xf00, DPAUX_DP_AUXSTAT);
 
 	if (value & DPAUX_DP_AUXSTAT_TIMEOUT_ERROR) {
+		WARN(1, "dpaux transfer error: timedout.\n");
 		ret = -ETIMEDOUT;
 		goto out;
 	}
@@ -679,6 +686,8 @@ int tegra_dpaux_enable(struct tegra_dpaux *dpaux)
 		return 0;
 
 	tegra_unpowergate_partition(TEGRA_POWERGATE_SOR);
+	reset_control_deassert(dpaux->rst);
+	udelay(10);
 
 	/* enable and clear all interrupts */
 	value = DPAUX_INTR_AUX_DONE | DPAUX_INTR_IRQ_EVENT |
@@ -719,6 +728,9 @@ int tegra_dpaux_disable(struct tegra_dpaux *dpaux)
 	tegra_dpaux_writel(dpaux, value, DPAUX_HYBRID_SPARE);
 
 	tegra_powergate_partition(TEGRA_POWERGATE_SOR);
+	reset_control_assert(dpaux->rst);
+	udelay(10);
+
 	dpaux->enabled = false;
 	return 0;
 }
