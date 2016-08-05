@@ -29,7 +29,9 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/of_gpio.h>
+#ifdef CONFIG_TEGRA_DC
 #include <linux/platform_data/tegra_dc.h>
+#endif
 #include <dt-bindings/gpio/tegra-gpio.h>
 
 #include "irq.h"
@@ -38,13 +40,12 @@
 #include "board-panel.h"
 #include "common.h"
 
+#ifdef CONFIG_TEGRA_DC
 atomic_t sd_brightness = ATOMIC_INIT(255);
 EXPORT_SYMBOL(sd_brightness);
 
+static struct regulator *avdd_lcd_3v3;
 static int power_off_time;
-static int pwm_to_bl_on;
-static int bl_off_to_pwm;
-static bool bl_enabled;
 static ktime_t last_power_off;
 
 struct platform_device * __init venice_host1x_init(void)
@@ -60,10 +61,15 @@ struct platform_device * __init venice_host1x_init(void)
 	of_node_put(node);
 	return pdev;
 }
+#endif
 
-static struct regulator *avdd_lcd_3v3;
 static struct regulator *vdd_lcd_bl;
 static struct regulator *lcd_bl_en;
+static int pwm_to_bl_on;
+static int bl_off_to_pwm;
+static bool bl_enabled;
+
+#ifdef CONFIG_TEGRA_DC
 static bool edp_probed, edp_enabled;
 
 static int venice_edp_regulator_probe(struct device *dev)
@@ -502,17 +508,134 @@ static int venice_check_fb(struct device *dev, struct fb_info *info)
 {
 	return info->device == &disp1_device->dev;
 }
+#else
+static int venice_bl_init(struct device *dev)
+{
+	struct platform_pwm_backlight_data *data = dev_get_platdata(dev);
+	struct platform_pwm_backlight_data defdata;
+	int ret;
+	u32 val;
+
+	ret = pwm_backlight_parse_dt(dev, &defdata);
+	if (ret < 0) {
+		dev_err(dev, "failed to find platform data\n");
+		return ret;
+	}
+
+	data->max_brightness = defdata.max_brightness;
+	data->dft_brightness = defdata.dft_brightness;
+	data->levels = defdata.levels;
+
+	/* avdd_lcd_3v3 is controlled by panel driver now */
+
+	vdd_lcd_bl = devm_regulator_get_optional(dev, "vdd-lcd-bl");
+	if (IS_ERR(vdd_lcd_bl)) {
+		dev_err(dev, "edp: vdd_bl regulator get failed: %ld\n",
+				PTR_ERR(vdd_lcd_bl));
+		return PTR_ERR(vdd_lcd_bl);
+	}
+
+	lcd_bl_en = devm_regulator_get_optional(dev, "lcd-bl-en");
+	if (IS_ERR(lcd_bl_en)) {
+		dev_err(dev, "edp: bl_en regulator get failed: %ld\n",
+				PTR_ERR(lcd_bl_en));
+		ret = PTR_ERR(lcd_bl_en);
+		lcd_bl_en = NULL;
+		return ret;
+	}
+
+	ret = of_property_read_u32(dev->of_node, "pwm-to-bl-on", &val);
+	if (ret < 0)
+		pwm_to_bl_on = 0;
+	else
+		pwm_to_bl_on = val;
+
+	ret = of_property_read_u32(dev->of_node, "bl-off-to-pwm", &val);
+	if (ret < 0)
+		bl_off_to_pwm = 0;
+	else
+		bl_off_to_pwm = val;
+
+	return 0;
+}
+
+static int venice_bl_notify(struct device *dev, int brightness)
+{
+	int ret;
+
+	if (!lcd_bl_en)
+		return 0;
+
+	if (!brightness && bl_enabled) {
+		ret = regulator_disable(lcd_bl_en);
+		if (ret) {
+			dev_err(dev, "Disable lcd_bl_en failed: %d\n", ret);
+			return brightness;
+		}
+
+		msleep(bl_off_to_pwm); /* bl-off-to-pwm */
+
+		ret = regulator_disable(vdd_lcd_bl);
+		if (ret) {
+			dev_err(dev, "Disable lcd_bl_en failed: %d\n", ret);
+			ret = regulator_enable(lcd_bl_en);
+			return brightness;
+		}
+
+		bl_enabled = false;
+	}
+
+	dev_dbg(dev, "notify brightness=%d, bl_enabled=%d\n",
+			brightness, bl_enabled);
+
+	return brightness;
+}
+
+static void venice_bl_notify_after(struct device *dev, int brightness)
+{
+	int ret;
+
+	if (!lcd_bl_en)
+		return;
+
+	if (brightness && !bl_enabled) {
+		ret = regulator_enable(vdd_lcd_bl);
+		if (ret) {
+			dev_err(dev, "Enable vdd_lcd_bl failed: %d\n", ret);
+			return;
+		}
+
+		msleep(pwm_to_bl_on);
+
+		ret = regulator_enable(lcd_bl_en);
+		if (ret) {
+			dev_err(dev, "Enable lcd_bl_en failed: %d\n", ret);
+			regulator_disable(vdd_lcd_bl);
+			return;
+		}
+
+		bl_enabled = true;
+	}
+
+	dev_dbg(dev, "notify_after brightness=%d, bl_enabled=%d\n",
+			brightness, bl_enabled);
+}
+
+#endif
 
 struct platform_pwm_backlight_data venice_bl_data = {
 	.init		= venice_bl_init,
 	.notify         = venice_bl_notify,
 	.notify_after	= venice_bl_notify_after,
+#ifdef CONFIG_TEGRA_DC
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb       = venice_check_fb,
+#endif
 	.enable_gpio	= -1,
 };
 EXPORT_SYMBOL(venice_bl_data);
 
+#ifdef CONFIG_TEGRA_DC
 static int venice_panel_mode_init(struct platform_device *dcs)
 {
 	struct device *dev = &dcs->dev;
@@ -695,3 +818,4 @@ int __init venice_panel_init(void)
 
 	return 0;
 }
+#endif

@@ -20,9 +20,10 @@
 #include <linux/platform_device.h>
 #include <linux/platform_data/tegra_dc.h>
 
+extern struct platform_pwm_backlight_data venice_bl_data;
+
 #ifdef CONFIG_TEGRA_DC
 extern atomic_t sd_brightness;
-extern struct platform_pwm_backlight_data venice_bl_data;
 extern struct tegra_dc_platform_data venice_disp1_pdata;
 extern struct tegra_dc_platform_data venice_disp2_pdata;
 

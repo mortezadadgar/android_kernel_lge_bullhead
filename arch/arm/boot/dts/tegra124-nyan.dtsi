@@ -1078,6 +1078,10 @@
 		compatible = "pwm-backlight";
 		pwms = <&pwm 1 1000000>;
 		default-brightness-level = <224>;
+		vdd-lcd-bl-supply = <&vdd_lcd_bl>;
+		lcd-bl-en-supply = <&lcd_bl_en>;
+		pwm-to-bl-on = <20>;
+		bl-off-to-pwm = <10>;
 		brightness-levels =
 			<  0   1   2   3   4   5   6   7
 			   8   9  10  11  12  13  14  15
