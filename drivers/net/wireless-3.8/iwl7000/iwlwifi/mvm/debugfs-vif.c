@@ -514,6 +514,15 @@ static inline char *iwl_dbgfs_is_match(char *name, char *buf)
 	return !strncmp(name, buf, len) ? buf + len : NULL;
 }
 
+/* TODO BEFORE UPSTREAMING:
+
+   All these TOF entries have a trigger string that actually sends the
+   command to the firmware.  It shouldn't be like this, all the values
+   should be set at once and end-of-buffer or file-close should be
+   used to send the command.  We must either remove these entries or
+   change them before sending this code upstream.
+*/
+
 static ssize_t iwl_dbgfs_tof_enable_write(struct ieee80211_vif *vif,
 					  char *buf,
 					  size_t count, loff_t *ppos)
