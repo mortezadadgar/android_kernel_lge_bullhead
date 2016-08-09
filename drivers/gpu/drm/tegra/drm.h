@@ -215,6 +215,8 @@ struct tegra_output {
 	unsigned int hpd_irq;
 	int hpd_gpio;
 
+	bool enabled;
+
 	struct drm_encoder encoder;
 	struct drm_connector connector;
 };

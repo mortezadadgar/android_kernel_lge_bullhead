@@ -188,18 +188,28 @@ static void tegra_encoder_disable(struct drm_encoder *encoder)
 {
 	struct tegra_output *output = encoder_to_output(encoder);
 
+	if (!output->enabled)
+		return;
+
 	tegra_output_panel_disable(output);
 	tegra_output_disable(output);
 	tegra_output_panel_unprepare(output);
+
+	output->enabled = false;
 }
 
 static void tegra_encoder_enable(struct drm_encoder *encoder)
 {
 	struct tegra_output *output = encoder_to_output(encoder);
 
+	if (output->enabled)
+		return;
+
 	tegra_output_panel_prepare(output);
 	tegra_output_enable(output);
 	tegra_output_panel_enable(output);
+
+	output->enabled = true;
 }
 
 static bool tegra_encoder_mode_fixup(struct drm_encoder *encoder,
