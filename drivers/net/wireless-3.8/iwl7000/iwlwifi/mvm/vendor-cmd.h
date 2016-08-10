@@ -287,6 +287,7 @@ enum iwl_mvm_vendor_results_event_type {
  * @IWL_MVM_VENDOR_GSCAN_RESULT_BEACON_PERIOD: period advertised in the beacon.
  * @IWL_MVM_VENDOR_GSCAN_RESULT_CAPABILITY: capabilities advertised in the
  *	beacon / probe response.
+ * @IWL_MVM_VENDOR_GSCAN_RESULT_PAD: used for padding, ignore
  * @NUM_IWL_MVM_VENDOR_GSCAN_RESULT: number of scan result attributes.
  * @MAX_IWL_MVM_VENDOR_GSCAN_RESULT: highest scan result attribute number.
  */
@@ -300,6 +301,7 @@ enum iwl_mvm_vendor_gscan_result {
 	IWL_MVM_VENDOR_GSCAN_RESULT_FRAME,
 	IWL_MVM_VENDOR_GSCAN_RESULT_BEACON_PERIOD,
 	IWL_MVM_VENDOR_GSCAN_RESULT_CAPABILITY,
+	IWL_MVM_VENDOR_GSCAN_RESULT_PAD,
 	NUM_IWL_MVM_VENDOR_GSCAN_RESULT,
 	MAX_IWL_MVM_VENDOR_GSCAN_RESULT =
 		NUM_IWL_MVM_VENDOR_GSCAN_RESULT - 1,

@@ -1697,7 +1697,8 @@ static int iwl_vendor_put_one_result(struct sk_buff *skb,
 
 	/* FW sends RSSI as absolute values, so negate here to get dB values */
 	if (nla_put_s8(skb, IWL_MVM_VENDOR_GSCAN_RESULT_RSSI, -res->rssi) ||
-	    nla_put_u64(skb, IWL_MVM_VENDOR_GSCAN_RESULT_TIMESTAMP, ts) ||
+	    nla_put_u64_64bit(skb, IWL_MVM_VENDOR_GSCAN_RESULT_TIMESTAMP, ts,
+			      IWL_MVM_VENDOR_GSCAN_RESULT_PAD) ||
 	    nla_put_u8(skb, IWL_MVM_VENDOR_GSCAN_RESULT_CHANNEL,
 		       res->channel) ||
 	    nla_put(skb, IWL_MVM_VENDOR_GSCAN_RESULT_BSSID, ETH_ALEN,
@@ -2080,8 +2081,8 @@ static void iwl_mvm_send_gscan_beacon(struct iwl_mvm *mvm,
 	diff = beacon->gp2_ts - gscan->gp2;
 	timestamp = gscan->timestamp + diff;
 
-	if (nla_put_u64(msg, IWL_MVM_VENDOR_GSCAN_RESULT_TIMESTAMP,
-			timestamp) ||
+	if (nla_put_u64_64bit(msg, IWL_MVM_VENDOR_GSCAN_RESULT_TIMESTAMP,
+			      timestamp, IWL_MVM_VENDOR_GSCAN_RESULT_PAD) ||
 	    nla_put_s8(msg, IWL_MVM_VENDOR_GSCAN_RESULT_RSSI, beacon->signal) ||
 	    nla_put_u8(msg, IWL_MVM_VENDOR_GSCAN_RESULT_CHANNEL,
 		       beacon->channel) ||
