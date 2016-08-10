@@ -404,8 +404,7 @@ int tegra_io_rail_power_on(int id)
 
 	mask = 1 << bit;
 
-	value = pmc_read(request);
-	value |= mask;
+	value = mask;
 	value &= ~IO_DPD_REQ_CODE_MASK;
 	value |= IO_DPD_REQ_CODE_OFF;
 	pmc_write(value, request);
@@ -431,8 +430,7 @@ int tegra_io_rail_power_off(int id)
 
 	mask = 1 << bit;
 
-	value = pmc_read(request);
-	value |= mask;
+	value = mask;
 	value &= ~IO_DPD_REQ_CODE_MASK;
 	value |= IO_DPD_REQ_CODE_ON;
 	pmc_write(value, request);
