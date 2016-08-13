@@ -30,6 +30,7 @@
 #include <linux/atomic.h>
 #include <linux/msm_audio_ion.h>
 #include <linux/mm.h>
+#include <linux/ratelimit.h>
 
 #include <asm/ioctls.h>
 
@@ -996,6 +997,7 @@ struct audio_client *q6asm_audio_client_alloc(app_cb cb, void *priv)
 	int n;
 	int lcnt = 0;
 	int rc = 0;
+	static DEFINE_RATELIMIT_STATE(rl, 5*HZ, 1);
 
 	ac = kzalloc(sizeof(struct audio_client), GFP_KERNEL);
 	if (!ac) {
@@ -1025,7 +1027,8 @@ struct audio_client *q6asm_audio_client_alloc(app_cb cb, void *priv)
 			ac);
 
 	if (ac->apr == NULL) {
-		pr_err("%s: Registration with APR failed\n", __func__);
+		if (__ratelimit(&rl))
+			pr_err("%s: Registration with APR failed\n", __func__);
 		mutex_unlock(&session_lock);
 		goto fail_apr1;
 	}
