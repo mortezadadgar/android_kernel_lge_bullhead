@@ -18,11 +18,12 @@
 
 #include <asm/cpu_ops.h>
 #include <asm/smp_plat.h>
+#include <linux/cache.h>
 #include <linux/errno.h>
 #include <linux/of.h>
 #include <linux/string.h>
 
-const struct cpu_operations *cpu_ops[NR_CPUS];
+const struct cpu_operations *cpu_ops[NR_CPUS] __ro_after_init;
 extern struct cpu_operations *__cpu_method_of_table[];
 extern struct cpu_operations *__cpu_method_of_table_end[];
 
