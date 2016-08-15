@@ -23,6 +23,7 @@
 #include <linux/swap.h>
 #include <linux/init.h>
 #include <linux/bootmem.h>
+#include <linux/cache.h>
 #include <linux/mman.h>
 #include <linux/nodemask.h>
 #include <linux/initrd.h>
@@ -43,7 +44,7 @@
 static unsigned long phys_initrd_start __initdata = 0;
 static unsigned long phys_initrd_size __initdata = 0;
 
-phys_addr_t memstart_addr __read_mostly = 0;
+phys_addr_t memstart_addr __ro_after_init = 0;
 
 void __init early_init_dt_setup_initrd_arch(u64 start, u64 end)
 {
