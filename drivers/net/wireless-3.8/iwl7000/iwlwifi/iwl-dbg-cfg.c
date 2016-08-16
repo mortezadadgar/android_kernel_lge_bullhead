@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2013 - 2015 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -33,6 +34,7 @@
  *
  * Copyright(c) 2013 - 2015 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -89,6 +91,7 @@ struct iwl_dbg_cfg current_dbg_config = {
 #define IWL_DBG_CFG_BIN(name) /* nothing, default empty */
 #define IWL_DBG_CFG_BINA(name, max) /* nothing, default empty */
 #define IWL_MOD_PARAM(type, name) /* nothing, default empty */
+#define IWL_MVM_MOD_PARAM(type, name) /* nothing, default empty */
 #define IWL_DBG_CFG_RANGE(type, name, min, max)	\
 	.name = IWL_ ## name,
 #include "iwl-dbg-cfg.h"
@@ -99,6 +102,7 @@ struct iwl_dbg_cfg current_dbg_config = {
 #undef IWL_DBG_CFG_BINA
 #undef IWL_DBG_CFG_RANGE
 #undef IWL_MOD_PARAM
+#undef IWL_MVM_MOD_PARAM
 };
 
 static const char dbg_cfg_magic[] = "[IWL DEBUG CONFIG DATA]";
@@ -213,6 +217,7 @@ void iwl_dbg_cfg_free(struct iwl_dbg_cfg *dbgcfg)
 	} while (0);
 #define IWL_DBG_CFG_RANGE(t, n, min, max) /* nothing */
 #define IWL_MOD_PARAM(t, n) /* nothing */
+#define IWL_MVM_MOD_PARAM(t, n) /* nothing */
 #include "iwl-dbg-cfg.h"
 #undef IWL_DBG_CFG
 #undef IWL_DBG_CFG_STR
@@ -221,6 +226,7 @@ void iwl_dbg_cfg_free(struct iwl_dbg_cfg *dbgcfg)
 #undef IWL_DBG_CFG_BINA
 #undef IWL_DBG_CFG_RANGE
 #undef IWL_MOD_PARAM
+#undef IWL_MVM_MOD_PARAM
 }
 
 void iwl_dbg_cfg_load_ini(struct device *dev, struct iwl_dbg_cfg *dbgcfg)
@@ -321,6 +327,16 @@ void iwl_dbg_cfg_load_ini(struct device *dev, struct iwl_dbg_cfg *dbgcfg)
 					 &iwlwifi_mod_params.n, 0, 0);	\
 			continue;					\
 		}
+#define IWL_MVM_MOD_PARAM(t, n)	{					\
+		if (strncmp("mvm." #n, line, strlen("mvm." #n)) == 0 &&	\
+		    line[strlen("mvm." #n)] == '=') {			\
+			dbg_cfg_load_##t("mvm." #n,			\
+					 line + strlen("mvm." #n) + 1,	\
+					 &dbgcfg->mvm_##n, 0, 0);	\
+			dbgcfg->__mvm_mod_param_##n = true;		\
+			continue;					\
+		}							\
+	}
 #include "iwl-dbg-cfg.h"
 #undef IWL_DBG_CFG
 #undef IWL_DBG_CFG_STR
@@ -329,6 +345,7 @@ void iwl_dbg_cfg_load_ini(struct device *dev, struct iwl_dbg_cfg *dbgcfg)
 #undef IWL_DBG_CFG_BINA
 #undef IWL_DBG_CFG_RANGE
 #undef IWL_MOD_PARAM
+#undef IWL_MVM_MOD_PARAM
 		printk(KERN_INFO "iwlwifi debug config: failed to load line \"%s\"\n",
 		       line);
 	}
