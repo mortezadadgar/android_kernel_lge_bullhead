@@ -232,6 +232,10 @@ backport_alloc_netdev(int sizeof_priv, const char *name,
 					 setup, 1, 1);
 }
 #define alloc_netdev backport_alloc_netdev
+
+char *devm_kvasprintf(struct device *dev, gfp_t gfp, const char *fmt,
+		      va_list ap);
+char *devm_kasprintf(struct device *dev, gfp_t gfp, const char *fmt, ...);
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,17,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0)

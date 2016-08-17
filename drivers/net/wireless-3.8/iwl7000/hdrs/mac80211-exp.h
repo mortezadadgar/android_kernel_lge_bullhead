@@ -23,6 +23,10 @@
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 #define memdup_user_nul __iwl7000_memdup_user_nul
 #endif /* < 4.5.0 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
+#define devm_kvasprintf __iwl7000_devm_kvasprintf
+#define devm_kasprintf __iwl7000_devm_kasprintf
+#endif /* < 3.17 */
 #if CFG80211_VERSION < KERNEL_VERSION(4,1,0)
 #define ieee80211_ie_split_ric __iwl7000_ieee80211_ie_split_ric
 #define ieee80211_ie_split __iwl7000_ieee80211_ie_split
