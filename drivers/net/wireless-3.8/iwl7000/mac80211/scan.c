@@ -97,8 +97,8 @@ ieee80211_bss_info_update(struct ieee80211_local *local,
 							 len + FCS_LEN, 24);
 #endif
 #if CFG80211_VERSION > KERNEL_VERSION(4,8,0)
-		memcpy(bss_meta.parent_bssid, scan_sdata->vif.bss_conf.bssid,
-		       ETH_ALEN);
+		ether_addr_copy(bss_meta.parent_bssid,
+				scan_sdata->vif.bss_conf.bssid);
 #else
 		scan_sdata->vif.bss_conf.bssid = scan_sdata->vif.bss_conf.bssid;
 #endif

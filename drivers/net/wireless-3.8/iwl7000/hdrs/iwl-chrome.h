@@ -19,6 +19,18 @@
 #include <crypto/algapi.h>
 #include <linux/pci.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,17,0)
+static inline u64 ktime_get_ns(void)
+{
+	return ktime_to_ns(ktime_get());
+}
+
+static inline u64 ktime_get_real_ns(void)
+{
+	return ktime_to_ns(ktime_get_real());
+}
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,17,0) */
+
 /* get the CPTCFG_* preprocessor symbols */
 #include <hdrs/config.h>
 
@@ -28,6 +40,12 @@
 #else
 #define CFG80211_VERSION LINUX_VERSION_CODE
 #endif
+
+#include <hdrs/net/codel.h>
+#include <hdrs/net/codel_impl.h>
+
+#include <hdrs/net/fq.h>
+#include <hdrs/net/fq_impl.h>
 
 /* mac80211 & backport */
 #include <hdrs/mac80211-exp.h>
