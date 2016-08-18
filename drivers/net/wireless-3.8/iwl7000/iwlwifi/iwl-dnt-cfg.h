@@ -76,7 +76,6 @@
 #define IWL_DNT_ARRAY_SIZE	128
 
 #define BUS_TYPE_PCI	"pci"
-#define BUS_TYPE_IDI	"idi"
 #define BUS_TYPE_SDIO	"sdio"
 
 #define GET_RX_PACKET_SIZE(pkt)	 ((le32_to_cpu(pkt->len_n_flags) &\

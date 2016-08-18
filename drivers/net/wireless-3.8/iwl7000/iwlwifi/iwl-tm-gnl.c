@@ -343,10 +343,7 @@ static int iwl_tm_validate_rx_hdrs_mode_req(struct iwl_tm_data *data_in)
 
 static int iwl_tm_validate_get_chip_id(struct iwl_trans *trans)
 {
-	if (strcmp(trans->dev->bus->name, BUS_TYPE_IDI))
-		return -EINVAL;
 	return 0;
-
 }
 
 /**
