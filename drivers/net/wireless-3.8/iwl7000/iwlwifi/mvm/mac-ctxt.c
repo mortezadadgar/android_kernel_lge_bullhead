@@ -549,6 +549,11 @@ void iwl_mvm_mac_ctxt_release(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 			iwl_mvm_disable_txq(mvm, IWL_MVM_OFFCHANNEL_QUEUE,
 					    IWL_MVM_OFFCHANNEL_QUEUE,
 					    IWL_MAX_TID_COUNT, 0);
+		else
+			iwl_mvm_disable_txq(mvm,
+					    IWL_MVM_DQA_P2P_DEVICE_QUEUE,
+					    vif->hw_queue[0], IWL_MAX_TID_COUNT,
+					    0);
 
 		break;
 #if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
