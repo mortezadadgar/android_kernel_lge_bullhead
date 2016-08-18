@@ -1,5 +1,5 @@
-#ifndef __IWL_CHROME_NET_SCHED_FQ_IMPL_H
-#define __IWL_CHROME_NET_SCHED_FQ_IMPL_H
+#ifndef __NET_SCHED_FQ_IMPL_H
+#define __NET_SCHED_FQ_IMPL_H
 
 #include <net/fq.h>
 
