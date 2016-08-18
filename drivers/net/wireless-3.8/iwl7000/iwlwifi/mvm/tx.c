@@ -499,11 +499,20 @@ static int iwl_mvm_get_ctrl_vif_queue(struct iwl_mvm *mvm,
 		 * handle legacy hostapd as well, where station may be added
 		 * only after assoc.
 		 */
-		WARN_ON_ONCE(!ieee80211_is_probe_resp(fc) &&
-			     !ieee80211_is_auth(fc));
+		if (ieee80211_is_probe_resp(fc) || ieee80211_is_auth(fc))
+			return IWL_MVM_DQA_AP_PROBE_RESP_QUEUE;
+		if (info->hw_queue == info->control.vif->cab_queue)
+			return info->hw_queue;
+
+		WARN_ON_ONCE(1);
 		return IWL_MVM_DQA_AP_PROBE_RESP_QUEUE;
 	case NL80211_IFTYPE_P2P_DEVICE:
-		WARN_ON_ONCE(!ieee80211_is_mgmt(fc));
+		if (ieee80211_is_mgmt(fc))
+			return IWL_MVM_DQA_P2P_DEVICE_QUEUE;
+		if (info->hw_queue == info->control.vif->cab_queue)
+			return info->hw_queue;
+
+		WARN_ON_ONCE(1);
 		return IWL_MVM_DQA_P2P_DEVICE_QUEUE;
 	default:
 		WARN_ONCE(1, "Not a ctrl vif, no available queue\n");
