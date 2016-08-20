@@ -106,8 +106,10 @@ struct crypto_stat {
 	u64 ahash_op_fail;
 };
 static struct crypto_stat _qcrypto_stat;
+#ifdef CONFIG_DEBUG_FS
 static struct dentry *_debug_dent;
 static char _debug_read_buf[DEBUG_MAX_RW_BUF];
+#endif
 static bool _qcrypto_init_assign;
 struct crypto_priv;
 struct crypto_engine {
@@ -879,6 +881,7 @@ static void _qcrypto_cra_aead_exit(struct crypto_tfm *tfm)
 		pr_err("_qcrypto__cra_aead_exit: requests still outstanding");
 };
 
+#ifdef CONFIG_DEBUG_FS
 static int _disp_stats(int id)
 {
 	struct crypto_stat *pstat;
@@ -1029,6 +1032,7 @@ static int _disp_stats(int id)
 	spin_unlock_irqrestore(&cp->lock, flags);
 	return len;
 }
+#endif
 
 static void _qcrypto_remove_engine(struct crypto_engine *pengine)
 {
@@ -5041,6 +5045,7 @@ static struct platform_driver _qualcomm_crypto = {
 	},
 };
 
+#ifdef CONFIG_DEBUG_FS
 static int _debug_qcrypto;
 
 static int _debug_stats_open(struct inode *inode, struct file *file)
@@ -5115,15 +5120,16 @@ err:
 	debugfs_remove_recursive(_debug_dent);
 	return rc;
 }
+#endif
 
 static int __init _qcrypto_init(void)
 {
-	int rc;
 	struct crypto_priv *pcp = &qcrypto_dev;
 
-	rc = _qcrypto_debug_init();
-	if (rc)
-		return rc;
+#ifdef CONFIG_DEBUG_FS
+	_qcrypto_debug_init();
+#endif
+
 	INIT_LIST_HEAD(&pcp->alg_list);
 	INIT_LIST_HEAD(&pcp->engine_list);
 	spin_lock_init(&pcp->lock);
@@ -5138,7 +5144,9 @@ static int __init _qcrypto_init(void)
 static void __exit _qcrypto_exit(void)
 {
 	pr_debug("%s Unregister QCRYPTO\n", __func__);
+#ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(_debug_dent);
+#endif
 	platform_driver_unregister(&_qualcomm_crypto);
 }
 
