@@ -1079,10 +1079,12 @@ void iwl_mvm_tof_lc_notif(struct iwl_mvm *mvm,
 	const struct ieee80211_mgmt *mgmt = (void *)pkt->data;
 	size_t len = iwl_rx_packet_payload_len(pkt);
 	struct lci_civic_entry *lci_civic;
-	const u8 *ies, *lci, *civic;
+	const u8 *ies, *lci, *civic, *msr_ie;
 	size_t ies_len, lci_len = 0, civic_len = 0;
 	size_t baselen = IEEE80211_MIN_ACTION_SIZE +
 			 sizeof(mgmt->u.action.u.ftm);
+	static const u8 rprt_type_lci = IEEE80211_SPCT_MSR_RPRT_TYPE_LCI;
+	static const u8 rprt_type_civic = IEEE80211_SPCT_MSR_RPRT_TYPE_CIVIC;
 
 	if (len <= baselen)
 		return;
@@ -1090,31 +1092,18 @@ void iwl_mvm_tof_lc_notif(struct iwl_mvm *mvm,
 	ies = mgmt->u.action.u.ftm.variable;
 	ies_len = len - baselen;
 
-	while (ies && ies_len) {
-		const u8 *msr_ie = cfg80211_find_ie(WLAN_EID_MEASURE_REPORT,
-						    ies, ies_len);
-		if (!msr_ie)
-			break;
+	msr_ie = cfg80211_find_ie_match(WLAN_EID_MEASURE_REPORT, ies, ies_len,
+					&rprt_type_lci, 1, 4);
+	if (msr_ie) {
+		lci = msr_ie + 2;
+		lci_len = msr_ie[1];
+	}
 
-		if (msr_ie[1] > 3) {
-			switch (msr_ie[4]) {
-			case IEEE80211_SPCT_MSR_RPRT_TYPE_LCI:
-				lci = msr_ie + 2;
-				lci_len = msr_ie[1];
-				break;
-			case IEEE80211_SPCT_MSR_RPRT_TYPE_CIVIC:
-				civic = msr_ie + 2;
-				civic_len = msr_ie[1];
-				break;
-			}
-		}
-
-		if (lci_len && civic_len)
-			break;
-
-		/* process next measurement report element */
-		ies_len -= (msr_ie - ies) + msr_ie[1] + 2;
-		ies = msr_ie + msr_ie[1] + 2;
+	msr_ie = cfg80211_find_ie_match(WLAN_EID_MEASURE_REPORT, ies, ies_len,
+					&rprt_type_civic, 1, 4);
+	if (msr_ie) {
+		civic = msr_ie + 2;
+		civic_len = msr_ie[1];
 	}
 
 	lci_civic = kmalloc(sizeof(*lci_civic) + lci_len + civic_len,

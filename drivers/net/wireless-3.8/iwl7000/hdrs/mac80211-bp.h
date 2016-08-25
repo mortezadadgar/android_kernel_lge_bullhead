@@ -1624,6 +1624,35 @@ backport_cfg80211_scan_done(struct cfg80211_scan_request *request,
 #define NL80211_EXT_FEATURE_SET_SCAN_DWELL -1
 #endif
 
+#if CFG80211_VERSION < KERNEL_VERSION(4,9,0)
+static inline
+const u8 *bp_cfg80211_find_ie_match(u8 eid, const u8 *ies, int len,
+				    const u8 *match, int match_len,
+				    int match_offset)
+{
+	/* match_offset can't be smaller than 2, unless match_len is
+	 * zero, in which case match_offset must be zero as well.
+	 */
+	if (WARN_ON((match_len && match_offset < 2) ||
+		    (!match_len && match_offset)))
+		return NULL;
+
+	while (len >= 2 && len >= ies[1] + 2) {
+		if ((ies[0] == eid) &&
+		    (ies[1] + 2 >= match_offset + match_len) &&
+		    !memcmp(ies + match_offset, match, match_len))
+			return ies;
+
+		len -= ies[1] + 2;
+		ies += ies[1] + 2;
+	}
+
+	return NULL;
+}
+
+#define cfg80211_find_ie_match bp_cfg80211_find_ie_match
+#endif /* CFG80211_VERSION < KERNEL_VERSION(4,9,0) */
+
 #ifndef IEEE80211_RADIOTAP_TIMESTAMP_UNIT_MASK
 #define IEEE80211_RADIOTAP_TIMESTAMP 22
 #define IEEE80211_RADIOTAP_TIMESTAMP_UNIT_MASK			0x000F
