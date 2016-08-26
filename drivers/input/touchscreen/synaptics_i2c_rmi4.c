@@ -4054,7 +4054,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	mutex_init(&suspended_mutex);
 
 	rmi4_data->det_workqueue =
-			create_singlethread_workqueue("rmi_det_workqueue");
+			alloc_workqueue("rmi_det_workqueue", WQ_HIGHPRI, 1);
 	INIT_DELAYED_WORK(&rmi4_data->det_work,
 			synaptics_rmi4_detection_work);
 	queue_delayed_work(rmi4_data->det_workqueue,
