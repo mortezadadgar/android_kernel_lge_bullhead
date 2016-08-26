@@ -1922,7 +1922,6 @@ static void cleanup_rmt_server(struct msm_ipc_router_xprt_info *xprt_info,
 	D("Remove server %08x:%08x - %08x:%08x",
 	   server->name.service, server->name.instance,
 	   rport_ptr->node_id, rport_ptr->port_id);
-	ipc_router_reset_conn(rport_ptr);
 	memset(&ctl, 0, sizeof(ctl));
 	ctl.cmd = IPC_ROUTER_CTRL_CMD_REMOVE_SERVER;
 	ctl.srv.service = server->name.service;
@@ -1953,6 +1952,7 @@ static void cleanup_rmt_ports(struct msm_ipc_router_xprt_info *xprt_info,
 			server = rport_ptr->server;
 			rport_ptr->server = NULL;
 			mutex_unlock(&rport_ptr->rport_lock_lhb2);
+			ipc_router_reset_conn(rport_ptr);
 			if (server) {
 				cleanup_rmt_server(xprt_info, rport_ptr,
 						   server);
@@ -2107,13 +2107,13 @@ static void ipc_router_reset_conn(struct msm_ipc_router_remote_port *rport_ptr)
 	list_for_each_entry_safe(conn_info, tmp_conn_info,
 				&rport_ptr->conn_info_list, list) {
 		port_ptr = ipc_router_get_port_ref(conn_info->port_id);
-		if (!port_ptr)
-			continue;
-		mutex_lock(&port_ptr->port_lock_lhc3);
-		port_ptr->conn_status = CONNECTION_RESET;
-		mutex_unlock(&port_ptr->port_lock_lhc3);
-		wake_up(&port_ptr->port_rx_wait_q);
-		kref_put(&port_ptr->ref, ipc_router_release_port);
+		if (port_ptr) {
+			mutex_lock(&port_ptr->port_lock_lhc3);
+			port_ptr->conn_status = CONNECTION_RESET;
+			mutex_unlock(&port_ptr->port_lock_lhc3);
+			wake_up(&port_ptr->port_rx_wait_q);
+			kref_put(&port_ptr->ref, ipc_router_release_port);
+		}
 
 		list_del(&conn_info->list);
 		kfree(conn_info);
@@ -2373,6 +2373,7 @@ static int process_rmv_client_msg(struct msm_ipc_router_xprt_info *xprt_info,
 		server = rport_ptr->server;
 		rport_ptr->server = NULL;
 		mutex_unlock(&rport_ptr->rport_lock_lhb2);
+		ipc_router_reset_conn(rport_ptr);
 		down_write(&server_list_lock_lha2);
 		if (server)
 			cleanup_rmt_server(NULL, rport_ptr, server);
