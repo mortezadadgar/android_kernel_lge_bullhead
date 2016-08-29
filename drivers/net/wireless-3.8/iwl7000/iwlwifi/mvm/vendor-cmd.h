@@ -120,6 +120,10 @@
  *	set to %IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE_RESULTS.
  * @IWL_MVM_VENDOR_CMD_DBG_COLLECT: collect debug data
  * @IWL_MVM_VENDOR_CMD_NAN_FAW_CONF: Configure post NAN further availability.
+ * @IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS: Starts Link Quality Measurements.
+ *	Must include %IWL_MVM_VENDOR_ATTR_LQM_DURATION and
+ *	%IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT. The results will be notified with
+ *	this same command.
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -150,6 +154,7 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_GSCAN_BEACON_EVENT,
 	IWL_MVM_VENDOR_CMD_DBG_COLLECT,
 	IWL_MVM_VENDOR_CMD_NAN_FAW_CONF,
+	IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS,
 };
 
 /**
@@ -170,22 +175,23 @@ enum iwl_mvm_vendor_load {
 
 /**
  * enum iwl_mvm_vendor_gscan_report_mode - gscan scan results report modes
- * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER: report that scan results are
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_FULL: report that scan results are
  *	available only when the scan results buffer reaches the report
- *	threshold. The report threshold is set for each bucket. See
- *	%IWL_MVM_VENDOR_ATTR_GSCAN_START_REPORT_THRESHOLD.
- * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE: like
- *	%IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER + report that scan results are
+ *	threshold. The report threshold is set for each bucket.
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_EACH_SCAN: report that scan results are
  *	available when scanning of this bucket is complete.
- * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE_RESULTS: like
- *	%IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE + forward scan results
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_FULL_RESULTS: forward scan results
  *	(beacons/probe responses) in real time to userspace.
- * @NUM_IWL_MVM_VENDOR_GSCAN_REPORT: number of defined report modes for gscan.
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_HISTORY_RESERVED: reserved.
+ * @IWL_MVM_VENDOR_GSCAN_REPORT_NO_BATCH: do not fill scan history buffer.
+ * @NUM_IWL_MVM_VENDOR_GSCAN_REPORT: number of report mode attributes.
  */
 enum iwl_mvm_vendor_gscan_report_mode {
-	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER,
-	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE,
-	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_COMPLETE_RESULTS,
+	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_FULL,
+	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_EACH_SCAN,
+	IWL_MVM_VENDOR_GSCAN_REPORT_BUFFER_FULL_RESULTS,
+	IWL_MVM_VENDOR_GSCAN_REPORT_HISTORY_RESERVED,
+	IWL_MVM_VENDOR_GSCAN_REPORT_NO_BATCH,
 	NUM_IWL_MVM_VENDOR_GSCAN_REPORT,
 };
 
@@ -225,6 +231,15 @@ enum iwl_mvm_vendor_gscan_channel_spec {
  *	%IWL_MVM_VENDOR_CHANNEL_SPEC. This channel list is used when
  *	%IWL_MVM_VENDOR_BUCKET_SPEC_BAND is set to
  *	%IWL_MVM_VENDOR_BAND_UNSPECIFIED.
+ * @IWL_MVM_VENDOR_BUCKET_SPEC_MAX_PERIOD: maximum scan interval. If it's
+ *	non zero or different than period, then this bucket is an exponential
+ *	back off bucket and the scan period will grow exponentially.
+ * @IWL_MVM_VENDOR_BUCKET_SPEC_EXPONENT: for exponential back off bucket,
+ *	scan period calculation should be done according to the following:
+ *	new_period = old_period * exponent
+ * @IWL_MVM_VENDOR_BUCKET_SPEC_STEP_CNT: for exponential back off bucket:
+ *	number of scans to perform at a given period and until the exponent
+ *	is applied.
  * @NUM_IWL_MVM_VENDOR_BUCKET_SPEC: number of bucket spec attributes.
  * @MAX_IWL_MVM_VENDOR_BUCKET_SPEC: highest bucket spec attribute number.
  */
@@ -235,6 +250,9 @@ enum iwl_mvm_vendor_gscan_bucket_spec {
 	IWL_MVM_VENDOR_BUCKET_SPEC_PERIOD,
 	IWL_MVM_VENDOR_BUCKET_SPEC_REPORT_MODE,
 	IWL_MVM_VENDOR_BUCKET_SPEC_CHANNELS,
+	IWL_MVM_VENDOR_BUCKET_SPEC_MAX_PERIOD,
+	IWL_MVM_VENDOR_BUCKET_SPEC_EXPONENT,
+	IWL_MVM_VENDOR_BUCKET_SPEC_STEP_CNT,
 	NUM_IWL_MVM_VENDOR_BUCKET_SPEC,
 	MAX_IWL_MVM_VENDOR_BUCKET_SPEC =
 		NUM_IWL_MVM_VENDOR_BUCKET_SPEC - 1,
@@ -266,6 +284,9 @@ enum iwl_mvm_vendor_results_event_type {
  * @IWL_MVM_VENDOR_GSCAN_RESULT_RSSI: signal strength in dB.
  * @IWL_MVM_VENDOR_GSCAN_RESULT_FRAME: the whole beacon/probe response
  *	frame data including the header.
+ * @IWL_MVM_VENDOR_GSCAN_RESULT_BEACON_PERIOD: period advertised in the beacon.
+ * @IWL_MVM_VENDOR_GSCAN_RESULT_CAPABILITY: capabilities advertised in the
+ *	beacon / probe response.
  * @NUM_IWL_MVM_VENDOR_GSCAN_RESULT: number of scan result attributes.
  * @MAX_IWL_MVM_VENDOR_GSCAN_RESULT: highest scan result attribute number.
  */
@@ -277,9 +298,31 @@ enum iwl_mvm_vendor_gscan_result {
 	IWL_MVM_VENDOR_GSCAN_RESULT_CHANNEL,
 	IWL_MVM_VENDOR_GSCAN_RESULT_RSSI,
 	IWL_MVM_VENDOR_GSCAN_RESULT_FRAME,
+	IWL_MVM_VENDOR_GSCAN_RESULT_BEACON_PERIOD,
+	IWL_MVM_VENDOR_GSCAN_RESULT_CAPABILITY,
 	NUM_IWL_MVM_VENDOR_GSCAN_RESULT,
 	MAX_IWL_MVM_VENDOR_GSCAN_RESULT =
 		NUM_IWL_MVM_VENDOR_GSCAN_RESULT - 1,
+};
+
+/**
+ * enum iwl_mvm_vendor_gscan_cached_scan_res - gscan cached scan result
+ * @IWL_MVM_VENDOR_GSCAN_CACHED_RES_INVALID: attribute number 0 is reserved.
+ * @IWL_MVM_VENDOR_GSCAN_CACHED_RES_SCAN_ID: unique ID for this cached result.
+ * @IWL_MVM_VENDOR_GSCAN_CACHED_RES_FLAGS: additional information about this
+ *	scan iteration.
+ * @IWL_MVM_VENDOR_GSCAN_CACHED_RES_APS: APs reported in this scan iteration.
+ * @NUM_IWL_MVM_VENDOR_GSCAN_CACHED_RES: number of scan result attributes.
+ * @MAX_IWL_MVM_VENDOR_GSCAN_CACHED_RES: highest scan result attribute number.
+ */
+enum iwl_mvm_vendor_gscan_cached_scan_res {
+	IWL_MVM_VENDOR_GSCAN_CACHED_RES_INVALID,
+	IWL_MVM_VENDOR_GSCAN_CACHED_RES_SCAN_ID,
+	IWL_MVM_VENDOR_GSCAN_CACHED_RES_FLAGS,
+	IWL_MVM_VENDOR_GSCAN_CACHED_RES_APS,
+	NUM_IWL_MVM_VENDOR_GSCAN_CACHED_RES,
+	MAX_IWL_MVM_VENDOR_GSCAN_CACHED_RES =
+		NUM_IWL_MVM_VENDOR_GSCAN_CACHED_RES - 1,
 };
 
 /**
@@ -288,8 +331,6 @@ enum iwl_mvm_vendor_gscan_result {
  * @IWL_MVM_VENDOR_AP_BSSID: BSSID of the BSS (6 octets)
  * @IWL_MVM_VENDOR_AP_LOW_RSSI_THRESHOLD: low RSSI threshold. in dB.
  * @IWL_MVM_VENDOR_AP_HIGH_RSSI_THRESHOLD: high RSSI threshold. in dB.
- * @IWL_MVM_VENDOR_AP_CHANNEL_HINT: operating channel of the BSS.
- *	This is only a hint, the BSS may be operating on a different channel.
  * @NUM_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM: number of ap threshold param
  *	attributes.
  * @MAX_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM: highest ap threshold param
@@ -300,7 +341,6 @@ enum iwl_mvm_vendor_ap_threshold_param {
 	IWL_MVM_VENDOR_AP_BSSID,
 	IWL_MVM_VENDOR_AP_LOW_RSSI_THRESHOLD,
 	IWL_MVM_VENDOR_AP_HIGH_RSSI_THRESHOLD,
-	IWL_MVM_VENDOR_AP_CHANNEL_HINT,
 	NUM_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM,
 	MAX_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM =
 		NUM_IWL_MVM_VENDOR_GSCAN_AP_THRESHOLD_PARAM - 1,
@@ -373,6 +413,57 @@ enum iwl_mvm_vendor_rxfilter_op {
 };
 
 /**
+ * enum iwl_mvm_vendor_lqm_status - status of a link quality measurement
+ * @IWL_MVM_VENDOR_LQM_STATUS_SUCCESS: measurement succeeded for the
+ *	requested time
+ * @IWL_MVM_VENDOR_LQM_STATUS_TIMEOUT: measurement succeeded but was stopped
+ *	earlier than expected because of a timeout
+ * @IWL_MVM_VENDOR_LQM_STATUS_UNBOUND: measurement succeeded but was stopped
+ *	earlier than expected because of a deassociation
+ * @IWL_MVM_VENDOR_LQM_STATUS_ABORT_CHAN_SWITCH: measurement failed because
+ *	of a channel switch
+ */
+enum iwl_mvm_vendor_lqm_status {
+	IWL_MVM_VENDOR_LQM_STATUS_SUCCESS,
+	IWL_MVM_VENDOR_LQM_STATUS_TIMEOUT,
+	IWL_MVM_VENDOR_LQM_STATUS_ABORT,
+};
+
+/**
+ * enum iwl_mvm_vendor_lqm_result - the result of a link quality measurement
+ * @IWL_MVM_VENDOR_ATTR_LQM_INVALID: invalid attribute for compatibility
+ *	purpose.
+ * @IWL_MVM_VENDOR_ATTR_LQM_ACTIVE_STA_AIR_TIME: the air time for the most
+ *	active stations during the measurement. This is a nested attribute
+ *	which is an array of u32.
+ * @IWL_MVM_VENDOR_ATTR_LQM_OTHER_STA: the air time consumed by the stations
+ *	not included in %IWL_MVM_VENDOR_ATTR_LQM_ACTIVE_STA_AIR_TIME. This is a
+ *	u32.
+ * @IWL_MVM_VENDOR_ATTR_LQM_MEAS_TIME: the length (in msec) of the measurement.
+ *	This can be shorter than the requested
+ *	%IWL_MVM_VENDOR_ATTR_LQM_DURATION in case the measurement was cut
+ *	short. This is a u32.
+ * @IWL_MVM_VENDOR_ATTR_LQM_RETRY_LIMIT: the number of frames that were dropped
+ *	due to retry limit during the measurement. This is a u32.
+ * @IWL_MVM_VENDOR_ATTR_LQM_MEAS_STATUS: the measurement status.
+ *	One of &enum iwl_mvm_vendor_lqm_status. This is a u32.
+ * @NUM_IWL_MVM_VENDOR_LQM_RESULT: num of link quality measurement attributes
+ * @MAX_IWL_MVM_VENDOR_LQM_RESULT: highest link quality measurement attribute
+ *	number.
+ */
+enum iwl_mvm_vendor_lqm_result {
+	IWL_MVM_VENDOR_ATTR_LQM_INVALID,
+	IWL_MVM_VENDOR_ATTR_LQM_ACTIVE_STA_AIR_TIME,
+	IWL_MVM_VENDOR_ATTR_LQM_OTHER_STA,
+	IWL_MVM_VENDOR_ATTR_LQM_MEAS_TIME,
+	IWL_MVM_VENDOR_ATTR_LQM_RETRY_LIMIT,
+	IWL_MVM_VENDOR_ATTR_LQM_MEAS_STATUS,
+
+	NUM_IWL_MVM_VENDOR_LQM_RESULT,
+	MAX_IWL_MVM_VENDOR_LQM_RESULT = NUM_IWL_MVM_VENDOR_LQM_RESULT - 1,
+};
+
+/**
  * enum iwl_mvm_vendor_attr - attributes used in vendor commands
  * @__IWL_MVM_VENDOR_ATTR_INVALID: attribute 0 is invalid
  * @IWL_MVM_VENDOR_ATTR_LOW_LATENCY: low-latency flag attribute
@@ -437,19 +528,54 @@ enum iwl_mvm_vendor_rxfilter_op {
  * @IWL_MVM_VENDOR_ATTR_GSCAN_SIG_CHANGE_RESULTS: array of significant
  *	change results. Each result is a nested attribute of &enum
  *	iwl_mvm_vendor_significant_change_result.
- * @IWL_MVM_VENDOR_ATTR_NAN_FAW_FREQ: u32 attribute. Frequency (in MHz) to be
- *	used for NAN further availability.
- * @IWL_MVM_VENDOR_ATTR_NAN_FAW_SLOTS: u8 attribute. Number of 16TU slots
- *	the NAN device will be available on it's FAW between DWs.
- *
- * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
- * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
  * @IWL_MVM_VENDOR_ATTR_RXFILTER: u32 attribute.
  *      See %iwl_mvm_vendor_rxfilter_flags.
  * @IWL_MVM_VENDOR_ATTR_RXFILTER_OP: u32 attribute.
  *      See %iwl_mvm_vendor_rxfilter_op.
  * @IWL_MVM_VENDOR_ATTR_DBG_COLLECT_TRIGGER: description of collect debug data
-	trigger.
+ *	trigger.
+ * @IWL_MVM_VENDOR_ATTR_NAN_FAW_FREQ: u32 attribute. Frequency (in MHz) to be
+ *	used for NAN further availability.
+ * @IWL_MVM_VENDOR_ATTR_NAN_FAW_SLOTS: u8 attribute. Number of 16TU slots
+ *	the NAN device will be available on it's FAW between DWs.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_HOTLIST_SSIDS: maximum number of entries for
+ *	hotlist SSID's
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS: max number of epno entries
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS_BY_SSID: max number of epno
+ *	entries if ssid is specified
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_WHITE_LISTED_SSID: max number of white
+ *	listed SSIDs
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_BLACK_LISTED_SSID: max number of black
+ *	listed SSIDs
+ *
+ * @NUM_IWL_MVM_VENDOR_ATTR: number of vendor attributes
+ * @MAX_IWL_MVM_VENDOR_ATTR: highest vendor attribute number
+ * @IWL_MVM_VENDOR_ATTR_WIPHY_FREQ: frequency of the selected channel in MHz,
+ *	defines the channel together with the attributes
+ *	%IWL_MVM_VENDOR_ATTR_CHANNEL_WIDTH and if needed
+ *	%IWL_MVM_VENDOR_ATTR_CENTER_FREQ1 and
+ *	%IWL_MVM_VENDOR_ATTR_CENTER_FREQ2.
+ * @IWL_MVM_VENDOR_ATTR_CHANNEL_WIDTH: u32 attribute containing one of the
+ *	values of &enum nl80211_chan_width, describing the channel width.
+ *	See the documentation of the enum for more information.
+ * @IWL_MVM_VENDOR_ATTR_CENTER_FREQ1: Center frequency of the first part of the
+ *	channel, used for anything but 20 MHz bandwidth.
+ * @IWL_MVM_VENDOR_ATTR_CENTER_FREQ2: Center frequency of the second part of
+ *	the channel, used only for 80+80 MHz bandwidth.
+ * @IWL_MVM_VENDOR_ATTR_LQM_DURATION: the duration in msecs of the Link
+ *	Quality Measurement. Required for
+ *	&IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS. This is a u32.
+ * @IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT: the maximal time in msecs that the
+ *	measurement can take. Required for
+ *	&IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS. This is a u32.
+ * @IWL_MVM_VENDOR_ATTR_LQM_RESULT: result of the measurement. Nested attribute
+ *	see %enum iwl_mvm_vendor_lqm_result.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM: report that scan results
+ *	are available when buffer is that much full. In number of scans.
+ * @IWL_MVM_VENDOR_ATTR_GSCAN_CACHED_RESULTS: array of gscan cached results.
+ *	Each result is a nested attribute of
+ *	&enum iwl_mvm_vendor_gscan_cached_scan_res.
+ *
  */
 enum iwl_mvm_vendor_attr {
 	__IWL_MVM_VENDOR_ATTR_INVALID,
@@ -495,6 +621,20 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_DBG_COLLECT_TRIGGER,
 	IWL_MVM_VENDOR_ATTR_NAN_FAW_FREQ,
 	IWL_MVM_VENDOR_ATTR_NAN_FAW_SLOTS,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_HOTLIST_SSIDS,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS_BY_SSID,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_WHITE_LISTED_SSID,
+	IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_BLACK_LISTED_SSID,
+	IWL_MVM_VENDOR_ATTR_WIPHY_FREQ,
+	IWL_MVM_VENDOR_ATTR_CHANNEL_WIDTH,
+	IWL_MVM_VENDOR_ATTR_CENTER_FREQ1,
+	IWL_MVM_VENDOR_ATTR_CENTER_FREQ2,
+	IWL_MVM_VENDOR_ATTR_LQM_DURATION,
+	IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT,
+	IWL_MVM_VENDOR_ATTR_LQM_RESULT,
+	IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM,
+	IWL_MVM_VENDOR_ATTR_GSCAN_CACHED_RESULTS,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,

@@ -220,91 +220,127 @@ static void iwl_mvm_nic_config(struct iwl_op_mode *op_mode)
 				       ~APMG_PS_CTRL_EARLY_PWR_OFF_RESET_DIS);
 }
 
+/**
+ * enum iwl_rx_handler_context context for Rx handler
+ * @RX_HANDLER_SYNC : this means that it will be called in the Rx path
+ *	which can't acquire mvm->mutex.
+ * @RX_HANDLER_ASYNC_LOCKED : If the handler needs to hold mvm->mutex
+ *	(and only in this case!), it should be set as ASYNC. In that case,
+ *	it will be called from a worker with mvm->mutex held.
+ * @RX_HANDLER_ASYNC_UNLOCKED : in case the handler needs to lock the
+ *	mutex itself, it will be called from a worker without mvm->mutex held.
+ */
+enum iwl_rx_handler_context {
+	RX_HANDLER_SYNC,
+	RX_HANDLER_ASYNC_LOCKED,
+	RX_HANDLER_ASYNC_UNLOCKED,
+};
+
+/**
+ * struct iwl_rx_handlers handler for FW notification
+ * @cmd_id: command id
+ * @context: see &iwl_rx_handler_context
+ * @fn: the function is called when notification is received
+ */
 struct iwl_rx_handlers {
 	u16 cmd_id;
-	bool async;
+	enum iwl_rx_handler_context context;
 	void (*fn)(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb);
 };
 
-#define RX_HANDLER(_cmd_id, _fn, _async)	\
-	{ .cmd_id = _cmd_id , .fn = _fn , .async = _async }
-#define RX_HANDLER_GRP(_grp, _cmd, _fn, _async)	\
-	{ .cmd_id = WIDE_ID(_grp, _cmd), .fn = _fn, .async = _async }
+#define RX_HANDLER(_cmd_id, _fn, _context)	\
+	{ .cmd_id = _cmd_id, .fn = _fn, .context = _context }
+#define RX_HANDLER_GRP(_grp, _cmd, _fn, _context)	\
+	{ .cmd_id = WIDE_ID(_grp, _cmd), .fn = _fn, .context = _context }
 
 /*
  * Handlers for fw notifications
  * Convention: RX_HANDLER(CMD_NAME, iwl_mvm_rx_CMD_NAME
  * This list should be in order of frequency for performance purposes.
  *
- * The handler can be SYNC - this means that it will be called in the Rx path
- * which can't acquire mvm->mutex. If the handler needs to hold mvm->mutex (and
- * only in this case!), it should be set as ASYNC. In that case, it will be
- * called from a worker with mvm->mutex held.
+ * The handler can be one from three contexts, see &iwl_rx_handler_context
  */
 static const struct iwl_rx_handlers iwl_mvm_rx_handlers[] = {
-	RX_HANDLER(TX_CMD, iwl_mvm_rx_tx_cmd, false),
-	RX_HANDLER(BA_NOTIF, iwl_mvm_rx_ba_notif, false),
+	RX_HANDLER(TX_CMD, iwl_mvm_rx_tx_cmd, RX_HANDLER_SYNC),
+	RX_HANDLER(BA_NOTIF, iwl_mvm_rx_ba_notif, RX_HANDLER_SYNC),
 
-	RX_HANDLER(BT_PROFILE_NOTIFICATION, iwl_mvm_rx_bt_coex_notif, true),
-	RX_HANDLER(BEACON_NOTIFICATION, iwl_mvm_rx_beacon_notif, true),
-	RX_HANDLER(STATISTICS_NOTIFICATION, iwl_mvm_rx_statistics, true),
+	RX_HANDLER(BT_PROFILE_NOTIFICATION, iwl_mvm_rx_bt_coex_notif,
+		   RX_HANDLER_ASYNC_LOCKED),
+	RX_HANDLER(BEACON_NOTIFICATION, iwl_mvm_rx_beacon_notif,
+		   RX_HANDLER_ASYNC_LOCKED),
+	RX_HANDLER(STATISTICS_NOTIFICATION, iwl_mvm_rx_statistics,
+		   RX_HANDLER_ASYNC_LOCKED),
 	RX_HANDLER(ANTENNA_COUPLING_NOTIFICATION,
-		   iwl_mvm_rx_ant_coupling_notif, true),
+		   iwl_mvm_rx_ant_coupling_notif, RX_HANDLER_ASYNC_LOCKED),
 
 	RX_HANDLER(BA_WINDOW_STATUS_NOTIFICATION_ID,
-		   iwl_mvm_window_status_notif, false),
+		   iwl_mvm_window_status_notif, RX_HANDLER_SYNC),
 
-	RX_HANDLER(TIME_EVENT_NOTIFICATION, iwl_mvm_rx_time_event_notif, false),
-	RX_HANDLER(MCC_CHUB_UPDATE_CMD, iwl_mvm_rx_chub_update_mcc, true),
+	RX_HANDLER(TIME_EVENT_NOTIFICATION, iwl_mvm_rx_time_event_notif,
+		   RX_HANDLER_SYNC),
+	RX_HANDLER(MCC_CHUB_UPDATE_CMD, iwl_mvm_rx_chub_update_mcc,
+		   RX_HANDLER_ASYNC_LOCKED),
 
-	RX_HANDLER(EOSP_NOTIFICATION, iwl_mvm_rx_eosp_notif, false),
+	RX_HANDLER(EOSP_NOTIFICATION, iwl_mvm_rx_eosp_notif, RX_HANDLER_SYNC),
 
 	RX_HANDLER(SCAN_ITERATION_COMPLETE,
-		   iwl_mvm_rx_lmac_scan_iter_complete_notif, false),
+		   iwl_mvm_rx_lmac_scan_iter_complete_notif, RX_HANDLER_SYNC),
 	RX_HANDLER(SCAN_OFFLOAD_COMPLETE,
-		   iwl_mvm_rx_lmac_scan_complete_notif, true),
+		   iwl_mvm_rx_lmac_scan_complete_notif,
+		   RX_HANDLER_ASYNC_LOCKED),
 	RX_HANDLER(MATCH_FOUND_NOTIFICATION, iwl_mvm_rx_scan_match_found,
-		   false),
+		   RX_HANDLER_SYNC),
 	RX_HANDLER(SCAN_COMPLETE_UMAC, iwl_mvm_rx_umac_scan_complete_notif,
-		   true),
+		   RX_HANDLER_ASYNC_LOCKED),
 	RX_HANDLER(SCAN_ITERATION_COMPLETE_UMAC,
-		   iwl_mvm_rx_umac_scan_iter_complete_notif, false),
+		   iwl_mvm_rx_umac_scan_iter_complete_notif, RX_HANDLER_SYNC),
 
-	RX_HANDLER(CARD_STATE_NOTIFICATION, iwl_mvm_rx_card_state_notif, false),
+	RX_HANDLER(CARD_STATE_NOTIFICATION, iwl_mvm_rx_card_state_notif,
+		   RX_HANDLER_SYNC),
 
 	RX_HANDLER(MISSED_BEACONS_NOTIFICATION, iwl_mvm_rx_missed_beacons_notif,
-		   false),
+		   RX_HANDLER_SYNC),
 
-	RX_HANDLER(REPLY_ERROR, iwl_mvm_rx_fw_error, false),
+	RX_HANDLER(REPLY_ERROR, iwl_mvm_rx_fw_error, RX_HANDLER_SYNC),
 	RX_HANDLER(PSM_UAPSD_AP_MISBEHAVING_NOTIFICATION,
-		   iwl_mvm_power_uapsd_misbehaving_ap_notif, false),
-	RX_HANDLER(DTS_MEASUREMENT_NOTIFICATION, iwl_mvm_temp_notif, true),
+		   iwl_mvm_power_uapsd_misbehaving_ap_notif, RX_HANDLER_SYNC),
+	RX_HANDLER(DTS_MEASUREMENT_NOTIFICATION, iwl_mvm_temp_notif,
+		   RX_HANDLER_ASYNC_LOCKED),
 	RX_HANDLER_GRP(PHY_OPS_GROUP, DTS_MEASUREMENT_NOTIF_WIDE,
-		       iwl_mvm_temp_notif, true),
+		       iwl_mvm_temp_notif, RX_HANDLER_ASYNC_UNLOCKED),
 	RX_HANDLER_GRP(PHY_OPS_GROUP, CT_KILL_NOTIFICATION,
-		       iwl_mvm_ct_kill_notif, false),
+		       iwl_mvm_ct_kill_notif, RX_HANDLER_SYNC),
 
 	RX_HANDLER(TDLS_CHANNEL_SWITCH_NOTIFICATION, iwl_mvm_rx_tdls_notif,
-		   true),
-	RX_HANDLER(MFUART_LOAD_NOTIFICATION, iwl_mvm_rx_mfuart_notif, false),
-	RX_HANDLER(TOF_NOTIFICATION, iwl_mvm_tof_resp_handler, true),
+		   RX_HANDLER_ASYNC_LOCKED),
+	RX_HANDLER(MFUART_LOAD_NOTIFICATION, iwl_mvm_rx_mfuart_notif,
+		   RX_HANDLER_SYNC),
+	RX_HANDLER(TOF_NOTIFICATION, iwl_mvm_tof_resp_handler,
+		   RX_HANDLER_ASYNC_LOCKED),
 	RX_HANDLER_GRP(PROT_OFFLOAD_GROUP, STORED_BEACON_NTF,
-		       iwl_mvm_rx_stored_beacon_notif, false),
+		       iwl_mvm_rx_stored_beacon_notif, RX_HANDLER_SYNC),
+	RX_HANDLER_GRP(DATA_PATH_GROUP, MU_GROUP_MGMT_NOTIF,
+		       iwl_mvm_mu_mimo_grp_notif, RX_HANDLER_SYNC),
 #ifdef CPTCFG_IWLMVM_VENDOR_CMDS
 	RX_HANDLER_GRP(SCAN_GROUP, GSCAN_RESULTS_AVAILABLE_EVENT,
-		       iwl_mvm_rx_gscan_results_available, true),
+		       iwl_mvm_rx_gscan_results_available,
+		       RX_HANDLER_ASYNC_LOCKED),
 	RX_HANDLER_GRP(SCAN_GROUP, GSCAN_HOTLIST_CHANGE_EVENT,
-		       iwl_mvm_rx_gscan_hotlist_change_event, true),
+		       iwl_mvm_rx_gscan_hotlist_change_event,
+		       RX_HANDLER_ASYNC_LOCKED),
 	RX_HANDLER_GRP(SCAN_GROUP, GSCAN_SIGNIFICANT_CHANGE_EVENT,
-		       iwl_mvm_rx_gscan_significant_change_event, true),
+		       iwl_mvm_rx_gscan_significant_change_event,
+		       RX_HANDLER_ASYNC_LOCKED),
 	RX_HANDLER_GRP(NAN_GROUP, NAN_DISCOVERY_TERMINATE_NOTIF,
-		       iwl_mvm_nan_de_term_notif, false),
+		       iwl_mvm_nan_de_term_notif, RX_HANDLER_SYNC),
 	RX_HANDLER_GRP(NAN_GROUP, NAN_DISCOVERY_EVENT_NOTIF,
-		       iwl_mvm_nan_match, false),
+		       iwl_mvm_nan_match, RX_HANDLER_SYNC),
+	RX_HANDLER_GRP(MAC_CONF_GROUP, LINK_QUALITY_MEASUREMENT_COMPLETE_NOTIF,
+		       iwl_mvm_vendor_lqm_notif, RX_HANDLER_SYNC),
 #endif
 
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
-	RX_HANDLER(DEBUG_LOG_MSG, iwl_mvm_rx_fw_logs, false),
+	RX_HANDLER(DEBUG_LOG_MSG, iwl_mvm_rx_fw_logs, RX_HANDLER_SYNC),
 #endif
 };
 #undef RX_HANDLER
@@ -424,6 +460,21 @@ static const struct iwl_hcmd_names iwl_mvm_legacy_names[] = {
 /* Please keep this array *SORTED* by hex value.
  * Access is done through binary search
  */
+static const struct iwl_hcmd_names iwl_mvm_system_names[] = {
+	HCMD_NAME(SHARED_MEM_CFG_CMD),
+};
+
+/* Please keep this array *SORTED* by hex value.
+ * Access is done through binary search
+ */
+static const struct iwl_hcmd_names iwl_mvm_mac_conf_names[] = {
+	HCMD_NAME(LINK_QUALITY_MEASUREMENT_CMD),
+	HCMD_NAME(LINK_QUALITY_MEASUREMENT_COMPLETE_NOTIF),
+};
+
+/* Please keep this array *SORTED* by hex value.
+ * Access is done through binary search
+ */
 static const struct iwl_hcmd_names iwl_mvm_phy_names[] = {
 	HCMD_NAME(CMD_DTS_MEASUREMENT_TRIGGER_WIDE),
 	HCMD_NAME(CTDP_CONFIG_CMD),
@@ -438,6 +489,7 @@ static const struct iwl_hcmd_names iwl_mvm_phy_names[] = {
 static const struct iwl_hcmd_names iwl_mvm_data_path_names[] = {
 	HCMD_NAME(UPDATE_MU_GROUPS_CMD),
 	HCMD_NAME(TRIGGER_RX_QUEUES_NOTIF_CMD),
+	HCMD_NAME(MU_GROUP_MGMT_NOTIF),
 	HCMD_NAME(RX_QUEUES_NOTIFICATION),
 };
 
@@ -478,6 +530,8 @@ static const struct iwl_hcmd_names iwl_mvm_prot_offload_names[] = {
 static const struct iwl_hcmd_arr iwl_mvm_groups[] = {
 	[LEGACY_GROUP] = HCMD_ARR(iwl_mvm_legacy_names),
 	[LONG_GROUP] = HCMD_ARR(iwl_mvm_legacy_names),
+	[SYSTEM_GROUP] = HCMD_ARR(iwl_mvm_system_names),
+	[MAC_CONF_GROUP] = HCMD_ARR(iwl_mvm_mac_conf_names),
 	[PHY_OPS_GROUP] = HCMD_ARR(iwl_mvm_phy_names),
 	[DATA_PATH_GROUP] = HCMD_ARR(iwl_mvm_data_path_names),
 	[SCAN_GROUP] = HCMD_ARR(iwl_mvm_scan_names),
@@ -593,11 +647,15 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	INIT_WORK(&mvm->d0i3_exit_work, iwl_mvm_d0i3_exit_work);
 	INIT_DELAYED_WORK(&mvm->fw_dump_wk, iwl_mvm_fw_error_dump_wk);
 	INIT_DELAYED_WORK(&mvm->tdls_cs.dwork, iwl_mvm_tdls_ch_switch_work);
+	INIT_DELAYED_WORK(&mvm->scan_timeout_dwork, iwl_mvm_scan_timeout_wk);
+	INIT_WORK(&mvm->add_stream_wk, iwl_mvm_add_new_dqa_stream_wk);
 
 	spin_lock_init(&mvm->d0i3_tx_lock);
 	spin_lock_init(&mvm->refs_lock);
 	skb_queue_head_init(&mvm->d0i3_tx);
 	init_waitqueue_head(&mvm->d0i3_exit_waitq);
+
+	atomic_set(&mvm->queue_sync_counter, 0);
 
 	SET_IEEE80211_DEV(mvm->hw, mvm->trans->dev);
 
@@ -723,7 +781,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 		iwl_mvm_ref(mvm, IWL_MVM_REF_INIT_UCODE);
 		err = iwl_run_init_mvm_ucode(mvm, true);
 		if (!err || !iwlmvm_mod_params.init_dbg)
-			iwl_trans_stop_device(trans);
+			iwl_mvm_stop_device(mvm);
 		iwl_mvm_unref(mvm, IWL_MVM_REF_INIT_UCODE);
 		mutex_unlock(&mvm->mutex);
 		/* returns 0 if successful, 1 if success but in rfkill */
@@ -761,12 +819,6 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 		iwl_trans_unref(mvm->trans);
 
 	iwl_mvm_tof_init(mvm);
-
-	/* init RSS hash key */
-	get_random_bytes(mvm->secret_key, sizeof(mvm->secret_key));
-
-	setup_timer(&mvm->scan_timer, iwl_mvm_scan_timeout,
-		    (unsigned long)mvm);
 
 	return op_mode;
 
@@ -841,7 +893,8 @@ static void iwl_op_mode_mvm_stop(struct iwl_op_mode *op_mode)
 
 	iwl_mvm_tof_clean(mvm);
 
-	del_timer_sync(&mvm->scan_timer);
+	mutex_destroy(&mvm->mutex);
+	mutex_destroy(&mvm->d0i3_suspend_mutex);
 
 	ieee80211_free_hw(mvm->hw);
 }
@@ -849,6 +902,7 @@ static void iwl_op_mode_mvm_stop(struct iwl_op_mode *op_mode)
 struct iwl_async_handler_entry {
 	struct list_head list;
 	struct iwl_rx_cmd_buffer rxb;
+	enum iwl_rx_handler_context context;
 	void (*fn)(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb);
 };
 
@@ -875,7 +929,6 @@ static void iwl_mvm_async_handlers_wk(struct work_struct *wk)
 	INIT_LIST_HEAD(&local_list);
 
 	/* Ensure that we are not in stop flow (check iwl_mvm_mac_stop) */
-	mutex_lock(&mvm->mutex);
 
 	/*
 	 * Sync with Rx path with a lock. Remove all the entries from this list,
@@ -886,12 +939,15 @@ static void iwl_mvm_async_handlers_wk(struct work_struct *wk)
 	spin_unlock_bh(&mvm->async_handlers_lock);
 
 	list_for_each_entry_safe(entry, tmp, &local_list, list) {
+		if (entry->context == RX_HANDLER_ASYNC_LOCKED)
+			mutex_lock(&mvm->mutex);
 		entry->fn(mvm, &entry->rxb);
 		iwl_free_rxb(&entry->rxb);
 		list_del(&entry->list);
+		if (entry->context == RX_HANDLER_ASYNC_LOCKED)
+			mutex_unlock(&mvm->mutex);
 		kfree(entry);
 	}
-	mutex_unlock(&mvm->mutex);
 }
 
 static inline void iwl_mvm_rx_check_trigger(struct iwl_mvm *mvm,
@@ -948,7 +1004,7 @@ static void iwl_mvm_rx_common(struct iwl_mvm *mvm,
 		if (rx_h->cmd_id != WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd))
 			continue;
 
-		if (!rx_h->async) {
+		if (rx_h->context == RX_HANDLER_SYNC) {
 			rx_h->fn(mvm, rxb);
 			return;
 		}
@@ -962,6 +1018,7 @@ static void iwl_mvm_rx_common(struct iwl_mvm *mvm,
 		entry->rxb._offset = rxb->_offset;
 		entry->rxb._rx_page_order = rxb->_rx_page_order;
 		entry->fn = rx_h->fn;
+		entry->context = rx_h->context;
 		spin_lock(&mvm->async_handlers_lock);
 		list_add_tail(&entry->list, &mvm->async_handlers_list);
 		spin_unlock(&mvm->async_handlers_lock);
@@ -1025,15 +1082,9 @@ static void iwl_mvm_rx_mq(struct iwl_op_mode *op_mode,
 		iwl_mvm_rx_common(mvm, rxb, pkt);
 }
 
-static void iwl_mvm_stop_sw_queue(struct iwl_op_mode *op_mode, int queue)
+void iwl_mvm_stop_mac_queues(struct iwl_mvm *mvm, unsigned long mq)
 {
-	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
-	unsigned long mq;
 	int q;
-
-	spin_lock_bh(&mvm->queue_info_lock);
-	mq = mvm->queue_info[queue].hw_queue_to_mac80211;
-	spin_unlock_bh(&mvm->queue_info_lock);
 
 	if (WARN_ON_ONCE(!mq))
 		return;
@@ -1041,8 +1092,7 @@ static void iwl_mvm_stop_sw_queue(struct iwl_op_mode *op_mode, int queue)
 	for_each_set_bit(q, &mq, IEEE80211_MAX_QUEUES) {
 		if (atomic_inc_return(&mvm->mac80211_queue_stop_count[q]) > 1) {
 			IWL_DEBUG_TX_QUEUES(mvm,
-					    "queue %d (mac80211 %d) already stopped\n",
-					    queue, q);
+					    "mac80211 %d already stopped\n", q);
 			continue;
 		}
 
@@ -1062,15 +1112,21 @@ static void iwl_mvm_async_cb(struct iwl_op_mode *op_mode,
 	iwl_trans_block_txq_ptrs(mvm->trans, false);
 }
 
-static void iwl_mvm_wake_sw_queue(struct iwl_op_mode *op_mode, int queue)
+static void iwl_mvm_stop_sw_queue(struct iwl_op_mode *op_mode, int hw_queue)
 {
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
 	unsigned long mq;
-	int q;
 
 	spin_lock_bh(&mvm->queue_info_lock);
-	mq = mvm->queue_info[queue].hw_queue_to_mac80211;
+	mq = mvm->queue_info[hw_queue].hw_queue_to_mac80211;
 	spin_unlock_bh(&mvm->queue_info_lock);
+
+	iwl_mvm_stop_mac_queues(mvm, mq);
+}
+
+void iwl_mvm_start_mac_queues(struct iwl_mvm *mvm, unsigned long mq)
+{
+	int q;
 
 	if (WARN_ON_ONCE(!mq))
 		return;
@@ -1078,13 +1134,24 @@ static void iwl_mvm_wake_sw_queue(struct iwl_op_mode *op_mode, int queue)
 	for_each_set_bit(q, &mq, IEEE80211_MAX_QUEUES) {
 		if (atomic_dec_return(&mvm->mac80211_queue_stop_count[q]) > 0) {
 			IWL_DEBUG_TX_QUEUES(mvm,
-					    "queue %d (mac80211 %d) still stopped\n",
-					    queue, q);
+					    "mac80211 %d still stopped\n", q);
 			continue;
 		}
 
 		ieee80211_wake_queue(mvm->hw, q);
 	}
+}
+
+static void iwl_mvm_wake_sw_queue(struct iwl_op_mode *op_mode, int hw_queue)
+{
+	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
+	unsigned long mq;
+
+	spin_lock_bh(&mvm->queue_info_lock);
+	mq = mvm->queue_info[hw_queue].hw_queue_to_mac80211;
+	spin_unlock_bh(&mvm->queue_info_lock);
+
+	iwl_mvm_start_mac_queues(mvm, mq);
 }
 
 void iwl_mvm_set_hw_ctkill_state(struct iwl_mvm *mvm, bool state)

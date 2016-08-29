@@ -937,6 +937,34 @@ ieee80211_chandef_to_operating_class(struct cfg80211_chan_def *chandef,
 #endif
 #endif
 
+/* backport wiphy_ext_feature_set/_isset
+ *
+ * To do so, define our own versions thereof that check for a negative
+ * feature index and in that case ignore it entirely. That allows us to
+ * define the ones that the cfg80211 version doesn't support to -1.
+ */
+static inline void iwl7000_wiphy_ext_feature_set(struct wiphy *wiphy, int ftidx)
+{
+	if (ftidx < 0)
+		return;
+#if CFG80211_VERSION >= KERNEL_VERSION(4,0,0)
+	wiphy_ext_feature_set(wiphy, ftidx);
+#endif
+}
+
+static inline bool iwl7000_wiphy_ext_feature_isset(struct wiphy *wiphy,
+						   int ftidx)
+{
+	if (ftidx < 0)
+		return false;
+#if CFG80211_VERSION >= KERNEL_VERSION(4,0,0)
+	return wiphy_ext_feature_isset(wiphy, ftidx);
+#endif
+	return false;
+}
+#define wiphy_ext_feature_set iwl7000_wiphy_ext_feature_set
+#define wiphy_ext_feature_isset iwl7000_wiphy_ext_feature_isset
+
 #if CFG80211_VERSION < KERNEL_VERSION(4,1,0)
 size_t ieee80211_ie_split_ric(const u8 *ies, size_t ielen,
 			      const u8 *ids, int n_ids,
@@ -1273,23 +1301,39 @@ enum nl80211_ftm_response_status {
 	NL80211_FTM_RESP_SUCCESS,
 	NL80211_FTM_RESP_TARGET_INCAPAB,
 	NL80211_FTM_RESP_TARGET_BUSY,
+	NL80211_FTM_RESP_NOT_MEASURED,
+	NL80211_FTM_RESP_TARGET_UNAVAILABLE,
 	NL80211_FTM_RESP_FAIL,
 };
 
 struct cfg80211_ftm_result {
+	u32 filled;
 	enum nl80211_ftm_response_status status;
 	bool complete;
 	struct cfg80211_ftm_target *target;
 	u64 host_time;
 	u64 tsf;
 	u8 burst_index;
+	u32 measurement_num;
+	u32 success_num;
+	u8 num_per_burst;
+	u8 retry_after_duration;
+	u32 burst_duration;
+	u32 negotiated_burst_num;
 	s8 rssi;
 	u8 rssi_spread;
 	struct rate_info tx_rate_info;
 	struct rate_info rx_rate_info;
-	u64 rtt;
+	s64 rtt;
 	u64 rtt_variance;
 	u64 rtt_spread;
+	s64 distance;
+	u64 distance_variance;
+	u64 distance_spread;
+	u32 lci_len;
+	u8 *lci;
+	u32 civic_len;
+	u8 *civic;
 };
 
 struct cfg80211_ftm_results {
@@ -1304,6 +1348,7 @@ enum nl80211_msrment_type {
 enum nl80211_msrment_status {
 	NL80211_MSRMENT_STATUS_SUCCESS,
 	NL80211_MSRMENT_STATUS_REFUSED,
+	NL80211_MSRMENT_STATUS_TIMEOUT,
 	NL80211_MSRMENT_STATUS_FAIL,
 };
 
@@ -1324,12 +1369,85 @@ struct cfg80211_ftm_responder_params {
 	size_t civic_len;
 };
 
+struct cfg80211_ftm_responder_stats {
+	u32 filled;
+	u32 success_num;
+	u32 partial_num;
+	u32 failed_num;
+	u32 asap_num;
+	u32 non_asap_num;
+	u64 total_duration_ms;
+	u32 unknown_triggers_num;
+	u32 reschedule_requests_num;
+	u32 out_of_window_triggers_num;
+};
+
 static inline void
 cfg80211_measurement_response(struct wiphy *wiphy,
 			      struct cfg80211_msrment_response *resp,
 			      gfp_t gfp)
 {
 }
+
+enum nl80211_ftm_preamble {
+	NL80211_FTM_PREAMBLE_LEGACY = 1 << 0,
+	NL80211_FTM_PREAMBLE_HT     = 1 << 1,
+	NL80211_FTM_PREAMBLE_VHT    = 1 << 2
+};
+
+enum nl80211_ftm_bw {
+	NL80211_FTM_BW_5   = 1 << 0,
+	NL80211_FTM_BW_10  = 1 << 1,
+	NL80211_FTM_BW_20  = 1 << 2,
+	NL80211_FTM_BW_40  = 1 << 3,
+	NL80211_FTM_BW_80  = 1 << 4,
+	NL80211_FTM_BW_160 = 1 << 5
+};
+
+enum nl80211_ftm_response_entry {
+	__NL80211_FTM_RESP_ENTRY_ATTR_INVALID,
+	NL80211_FTM_RESP_ENTRY_ATTR_STATUS,
+	NL80211_FTM_RESP_ENTRY_ATTR_COMPLETE,
+	NL80211_FTM_RESP_ENTRY_ATTR_TARGET,
+	NL80211_FTM_RESP_ENTRY_ATTR_HOST_TIME,
+	NL80211_FTM_RESP_ENTRY_ATTR_TSF,
+	NL80211_FTM_RESP_ENTRY_ATTR_BURST_INDEX,
+	NL80211_FTM_RESP_ENTRY_ATTR_MSRMNT_NUM,
+	NL80211_FTM_RESP_ENTRY_ATTR_SUCCESS_NUM,
+	NL80211_FTM_RESP_ENTRY_ATTR_NUM_PER_BURST,
+	NL80211_FTM_RESP_ENTRY_ATTR_RETRY_DUR,
+	NL80211_FTM_RESP_ENTRY_ATTR_BURST_DUR,
+	NL80211_FTM_RESP_ENTRY_ATTR_NEG_BURST_NUM,
+	NL80211_FTM_RESP_ENTRY_ATTR_RSSI,
+	NL80211_FTM_RESP_ENTRY_ATTR_RSSI_SPREAD,
+	NL80211_FTM_RESP_ENTRY_ATTR_TX_RATE_INFO,
+	NL80211_FTM_RESP_ENTRY_ATTR_RX_RATE_INFO,
+	NL80211_FTM_RESP_ENTRY_ATTR_RTT,
+	NL80211_FTM_RESP_ENTRY_ATTR_RTT_VAR,
+	NL80211_FTM_RESP_ENTRY_ATTR_RTT_SPREAD,
+	NL80211_FTM_RESP_ENTRY_ATTR_DISTANCE,
+	NL80211_FTM_RESP_ENTRY_ATTR_DISTANCE_VAR,
+	NL80211_FTM_RESP_ENTRY_ATTR_DISTANCE_SPREAD,
+	NL80211_FTM_RESP_ENTRY_ATTR_LCI,
+	NL80211_FTM_RESP_ENTRY_ATTR_CIVIC,
+
+	/* keep last */
+	__NL80211_FTM_RESP_ENTRY_ATTR_AFTER_LAST,
+	NL80211_FTM_RESP_ENTRY_ATTR_MAX =
+	__NL80211_FTM_RESP_ENTRY_ATTR_AFTER_LAST - 1,
+};
+
+struct wiphy_ftm_initiator_capa {
+	u32 max_two_sided_ftm_targets;
+	u32 max_total_ftm_targets;
+	bool asap;
+	bool non_asap;
+	bool req_tsf;
+	bool req_lci;
+	bool req_civic;
+	u32 preamble;
+	u32 bw;
+};
 
 static inline bool ieee80211_viftype_nan(unsigned int iftype)
 {
@@ -1450,6 +1568,19 @@ static inline long ktime_get_seconds(void)
 #ifndef S16_MIN
 #define S16_MIN		((s16)(-S16_MAX - 1))
 #endif
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,6,0)
+#define NL80211_EXT_FEATURE_RRM -1
+#endif
+
+static inline int
+cfg80211_sta_support_p2p_ps(struct station_parameters *params, bool p2p_go)
+{
+#if CFG80211_VERSION >= KERNEL_VERSION(4,7,0)
+	return params->support_p2p_ps;
+#endif
+	return p2p_go;
+}
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,5,0)
 void *memdup_user_nul(const void __user *src, size_t len);

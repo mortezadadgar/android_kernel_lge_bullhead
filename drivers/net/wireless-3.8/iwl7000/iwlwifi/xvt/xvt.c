@@ -274,7 +274,6 @@ static void iwl_xvt_nic_error(struct iwl_op_mode *op_mode)
 	struct iwl_xvt *xvt = IWL_OP_MODE_GET_XVT(op_mode);
 	void *p_table;
 	void *p_table_umac = NULL;
-	struct iwl_error_event_table_v1 table_v1;
 	struct iwl_error_event_table_v2 table_v2;
 	struct iwl_umac_error_event_table table_umac;
 	int err, table_size;
@@ -282,17 +281,10 @@ static void iwl_xvt_nic_error(struct iwl_op_mode *op_mode)
 	xvt->fw_error = true;
 	wake_up_interruptible(&xvt->mod_tx_wq);
 
-	if (fw_has_api(&xvt->fw->ucode_capa, IWL_UCODE_TLV_API_NEW_VERSION)) {
-		iwl_xvt_get_nic_error_log_v2(xvt, &table_v2);
-		iwl_xvt_dump_nic_error_log_v2(xvt, &table_v2);
-		p_table = kmemdup(&table_v2, sizeof(table_v2), GFP_ATOMIC);
-		table_size = sizeof(table_v2);
-	} else {
-		iwl_xvt_get_nic_error_log_v1(xvt, &table_v1);
-		iwl_xvt_dump_nic_error_log_v1(xvt, &table_v1);
-		p_table = kmemdup(&table_v1, sizeof(table_v1), GFP_ATOMIC);
-		table_size = sizeof(table_v1);
-	}
+	iwl_xvt_get_nic_error_log_v2(xvt, &table_v2);
+	iwl_xvt_dump_nic_error_log_v2(xvt, &table_v2);
+	p_table = kmemdup(&table_v2, sizeof(table_v2), GFP_ATOMIC);
+	table_size = sizeof(table_v2);
 
 	if (xvt->support_umac_log) {
 		iwl_xvt_get_umac_error_log(xvt, &table_umac);

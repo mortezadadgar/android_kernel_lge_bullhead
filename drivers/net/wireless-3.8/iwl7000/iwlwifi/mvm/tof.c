@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -30,7 +30,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,6 +62,7 @@
  *****************************************************************************/
 #include <net/cfg80211.h>
 #include <linux/etherdevice.h>
+#include <linux/math64.h>
 #include "mvm.h"
 #include "iwl-io.h"
 #include "iwl-prph.h"
@@ -123,6 +124,7 @@ void iwl_mvm_tof_init(struct iwl_mvm *mvm)
 
 	mvm->tof_data.active_request_id = IWL_MVM_TOF_RANGE_REQ_MAX_ID;
 	mvm->tof_data.active_cookie = 0;
+	mvm->tof_data.enable_dyn_ack = 1;
 
 #ifdef CPTCFG_IWLMVM_TOF_TSF_WA
 	{
@@ -132,6 +134,8 @@ void iwl_mvm_tof_init(struct iwl_mvm *mvm)
 			tof_data->tsf_hash_valid = true;
 	}
 #endif
+
+	INIT_LIST_HEAD(&tof_data->lci_civic_info);
 }
 
 #ifdef CPTCFG_IWLMVM_TOF_TSF_WA
@@ -209,6 +213,16 @@ static void iwl_mvm_tsf_hash_free_elem(void *ptr, void *arg)
 }
 #endif
 
+static void iwl_mvm_tof_clean_lci_civic(struct iwl_mvm_tof_data *data)
+{
+	struct lci_civic_entry *cur, *prev;
+
+	list_for_each_entry_safe(cur, prev, &data->lci_civic_info, list) {
+		list_del(&cur->list);
+		kfree(cur);
+	}
+}
+
 static void iwl_mvm_tof_reset_active(struct iwl_mvm *mvm)
 {
 	mvm->tof_data.active_request_id = IWL_MVM_TOF_RANGE_REQ_MAX_ID;
@@ -216,6 +230,7 @@ static void iwl_mvm_tof_reset_active(struct iwl_mvm *mvm)
 	kfree(mvm->tof_data.active_request.targets);
 	mvm->tof_data.active_request.targets = NULL;
 	memset(&mvm->tof_data.active_bssid_for_tsf, 0, ETH_ALEN);
+	iwl_mvm_tof_clean_lci_civic(&mvm->tof_data);
 }
 
 void iwl_mvm_tof_clean(struct iwl_mvm *mvm)
@@ -232,6 +247,7 @@ void iwl_mvm_tof_clean(struct iwl_mvm *mvm)
 #endif
 
 	kfree(tof_data->active_request.targets);
+	iwl_mvm_tof_clean_lci_civic(tof_data);
 	memset(tof_data, 0, sizeof(*tof_data));
 	mvm->tof_data.active_request_id = IWL_MVM_TOF_RANGE_REQ_MAX_ID;
 }
@@ -280,8 +296,13 @@ int iwl_mvm_tof_range_abort_cmd(struct iwl_mvm *mvm, u8 id)
 
 	lockdep_assert_held(&mvm->mutex);
 
-	if (!fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT))
+	IWL_DEBUG_INFO(mvm, "Sending ToF abort command\n");
+
+	if (!fw_has_capa(&mvm->fw->ucode_capa,
+			 IWL_UCODE_TLV_CAPA_TOF_SUPPORT)) {
+		IWL_ERR(mvm, "%s: ToF is not supported!\n", __func__);
 		return -EINVAL;
+	}
 
 	if (id != mvm->tof_data.active_request_id) {
 		IWL_ERR(mvm, "Invalid range request id %d (active %d)\n",
@@ -335,6 +356,9 @@ iwl_mvm_tof_set_responder(struct iwl_mvm *mvm,
 	default:
 		WARN_ON(1);
 	}
+
+	/* By default it's 0 - IWL_TOF_ALGO_TYPE_MAX_LIKE */
+	cmd->algo_type = mvm->tof_data.tof_algo_type;
 }
 
 int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
@@ -355,6 +379,8 @@ int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
 	}
 
 	cmd->sta_id = mvmvif->bcast_sta.sta_id;
+	cmd->toa_offset = cpu_to_le16(mvm->tof_data.toa_offset);
+
 	memcpy(cmd->bssid, vif->addr, ETH_ALEN);
 	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CMD,
 						    IWL_ALWAYS_LONG_GROUP, 0),
@@ -499,6 +525,8 @@ int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
 	for (i = 0; i < ETH_ALEN; i++)
 		cmd->macaddr_mask[i] = ~req->macaddr_mask[i];
 
+	memset(cmd->ap, 0, sizeof(cmd->ap));
+
 	for (i = 0; i < cmd->num_of_ap; i++) {
 		struct cfg80211_ftm_target *req_target = &req->targets[i];
 		struct iwl_tof_range_req_ap_entry *cmd_target = &cmd->ap[i];
@@ -539,13 +567,16 @@ int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
 		cmd_target->samples_per_burst = req_target->samples_per_burst;
 		cmd_target->retries_per_sample = req_target->retries;
 		cmd_target->asap_mode = req_target->asap;
-		cmd_target->enable_dyn_ack = 1;
+		cmd_target->enable_dyn_ack = mvm->tof_data.enable_dyn_ack;
 		cmd_target->rssi = 0;
 
 		if (req_target->lci)
 			cmd_target->location_req |= IWL_TOF_LOC_LCI;
 		if (req_target->civic)
 			cmd_target->location_req |= IWL_TOF_LOC_CIVIC;
+
+		/* By default it's 0 - IWL_TOF_ALGO_TYPE_MAX_LIKE */
+		cmd_target->algo_type = mvm->tof_data.tof_algo_type;
 	}
 
 	mvm->tof_data.active_cookie = cookie;
@@ -578,6 +609,45 @@ int iwl_mvm_tof_abort_ftm(struct iwl_mvm *mvm, u64 cookie)
 					   mvm->tof_data.active_request_id);
 }
 
+static void iwl_mvm_debug_range_req(struct iwl_mvm *mvm)
+{
+	struct iwl_tof_range_req_cmd *req = &mvm->tof_data.range_req;
+	int i;
+
+	IWL_DEBUG_INFO(mvm,
+		       "Sending FTM request, params:\n  request id: %hhu\n"
+		       "  initiator: %hhu\n  OSLD: %hhu\n  TO: %hhu\n"
+		       "  report policy: %hhu\n  LDD: %hhu\n"
+		       "  num of aps: %hhu\n  mac rand: %hhu\n"
+		       "  mac temp: %pM\n  mac mask: %pM\n",
+		       req->request_id, req->initiator,
+		       req->one_sided_los_disable, req->req_timeout,
+		       req->report_policy, req->los_det_disable, req->num_of_ap,
+		       req->macaddr_random, req->macaddr_template,
+		       req->macaddr_mask);
+
+	for (i = 0; i < req->num_of_ap; i++) {
+		struct iwl_tof_range_req_ap_entry ap = req->ap[i];
+
+		IWL_DEBUG_INFO(mvm,
+			       "  ap[%d]:\n    channel: %hhu\n    bw: %hhu\n"
+			       "    tsf delta direction: %hhu\n"
+			       "    ctrl channel: %hhu\n    bssid: %pM\n"
+			       "    one sided: %hhu\n    num of bursts: %hhu\n"
+			       "    burst period: %hu\n"
+			       "    samples/burst: %hhu\n"
+			       "    retries/sample: %hhu\n    tsf delta: %u\n"
+			       "    location: %hhu\n    asap: %hhu\n"
+			       "    dyn ack: %hhu\n    rssi: %hhd\n",
+			       i, ap.channel_num, ap.bandwidth, ap.tsf_delta,
+			       ap.ctrl_ch_position, ap.bssid, ap.measure_type,
+			       ap.num_of_bursts, le16_to_cpu(ap.burst_period),
+			       ap.samples_per_burst, ap.retries_per_sample,
+			       le32_to_cpu(ap.tsf_delta), ap.location_req,
+			       ap.asap_mode, ap.enable_dyn_ack, ap.rssi);
+	}
+}
+
 int iwl_mvm_tof_range_request_cmd(struct iwl_mvm *mvm)
 {
 	int err;
@@ -599,9 +669,14 @@ int iwl_mvm_tof_range_request_cmd(struct iwl_mvm *mvm)
 	mvm->tof_data.active_request_id = mvm->tof_data.range_req.request_id;
 
 	cmd.data[0] = &mvm->tof_data.range_req;
+
+	iwl_mvm_debug_range_req(mvm);
+
 	err = iwl_mvm_send_cmd(mvm, &cmd);
-	if (err)
+	if (err) {
+		IWL_ERR(mvm, "Failed to send ToF cmd!\n");
 		iwl_mvm_tof_reset_active(mvm);
+	}
 
 	return err;
 }
@@ -610,8 +685,11 @@ int iwl_mvm_tof_range_request_ext_cmd(struct iwl_mvm *mvm)
 {
 	lockdep_assert_held(&mvm->mutex);
 
-	if (!fw_has_capa(&mvm->fw->ucode_capa, IWL_UCODE_TLV_CAPA_TOF_SUPPORT))
+	if (!fw_has_capa(&mvm->fw->ucode_capa,
+			 IWL_UCODE_TLV_CAPA_TOF_SUPPORT)) {
+		IWL_ERR(mvm, "%s: ToF is not supported!\n", __func__);
 		return -EINVAL;
+	}
 
 	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CMD,
 						    IWL_ALWAYS_LONG_GROUP, 0),
@@ -716,6 +794,110 @@ static inline int iwl_mvm_tof_is_vht(struct iwl_mvm *mvm, u8 fw_bw)
 	return 0;
 }
 
+static void iwl_mvm_debug_range_resp(struct iwl_mvm *mvm,
+				     struct cfg80211_msrment_response *resp)
+{
+	u8 num_of_entries = resp->u.ftm.num_of_entries;
+	int i;
+
+	IWL_DEBUG_INFO(mvm,
+		       "Range response received. status: %d, cookie: %lld, num of entries: %hhx\n",
+		       resp->status, resp->cookie, num_of_entries);
+
+	for (i = 0; i < num_of_entries; i++) {
+		struct cfg80211_ftm_result *res = &resp->u.ftm.entries[i];
+
+		IWL_DEBUG_INFO(mvm,
+			       "  entry %d\n  status: %d\n  complete: %s\n"
+			       "  BSSID: %pM\n  host time: %llu\n  tsf: %llu\n"
+			       "  burst index: %hhu\n  measurement num: %u\n"
+			       "  success num: %u\n  num per burst: %hhu\n"
+			       "  retry after duration: %u\n"
+			       "  burst duration: %u\n  negotiated burst: %u\n"
+			       "  rssi: %hhd\n  rssi spread: %hhu\n"
+			       "  rtt: %lld\n  rtt var: %llu\n"
+			       "  rtt spread: %llu\n  distance: %lld\n"
+			       "  distance variance: %llu\n"
+			       "  distance spread: %llu\n  filled: %x\n\n",
+			       i, res->status, res->complete ? "true" : "false",
+			       res->target->bssid, res->host_time, res->tsf,
+			       res->burst_index, res->measurement_num,
+			       res->success_num, res->num_per_burst,
+			       res->retry_after_duration, res->burst_duration,
+			       res->negotiated_burst_num, res->rssi,
+			       res->rssi_spread, res->rtt, res->rtt_variance,
+			       res->rtt_spread, res->distance,
+			       res->distance_variance, res->distance_spread,
+			       res->filled);
+	}
+}
+
+static enum nl80211_msrment_status
+iwl_mvm_get_msrment_status(enum iwl_tof_response_status status)
+{
+	switch (status) {
+	case IWL_TOF_RESPONSE_SUCCESS:
+		return NL80211_MSRMENT_STATUS_SUCCESS;
+	case IWL_TOF_RESPONSE_TIMEOUT:
+		return NL80211_MSRMENT_STATUS_TIMEOUT;
+	case IWL_TOF_RESPONSE_ABORTED:
+	default:
+		return NL80211_MSRMENT_STATUS_FAIL;
+	}
+}
+
+static enum nl80211_ftm_response_status
+iwl_mvm_get_target_status(enum iwl_tof_entry_status status)
+{
+	switch (status) {
+	case IWL_TOF_ENTRY_SUCCESS:
+		return NL80211_FTM_RESP_SUCCESS;
+	case IWL_TOF_ENTRY_NOT_MEASURED:
+		return NL80211_FTM_RESP_NOT_MEASURED;
+	case IWL_TOF_ENTRY_UNAVAILABLE:
+		return NL80211_FTM_RESP_TARGET_UNAVAILABLE;
+	case IWL_TOF_ENTRY_PROTOCOL_ERR:
+	case IWL_TOF_ENTRY_INTERNAL_ERR:
+	case IWL_TOF_ENTRY_INVALID:
+	default:
+		return NL80211_FTM_RESP_FAIL;
+	}
+}
+
+static void iwl_mvm_get_lci_civic(struct iwl_mvm_tof_data *data,
+				  struct cfg80211_ftm_result *res,
+				  struct cfg80211_ftm_target *target)
+{
+	struct lci_civic_entry *entry;
+
+	if (!target->lci && !target->civic)
+		return;
+
+	list_for_each_entry(entry, &data->lci_civic_info, list) {
+		if (!ether_addr_equal_unaligned(target->bssid, entry->bssid))
+			continue;
+
+		if (entry->lci_len && target->lci) {
+			res->lci_len = entry->lci_len;
+			res->lci = entry->buf;
+			res->filled |= BIT(NL80211_FTM_RESP_ENTRY_ATTR_LCI);
+		}
+
+		if (entry->civic_len && target->civic) {
+			res->civic_len = entry->civic_len;
+			res->civic = entry->buf + entry->lci_len;
+			res->filled |= BIT(NL80211_FTM_RESP_ENTRY_ATTR_CIVIC);
+		}
+
+		break;
+	}
+}
+
+/* Speed of light in cm/nanosec. Though RTT is in picosec units, calculations
+ * are done using nanosec, in order to avoid floating point usage.
+ */
+#define SOL_CM_NSEC 30
+
 static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 {
 	struct iwl_tof_range_rsp_ntfy *fw_resp = (void *)data;
@@ -738,8 +920,7 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 
 	user_resp.cookie = mvm->tof_data.active_cookie;
 	user_resp.type = NL80211_MSRMENT_TYPE_FTM;
-	user_resp.status = fw_resp->request_status ?
-		NL80211_MSRMENT_STATUS_FAIL : NL80211_MSRMENT_STATUS_SUCCESS;
+	user_resp.status = iwl_mvm_get_msrment_status(fw_resp->request_status);
 	user_resp.u.ftm.num_of_entries = fw_resp->num_of_aps;
 	user_resp.u.ftm.entries = kzalloc(sizeof(*user_resp.u.ftm.entries) *
 					  fw_resp->num_of_aps, GFP_KERNEL);
@@ -763,32 +944,18 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 			continue;
 		}
 
-		/* TODO: Once FW supports more meaningful status, use it. */
-		result->status = fw_resp->ap[i].measure_status ?
-			NL80211_FTM_RESP_FAIL : NL80211_FTM_RESP_SUCCESS;
-		result->complete = fw_resp->last_in_batch;
+		result->status =
+			iwl_mvm_get_target_status(fw_ap->measure_status);
 		result->target = target;
 		timestamp = le32_to_cpu(fw_ap->timestamp);
 		result->host_time =
 			iwl_mvm_tof_get_host_time(mvm, timestamp);
-#ifdef CPTCFG_IWLMVM_TOF_TSF_WA
-		if (mvm->tof_data.active_request.report_tsf)
-			result->tsf = iwl_mvm_tof_get_tsf(mvm, timestamp);
-#endif
-		/* TODO: FW to investigate */
-		result->burst_index = 0;
 		result->rssi = fw_ap->rssi;
 		result->rssi_spread = fw_ap->rssi_spread;
 		if (iwl_mvm_tof_is_ht(mvm, fw_ap->measure_bw))
 			result->tx_rate_info.flags |= RATE_INFO_FLAGS_MCS;
 		if (iwl_mvm_tof_is_vht(mvm, fw_ap->measure_bw))
 			result->tx_rate_info.flags |= RATE_INFO_FLAGS_VHT_MCS;
-		/* TODO: FW to investigate */
-		result->tx_rate_info.mcs = 12;
-		/* TODO: FW to investigate */
-		result->tx_rate_info.legacy = 60;
-		/* TODO: FW to investigate */
-		result->tx_rate_info.nss = 1;
 #if CFG80211_VERSION < KERNEL_VERSION(3,20,0)
 		switch (iwl_mvm_tof_fw_bw_to_rate_info_bw(fw_ap->measure_bw)) {
 		default:
@@ -805,12 +972,41 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 		result->tx_rate_info.bw =
 			iwl_mvm_tof_fw_bw_to_rate_info_bw(fw_ap->measure_bw);
 #endif
-		/* TODO: FW to investigate */
-		result->rx_rate_info = result->tx_rate_info;
-		result->rtt = le32_to_cpu(fw_ap->rtt);
+		result->rtt = (s32)le32_to_cpu(fw_ap->rtt);
 		result->rtt_variance = le32_to_cpu(fw_ap->rtt_variance);
 		result->rtt_spread = le32_to_cpu(fw_ap->rtt_spread);
+		result->distance = div_s64(div_s64(result->rtt, 2) *
+					   SOL_CM_NSEC, 1000);
+		result->distance_variance = div_u64((result->rtt_variance >>
+						     2) *
+						    (SOL_CM_NSEC * SOL_CM_NSEC),
+						     1000000);
+		result->distance_spread = div_u64((result->rtt_spread >> 1) *
+						  SOL_CM_NSEC, 1000);
+		iwl_mvm_get_lci_civic(&mvm->tof_data, result, target);
+
+#define FTM_RESP_BIT(attr) BIT(NL80211_FTM_RESP_ENTRY_ATTR_##attr)
+#ifdef CPTCFG_IWLMVM_TOF_TSF_WA
+		if (mvm->tof_data.active_request.report_tsf) {
+			result->tsf = iwl_mvm_tof_get_tsf(mvm, timestamp);
+			result->filled |= FTM_RESP_BIT(TSF);
+		}
+#endif
+
+		/* Mark only optional fields */
+		result->filled |= FTM_RESP_BIT(HOST_TIME) |
+				  FTM_RESP_BIT(RSSI) |
+				  FTM_RESP_BIT(RSSI_SPREAD) |
+				  FTM_RESP_BIT(TX_RATE_INFO) |
+				  FTM_RESP_BIT(RTT_VAR) |
+				  FTM_RESP_BIT(RTT_SPREAD) |
+				  FTM_RESP_BIT(DISTANCE) |
+				  FTM_RESP_BIT(DISTANCE_VAR) |
+				  FTM_RESP_BIT(DISTANCE_SPREAD);
+#undef FTM_RESP_BIT
 	}
+
+	iwl_mvm_debug_range_resp(mvm, &user_resp);
 
 	cfg80211_measurement_response(mvm->hw->wiphy, &user_resp, GFP_KERNEL);
 	kfree(user_resp.u.ftm.entries);
@@ -833,6 +1029,42 @@ static int iwl_mvm_tof_mcsi_notif(struct iwl_mvm *mvm, void *data)
 	return 0;
 }
 
+static int iwl_mvm_tof_responder_stats(struct iwl_mvm *mvm, void *data)
+{
+	struct iwl_tof_responder_stats *resp = (void *)data;
+	struct cfg80211_ftm_responder_stats *stats = &mvm->tof_data.resp_stats;
+	unsigned flags = le32_to_cpu(resp->flags);
+
+	IWL_DEBUG_INFO(mvm, "Responder statistics info\n");
+
+	if (resp->success_ftm == resp->ftm_per_burst)
+		stats->success_num++;
+	else if (resp->success_ftm >= 2)
+		stats->partial_num++;
+	else
+		stats->failed_num++;
+
+	if (flags & FTM_RESP_STAT_ASAP_REQ &&
+	    flags & FTM_RESP_STAT_ASAP_RESP)
+		stats->asap_num++;
+
+	if (flags & FTM_RESP_STAT_NON_ASAP_RESP)
+		stats->non_asap_num++;
+
+	stats->total_duration_ms += le32_to_cpu(resp->duration) / USEC_PER_MSEC;
+
+	if (flags & FTM_RESP_STAT_TRIGGER_UNKNOWN)
+		stats->unknown_triggers_num++;
+
+	if (flags & FTM_RESP_STAT_DUP)
+		stats->reschedule_requests_num++;
+
+	if (flags & FTM_RESP_STAT_NON_ASAP_OUT_WIN)
+		stats->out_of_window_triggers_num++;
+
+	return 0;
+}
+
 static int iwl_mvm_tof_nb_report_notif(struct iwl_mvm *mvm, void *data)
 {
 	struct iwl_tof_neighbor_report *report =
@@ -841,6 +1073,66 @@ static int iwl_mvm_tof_nb_report_notif(struct iwl_mvm *mvm, void *data)
 	IWL_DEBUG_INFO(mvm, "NB report, bssid %pM, token %d, status 0x%x\n",
 		       report->bssid, report->request_token, report->status);
 	return 0;
+}
+
+static void iwl_mvm_tof_lc_notif(struct iwl_mvm *mvm, void *data, size_t len)
+{
+	const struct ieee80211_mgmt *mgmt = (void *)data;
+	struct lci_civic_entry *lci_civic;
+	const u8 *ies, *lci, *civic;
+	size_t ies_len, lci_len = 0, civic_len = 0;
+	size_t baselen = IEEE80211_MIN_ACTION_SIZE +
+		sizeof(mgmt->u.action.u.ftm);
+
+	if (len <= baselen)
+		return;
+
+	ies = mgmt->u.action.u.ftm.variable;
+	ies_len = len - baselen;
+
+	while (ies && ies_len) {
+		const u8 *msr_ie = cfg80211_find_ie(WLAN_EID_MEASURE_REPORT,
+						    ies, ies_len);
+		if (!msr_ie)
+			break;
+
+		if (msr_ie[1] > 3) {
+			switch (msr_ie[4]) {
+			case IEEE80211_SPCT_MSR_RPRT_TYPE_LCI:
+				lci = msr_ie + 2;
+				lci_len = msr_ie[1];
+				break;
+			case IEEE80211_SPCT_MSR_RPRT_TYPE_CIVIC:
+				civic = msr_ie + 2;
+				civic_len = msr_ie[1];
+				break;
+			}
+		}
+
+		if (lci_len && civic_len)
+			break;
+
+		/* process next measurement report element */
+		ies_len -= (msr_ie - ies) + msr_ie[1] + 2;
+		ies = msr_ie + msr_ie[1] + 2;
+	}
+
+	lci_civic = kmalloc(sizeof(*lci_civic) + lci_len + civic_len,
+			    GFP_KERNEL);
+	if (!lci_civic)
+		return;
+
+	memcpy(lci_civic->bssid, mgmt->bssid, ETH_ALEN);
+
+	lci_civic->lci_len = lci_len;
+	if (lci_len)
+		memcpy(lci_civic->buf, lci, lci_len);
+
+	lci_civic->civic_len = civic_len;
+	if (civic_len)
+		memcpy(lci_civic->buf + lci_len, civic, civic_len);
+
+	list_add_tail(&lci_civic->list, &mvm->tof_data.lci_civic_info);
 }
 
 void iwl_mvm_tof_resp_handler(struct iwl_mvm *mvm,
@@ -858,8 +1150,15 @@ void iwl_mvm_tof_resp_handler(struct iwl_mvm *mvm,
 	case TOF_MCSI_DEBUG_NOTIF:
 		iwl_mvm_tof_mcsi_notif(mvm, resp->data);
 		break;
+	case TOF_RESPONDER_STATS:
+		iwl_mvm_tof_responder_stats(mvm, resp->data);
+		break;
 	case TOF_NEIGHBOR_REPORT_RSP_NOTIF:
 		iwl_mvm_tof_nb_report_notif(mvm, resp->data);
+		break;
+	case TOF_LC_NOTIF:
+		iwl_mvm_tof_lc_notif(mvm, resp->data,
+				     iwl_rx_packet_payload_len(pkt));
 		break;
 	default:
 	       IWL_ERR(mvm, "Unknown sub-group command 0x%x\n",

@@ -210,8 +210,8 @@ void iwl_xvt_dump_nic_error_log_v2(struct iwl_xvt *xvt,
 {
 	IWL_ERR(xvt, "0x%08X | %-28s\n", table->error_id,
 		desc_lookup(table->error_id));
-	IWL_ERR(xvt, "0x%08X | uPc\n", table->pc);
-	IWL_ERR(xvt, "0x%08X | branchlink1\n", table->blink1);
+	IWL_ERR(xvt, "0x%08X | trm_hw_status0\n", table->trm_hw_status0);
+	IWL_ERR(xvt, "0x%08X | trm_hw_status1\n", table->trm_hw_status1);
 	IWL_ERR(xvt, "0x%08X | branchlink2\n", table->blink2);
 	IWL_ERR(xvt, "0x%08X | interruptlink1\n", table->ilink1);
 	IWL_ERR(xvt, "0x%08X | interruptlink2\n", table->ilink2);
@@ -223,7 +223,7 @@ void iwl_xvt_dump_nic_error_log_v2(struct iwl_xvt *xvt,
 	IWL_ERR(xvt, "0x%08X | tsf hi\n", table->tsf_hi);
 	IWL_ERR(xvt, "0x%08X | time gp1\n", table->gp1);
 	IWL_ERR(xvt, "0x%08X | time gp2\n", table->gp2);
-	IWL_ERR(xvt, "0x%08X | time gp3\n", table->gp3);
+	IWL_ERR(xvt, "0x%08X | uCode revision type\n", table->fw_rev_type);
 	IWL_ERR(xvt, "0x%08X | uCode version major\n", table->major);
 	IWL_ERR(xvt, "0x%08X | uCode version minor\n", table->minor);
 	IWL_ERR(xvt, "0x%08X | hw version\n", table->hw_ver);
@@ -234,7 +234,7 @@ void iwl_xvt_dump_nic_error_log_v2(struct iwl_xvt *xvt,
 	IWL_ERR(xvt, "0x%08X | isr2\n", table->isr2);
 	IWL_ERR(xvt, "0x%08X | isr3\n", table->isr3);
 	IWL_ERR(xvt, "0x%08X | isr4\n", table->isr4);
-	IWL_ERR(xvt, "0x%08X | isr_pref\n", table->isr_pref);
+	IWL_ERR(xvt, "0x%08X | last cmd Id\n", table->last_cmd_id);
 	IWL_ERR(xvt, "0x%08X | wait_event\n", table->wait_event);
 	IWL_ERR(xvt, "0x%08X | l2p_control\n", table->l2p_control);
 	IWL_ERR(xvt, "0x%08X | l2p_duration\n", table->l2p_duration);

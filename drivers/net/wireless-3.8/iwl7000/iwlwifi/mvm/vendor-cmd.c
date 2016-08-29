@@ -101,6 +101,9 @@ iwl_mvm_vendor_attr_policy[NUM_IWL_MVM_VENDOR_ATTR] = {
 	[IWL_MVM_VENDOR_ATTR_DBG_COLLECT_TRIGGER] = { .type = NLA_STRING },
 	[IWL_MVM_VENDOR_ATTR_NAN_FAW_FREQ] = { .type = NLA_U32 },
 	[IWL_MVM_VENDOR_ATTR_NAN_FAW_SLOTS] = { .type = NLA_U8 },
+	[IWL_MVM_VENDOR_ATTR_LQM_DURATION] = { .type = NLA_U32 },
+	[IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT] = { .type = NLA_U32 },
+	[IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM] = { .type = NLA_U32 },
 };
 
 static int iwl_mvm_parse_vendor_data(struct nlattr **tb,
@@ -120,16 +123,19 @@ static int iwl_mvm_set_low_latency(struct wiphy *wiphy,
 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 	struct nlattr *tb[NUM_IWL_MVM_VENDOR_ATTR];
-	int err = iwl_mvm_parse_vendor_data(tb, data, data_len);
+	int err;
 	struct ieee80211_vif *vif = wdev_to_ieee80211_vif(wdev);
-	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
+	struct iwl_mvm_vif *mvmvif;
 	bool prev;
-
-	if (err)
-		return err;
 
 	if (!vif)
 		return -ENODEV;
+
+	mvmvif = iwl_mvm_vif_from_mac80211(vif);
+
+	err = iwl_mvm_parse_vendor_data(tb, data, data_len);
+	if (err)
+		return err;
 
 	mutex_lock(&mvm->mutex);
 	prev = iwl_mvm_vif_low_latency(mvmvif);
@@ -507,7 +513,20 @@ static int iwl_vendor_gscan_get_capabilities(struct wiphy *wiphy,
 			gscan_capa->max_significant_change_aps) ||
 	    nla_put_u32(skb,
 			IWL_MVM_VENDOR_ATTR_GSCAN_MAX_BSSID_HISTORY_ENTRIES,
-			gscan_capa->max_bssid_history_entries)) {
+			gscan_capa->max_bssid_history_entries) ||
+	    nla_put_u32(skb, IWL_MVM_VENDOR_ATTR_GSCAN_MAX_HOTLIST_SSIDS,
+			gscan_capa->max_hotlist_ssids) ||
+	    nla_put_u32(skb, IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS,
+			gscan_capa->max_number_epno_networks) ||
+	    nla_put_u32(skb,
+			IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS_BY_SSID,
+			gscan_capa->max_number_epno_networks_by_ssid) ||
+	    nla_put_u32(skb,
+			IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_WHITE_LISTED_SSID,
+			gscan_capa->max_number_of_white_listed_ssid) ||
+	    nla_put_u32(skb,
+			IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_BLACK_LISTED_SSID,
+			gscan_capa->max_number_of_black_listed_ssid)) {
 		kfree_skb(skb);
 		return -ENOBUFS;
 	}
@@ -569,33 +588,68 @@ static int iwl_vendor_gscan_parse_buckets(struct nlattr *info, u32 max_buckets,
 	bucket_policy[MAX_IWL_MVM_VENDOR_BUCKET_SPEC + 1] = {
 		[IWL_MVM_VENDOR_BUCKET_SPEC_INDEX] = { .type = NLA_U8 },
 		[IWL_MVM_VENDOR_BUCKET_SPEC_BAND] = { .type = NLA_U32 },
-		[IWL_MVM_VENDOR_BUCKET_SPEC_PERIOD] = {.type = NLA_U32 },
+		[IWL_MVM_VENDOR_BUCKET_SPEC_PERIOD] = { .type = NLA_U32 },
 		[IWL_MVM_VENDOR_BUCKET_SPEC_REPORT_MODE] = { .type = NLA_U32 },
 		[IWL_MVM_VENDOR_BUCKET_SPEC_CHANNELS] = { .type = NLA_NESTED },
+		[IWL_MVM_VENDOR_BUCKET_SPEC_MAX_PERIOD] = { .type = NLA_U32 },
+		[IWL_MVM_VENDOR_BUCKET_SPEC_EXPONENT] = { .type = NLA_U32 },
+		[IWL_MVM_VENDOR_BUCKET_SPEC_STEP_CNT] = { .type = NLA_U32 },
 	};
 
 	if (!max_buckets)
 		return -EINVAL;
 
 	nla_for_each_nested(nl_bucket, info, rem_bucket) {
-		u32 tmp;
+		u32 tmp, scan_period;
 
 		if (nla_parse_nested(tb, MAX_IWL_MVM_VENDOR_BUCKET_SPEC,
 				     nl_bucket, bucket_policy) ||
 		    !tb[IWL_MVM_VENDOR_BUCKET_SPEC_INDEX] ||
 		    !tb[IWL_MVM_VENDOR_BUCKET_SPEC_PERIOD] ||
-		    !tb[IWL_MVM_VENDOR_BUCKET_SPEC_REPORT_MODE])
+		    !tb[IWL_MVM_VENDOR_BUCKET_SPEC_REPORT_MODE] ||
+		    !tb[IWL_MVM_VENDOR_BUCKET_SPEC_MAX_PERIOD])
 			return -EINVAL;
 
-		tmp = nla_get_u32(tb[IWL_MVM_VENDOR_BUCKET_SPEC_PERIOD]);
-		buckets[i].scan_interval = cpu_to_le32(tmp);
+		scan_period =
+			nla_get_u32(tb[IWL_MVM_VENDOR_BUCKET_SPEC_PERIOD]);
+		buckets[i].scan_period = cpu_to_le32(scan_period);
+
 		tmp = nla_get_u32(tb[IWL_MVM_VENDOR_BUCKET_SPEC_REPORT_MODE]);
-		if (tmp >= NUM_IWL_MVM_VENDOR_GSCAN_REPORT)
+		if (tmp == IWL_MVM_VENDOR_GSCAN_REPORT_HISTORY_RESERVED ||
+		    tmp >= NUM_IWL_MVM_VENDOR_GSCAN_REPORT)
 			return -EINVAL;
 
 		buckets[i].report_policy = cpu_to_le32(tmp);
+
 		buckets[i].index =
 			nla_get_u8(tb[IWL_MVM_VENDOR_BUCKET_SPEC_INDEX]);
+
+		tmp = nla_get_u32(tb[IWL_MVM_VENDOR_BUCKET_SPEC_MAX_PERIOD]);
+		if (tmp && tmp < scan_period)
+			return -EINVAL;
+
+		buckets[i].max_scan_period = cpu_to_le32(tmp);
+
+		/* if max_scan_period is non zero or different than period,
+		 * then this bucket is an exponential backoff bucket
+		 */
+		if (tmp > scan_period) {
+			if (!(tb[IWL_MVM_VENDOR_BUCKET_SPEC_EXPONENT] &&
+			      tb[IWL_MVM_VENDOR_BUCKET_SPEC_STEP_CNT]))
+				return -EINVAL;
+
+			tmp =
+			   nla_get_u32(tb[IWL_MVM_VENDOR_BUCKET_SPEC_EXPONENT]);
+
+			buckets[i].exponent = cpu_to_le32(tmp);
+
+			tmp =
+			   nla_get_u32(tb[IWL_MVM_VENDOR_BUCKET_SPEC_STEP_CNT]);
+			if (tmp <= 0)
+				return -EINVAL;
+
+			buckets[i].step_count = cpu_to_le32(tmp);
+		}
 
 		/*
 		 * If a band is specified, the channel list is not used and all
@@ -665,7 +719,8 @@ static int iwl_vendor_start_gscan(struct wiphy *wiphy,
 		goto unlock;
 
 	if (!tb[IWL_MVM_VENDOR_ATTR_GSCAN_MAX_AP_PER_SCAN] ||
-	    !tb[IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD] ||
+	    (!tb[IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD] &&
+	     !tb[IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM]) ||
 	    !tb[IWL_MVM_VENDOR_ATTR_GSCAN_BUCKET_SPECS]) {
 		err = -EINVAL;
 		goto unlock;
@@ -688,11 +743,23 @@ static int iwl_vendor_start_gscan(struct wiphy *wiphy,
 
 	cmd->max_scan_aps = cpu_to_le32(tmp);
 
-	tmp = nla_get_u32(tb[IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD]);
-	if (tmp > capa->max_scan_reporting_threshold)
-		tmp = capa->max_scan_reporting_threshold;
+	if (tb[IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD]) {
+		tmp =
+		    nla_get_u32(tb[IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD]);
+		if (tmp > capa->max_scan_reporting_threshold)
+			tmp = capa->max_scan_reporting_threshold;
+		cmd->report_threshold = cpu_to_le32(tmp);
+	} else {
+		cmd->report_threshold = 0;
+	}
 
-	cmd->report_threshold = cpu_to_le32(tmp);
+	if (tb[IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM]) {
+		tmp =
+		nla_get_u32(tb[IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM]);
+		cmd->report_threshold_num_scans = cpu_to_le32(tmp);
+	} else {
+		cmd->report_threshold_num_scans = 0;
+	}
 
 	err = iwl_vendor_gscan_parse_buckets(tb[IWL_MVM_VENDOR_ATTR_GSCAN_BUCKET_SPECS],
 					     capa->max_scan_buckets, cmd);
@@ -780,7 +847,6 @@ iwl_vendor_parse_ap_list(struct nlattr *info, u8 max,
 		[IWL_MVM_VENDOR_AP_BSSID] = { .len = ETH_ALEN },
 		[IWL_MVM_VENDOR_AP_LOW_RSSI_THRESHOLD] = { .type = NLA_S8 },
 		[IWL_MVM_VENDOR_AP_HIGH_RSSI_THRESHOLD] = { .type = NLA_S8 },
-		[IWL_MVM_VENDOR_AP_CHANNEL_HINT] = { .type = NLA_U8 },
 	};
 
 	nla_for_each_nested(nl_ap, info, rem_ap) {
@@ -804,10 +870,6 @@ iwl_vendor_parse_ap_list(struct nlattr *info, u8 max,
 			-nla_get_s8(tb[IWL_MVM_VENDOR_AP_LOW_RSSI_THRESHOLD]);
 		ap_list[i].high_threshold =
 			-nla_get_s8(tb[IWL_MVM_VENDOR_AP_HIGH_RSSI_THRESHOLD]);
-
-		if (tb[IWL_MVM_VENDOR_AP_CHANNEL_HINT])
-			ap_list[i].channel =
-				nla_get_u8(tb[IWL_MVM_VENDOR_AP_CHANNEL_HINT]);
 
 		i++;
 	}
@@ -1310,6 +1372,41 @@ static int iwl_mvm_vendor_nan_faw_conf(struct wiphy *wiphy,
 	return iwl_mvm_nan_config_nan_faw_cmd(mvm, &def, slots);
 }
 
+static int iwl_mvm_vendor_link_quality_measurements(struct wiphy *wiphy,
+						    struct wireless_dev *wdev,
+						    const void *data,
+						    int data_len)
+{
+	struct ieee80211_vif *vif = wdev_to_ieee80211_vif(wdev);
+	struct iwl_mvm_vif *mvm_vif = iwl_mvm_vif_from_mac80211(vif);
+	struct nlattr *tb[NUM_IWL_MVM_VENDOR_ATTR];
+	u32 duration;
+	u32 timeout;
+	int retval;
+
+	if (vif->type != NL80211_IFTYPE_STATION || vif->p2p ||
+	    !vif->bss_conf.assoc)
+		return -EINVAL;
+
+	retval = iwl_mvm_parse_vendor_data(tb, data, data_len);
+	if (retval)
+		return retval;
+
+	if (!tb[IWL_MVM_VENDOR_ATTR_LQM_DURATION] ||
+	    !tb[IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT])
+		return -EINVAL;
+
+	duration = nla_get_u32(tb[IWL_MVM_VENDOR_ATTR_LQM_DURATION]);
+	timeout = nla_get_u32(tb[IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT]);
+
+	mutex_lock(&mvm_vif->mvm->mutex);
+	retval = iwl_mvm_send_lqm_cmd(vif, LQM_CMD_OPERATION_START_MEASUREMENT,
+				      duration, timeout);
+	mutex_unlock(&mvm_vif->mvm->mutex);
+
+	return retval;
+}
+
 static const struct wiphy_vendor_command iwl_mvm_vendor_commands[] = {
 	{
 		.info = {
@@ -1470,6 +1567,15 @@ static const struct wiphy_vendor_command iwl_mvm_vendor_commands[] = {
 			 WIPHY_VENDOR_CMD_NEED_RUNNING,
 		.doit = iwl_mvm_vendor_nan_faw_conf,
 	},
+	{
+		.info = {
+			.vendor_id = INTEL_OUI,
+			.subcmd = IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS,
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
+			 WIPHY_VENDOR_CMD_NEED_RUNNING,
+		.doit = iwl_mvm_vendor_link_quality_measurements,
+	},
 };
 
 enum iwl_mvm_vendor_events_idx {
@@ -1480,6 +1586,7 @@ enum iwl_mvm_vendor_events_idx {
 	IWL_MVM_VENDOR_EVENT_IDX_HOTLIST_CHANGE,
 	IWL_MVM_VENDOR_EVENT_IDX_SIGNIFICANT_CHANGE,
 	IWL_MVM_VENDOR_EVENT_IDX_GSCAN_BEACON,
+	IWL_MVM_VENDOR_EVENT_IDX_LQM,
 	NUM_IWL_MVM_VENDOR_EVENT_IDX
 };
 
@@ -1506,6 +1613,10 @@ iwl_mvm_vendor_events[NUM_IWL_MVM_VENDOR_EVENT_IDX] = {
 	[IWL_MVM_VENDOR_EVENT_IDX_GSCAN_BEACON] = {
 		.vendor_id = INTEL_OUI,
 		.subcmd = IWL_MVM_VENDOR_CMD_GSCAN_BEACON_EVENT,
+	},
+	[IWL_MVM_VENDOR_EVENT_IDX_LQM] = {
+		.vendor_id = INTEL_OUI,
+		.subcmd = IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS,
 	},
 };
 
@@ -1560,6 +1671,7 @@ static int iwl_vendor_put_one_result(struct sk_buff *skb,
 {
 	u32 gp2_ts, diff;
 	u64 ts;
+	u16 beacon_period, capability;
 
 	/*
 	 * Convert the timestamp of the result to boottime time,
@@ -1569,6 +1681,9 @@ static int iwl_vendor_put_one_result(struct sk_buff *skb,
 	diff = gp2_ts - gscan->gp2;
 	ts = gscan->timestamp + diff;
 
+	beacon_period = le16_to_cpu(res->beacon_period);
+	capability = le16_to_cpu(res->capability);
+
 	/* FW sends RSSI as absolute values, so negate here to get dB values */
 	if (nla_put_s8(skb, IWL_MVM_VENDOR_GSCAN_RESULT_RSSI, -res->rssi) ||
 	    nla_put_u64(skb, IWL_MVM_VENDOR_GSCAN_RESULT_TIMESTAMP, ts) ||
@@ -1577,8 +1692,99 @@ static int iwl_vendor_put_one_result(struct sk_buff *skb,
 	    nla_put(skb, IWL_MVM_VENDOR_GSCAN_RESULT_BSSID, ETH_ALEN,
 		    res->bssid) ||
 	    nla_put(skb, IWL_MVM_VENDOR_GSCAN_RESULT_SSID,
-		    IEEE80211_MAX_SSID_LEN, res->ssid))
+		    IEEE80211_MAX_SSID_LEN, res->ssid) ||
+	    nla_put_u16(skb, IWL_MVM_VENDOR_GSCAN_RESULT_BEACON_PERIOD,
+			beacon_period) ||
+	    nla_put_u16(skb, IWL_MVM_VENDOR_GSCAN_RESULT_CAPABILITY,
+			capability))
 		return -ENOBUFS;
+
+	return 0;
+}
+
+static int parse_ssid_data(u8 data[], struct iwl_ssid *ssids_ptr[],
+			   u8 num_ssid)
+{
+	u8 *pos = data;
+	int i;
+
+	for (i = 0; i < num_ssid; i++) {
+		ssids_ptr[i] = (struct iwl_ssid *)pos;
+		if (ssids_ptr[i]->ssid_len > IEEE80211_MAX_SSID_LEN)
+			return -EINVAL;
+
+		pos += sizeof(struct iwl_ssid) + ssids_ptr[i]->ssid_len;
+	}
+	return 0;
+}
+
+static int
+iwl_vendor_put_one_cached_result(struct sk_buff *skb,
+				 struct gscan_data *gscan,
+				 struct iwl_bssid *bssids, u8 num_bssids,
+				 u8 num_ssids, struct iwl_ssid *ssids_ptr[],
+				 struct iwl_gscan_cached_scan_result *res)
+{
+	struct nlattr *nl_results;
+	int i;
+
+	if (res->num_aps && (!num_bssids || !num_ssids))
+		return -EINVAL;
+
+	if (nla_put_u8(skb, IWL_MVM_VENDOR_GSCAN_CACHED_RES_FLAGS,
+		       res->flags) ||
+	    nla_put_u16(skb, IWL_MVM_VENDOR_GSCAN_CACHED_RES_SCAN_ID,
+			le16_to_cpu(res->scan_id)))
+		return -ENOBUFS;
+
+	nl_results = nla_nest_start(skb, IWL_MVM_VENDOR_GSCAN_CACHED_RES_APS);
+	if (!nl_results)
+		return -ENOBUFS;
+
+	for (i = 0; i < res->num_aps; i++) {
+		struct iwl_gscan_packed_scan_result *tmp_ap;
+		struct iwl_gscan_scan_result ap;
+		u8 bssid_idx, ssid_idx;
+		u32 ssid_len;
+		struct nlattr *nl_result = nla_nest_start(skb, i + 1);
+
+		if (!nl_result)
+			return -ENOBUFS;
+
+		tmp_ap = (void *)&res->aps[i];
+		bssid_idx = le16_to_cpu(tmp_ap->bssid_idx);
+		if (bssid_idx >= num_bssids)
+			return -EINVAL;
+
+		ssid_idx = le16_to_cpu(bssids[bssid_idx].ssid_idx);
+		if (ssid_idx > num_ssids)
+			return -EINVAL;
+
+		ssid_len = ssids_ptr[ssid_idx]->ssid_len;
+
+		/* The following params should be converted to CPU endian.
+		 * Copy the values to struct iwl_gscan_scan_result and convert
+		 * them in iwl_vendor_put_one_result()
+		 */
+		ap.timestamp = tmp_ap->timestamp;
+		ap.beacon_period = tmp_ap->beacon_period;
+		ap.capability = tmp_ap->capability;
+		ap.channel = tmp_ap->channel;
+		ap.rssi = tmp_ap->rssi;
+		ether_addr_copy(ap.bssid, bssids[bssid_idx].bssid);
+		memcpy(&ap.ssid, &ssids_ptr[ssid_idx]->ssid, ssid_len);
+
+		/* we don't need to add '\0' if all 32 ssid bytes were used */
+		if (ssid_len < IEEE80211_MAX_SSID_LEN)
+			ap.ssid[ssid_len] = '\0';
+
+		if (iwl_vendor_put_one_result(skb, gscan, &ap))
+			return -ENOBUFS;
+
+		nla_nest_end(skb, nl_result);
+	}
+
+	nla_nest_end(skb, nl_results);
 
 	return 0;
 }
@@ -1590,60 +1796,102 @@ void iwl_mvm_rx_gscan_results_available(struct iwl_mvm *mvm,
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_gscan_results_event *event = (void *)pkt->data;
 	enum iwl_mvm_vendor_results_event_type event_type;
-	struct sk_buff *msg;
-	struct nlattr *results;
-	u32 num_res = le32_to_cpu(event->num_res);
-	int i, start_idx = 0;
+	struct sk_buff *msg = NULL;
+	struct nlattr *nl_cached_results;
+	struct iwl_ssid **ssids_ptr = NULL;
+	struct iwl_gscan_cached_scan_result *cached_res;
+	u16 offset_ssid, num_cached_res = le16_to_cpu(event->num_cached_res);
+	int i, res, start_idx = 0;
+	u8 *results;
+	struct iwl_bssid *bssid_data;
 
 	lockdep_assert_held(&mvm->mutex);
 
 	if (WARN_ON(!gscan->wdev))
 		return;
 
-	while (start_idx < num_res) {
+	if (event->num_ssid && event->num_bssid) {
+		ssids_ptr = kcalloc(event->num_ssid, sizeof(struct iwl_ssid *),
+				    GFP_KERNEL);
+		if (!ssids_ptr)
+			return;
+
+		offset_ssid = le16_to_cpu(event->offset_ssid);
+		if (parse_ssid_data(event->data + offset_ssid,
+				    ssids_ptr, event->num_ssid))
+			goto out_free;
+	}
+
+	results = event->data + le16_to_cpu(event->offset_cached_results);
+	bssid_data = (void *)(event->data + le16_to_cpu(event->offset_bssid));
+
+	while (start_idx < num_cached_res) {
 		msg = cfg80211_vendor_event_alloc(mvm->hw->wiphy, gscan->wdev,
 						  3500,
 						  IWL_MVM_VENDOR_EVENT_IDX_GSCAN_RESULTS,
 						  GFP_KERNEL);
 		if (!msg)
-			return;
+			goto out_free;
 
 		event_type = le32_to_cpu(event->event_type);
 		if (event_type >= NUM_IWL_VENDOR_RESULTS_NOTIF_EVENT_TYPE ||
 		    nla_put_u32(msg,
 				IWL_MVM_VENDOR_ATTR_GSCAN_RESULTS_EVENT_TYPE,
 				event_type)) {
-			kfree_skb(msg);
-			return;
+			goto out_free;
 		}
 
-		results = nla_nest_start(msg,
-					 IWL_MVM_VENDOR_ATTR_GSCAN_RESULTS);
-		if (!results) {
-			kfree_skb(msg);
-			return;
-		}
+		nl_cached_results =
+		       nla_nest_start(msg,
+				      IWL_MVM_VENDOR_ATTR_GSCAN_CACHED_RESULTS);
 
-		for (i = start_idx; i < num_res; i++) {
-			struct nlattr *result = nla_nest_start(msg, i + 1);
+		if (!nl_cached_results)
+			goto out_free;
 
-			if (!result)
+		for (i = start_idx; i < num_cached_res; i++) {
+			struct nlattr *nl_cached_res = nla_nest_start(msg,
+								      i + 1);
+			if (!nl_cached_res)
 				break;
 
-			if (iwl_vendor_put_one_result(msg, gscan,
-						      &event->results[i])) {
-				nla_nest_cancel(msg, result);
-				break;
+			cached_res = (void *)results;
+
+			res = iwl_vendor_put_one_cached_result(msg, gscan,
+							       bssid_data,
+							       event->num_bssid,
+							       event->num_ssid,
+							       ssids_ptr,
+							       cached_res);
+			if (res) {
+				if (res == -ENOBUFS) {
+					nla_nest_cancel(msg, nl_cached_res);
+					break;
+				}
+				goto out_free;
 			}
+			nla_nest_end(msg, nl_cached_res);
 
-			nla_nest_end(msg, result);
+			results += sizeof(*cached_res) + cached_res->num_aps *
+				   sizeof(struct iwl_gscan_packed_scan_result);
 		}
+		nla_nest_end(msg, nl_cached_results);
 
-		nla_nest_end(msg, results);
+		/*
+		 * If we failed to add the first cached result, don't try to
+		 * handle it anymore to avoid endless loop.
+		 */
+		if (i == 0)
+			goto out_free;
 
 		start_idx = i;
 		cfg80211_vendor_event(msg, GFP_KERNEL);
 	}
+
+	return;
+
+ out_free:
+	kfree_skb(msg);
+	kfree(ssids_ptr);
 }
 
 static int iwl_vendor_put_hotlist_results(struct sk_buff *msg,
@@ -1845,5 +2093,113 @@ void iwl_mvm_gscan_beacons_work(struct work_struct *work)
 		kfree(beacon);
 	}
 	spin_unlock_bh(&mvm->gscan_beacons_lock);
+}
+
+static int iwl_mvm_vendor_send_chandef(struct sk_buff *msg,
+				       const struct cfg80211_chan_def *chandef)
+{
+	if (WARN_ON(!cfg80211_chandef_valid(chandef)))
+		return -EINVAL;
+
+	if (nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_WIPHY_FREQ,
+			chandef->chan->center_freq) ||
+	   nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_CHANNEL_WIDTH,
+		       chandef->width) ||
+	   nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_CENTER_FREQ1,
+		       chandef->center_freq1) ||
+	   (chandef->center_freq2 &&
+	    nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_CENTER_FREQ2,
+			chandef->center_freq2)))
+		return -ENOBUFS;
+
+	return 0;
+}
+
+void iwl_mvm_lqm_notif_iterator(void *_data, u8 *mac,
+				struct ieee80211_vif *vif)
+{
+	struct iwl_link_qual_msrmnt_notif *report = _data;
+	struct iwl_mvm_vif *mvm_vif = iwl_mvm_vif_from_mac80211(vif);
+	struct nlattr *res, *air_time;
+	struct sk_buff *msg;
+	u32 status, num_sta;
+	int i;
+
+	if (mvm_vif->id != le32_to_cpu(report->mac_id))
+		return;
+
+	mvm_vif->lqm_active = false;
+
+	msg = cfg80211_vendor_event_alloc(mvm_vif->mvm->hw->wiphy,
+					  ieee80211_vif_to_wdev(vif), 2048,
+					  IWL_MVM_VENDOR_EVENT_IDX_LQM,
+					  GFP_ATOMIC);
+	if (!msg)
+		return;
+
+	if (iwl_mvm_vendor_send_chandef(msg, &vif->bss_conf.chandef))
+		goto nla_put_failure;
+
+	res = nla_nest_start(msg, IWL_MVM_VENDOR_ATTR_LQM_RESULT);
+	if (!res)
+		goto nla_put_failure;
+
+	status = le32_to_cpu(report->status);
+
+	switch (status) {
+	case LQM_STATUS_SUCCESS:
+		status = IWL_MVM_VENDOR_LQM_STATUS_SUCCESS;
+		break;
+	case LQM_STATUS_TIMEOUT:
+		status = IWL_MVM_VENDOR_LQM_STATUS_TIMEOUT;
+		break;
+	case LQM_STATUS_ABORT:
+	default:
+		status = IWL_MVM_VENDOR_LQM_STATUS_ABORT;
+		break;
+	}
+
+	if (nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_LQM_MEAS_STATUS,
+			status) ||
+	    nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_LQM_RETRY_LIMIT,
+			le32_to_cpu(report->tx_frame_dropped)) ||
+	    nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_LQM_MEAS_TIME,
+			le32_to_cpu(report->time_in_measurement_window)) ||
+	    nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_LQM_OTHER_STA,
+			le32_to_cpu(report->total_air_time_other_stations)))
+		goto nla_put_failure;
+
+	air_time = nla_nest_start(msg, IWL_MVM_VENDOR_ATTR_LQM_ACTIVE_STA_AIR_TIME);
+	if (!air_time)
+		goto nla_put_failure;
+
+	num_sta = le32_to_cpu(report->number_of_stations);
+	for (i = 0; i < num_sta; i++) {
+		u32 sta_air_time =
+			le32_to_cpu(report->frequent_stations_air_time[i]);
+
+		if (nla_put_u32(msg, i, sta_air_time))
+			goto nla_put_failure;
+	}
+	nla_nest_end(msg, air_time);
+	nla_nest_end(msg, res);
+
+	cfg80211_vendor_event(msg, GFP_ATOMIC);
+
+	return;
+
+nla_put_failure:
+	kfree_skb(msg);
+}
+
+void iwl_mvm_vendor_lqm_notif(struct iwl_mvm *mvm,
+			      struct iwl_rx_cmd_buffer *rxb)
+{
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_link_qual_msrmnt_notif *report = (void *)pkt->data;
+
+	ieee80211_iterate_active_interfaces_atomic(
+		mvm->hw, IEEE80211_IFACE_ITER_NORMAL,
+		iwl_mvm_lqm_notif_iterator, report);
 }
 #endif

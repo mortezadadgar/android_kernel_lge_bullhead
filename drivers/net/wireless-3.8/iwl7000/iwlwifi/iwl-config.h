@@ -126,9 +126,9 @@ enum iwl_led_mode {
 
 /* TX queue watchdog timeouts in mSecs */
 #define IWL_WATCHDOG_DISABLED	0
-#define IWL_DEF_WD_TIMEOUT	2500
-#define IWL_LONG_WD_TIMEOUT	10000
-#define IWL_MAX_WD_TIMEOUT	120000
+#define IWL_DEF_WD_TIMEOUT	(2500 * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define IWL_LONG_WD_TIMEOUT	(10000 * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define IWL_MAX_WD_TIMEOUT	(120000 * CPTCFG_IWL_TIMEOUT_FACTOR)
 
 #define IWL_DEFAULT_MAX_TX_POWER 22
 
@@ -297,6 +297,7 @@ struct iwl_pwr_tx_backoff {
  * @host_interrupt_operation_mode: device needs host interrupt operation
  *	mode set
  * @nvm_hw_section_num: the ID of the HW NVM section
+ * @mac_addr_from_csr: read HW address from CSR registers
  * @features: hw features, any combination of feature_whitelist
  * @pwr_tx_backoffs: translation table between power limits and backoffs
  * @max_rx_agg_size: max RX aggregation size of the ADDBA request/response
@@ -345,6 +346,7 @@ struct iwl_cfg {
 	const bool host_interrupt_operation_mode;
 	bool high_temp;
 	u8   nvm_hw_section_num;
+	bool mac_addr_from_csr;
 	bool lp_xtal_workaround;
 	const struct iwl_pwr_tx_backoff *pwr_tx_backoffs;
 	bool no_power_up_nic_in_init;
@@ -392,8 +394,9 @@ extern const struct iwl_cfg iwl8260_2ac_cfg;
 extern const struct iwl_cfg iwl8265_2ac_cfg;
 extern const struct iwl_cfg iwl4165_2ac_cfg;
 extern const struct iwl_cfg iwl8260_2ac_sdio_cfg;
+extern const struct iwl_cfg iwl8265_2ac_sdio_cfg;
 extern const struct iwl_cfg iwl4165_2ac_sdio_cfg;
-extern const struct iwl_cfg iwl9260_2ac_cfg;
+extern const struct iwl_cfg iwl9560_2ac_cfg;
 extern const struct iwl_cfg iwl5165_2ac_cfg;
 #endif /* CPTCFG_IWLMVM */
 

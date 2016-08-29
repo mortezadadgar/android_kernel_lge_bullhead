@@ -351,8 +351,8 @@ struct iwl_tso_hdr_page {
  */
 struct iwl_trans_pcie {
 	struct iwl_rxq *rxq;
-	struct iwl_rx_mem_buffer rx_pool[MQ_RX_POOL_SIZE];
-	struct iwl_rx_mem_buffer *global_table[MQ_RX_TABLE_SIZE];
+	struct iwl_rx_mem_buffer rx_pool[RX_POOL_SIZE];
+	struct iwl_rx_mem_buffer *global_table[RX_POOL_SIZE];
 	struct iwl_rb_allocator rba;
 	struct iwl_trans *trans;
 	struct iwl_drv *drv;
@@ -406,10 +406,6 @@ struct iwl_trans_pcie {
 	spinlock_t reg_lock;
 	bool cmd_hold_nic_awake;
 	bool ref_cmd_in_flight;
-
-	/* protect ref counter */
-	spinlock_t ref_lock;
-	u32 ref_count;
 
 #ifdef CPTCFG_IWLWIFI_PLATFORM_DATA
 	struct iwl_trans_platform_ops *platform_ops;
@@ -512,7 +508,7 @@ void iwl_pcie_dump_csr(struct iwl_trans *trans);
 /*****************************************************
 * Helpers
 ******************************************************/
-static inline void iwl_disable_interrupts(struct iwl_trans *trans)
+static inline void _iwl_disable_interrupts(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
@@ -535,7 +531,16 @@ static inline void iwl_disable_interrupts(struct iwl_trans *trans)
 	IWL_DEBUG_ISR(trans, "Disabled interrupts\n");
 }
 
-static inline void iwl_enable_interrupts(struct iwl_trans *trans)
+static inline void iwl_disable_interrupts(struct iwl_trans *trans)
+{
+	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+
+	spin_lock(&trans_pcie->irq_lock);
+	_iwl_disable_interrupts(trans);
+	spin_unlock(&trans_pcie->irq_lock);
+}
+
+static inline void _iwl_enable_interrupts(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
@@ -558,12 +563,44 @@ static inline void iwl_enable_interrupts(struct iwl_trans *trans)
 	}
 }
 
+static inline void iwl_enable_interrupts(struct iwl_trans *trans)
+{
+	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+
+	spin_lock(&trans_pcie->irq_lock);
+	_iwl_enable_interrupts(trans);
+	spin_unlock(&trans_pcie->irq_lock);
+}
 static inline void iwl_enable_hw_int_msk_msix(struct iwl_trans *trans, u32 msk)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
 	iwl_write32(trans, CSR_MSIX_HW_INT_MASK_AD, ~msk);
 	trans_pcie->hw_mask = msk;
+}
+
+static inline void iwl_enable_fh_int_msk_msix(struct iwl_trans *trans, u32 msk)
+{
+	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+
+	iwl_write32(trans, CSR_MSIX_FH_INT_MASK_AD, ~msk);
+	trans_pcie->fh_mask = msk;
+}
+
+static inline void iwl_enable_fw_load_int(struct iwl_trans *trans)
+{
+	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+
+	IWL_DEBUG_ISR(trans, "Enabling FW load interrupt\n");
+	if (!trans_pcie->msix_enabled) {
+		trans_pcie->inta_mask = CSR_INT_BIT_FH_TX;
+		iwl_write32(trans, CSR_INT_MASK, trans_pcie->inta_mask);
+	} else {
+		iwl_write32(trans, CSR_MSIX_HW_INT_MASK_AD,
+			    trans_pcie->hw_init_mask);
+		iwl_enable_fh_int_msk_msix(trans,
+					   MSIX_FH_INT_CAUSES_D2S_CH0_NUM);
+	}
 }
 
 static inline void iwl_enable_rfkill_int(struct iwl_trans *trans)

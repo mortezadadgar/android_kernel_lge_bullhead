@@ -558,6 +558,8 @@ struct ieee80211_hw *ieee80211_alloc_hw_nm(size_t priv_data_len,
 	if (!ops->set_key)
 		wiphy->flags |= WIPHY_FLAG_IBSS_RSN;
 
+	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_RRM);
+
 	wiphy->bss_priv_size = sizeof(struct ieee80211_bss);
 
 	local = wiphy_priv(wiphy);
@@ -867,7 +869,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 	/* Only HW csum features are currently compatible with mac80211 */
 	feature_whitelist = NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM |
 			    NETIF_F_HW_CSUM | NETIF_F_SG | NETIF_F_HIGHDMA |
-			    NETIF_F_GSO_SOFTWARE;
+			    NETIF_F_GSO_SOFTWARE | NETIF_F_RXCSUM;
 	if (WARN_ON(hw->netdev_features & ~feature_whitelist))
 		return -EINVAL;
 
@@ -1026,7 +1028,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 		local->ext_capa[0] |= WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING;
 
 #if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
-	if (local->hw.wiphy->flags & WIPHY_FLAG_SUPPORTS_FTM_INITIATOR)
+	if (local->hw.wiphy->ftm_initiator_capa)
 		local->ext_capa[8] |= WLAN_EXT_CAPA9_FTM_INITIATOR;
 #endif
 

@@ -749,7 +749,7 @@ enum iwl_plat_pm_mode {
 /* Max time to wait for trans to become idle/non-idle on d0i3
  * enter/exit (in msecs).
  */
-#define IWL_TRANS_IDLE_TIMEOUT 2000
+#define IWL_TRANS_IDLE_TIMEOUT (CPTCFG_IWL_TIMEOUT_FACTOR * 2000)
 
 /**
  * struct iwl_trans - transport common data

@@ -83,8 +83,8 @@
 #include "iwl-dnt-cfg.h"
 #endif
 
-#define MVM_UCODE_ALIVE_TIMEOUT	HZ
-#define MVM_UCODE_CALIB_TIMEOUT	(2*HZ)
+#define MVM_UCODE_ALIVE_TIMEOUT	(HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define MVM_UCODE_CALIB_TIMEOUT	(2 * HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
 
 #define UCODE_VALID_OK	cpu_to_le32(0x1)
 
@@ -139,17 +139,21 @@ void iwl_free_fw_paging(struct iwl_mvm *mvm)
 		return;
 
 	for (i = 0; i < NUM_OF_FW_PAGING_BLOCKS; i++) {
-		if (!mvm->fw_paging_db[i].fw_paging_block) {
+		struct iwl_fw_paging *paging = &mvm->fw_paging_db[i];
+
+		if (!paging->fw_paging_block) {
 			IWL_DEBUG_FW(mvm,
 				     "Paging: block %d already freed, continue to next page\n",
 				     i);
 
 			continue;
 		}
+		dma_unmap_page(mvm->trans->dev, paging->fw_paging_phys,
+			       paging->fw_paging_size, DMA_BIDIRECTIONAL);
 
-		__free_pages(mvm->fw_paging_db[i].fw_paging_block,
-			     get_order(mvm->fw_paging_db[i].fw_paging_size));
-		mvm->fw_paging_db[i].fw_paging_block = NULL;
+		__free_pages(paging->fw_paging_block,
+			     get_order(paging->fw_paging_size));
+		paging->fw_paging_block = NULL;
 	}
 	kfree(mvm->trans->paging_download_buf);
 	mvm->trans->paging_download_buf = NULL;
@@ -562,9 +566,20 @@ static int iwl_mvm_load_ucode_wait_alive(struct iwl_mvm *mvm,
 	enum iwl_ucode_type old_type = mvm->cur_ucode;
 	static const u16 alive_cmd[] = { MVM_ALIVE };
 	struct iwl_sf_region st_fwrd_space;
+	bool ini_usniffer = false;
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+	/* Check if ini config requests usniffer */
+	ini_usniffer = mvm->trans->dbg_cfg.d0_is_usniffer;
+#endif
+#endif
 
 	if (ucode_type == IWL_UCODE_REGULAR &&
-	    iwl_fw_dbg_conf_usniffer(mvm->fw, FW_DBG_START_FROM_ALIVE))
+	    (iwl_fw_dbg_conf_usniffer(mvm->fw, FW_DBG_START_FROM_ALIVE) ||
+	     ini_usniffer) &&
+	    !(fw_has_capa(&mvm->fw->ucode_capa,
+			  IWL_UCODE_TLV_CAPA_USNIFFER_UNIFIED)))
 		fw = iwl_get_ucode_image(mvm, IWL_UCODE_REGULAR_USNIFFER);
 	else
 		fw = iwl_get_ucode_image(mvm, ucode_type);
@@ -886,16 +901,21 @@ out:
 static void iwl_mvm_get_shared_mem_conf(struct iwl_mvm *mvm)
 {
 	struct iwl_host_cmd cmd = {
-		.id = SHARED_MEM_CFG,
 		.flags = CMD_WANT_SKB,
 		.data = { NULL, },
 		.len = { 0, },
 	};
-	struct iwl_rx_packet *pkt;
 	struct iwl_shared_mem_cfg *mem_cfg;
+	struct iwl_rx_packet *pkt;
 	u32 i;
 
 	lockdep_assert_held(&mvm->mutex);
+
+	if (fw_has_capa(&mvm->fw->ucode_capa,
+			IWL_UCODE_TLV_CAPA_EXTEND_SHARED_MEM_CFG))
+		cmd.id = iwl_cmd_id(SHARED_MEM_CFG_CMD, SYSTEM_GROUP, 0);
+	else
+		cmd.id = SHARED_MEM_CFG;
 
 	if (WARN_ON(iwl_mvm_send_cmd(mvm, &cmd)))
 		return;
@@ -922,6 +942,25 @@ static void iwl_mvm_get_shared_mem_conf(struct iwl_mvm *mvm)
 		le32_to_cpu(mem_cfg->page_buff_addr);
 	mvm->shared_mem_cfg.page_buff_size =
 		le32_to_cpu(mem_cfg->page_buff_size);
+
+	/* new API has more data */
+	if (fw_has_capa(&mvm->fw->ucode_capa,
+			IWL_UCODE_TLV_CAPA_EXTEND_SHARED_MEM_CFG)) {
+		mvm->shared_mem_cfg.rxfifo_addr =
+			le32_to_cpu(mem_cfg->rxfifo_addr);
+		mvm->shared_mem_cfg.internal_txfifo_addr =
+			le32_to_cpu(mem_cfg->internal_txfifo_addr);
+
+		BUILD_BUG_ON(sizeof(mvm->shared_mem_cfg.internal_txfifo_size) !=
+			     sizeof(mem_cfg->internal_txfifo_size));
+
+		for (i = 0;
+		     i < ARRAY_SIZE(mvm->shared_mem_cfg.internal_txfifo_size);
+		     i++)
+			mvm->shared_mem_cfg.internal_txfifo_size[i] =
+				le32_to_cpu(mem_cfg->internal_txfifo_size[i]);
+	}
+
 	IWL_DEBUG_INFO(mvm, "SHARED MEM CFG: got memory offsets/sizes\n");
 
 	iwl_free_resp(&cmd);
@@ -1300,7 +1339,7 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 	IWL_DEBUG_INFO(mvm, "RT uCode started.\n");
 	return 0;
  error:
-	iwl_trans_stop_device(mvm->trans);
+	iwl_mvm_stop_device(mvm);
 	return ret;
 }
 
@@ -1347,7 +1386,7 @@ int iwl_mvm_load_d3_fw(struct iwl_mvm *mvm)
 
 	return 0;
  error:
-	iwl_trans_stop_device(mvm->trans);
+	iwl_mvm_stop_device(mvm);
 	return ret;
 }
 

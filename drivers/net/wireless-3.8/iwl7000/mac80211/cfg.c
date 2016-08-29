@@ -3,6 +3,7 @@
  *
  * Copyright 2006-2010	Johannes Berg <johannes@sipsolutions.net>
  * Copyright 2013-2015  Intel Mobile Communications GmbH
+ * Copyright (C) 2015-2016 Intel Deutschland GmbH
  *
  * This file is GPLv2 as found in COPYING.
  */
@@ -278,41 +279,45 @@ ieee80211_find_nan_func(struct ieee80211_sub_if_data *sdata, u8 instance_id)
 #endif
 
 #if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+static struct ieee80211_nan_func *
+ieee80211_find_nan_func_by_cookie(struct ieee80211_sub_if_data *sdata,
+				  u64 cookie)
+{
+	struct ieee80211_nan_func *func;
+
+	lockdep_assert_held(&sdata->u.nan.func_lock);
+
+	list_for_each_entry(func, &sdata->u.nan.functions_list, list) {
+		if (func->func.cookie == cookie)
+			return func;
+	}
+
+	return NULL;
+}
+#endif
+
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 static void ieee80211_rm_nan_func(struct wiphy *wiphy,
-				  struct wireless_dev *wdev,
-				  u8 instance_id, u64 cookie)
+				  struct wireless_dev *wdev, u64 cookie)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
 	struct ieee80211_nan_func *func;
+	u8 instance_id = 0;
 
 	if (!ieee80211_viftype_nan(sdata->vif.type) ||
 	    !ieee80211_sdata_running(sdata))
 		return;
 
-	if (instance_id > sdata->local->hw.max_nan_de_entries)
-		return;
-
 	spin_lock_bh(&sdata->u.nan.func_lock);
 
-	if (test_bit(instance_id, sdata->u.nan.func_ids)) {
-		spin_unlock_bh(&sdata->u.nan.func_lock);
-		return;
-	}
-
-	func = ieee80211_find_nan_func(sdata, instance_id);
-
-	/* Check that the cookie matches, otherwise it may mean that the
-	 * userspace isn't yet aware that the function is terminated, and the
-	 * instance id was probably reused.
-	 */
-	if (!func || func->func.cookie != cookie) {
-		spin_unlock_bh(&sdata->u.nan.func_lock);
-		return;
-	}
+	func = ieee80211_find_nan_func_by_cookie(sdata, cookie);
+	if (func)
+		instance_id = func->func.instance_id;
 
 	spin_unlock_bh(&sdata->u.nan.func_lock);
 
-	drv_rm_nan_func(sdata->local, sdata, instance_id);
+	if (instance_id)
+		drv_rm_nan_func(sdata->local, sdata, instance_id);
 }
 #endif
 
@@ -948,6 +953,7 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 	sdata->vif.bss_conf.beacon_int = params->beacon_interval;
 	sdata->vif.bss_conf.dtim_period = params->dtim_period;
 	sdata->vif.bss_conf.enable_beacon = true;
+	sdata->vif.bss_conf.allow_p2p_go_ps = sdata->vif.p2p;
 
 	sdata->vif.bss_conf.ssid_len = params->ssid_len;
 	if (params->ssid_len)
@@ -1419,6 +1425,10 @@ static int sta_apply_parameters(struct ieee80211_local *local,
 					      params->opmode_notif, band);
 	}
 #endif
+
+	if (cfg80211_sta_support_p2p_ps(params, sdata->vif.p2p) >= 0)
+		sta->sta.support_p2p_ps = cfg80211_sta_support_p2p_ps(params,
+								      sdata->vif.p2p);
 
 	if (ieee80211_vif_is_mesh(&sdata->vif))
 		sta_apply_mesh_params(local, sta, params);
@@ -3686,6 +3696,18 @@ static int ieee80211_start_ftm_responder(struct wiphy *wiphy,
 }
 #endif
 
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+static int ieee80211_get_ftm_responder_stats(struct wiphy *wiphy,
+					    struct net_device *dev,
+			       struct cfg80211_ftm_responder_stats *ftm_stats)
+{
+	struct ieee80211_local *local = wiphy_priv(wiphy);
+	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
+
+	return drv_get_ftm_responder_stats(local, sdata, ftm_stats);
+}
+#endif
+
 #if CFG80211_VERSION < KERNEL_VERSION(4,5,0)
 void ieee80211_nan_func_terminated(struct ieee80211_vif *vif, u8 inst_id,
 				   enum nl80211_nan_func_term_reason reason,
@@ -3814,6 +3836,9 @@ const struct cfg80211_ops mac80211_config_ops = {
 #endif
 #if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
 	.start_ftm_responder = ieee80211_start_ftm_responder,
+#endif
+#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+	.get_ftm_responder_stats = ieee80211_get_ftm_responder_stats,
 #endif
 #ifdef CPTCFG_MAC80211_MESH
 	.add_mpath = ieee80211_add_mpath,

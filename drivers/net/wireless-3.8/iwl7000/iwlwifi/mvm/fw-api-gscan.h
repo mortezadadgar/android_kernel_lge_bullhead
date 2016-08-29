@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -25,7 +25,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -105,10 +105,22 @@ enum iwl_gscan_band {
 
 /**
  * struct iwl_gscan_bucket_spec - gscan bucket specification
- * @scan_interval: scan interval for this bucket. In milliseconds.
+ * @scan_period: scan period for this bucket. In milliseconds.
+ * @max_scan_period: for exponential back off bucket: scan_period
+ *	may not exceed this value. In milliseconds.
+ * @exponent: for exponential back off backet - scan period calculation should
+ *	be done according to the following:
+ *	new_period = old_period * exponent
+ * @step_count: for exponential back off bucket: number of scans to perform
+ *	at a given period until the exponent is applied.
+ *	For example: for scan_period=5000ms, max_scan_period=20000ms,
+ *	exponent=2, step_count=3 - we will have:
+ *	3 scan iterations with period=5000ms.
+ *	3 scan iterations with period=10000ms, and so on till it reaches
+ *	the max_scan_period.
  * @band: the band to scan as specified in &enum iwl_gscan_band.
  *	If %IWL_GSCAN_BAND_UNSPECIFIED, use the channel list.
- * @report_policy: report policy for this bucket as specified in
+ * @report_policy: report policy for this bucket
  *	&enum iwl_mvm_vendor_gscan_report_mode.
  * @index: bucket index.
  * @channel_count: number of channels in channels array.
@@ -116,7 +128,10 @@ enum iwl_gscan_band {
  * @channels: array of channels to scan.
  */
 struct iwl_gscan_bucket_spec {
-	__le32 scan_interval;
+	__le32 scan_period;
+	__le32 max_scan_period;
+	__le32 exponent;
+	__le32 step_count;
 	__le32 band;
 	__le32 report_policy;
 	u8 index;
@@ -140,7 +155,10 @@ enum iwl_gscan_start_flags {
  * @max_scan_aps: number of AP's to store in each scan in the BSSID/RSSI history
  *	buffer (keep the highest RSSI AP's).
  * @flags: bitmap - enum iwl_gscan_start_flags.
- * @report_threshold: in percentage. When buffer is this much full, wake up AP.
+ * @report_threshold: in percentage. Wake up the host when buffer is this much
+ *	full.
+ * @report_threshold_num_scans: in num of scans. Wake up the host when this
+ *	number of scan iterations is reached.
  * @bucket_count: number of bucket in this gscan start command.
  * @mac_addr_template: sets the fixed part of a randomized MAC address: For any
  *	mask bit below, set to 0 to copy the value from the template.
@@ -153,6 +171,7 @@ struct iwl_gscan_start_cmd {
 	__le32 max_scan_aps;
 	__le32 flags;
 	__le32 report_threshold;
+	__le32 report_threshold_num_scans;
 	__le32 bucket_count;
 	u8 mac_addr_template[ETH_ALEN];
 	u8 mac_addr_mask[ETH_ALEN];
@@ -165,6 +184,8 @@ struct iwl_gscan_start_cmd {
  * @channel: channel number.
  * @rssi: RSSI. In dB.
  * @timestamp: time since boot when the result was recevied. in usecs.
+ * @beacon_period: period advertised in the beacon.
+ * @capability: capabilities advertised in the beacon / probe response.
  * @ssid: SSID.
  */
 struct iwl_gscan_scan_result {
@@ -172,35 +193,107 @@ struct iwl_gscan_scan_result {
 	u8 channel;
 	u8 rssi;
 	__le32 timestamp;
+	__le16 beacon_period;
+	__le16 capability;
 	u8 ssid[IEEE80211_MAX_SSID_LEN];
 } __packed; /* GSCAN_SCAN_RESULT_API_S_VER_1 */
 
 /**
- * struct iwl_gscan_results_event - gscan results available event
+ * struct iwl_ssid - SSID description.
+ * @ssid_len: length of SSID given in @ssid.
+ * @ssid: SSID buffer.
+ */
+struct iwl_ssid {
+	u8 ssid_len;
+	u8 ssid[];
+} __packed; /* GSCAN_SSID_API_S_VER_1 */
+
+/**
+ * struct iwl_bssid - BSSID entry in BSSID table
+ * @bssid: MAC address.
+ * @ssid_idx: index of SSID in SSID table.
+ */
+struct iwl_bssid {
+	u8 bssid[ETH_ALEN];
+	__le16 ssid_idx;
+} __packed; /* GSCAN_BSSID_TABLE_ENTRY_API_S_VER_1 */
+
+/**
+ * struct iwl_gscan_packed_scan_result - gscan packed scan result
+ * @timestamp: time since boot when the result was recevied. in usecs.
+ * @bssid_idx: BSSID index in BSSID table.
+ * @beacon_period: period advertised in the beacon.
+ * @capability: capabilities advertised in the beacon / probe response.
+ * @channel: channel number.
+ * @rssi: RSSI. In dB.
+ */
+struct iwl_gscan_packed_scan_result {
+	__le32 timestamp;
+	__le16 bssid_idx;
+	__le16 beacon_period;
+	__le16 capability;
+	u8 channel;
+	u8 rssi;
+} __packed; /* GSCAN_SCAN_RESULT_API_S_VER_1 */
+
+/**
+ * enum iwl_gscan_cached_res_flags - cached result flags
+ * @GSCAN_SCAN_ITERATION_FLAG_INTERRUPTED: scan interation was interrupted.
+ */
+enum iwl_gscan_cached_res_flags {
+	GSCAN_SCAN_ITERATION_FLAG_INTERRUPTED = BIT(0),
+};
+
+/**
+ * struct iwl_gscan_cached_scan_result - gscan cached scan result
+ * @scan_id: a unique identifier for this scan iteration.
+ * @flags: cached scan result flags. &enum iwl_gscan_cached_res_flags.
+ * @num_aps: number of APs in this scan iteration.
+ * @aps: APs found in this scan iteration.
+ */
+struct iwl_gscan_cached_scan_result {
+	__le16 scan_id;
+	u8 flags;
+	u8 num_aps;
+	struct iwl_gscan_packed_scan_result aps[];
+} __packed;/* GSCAN_SCHED_SCAN_RESULT_S_VER_1 */
+
+/**
+ * struct iwl_gscan_results_event - gscan results available event.
  * @event_type: scan results available event type as specified in &enum
  *	iwl_mvm_vendor_results_event_type.
- * @num_res: number of available scan results.
- * @results: gscan results
+ * @offset_ssid: SSIDs table offset in the notification buffer.
+ * @num_ssid: number of SSIDs in SSID table.
+ * @reserved1: reserved
+ * @offset_bssid: BSSIDs table offset in the notification buffer.
+ * @num_bssid: number of BSSIDs in BSSID table.
+ * @reserved2: reserved.
+ * @offset_cached_results: results table offset in the notification buffer.
+ * @num_cached_res: number of cached scan results.
+ * @data: notification data buffer.
  */
 struct iwl_gscan_results_event {
 	__le32 event_type;
-	__le32 num_res;
-	struct iwl_gscan_scan_result results[];
-} __packed; /* GSCAN_SCAN_RESULTS_AVAILABLE_API_S_VER_1 */
+	__le16 offset_ssid;
+	u8 num_ssid;
+	u8 reserved1;
+	__le16 offset_bssid;
+	u8 num_bssid;
+	u8 reserved2;
+	__le16 offset_cached_results;
+	__le16 num_cached_res;
+	u8 data[];
+} __packed; /* GSCAN_SCAN_RESULTS_AVAILABLE_NTF_API_S_VER_1 */
 
 /**
  * struct iwl_gscan_ap_threshold_params - RSSI tracking parameters
  * @low_threshold: low RSSI threshold.
  * @high_threshold: high RSSI threshold.
- * @channel: operating channel number of the tracked AP.
- * @reserved: reserved
  * @bssid: BSSID of the AP to track.
  */
 struct iwl_gscan_ap_threshold_params {
 	u8 low_threshold;
 	u8 high_threshold;
-	u8 channel;
-	u8 reserved;
 	u8 bssid[ETH_ALEN];
 } __packed; /* AP_THRESHOLD_PARAMS_S_VER_1 */
 

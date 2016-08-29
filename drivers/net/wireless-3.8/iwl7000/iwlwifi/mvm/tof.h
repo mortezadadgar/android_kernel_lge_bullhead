@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -30,7 +30,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -79,6 +79,17 @@ struct iwl_mvm_tof_tsf_entry {
 void iwl_mvm_tof_update_tsf(struct iwl_mvm *mvm, struct iwl_rx_packet *pkt);
 #endif
 
+/* The buffer at the end of this struct holds lci_len bytes of lci data followed
+ * by civic_len bytes of civic data.
+ */
+struct lci_civic_entry {
+	struct list_head list;
+	u8 bssid[ETH_ALEN];
+	u32 lci_len;
+	u32 civic_len;
+	u8 buf[];
+};
+
 struct iwl_mvm_tof_data {
 	struct iwl_tof_config_cmd tof_cfg;
 	struct iwl_tof_range_req_cmd range_req;
@@ -99,6 +110,11 @@ struct iwl_mvm_tof_data {
 	/* use this flag to minimize changes in mvm code needed for this WA */
 	bool tsf_hash_valid;
 #endif
+	struct cfg80211_ftm_responder_stats resp_stats;
+	u8 tof_algo_type;
+	u8 enable_dyn_ack;
+	u16 toa_offset;
+	struct list_head lci_civic_info;
 };
 
 void iwl_mvm_tof_init(struct iwl_mvm *mvm);

@@ -1,3 +1,8 @@
+/*
+* Portions of this file
+* Copyright(c) 2016 Intel Deutschland GmbH
+*/
+
 #if !defined(__MAC80211_DRIVER_TRACE) || defined(TRACE_HEADER_MULTI_READ)
 #define __MAC80211_DRIVER_TRACE
 
@@ -80,21 +85,23 @@
 #define KEY_PR_FMT	" cipher:0x%x, flags=%#x, keyidx=%d, hw_key_idx=%d"
 #define KEY_PR_ARG	__entry->cipher, __entry->flags, __entry->keyidx, __entry->hw_key_idx
 
-#define AMPDU_ACTION_ENTRY	__field(enum ieee80211_ampdu_mlme_action, ieee80211_ampdu_mlme_action)	\
-				STA_ENTRY								\
-				__field(u16, tid)							\
-				__field(u16, ssn)							\
-				__field(u8, buf_size)							\
-				__field(bool, amsdu)							\
+#define AMPDU_ACTION_ENTRY	__field(enum ieee80211_ampdu_mlme_action,		\
+					ieee80211_ampdu_mlme_action)			\
+				STA_ENTRY						\
+				__field(u16, tid)					\
+				__field(u16, ssn)					\
+				__field(u8, buf_size)					\
+				__field(bool, amsdu)					\
 				__field(u16, timeout)
-#define AMPDU_ACTION_ASSIGN	STA_NAMED_ASSIGN(params->sta);						\
-				__entry->tid = params->tid;						\
-				__entry->ssn = params->ssn;						\
-				__entry->buf_size = params->buf_size;					\
-				__entry->amsdu = params->amsdu;						\
+#define AMPDU_ACTION_ASSIGN	STA_NAMED_ASSIGN(params->sta);				\
+				__entry->tid = params->tid;				\
+				__entry->ssn = params->ssn;				\
+				__entry->buf_size = params->buf_size;			\
+				__entry->amsdu = params->amsdu;				\
 				__entry->timeout = params->timeout;
 #define AMPDU_ACTION_PR_FMT	STA_PR_FMT " tid %d, ssn %d, buf_size %u, amsdu %d, timeout %d"
-#define AMPDU_ACTION_PR_ARG	STA_PR_ARG, __entry->tid, __entry->ssn, __entry->buf_size, __entry->amsdu, __entry->timeout
+#define AMPDU_ACTION_PR_ARG	STA_PR_ARG, __entry->tid, __entry->ssn,			\
+				__entry->buf_size, __entry->amsdu, __entry->timeout
 
 /*
  * Tracing for driver callbacks.
@@ -891,6 +898,13 @@ DEFINE_EVENT(sta_event, drv_sta_remove,
 );
 
 DEFINE_EVENT(sta_event, drv_sta_pre_rcu_remove,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata,
+		 struct ieee80211_sta *sta),
+	TP_ARGS(local, sdata, sta)
+);
+
+DEFINE_EVENT(sta_event, drv_sync_rx_queues,
 	TP_PROTO(struct ieee80211_local *local,
 		 struct ieee80211_sub_if_data *sdata,
 		 struct ieee80211_sta *sta),
@@ -2539,6 +2553,29 @@ DEFINE_EVENT(local_sdata_evt, drv_start_ftm_responder,
 	TP_PROTO(struct ieee80211_local *local,
 		 struct ieee80211_sub_if_data *sdata),
 	TP_ARGS(local, sdata)
+);
+
+TRACE_EVENT(drv_get_ftm_responder_stats,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata,
+		 struct cfg80211_ftm_responder_stats *ftm_stats),
+
+	TP_ARGS(local, sdata, ftm_stats),
+
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		VIF_ENTRY
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		VIF_ASSIGN;
+	),
+
+	TP_printk(
+		LOCAL_PR_FMT VIF_PR_FMT,
+		LOCAL_PR_ARG, VIF_PR_ARG
+	)
 );
 
 #endif /* !__MAC80211_DRIVER_TRACE || TRACE_HEADER_MULTI_READ */

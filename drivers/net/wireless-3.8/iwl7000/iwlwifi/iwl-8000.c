@@ -70,15 +70,15 @@
 #include "iwl-agn-hw.h"
 
 /* Highest firmware API version supported */
-#define IWL8000_UCODE_API_MAX	21
-#define IWL8265_UCODE_API_MAX	21
+#define IWL8000_UCODE_API_MAX	22
+#define IWL8265_UCODE_API_MAX	22
 
 /* Oldest version we won't warn about */
-#define IWL8000_UCODE_API_OK	13
+#define IWL8000_UCODE_API_OK	16
 #define IWL8265_UCODE_API_OK	20
 
 /* Lowest firmware API version supported */
-#define IWL8000_UCODE_API_MIN	13
+#define IWL8000_UCODE_API_MIN	16
 #define IWL8265_UCODE_API_MIN	20
 
 /* NVM versions */
@@ -234,6 +234,20 @@ const struct iwl_cfg iwl8260_2ac_sdio_cfg = {
 	.name = "Intel(R) Dual Band Wireless-AC 8260",
 	.fw_name_pre = IWL8000_FW_PRE,
 	IWL_DEVICE_8260,
+	.ht_params = &iwl8000_ht_params,
+	.nvm_ver = IWL8000_NVM_VERSION,
+	.nvm_calib_ver = IWL8000_TX_POWER_VERSION,
+	.max_rx_agg_size = MAX_RX_AGG_SIZE_8260_SDIO,
+	.max_tx_agg_size = MAX_TX_AGG_SIZE_8260_SDIO,
+	.disable_dummy_notification = true,
+	.max_ht_ampdu_exponent  = MAX_HT_AMPDU_EXPONENT_8260_SDIO,
+	.max_vht_ampdu_exponent = MAX_VHT_AMPDU_EXPONENT_8260_SDIO,
+};
+
+const struct iwl_cfg iwl8265_2ac_sdio_cfg = {
+	.name = "Intel(R) Dual Band Wireless-AC 8265",
+	.fw_name_pre = IWL8265_FW_PRE,
+	IWL_DEVICE_8265,
 	.ht_params = &iwl8000_ht_params,
 	.nvm_ver = IWL8000_NVM_VERSION,
 	.nvm_calib_ver = IWL8000_TX_POWER_VERSION,

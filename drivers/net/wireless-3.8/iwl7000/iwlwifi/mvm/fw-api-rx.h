@@ -264,17 +264,29 @@ enum iwl_rx_mpdu_mac_flags2 {
 };
 
 enum iwl_rx_mpdu_amsdu_info {
-	IWL_RX_MPDU_AMSDU_SUBFRAME_IDX_MASK	= 0x3f,
-	IWL_RX_MPDU_AMSDU_LAST_SUBFRAME		= 0x40,
-	/* 0x80 bit reserved for now */
+	IWL_RX_MPDU_AMSDU_SUBFRAME_IDX_MASK	= 0x7f,
+	IWL_RX_MPDU_AMSDU_LAST_SUBFRAME		= 0x80,
 };
+
+enum iwl_rx_l3_proto_values {
+	IWL_RX_L3_TYPE_NONE,
+	IWL_RX_L3_TYPE_IPV4,
+	IWL_RX_L3_TYPE_IPV4_FRAG,
+	IWL_RX_L3_TYPE_IPV6_FRAG,
+	IWL_RX_L3_TYPE_IPV6,
+	IWL_RX_L3_TYPE_IPV6_IN_IPV4,
+	IWL_RX_L3_TYPE_ARP,
+	IWL_RX_L3_TYPE_EAPOL,
+};
+
+#define IWL_RX_L3_PROTO_POS 4
 
 enum iwl_rx_l3l4_flags {
 	IWL_RX_L3L4_IP_HDR_CSUM_OK		= BIT(0),
 	IWL_RX_L3L4_TCP_UDP_CSUM_OK		= BIT(1),
 	IWL_RX_L3L4_TCP_FIN_SYN_RST_PSH		= BIT(2),
 	IWL_RX_L3L4_TCP_ACK			= BIT(3),
-	IWL_RX_L3L4_L3_PROTO_MASK		= 0xf << 4,
+	IWL_RX_L3L4_L3_PROTO_MASK		= 0xf << IWL_RX_L3_PROTO_POS,
 	IWL_RX_L3L4_L4_PROTO_MASK		= 0xf << 8,
 	IWL_RX_L3L4_RSS_HASH_MASK		= 0xf << 12,
 };
@@ -425,9 +437,11 @@ struct iwl_rxq_sync_notification {
 /**
 * Internal message identifier
 *
+* @IWL_MVM_RXQ_SYNC: sync RSS queues
 * @IWL_MVM_RXQ_NOTIF_DEL_BA: notify RSS queues of delBA
 */
 enum iwl_mvm_rxq_notif_type {
+	IWL_MVM_RXQ_SYNC,
 	IWL_MVM_RXQ_NOTIF_DEL_BA,
 };
 
@@ -436,10 +450,12 @@ enum iwl_mvm_rxq_notif_type {
 * in &iwl_rxq_sync_cmd. Should be DWORD aligned.
 *
 * @type: value from &iwl_mvm_rxq_notif_type
+* @cookie: internal cookie to identify old notifications
 * @data: payload
 */
 struct iwl_mvm_internal_rxq_notif {
 	u32 type;
+	u32 cookie;
 	u8 data[];
 } __packed;
 

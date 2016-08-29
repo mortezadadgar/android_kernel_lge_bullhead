@@ -69,6 +69,8 @@
  * @WLAN_STA_MPSP_RECIPIENT: local STA is recipient of a MPSP.
  * @WLAN_STA_PS_DELIVER: station woke up, but we're still blocking TX
  *	until pending frames are delivered
+ *
+ * @NUM_WLAN_STA_FLAGS: number of defined flags
  */
 enum ieee80211_sta_info_flags {
 	WLAN_STA_AUTH,
@@ -97,12 +99,14 @@ enum ieee80211_sta_info_flags {
 	WLAN_STA_MPSP_OWNER,
 	WLAN_STA_MPSP_RECIPIENT,
 	WLAN_STA_PS_DELIVER,
+
+	NUM_WLAN_STA_FLAGS,
 };
 
-#define ADDBA_RESP_INTERVAL HZ
+#define ADDBA_RESP_INTERVAL (CPTCFG_IWL_TIMEOUT_FACTOR * HZ)
 #define HT_AGG_MAX_RETRIES		15
 #define HT_AGG_BURST_RETRIES		3
-#define HT_AGG_RETRIES_PERIOD		(15 * HZ)
+#define HT_AGG_RETRIES_PERIOD		(CPTCFG_IWL_TIMEOUT_FACTOR * 15 * HZ)
 
 #define HT_AGG_STATE_DRV_READY		0
 #define HT_AGG_STATE_RESPONSE_RECEIVED	1

@@ -145,7 +145,8 @@ static inline int iwl_mvm_check_pn(struct iwl_mvm *mvm, struct sk_buff *skb,
 		   IEEE80211_CCMP_PN_LEN) <= 0)
 		return -1;
 
-	memcpy(ptk_pn->q[queue].pn[tid], pn, IEEE80211_CCMP_PN_LEN);
+	if (!(stats->flag & RX_FLAG_AMSDU_MORE))
+		memcpy(ptk_pn->q[queue].pn[tid], pn, IEEE80211_CCMP_PN_LEN);
 	stats->flag |= RX_FLAG_PN_VALIDATED;
 
 	return 0;
@@ -210,7 +211,7 @@ static void iwl_mvm_pass_packet_to_mac80211(struct iwl_mvm *mvm,
 	if (iwl_mvm_check_pn(mvm, skb, queue, sta))
 		kfree_skb(skb);
 	else
-		ieee80211_rx_napi(mvm->hw, skb, napi);
+		ieee80211_rx_napi(mvm->hw, sta, skb, napi);
 }
 
 static void iwl_mvm_get_signal_strength(struct iwl_mvm *mvm,
@@ -257,7 +258,7 @@ static int iwl_mvm_rx_crypto(struct iwl_mvm *mvm, struct ieee80211_hdr *hdr,
 		if (!(status & IWL_RX_MPDU_STATUS_MIC_OK))
 			return -1;
 
-		stats->flag |= RX_FLAG_DECRYPTED;
+		stats->flag |= RX_FLAG_DECRYPTED | RX_FLAG_MIC_STRIPPED;
 		*crypt_len = IEEE80211_CCMP_HDR_LEN;
 		return 0;
 	case IWL_RX_MPDU_STATUS_SEC_TKIP:
@@ -294,10 +295,15 @@ static void iwl_mvm_rx_csum(struct ieee80211_sta *sta,
 {
 	struct iwl_mvm_sta *mvmsta = iwl_mvm_sta_from_mac80211(sta);
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(mvmsta->vif);
+	u16 flags = le16_to_cpu(desc->l3l4_flags);
+	u8 l3_prot = (u8)((flags & IWL_RX_L3L4_L3_PROTO_MASK) >>
+			  IWL_RX_L3_PROTO_POS);
 
 	if (mvmvif->features & NETIF_F_RXCSUM &&
-	    desc->l3l4_flags & cpu_to_le16(IWL_RX_L3L4_IP_HDR_CSUM_OK) &&
-	    desc->l3l4_flags & cpu_to_le16(IWL_RX_L3L4_TCP_UDP_CSUM_OK))
+	    flags & IWL_RX_L3L4_TCP_UDP_CSUM_OK &&
+	    (flags & IWL_RX_L3L4_IP_HDR_CSUM_OK ||
+	     l3_prot == IWL_RX_L3_TYPE_IPV6 ||
+	     l3_prot == IWL_RX_L3_TYPE_IPV6_FRAG))
 		skb->ip_summed = CHECKSUM_UNNECESSARY;
 }
 
@@ -401,6 +407,13 @@ void iwl_mvm_rx_queue_notif(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb,
 	internal_notif = (void *)notif->payload;
 
 	switch (internal_notif->type) {
+	case IWL_MVM_RXQ_SYNC:
+		if (mvm->queue_sync_cookie == internal_notif->cookie)
+			atomic_dec(&mvm->queue_sync_counter);
+		else
+			WARN_ONCE(1,
+				  "Received expired RX queue sync message\n");
+		break;
 	case IWL_MVM_RXQ_NOTIF_DEL_BA:
 		/* TODO */
 		break;
@@ -527,6 +540,21 @@ void iwl_mvm_rx_mpdu_mq(struct iwl_mvm *mvm, struct napi_struct *napi,
 			rcu_read_unlock();
 			return;
 		}
+
+		/*
+		 * Our hardware de-aggregates AMSDUs but copies the mac header
+		 * as it to the de-aggregated MPDUs. We need to turn off the
+		 * AMSDU bit in the QoS control ourselves.
+		 */
+		if ((desc->mac_flags2 & IWL_RX_MPDU_MFLG2_AMSDU) &&
+		    !WARN_ON(!ieee80211_is_data_qos(hdr->frame_control))) {
+			u8 *qc = ieee80211_get_qos_ctl(hdr);
+
+			*qc &= ~IEEE80211_QOS_CTL_A_MSDU_PRESENT;
+			if (!(desc->amsdu_info &
+			      IWL_RX_MPDU_AMSDU_LAST_SUBFRAME))
+				rx_status->flag |= RX_FLAG_AMSDU_MORE;
+		}
 	}
 
 	/*
@@ -582,6 +610,10 @@ void iwl_mvm_rx_mpdu_mq(struct iwl_mvm *mvm, struct napi_struct *napi,
 
 	/* TODO: PHY info - update ampdu queue statistics (for debugfs) */
 	/* TODO: PHY info - gscan */
+
+	if (unlikely(ieee80211_is_beacon(hdr->frame_control) ||
+		     ieee80211_is_probe_resp(hdr->frame_control)))
+		rx_status->boottime_ns = ktime_get_boot_ns();
 
 	iwl_mvm_create_skb(skb, hdr, len, crypt_len, rxb);
 	iwl_mvm_pass_packet_to_mac80211(mvm, napi, skb, queue, sta);

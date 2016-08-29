@@ -7,6 +7,7 @@
  *
  * Copyright(c) 2007 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -33,6 +34,7 @@
  *
  * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
+ * Copyright(c) 2016        Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -582,14 +584,11 @@ static int iwl_store_cscheme(struct iwl_fw *fw, const u8 *data, const u32 len)
 	return 0;
 }
 
-static int iwl_store_gscan_capa(struct iwl_fw *fw, const u8 *data,
-				const u32 len)
+static void iwl_store_gscan_capa(struct iwl_fw *fw, const u8 *data,
+				 const u32 len)
 {
 	struct iwl_fw_gscan_capabilities *fw_capa = (void *)data;
 	struct iwl_gscan_capabilities *capa = &fw->gscan_capa;
-
-	if (len < sizeof(*fw_capa))
-		return -EINVAL;
 
 	capa->max_scan_cache_size = le32_to_cpu(fw_capa->max_scan_cache_size);
 	capa->max_scan_buckets = le32_to_cpu(fw_capa->max_scan_buckets);
@@ -603,7 +602,15 @@ static int iwl_store_gscan_capa(struct iwl_fw *fw, const u8 *data,
 		le32_to_cpu(fw_capa->max_significant_change_aps);
 	capa->max_bssid_history_entries =
 		le32_to_cpu(fw_capa->max_bssid_history_entries);
-	return 0;
+	capa->max_hotlist_ssids = le32_to_cpu(fw_capa->max_hotlist_ssids);
+	capa->max_number_epno_networks =
+		le32_to_cpu(fw_capa->max_number_epno_networks);
+	capa->max_number_epno_networks_by_ssid =
+		le32_to_cpu(fw_capa->max_number_epno_networks_by_ssid);
+	capa->max_number_of_white_listed_ssid =
+		le32_to_cpu(fw_capa->max_number_of_white_listed_ssid);
+	capa->max_number_of_black_listed_ssid =
+		le32_to_cpu(fw_capa->max_number_of_black_listed_ssid);
 }
 
 /*
@@ -1277,8 +1284,15 @@ fw_dbg_conf:
 				le32_to_cpup((__le32 *)tlv_data);
 			break;
 		case IWL_UCODE_TLV_FW_GSCAN_CAPA:
-			if (iwl_store_gscan_capa(&drv->fw, tlv_data, tlv_len))
-				goto invalid_tlv_len;
+			/*
+			 * Don't return an error in case of a shorter tlv_len
+			 * to enable loading of FW that has an old format
+			 * of GSCAN capabilities TLV.
+			 */
+			if (tlv_len < sizeof(struct iwl_fw_gscan_capabilities))
+				break;
+
+			iwl_store_gscan_capa(&drv->fw, tlv_data, tlv_len);
 			gscan_capa = true;
 			break;
 		default:
@@ -1287,7 +1301,8 @@ fw_dbg_conf:
 		}
 	}
 
-	if (usniffer_req && !*usniffer_images) {
+	if (!fw_has_capa(capa, IWL_UCODE_TLV_CAPA_USNIFFER_UNIFIED) &&
+	    usniffer_req && !*usniffer_images) {
 		IWL_ERR(drv,
 			"user selected to work with usniffer but usniffer image isn't available in ucode package\n");
 		return -EINVAL;
@@ -1301,14 +1316,16 @@ fw_dbg_conf:
 
 	/*
 	 * If ucode advertises that it supports GSCAN but GSCAN
-	 * capabilities TLV is not present, warn and continue without GSCAN.
-	 * Check capa since parse_tlv is called one time with capa NULL.
+	 * capabilities TLV is not present, or if it has an old format,
+	 * warn and continue without GSCAN.
 	 */
-	if (capa && fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
-	    WARN(!gscan_capa,
-		 "GSCAN is supported but capabilities TLV is unavailable\n"))
+	if (fw_has_capa(capa, IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT) &&
+	    !gscan_capa) {
+		IWL_DEBUG_INFO(drv,
+			       "GSCAN is supported but capabilities TLV is unavailable\n");
 		__clear_bit((__force long)IWL_UCODE_TLV_CAPA_GSCAN_SUPPORT,
 			    capa->_capa);
+	}
 
 	return 0;
 
@@ -1490,31 +1507,6 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 		goto try_again;
 	}
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
-	/*
-	* Check if different uCode is required, according to configuration.
-	* If so - overwrite existing firmware_name.
-	*/
-	if (drv->trans->dbg_cfg.d0_is_usniffer) {
-		char firmware_name[32];
-
-		release_firmware(ucode_raw);
-		snprintf(firmware_name, sizeof(firmware_name),
-			 "usniffer-%s", drv->firmware_name);
-		strcpy(drv->firmware_name, firmware_name);
-		IWL_DEBUG_INFO(drv, "attempting to load usniffer ucode %s\n",
-			       drv->firmware_name);
-		err = request_firmware(&ucode_raw, drv->firmware_name,
-				       drv->trans->dev);
-		if (err) {
-			IWL_ERR(drv, "Failed getting usniffer FW!\n");
-			goto out_unbind;
-		}
-	}
-#endif
-#endif
-
 	/* Data from ucode file:  header followed by uCode images */
 	ucode = (struct iwl_ucode_header *)ucode_raw->data;
 
@@ -1534,8 +1526,10 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 					 drv->trans->dbg_cfg.fw_dbg_conf,
 					 drv->trans->dev);
 		if (!load_fw_dbg_err) {
+			struct iwl_ucode_capabilities capa = {};
+
 			err = iwl_parse_tlv_firmware(drv, fw_dbg_config, pieces,
-						     NULL, &usniffer_images);
+						     &capa, &usniffer_images);
 			if (err)
 				IWL_ERR(drv,
 					"Failed to configure FW DBG data!\n");
@@ -1543,10 +1537,7 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	}
 #endif
 
-	if (fw_has_api(&drv->fw.ucode_capa, IWL_UCODE_TLV_API_NEW_VERSION))
-		api_ver = drv->fw.ucode_ver;
-	else
-		api_ver = IWL_UCODE_API(drv->fw.ucode_ver);
+	api_ver = drv->fw.ucode_ver;
 
 	/*
 	 * api_ver should match the api version forming part of the
