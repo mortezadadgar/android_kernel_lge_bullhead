@@ -510,7 +510,7 @@ static int iwl_mvm_get_shared_queue(struct iwl_mvm *mvm,
 	    !iwl_mvm_is_dqa_mgmt_queue(mvm, queue) &&
 	    (queue != IWL_MVM_DQA_BSS_CLIENT_QUEUE)) {
 		IWL_ERR(mvm, "No DATA queues available to share\n");
-		queue = -ENOSPC;
+		return -ENOSPC;
 	}
 
 	/* Make sure the queue isn't in the middle of being reconfigured */
@@ -518,7 +518,7 @@ static int iwl_mvm_get_shared_queue(struct iwl_mvm *mvm,
 		IWL_ERR(mvm,
 			"TXQ %d is in the middle of re-config - try again\n",
 			queue);
-		queue = -1;
+		return -EBUSY;
 	}
 
 	return queue;
@@ -724,7 +724,7 @@ static int iwl_mvm_sta_alloc_queue(struct iwl_mvm *mvm,
 	if (WARN_ON(queue <= 0)) {
 		IWL_ERR(mvm, "No available queues for tid %d on sta_id %d\n",
 			tid, cfg.sta_id);
-		return -ENOSPC;
+		return queue;
 	}
 
 	/*
