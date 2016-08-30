@@ -788,18 +788,29 @@ static int tegra_dc_page_flip(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 {
 	struct tegra_dc *dc = to_tegra_dc(crtc);
 	struct drm_device *drm = crtc->dev;
+	unsigned long flags;
 
 	if (dc->event)
 		return -EBUSY;
 
+	/*
+	 * drm_vblank_get can't be called inside spinlock since that brings
+	 * a deadlock between tegra_dc_irq->drm_handle_vblank and this func.
+	 * These 2 functions acquire 2 locks(event_lock & vblank_time_lock)
+	 * in different orders.
+	 */
+	if (event)
+		drm_vblank_get(drm, dc->pipe);
+
+	spin_lock_irqsave(&drm->event_lock, flags);
 	if (event) {
 		event->pipe = dc->pipe;
 		dc->event = event;
-		drm_vblank_get(drm, dc->pipe);
 	}
 
 	tegra_dc_set_base(dc, 0, 0, fb);
 	crtc->fb = fb;
+	spin_unlock_irqrestore(&drm->event_lock, flags);
 
 	return 0;
 }
