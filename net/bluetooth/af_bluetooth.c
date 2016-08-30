@@ -26,6 +26,7 @@
 
 #include <linux/module.h>
 #include <linux/debugfs.h>
+#include <linux/stringify.h>
 #include <asm/ioctls.h>
 
 #include <net/bluetooth/bluetooth.h>
@@ -716,6 +717,9 @@ static struct net_proto_family bt_sock_family_ops = {
 struct dentry *bt_debugfs;
 EXPORT_SYMBOL_GPL(bt_debugfs);
 
+#define VERSION __stringify(BT_SUBSYS_VERSION) "." \
+		__stringify(BT_SUBSYS_REVISION)
+
 static int __init bt_init(void)
 {
 	struct sk_buff *skb;
@@ -723,7 +727,7 @@ static int __init bt_init(void)
 
 	BUILD_BUG_ON(sizeof(struct bt_skb_cb) > sizeof(skb->cb));
 
-	BT_INFO("Core ver %s", BT_SUBSYS_VERSION);
+	BT_INFO("Core ver %s", VERSION);
 
 	err = bt_selftest();
 	if (err < 0)
@@ -801,7 +805,7 @@ subsys_initcall(bt_init);
 module_exit(bt_exit);
 
 MODULE_AUTHOR("Marcel Holtmann <marcel@holtmann.org>");
-MODULE_DESCRIPTION("Bluetooth Core ver " BT_SUBSYS_VERSION);
-MODULE_VERSION(BT_SUBSYS_VERSION);
+MODULE_DESCRIPTION("Bluetooth Core ver " VERSION);
+MODULE_VERSION(VERSION);
 MODULE_LICENSE("GPL");
 MODULE_ALIAS_NETPROTO(PF_BLUETOOTH);
