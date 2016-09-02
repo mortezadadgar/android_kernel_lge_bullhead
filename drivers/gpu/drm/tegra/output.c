@@ -118,11 +118,27 @@ static void tegra_connector_dpms(struct drm_connector *connector, int mode)
 	 */
 }
 
+static void tegra_connector_save(struct drm_connector *connector)
+{
+	struct tegra_output *output = connector_to_output(connector);
+
+	output->suspended = true;
+}
+
+static void tegra_connector_restore(struct drm_connector *connector)
+{
+	struct tegra_output *output = connector_to_output(connector);
+
+	output->suspended = false;
+}
+
 static const struct drm_connector_funcs connector_funcs = {
 	.dpms = tegra_connector_dpms,
 	.detect = tegra_connector_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.destroy = tegra_connector_destroy,
+	.save = tegra_connector_save,
+	.restore = tegra_connector_restore,
 };
 
 int tegra_output_panel_enable(struct tegra_output *output)
@@ -241,7 +257,7 @@ static irqreturn_t hpd_irq(int irq, void *data)
 {
 	struct tegra_output *output = data;
 
-	if (output->connector.dev)
+	if (output->connector.dev && !output->suspended)
 		drm_helper_hpd_irq_event(output->connector.dev);
 
 	return IRQ_HANDLED;

@@ -277,7 +277,7 @@ static void tegra_dpaux_hotplug(struct work_struct *work)
 {
 	struct tegra_dpaux *dpaux = work_to_dpaux(work);
 
-	if (dpaux->output)
+	if (dpaux->output && !dpaux->output->suspended)
 		drm_helper_hpd_irq_event(dpaux->output->connector.dev);
 }
 

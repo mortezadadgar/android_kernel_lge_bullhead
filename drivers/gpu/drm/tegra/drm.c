@@ -723,12 +723,17 @@ static int tegra_drm_platform_suspend(struct device *dev)
 {
 	struct tegra_drm *tegra = dev_get_drvdata(dev);
 	struct drm_device *drm = tegra->drm;
+	struct drm_connector *connector;
 	struct drm_encoder *encoder;
 	struct drm_crtc *crtc;
 	struct drm_encoder_helper_funcs *encoder_funcs = NULL;
 	struct drm_crtc_helper_funcs *crtc_funcs = NULL;
 
 	drm_modeset_lock_all(drm);
+	list_for_each_entry(connector, &drm->mode_config.connector_list, head) {
+		if (connector->funcs->save)
+			connector->funcs->save(connector);
+	}
 	list_for_each_entry(encoder, &drm->mode_config.encoder_list, head) {
 		if (!drm_helper_encoder_in_use(encoder))
 			continue;
@@ -753,11 +758,15 @@ static int tegra_drm_platform_resume(struct device *dev)
 {
 	struct tegra_drm *tegra = dev_get_drvdata(dev);
 	struct drm_device *drm = tegra->drm;
+	struct drm_connector *connector;
 
 	drm_modeset_lock_all(drm);
 	drm_helper_resume_force_mode(drm);
+	list_for_each_entry(connector, &drm->mode_config.connector_list, head) {
+		if (connector->funcs->restore)
+			connector->funcs->restore(connector);
+	}
 	drm_modeset_unlock_all(drm);
-
 	drm_kms_helper_poll_enable(drm);
 	return 0;
 }
