@@ -1026,6 +1026,7 @@ static int tegra_crtc_mode_set(struct drm_crtc *crtc,
 	window.bits_per_pixel = crtc->fb->bits_per_pixel;
 	window.stride[0] = crtc->fb->pitches[0];
 	window.base[0] = bo->paddr;
+	window.tiling = bo->tiling;
 
 	err = tegra_dc_setup_window(dc, 0, &window);
 	if (err < 0)
