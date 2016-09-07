@@ -729,6 +729,8 @@ static int tegra_drm_platform_suspend(struct device *dev)
 	struct drm_encoder_helper_funcs *encoder_funcs = NULL;
 	struct drm_crtc_helper_funcs *crtc_funcs = NULL;
 
+	drm_kms_helper_poll_disable(drm);
+
 	drm_modeset_lock_all(drm);
 	list_for_each_entry(connector, &drm->mode_config.connector_list, head) {
 		if (connector->funcs->save)
@@ -750,7 +752,6 @@ static int tegra_drm_platform_suspend(struct device *dev)
 	}
 	drm_modeset_unlock_all(drm);
 
-	drm_kms_helper_poll_disable(drm);
 	return 0;
 }
 
