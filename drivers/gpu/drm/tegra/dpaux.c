@@ -115,6 +115,34 @@ static void tegra_dpaux_read_fifo(struct tegra_dpaux *dpaux, u8 *buffer,
 	}
 }
 
+static int tegra_dpaux_wait_plugged(struct tegra_dpaux *dpaux)
+{
+	unsigned long value;
+	unsigned long timeout;
+
+	/*
+	 * Typical plugged latency is 250us, but we use usleep below which
+	 * involves kernel schedule, so set a somewhat big timeout here.
+	 */
+	timeout = jiffies + msecs_to_jiffies(250);
+	while (time_before(jiffies, timeout)) {
+		value = tegra_dpaux_readl(dpaux, DPAUX_DP_AUXSTAT);
+		if (value & DPAUX_DP_AUXSTAT_HPD_STATUS)
+			return 0;
+
+		usleep_range(1000, 2000);
+	}
+
+	/* Recheck in case the polling is skipped due to process schedule */
+	value = tegra_dpaux_readl(dpaux, DPAUX_DP_AUXSTAT);
+	if (value & DPAUX_DP_AUXSTAT_HPD_STATUS) {
+		return 0;
+	} else {
+		WARN(1, "dpaux waits for plugged timeout.\n");
+		return -ETIMEDOUT;
+	}
+}
+
 static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 				    struct drm_dp_aux_msg *msg)
 {
@@ -190,7 +218,7 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 		tegra_dpaux_enable(dpaux);
 	}
 
-	if (tegra_dpaux_detect(dpaux) != connector_status_connected) {
+	if (tegra_dpaux_wait_plugged(dpaux) < 0) {
 		WARN(1, "wait HPD failed in dpaux transfer.\n");
 		ret = -ETIMEDOUT;
 		goto out;
@@ -638,44 +666,8 @@ int tegra_dpaux_detach(struct tegra_dpaux *dpaux)
 
 enum drm_connector_status tegra_dpaux_detect(struct tegra_dpaux *dpaux)
 {
-	unsigned long value;
-	unsigned long timeout;
-	bool restore_dpaux_state = false;
-	enum drm_connector_status ret = connector_status_disconnected;
-
-	if (!dpaux->enabled) {
-		restore_dpaux_state = true;
-		tegra_dpaux_enable(dpaux);
-	}
-
-	/*
-	 * Typical plugged latency is 250us, but we use usleep below which
-	 * involves kernel schedule, so set a somewhat big timeout here.
-	 */
-	timeout = jiffies + msecs_to_jiffies(250);
-	while (time_before(jiffies, timeout)) {
-		value = tegra_dpaux_readl(dpaux, DPAUX_DP_AUXSTAT);
-		if (value & DPAUX_DP_AUXSTAT_HPD_STATUS) {
-			ret = connector_status_connected;
-			goto out;
-		}
-
-		usleep_range(1000, 2000);
-	}
-
-	/* Recheck in case the polling is skipped due to process schedule */
-	value = tegra_dpaux_readl(dpaux, DPAUX_DP_AUXSTAT);
-	if (value & DPAUX_DP_AUXSTAT_HPD_STATUS) {
-		ret = connector_status_connected;
-	} else {
-		WARN(1, "dpaux detected panel timeout.\n");
-		ret = connector_status_disconnected;
-	}
-
-out:
-	if (restore_dpaux_state)
-		tegra_dpaux_disable(dpaux);
-	return ret;
+	/* nyan doesn't support DP, so for eDP panel, it's always connected. */
+	return connector_status_connected;
 }
 
 int tegra_dpaux_enable(struct tegra_dpaux *dpaux)
