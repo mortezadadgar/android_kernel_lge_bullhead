@@ -16,7 +16,6 @@
 #include <linux/platform_device.h>
 #include <linux/reset.h>
 #include <linux/tegra-powergate.h>
-#include <linux/workqueue.h>
 
 #include <drm/drm_dp_helper.h>
 #include <drm/drm_panel.h>
@@ -42,7 +41,6 @@ struct tegra_dpaux {
 	struct clk *clk;
 
 	struct completion complete;
-	struct work_struct work;
 	struct list_head list;
 
 	bool enabled;
@@ -61,11 +59,6 @@ host1x_client_to_dpaux(struct host1x_client *client)
 static inline struct tegra_dpaux *to_dpaux(struct drm_dp_aux *aux)
 {
 	return container_of(aux, struct tegra_dpaux, aux);
-}
-
-static inline struct tegra_dpaux *work_to_dpaux(struct work_struct *work)
-{
-	return container_of(work, struct tegra_dpaux, work);
 }
 
 static inline unsigned long tegra_dpaux_readl(struct tegra_dpaux *dpaux,
@@ -301,14 +294,6 @@ out:
 	return ret;
 }
 
-static void tegra_dpaux_hotplug(struct work_struct *work)
-{
-	struct tegra_dpaux *dpaux = work_to_dpaux(work);
-
-	if (dpaux->output && !dpaux->output->suspended)
-		drm_helper_hpd_irq_event(dpaux->output->connector.dev);
-}
-
 static irqreturn_t tegra_dpaux_irq(int irq, void *data)
 {
 	struct tegra_dpaux *dpaux = data;
@@ -318,9 +303,6 @@ static irqreturn_t tegra_dpaux_irq(int irq, void *data)
 	/* clear interrupts */
 	value = tegra_dpaux_readl(dpaux, DPAUX_INTR_AUX);
 	tegra_dpaux_writel(dpaux, value, DPAUX_INTR_AUX);
-
-	if (value & (DPAUX_INTR_PLUG_EVENT | DPAUX_INTR_UNPLUG_EVENT))
-		schedule_work(&dpaux->work);
 
 	if (value & DPAUX_INTR_IRQ_EVENT) {
 		/* TODO: handle this */
@@ -487,7 +469,6 @@ static int tegra_dpaux_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	INIT_WORK(&dpaux->work, tegra_dpaux_hotplug);
 	init_completion(&dpaux->complete);
 	INIT_LIST_HEAD(&dpaux->list);
 	dpaux->dev = &pdev->dev;
@@ -550,10 +531,9 @@ static int tegra_dpaux_probe(struct platform_device *pdev)
 		return err;
 
 	/* enable and clear all interrupts */
-	value = DPAUX_INTR_AUX_DONE | DPAUX_INTR_IRQ_EVENT |
-		DPAUX_INTR_UNPLUG_EVENT | DPAUX_INTR_PLUG_EVENT;
+	value = DPAUX_INTR_AUX_DONE | DPAUX_INTR_IRQ_EVENT;
 	tegra_dpaux_writel(dpaux, value, DPAUX_INTR_EN_AUX);
-	tegra_dpaux_writel(dpaux, value, DPAUX_INTR_AUX);
+	tegra_dpaux_writel(dpaux, 0xffffffff, DPAUX_INTR_AUX);
 
 	mutex_lock(&dpaux_lock);
 	list_add_tail(&dpaux->list, &dpaux_list);
@@ -574,8 +554,6 @@ static int tegra_dpaux_remove(struct platform_device *pdev)
 	mutex_lock(&dpaux_lock);
 	list_del(&dpaux->list);
 	mutex_unlock(&dpaux_lock);
-
-	cancel_work_sync(&dpaux->work);
 
 	clk_disable_unprepare(dpaux->clk_parent);
 	reset_control_assert(dpaux->rst);
@@ -682,10 +660,9 @@ int tegra_dpaux_enable(struct tegra_dpaux *dpaux)
 	udelay(10);
 
 	/* enable and clear all interrupts */
-	value = DPAUX_INTR_AUX_DONE | DPAUX_INTR_IRQ_EVENT |
-		DPAUX_INTR_UNPLUG_EVENT | DPAUX_INTR_PLUG_EVENT;
+	value = DPAUX_INTR_AUX_DONE | DPAUX_INTR_IRQ_EVENT;
 	tegra_dpaux_writel(dpaux, value, DPAUX_INTR_EN_AUX);
-	tegra_dpaux_writel(dpaux, value, DPAUX_INTR_AUX);
+	tegra_dpaux_writel(dpaux, 0xffffffff, DPAUX_INTR_AUX);
 
 	value = DPAUX_HYBRID_PADCTL_AUX_CMH(2) |
 		DPAUX_HYBRID_PADCTL_AUX_DRVZ(4) |
@@ -710,10 +687,8 @@ int tegra_dpaux_disable(struct tegra_dpaux *dpaux)
 		return 0;
 
 	/* disable and clear all interrupts */
-	value = DPAUX_INTR_AUX_DONE | DPAUX_INTR_IRQ_EVENT |
-		DPAUX_INTR_UNPLUG_EVENT | DPAUX_INTR_PLUG_EVENT;
 	tegra_dpaux_writel(dpaux, 0, DPAUX_INTR_EN_AUX);
-	tegra_dpaux_writel(dpaux, value, DPAUX_INTR_AUX);
+	tegra_dpaux_writel(dpaux, 0xffffffff, DPAUX_INTR_AUX);
 
 	value = tegra_dpaux_readl(dpaux, DPAUX_HYBRID_SPARE);
 	value |= DPAUX_HYBRID_SPARE_PAD_POWER_DOWN;
