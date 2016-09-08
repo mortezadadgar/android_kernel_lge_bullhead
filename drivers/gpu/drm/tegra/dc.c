@@ -8,6 +8,7 @@
  */
 
 #include <linux/clk.h>
+#include <linux/clk-provider.h>
 #include <linux/debugfs.h>
 #include <linux/iommu.h>
 #include <linux/reset.h>
@@ -855,7 +856,11 @@ static void tegra_crtc_disable(struct drm_crtc *crtc)
 		}
 	}
 
+	disable_irq(dc->irq);
+
 	drm_vblank_off(drm, dc->pipe);
+	reset_control_assert(dc->rst);
+	clk_disable_unprepare(dc->clk);
 	if (dc->emc_clk)
 		clk_set_rate(dc->emc_clk, 0);
 	dc->enabled = false;
@@ -1036,8 +1041,11 @@ static int tegra_crtc_mode_set(struct drm_crtc *crtc,
 	if (err)
 		dev_err(dc->dev, "failed to program the EMC clock\n");
 
-	if (!err)
+	if (!err) {
+		if (!dc->enabled)
+			enable_irq(dc->irq);
 		dc->enabled = true;
+	}
 
 	return err;
 }
@@ -1055,12 +1063,20 @@ static void tegra_crtc_prepare(struct drm_crtc *crtc)
 	struct tegra_dc *dc = to_tegra_dc(crtc);
 	unsigned int syncpt;
 	unsigned long value;
+	int ret;
 
 	tegra_dc_unpowergate_with_check(dc);
 
 	/* hardware initialization */
-	reset_control_deassert(dc->rst);
-	usleep_range(10000, 20000);
+	if (!__clk_is_enabled(dc->clk)) {
+		ret = clk_prepare_enable(dc->clk);
+		if (ret < 0) {
+			WARN(1, "Enable dc clock failed: %d\n", ret);
+			return;
+		}
+		reset_control_deassert(dc->rst);
+		usleep_range(10000, 20000);
+	}
 
 	if (dc->pipe)
 		syncpt = SYNCPT_VBLANK1;
@@ -1501,6 +1517,7 @@ static int tegra_dc_init(struct host1x_client *client)
 			err);
 		return err;
 	}
+	disable_irq(dc->irq);
 
 	return 0;
 }
