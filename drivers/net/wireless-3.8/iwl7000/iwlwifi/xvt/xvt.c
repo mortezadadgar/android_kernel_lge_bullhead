@@ -158,11 +158,9 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 
 	trans_cfg.cmd_queue = IWL_XVT_CMD_QUEUE;
 	trans_cfg.cmd_fifo = IWL_XVT_CMD_FIFO;
-	if (xvt->fw->ucode_capa.flags & IWL_UCODE_TLV_FLAGS_DW_BC_TABLE)
-		trans_cfg.bc_table_dword = true;
+	trans_cfg.bc_table_dword = true;
 	trans_cfg.scd_set_active = true;
-	trans->wide_cmd_header = fw_has_api(&xvt->fw->ucode_capa,
-					    IWL_UCODE_TLV_API_WIDE_CMD_HDR);
+	trans->wide_cmd_header = true;
 
 	switch (iwlwifi_mod_params.amsdu_size) {
 	case IWL_AMSDU_DEF:
