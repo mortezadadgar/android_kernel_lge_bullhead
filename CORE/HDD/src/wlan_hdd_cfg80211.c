@@ -19671,6 +19671,9 @@ static int __wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                   FL("convert to internal reason %d to reasonCode %d"),
                   reason, reasonCode);
+#ifdef QCA_PKT_PROTO_TRACE
+        vos_pkt_trace_buf_dump();
+#endif
         pScanInfo =  &pAdapter->scan_info;
         if (pScanInfo->mScanPending) {
             hddLog(VOS_TRACE_LEVEL_INFO, "Disconnect is in progress, "
@@ -24012,7 +24015,7 @@ int __wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
                  * results in app's is in suspended state and not able to
                  * process the connect request to AP
                  */
-                hdd_prevent_suspend_timeout(2000,
+                hdd_prevent_suspend_timeout(1000,
                                          WIFI_POWER_EVENT_WAKELOCK_RESUME_WLAN);
                 cfg80211_sched_scan_results(pHddCtx->wiphy);
             }
