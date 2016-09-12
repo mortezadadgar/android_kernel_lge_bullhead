@@ -145,16 +145,15 @@ void iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
 	case DEBUG_LOG_MSG:
 		iwl_dnt_dispatch_collect_ucode_message(xvt->trans, rxb);
 		break;
-	case LOCATION_GROUP_NOTIFICATION:
-		if (le32_to_cpu(*(__le32 *)data) == LOCATION_MCSI_NOTIFICATION)
-			iwl_xvt_user_send_notif(xvt,
-						IWL_TM_USER_CMD_NOTIF_LOC_MCSI,
-						data, size, GFP_ATOMIC);
-		else if (le32_to_cpu(*(__le32 *)data) ==
-			 LOCATION_RANGE_RESPONSE_NOTIFICATION)
-			iwl_xvt_user_send_notif(xvt,
-						IWL_TM_USER_CMD_NOTIF_LOC_RANGE,
-						data, size, GFP_ATOMIC);
+	case LOCATION_MCSI_NOTIFICATION_WITH_GRP:
+		iwl_xvt_user_send_notif(xvt,
+					IWL_TM_USER_CMD_NOTIF_LOC_MCSI,
+					data, size, GFP_ATOMIC);
+		break;
+	case LOCATION_RANGE_RESPONSE_NOTIFICATION_WITH_GRP:
+		iwl_xvt_user_send_notif(xvt,
+					IWL_TM_USER_CMD_NOTIF_LOC_RANGE,
+					data, size, GFP_ATOMIC);
 		break;
 	case REPLY_RX_PHY_CMD:
 		IWL_DEBUG_INFO(xvt,
