@@ -778,6 +778,11 @@ void iwl_mvm_rx_mpdu_mq(struct iwl_mvm *mvm, struct napi_struct *napi,
 		return;
 	}
 
+#ifdef CPTCFG_IWLMVM_TCM
+	if (time_after(jiffies, mvm->tcm.ts + MVM_TCM_PERIOD))
+		queue_delayed_work(system_wq, &mvm->tcm.work, 0);
+#endif
+
 	/*
 	 * Keep packets with CRC errors (and with overrun) for monitor mode
 	 * (otherwise the firmware discards them) but mark them as bad.

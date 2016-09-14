@@ -1384,11 +1384,18 @@ static void iwl_mvm_check_uapsd_agg_expected_tpt(struct iwl_mvm *mvm,
 	    mvm->tcm.data[mac].uapsd_nonagg_detect.detected)
 		return;
 
-	tpt = 100 * 8 * bytes;
-	do_div(tpt, elapsed); /* 100Kbps */
-
-	if (tpt < rate)
-		return;
+	if (iwl_mvm_has_new_rx_api(mvm)) {
+		tpt = 8 * bytes; /* kbps */
+		do_div(tpt, elapsed);
+		rate *= 1000; /* kbps */
+		if (tpt >= 22 * rate / 100)
+			return;
+	} else {
+		tpt = 100 * 8 * bytes;
+		do_div(tpt, elapsed); /* 100Kbps */
+		if (tpt < rate)
+			return;
+	}
 
 	ieee80211_iterate_active_interfaces_atomic(
 		mvm->hw, IEEE80211_IFACE_ITER_NORMAL,
@@ -1471,6 +1478,9 @@ static unsigned long iwl_mvm_calc_tcm_stats(struct iwl_mvm *mvm,
 void iwl_mvm_recalc_tcm(struct iwl_mvm *mvm)
 {
 	unsigned long ts = jiffies;
+
+	if (iwl_mvm_has_new_rx_api(mvm))
+		iwl_mvm_request_statistics(mvm, true);
 
 	spin_lock(&mvm->tcm.lock);
 	/* re-check if somebody else won the recheck race */

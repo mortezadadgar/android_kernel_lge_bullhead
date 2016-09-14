@@ -794,6 +794,23 @@ void iwl_mvm_handle_rx_statistics(struct iwl_mvm *mvm,
 			sta->avg_energy = data.load->avg_energy[i];
 		}
 		rcu_read_unlock();
+
+#ifdef CPTCFG_IWLMVM_TCM
+		spin_lock(&mvm->tcm.lock);
+		for (i = 0; i < NUM_MAC_INDEX; i++) {
+			struct iwl_mvm_tcm_mac *mdata = &mvm->tcm.data[i];
+			u32 rx_bytes = le32_to_cpu(data.load->byte_count[i]);
+			u32 airtime = le32_to_cpu(data.load->air_time[i]);
+
+			mdata->rx.airtime += airtime;
+			mdata->uapsd_nonagg_detect.rx_bytes += rx_bytes;
+			if (airtime) {
+				ewma_rate_add(&mdata->uapsd_nonagg_detect.rate,
+					      rx_bytes * 8 / airtime);
+			}
+		}
+		spin_unlock(&mvm->tcm.lock);
+#endif
 	}
 
 	iwl_mvm_rx_stats_check_trigger(mvm, pkt);
