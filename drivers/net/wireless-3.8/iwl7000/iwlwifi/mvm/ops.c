@@ -749,8 +749,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 
 #ifdef CPTCFG_IWLMVM_TCM
 	spin_lock_init(&mvm->tcm.lock);
-	setup_timer(&mvm->tcm.timer, iwl_mvm_tcm_timer, (unsigned long)mvm);
-	INIT_WORK(&mvm->tcm.work, iwl_mvm_tcm_work);
+	INIT_DELAYED_WORK(&mvm->tcm.work, iwl_mvm_tcm_work);
 	mvm->tcm.ts = jiffies;
 	mvm->tcm.ll_ts = jiffies;
 	mvm->tcm.uapsd_nonagg_ts = jiffies;
@@ -970,8 +969,7 @@ static void iwl_op_mode_mvm_stop(struct iwl_op_mode *op_mode)
 		kfree(mvm->nvm_sections[i].data);
 
 #ifdef CPTCFG_IWLMVM_TCM
-	del_timer_sync(&mvm->tcm.timer);
-	cancel_work_sync(&mvm->tcm.work);
+	cancel_delayed_work_sync(&mvm->tcm.work);
 #endif
 
 #ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE

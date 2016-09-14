@@ -642,8 +642,7 @@ struct iwl_mvm_tcm_mac {
 };
 
 struct iwl_mvm_tcm {
-	struct timer_list timer;
-	struct work_struct work;
+	struct delayed_work work;
 	spinlock_t lock; /* used when time elapsed */
 	unsigned long ts; /* timestamp when period ends */
 	unsigned long ll_ts;
@@ -1939,7 +1938,6 @@ void iwl_mvm_inactivity_check(struct iwl_mvm *mvm);
 #define MVM_TCM_PERIOD (HZ * MVM_TCM_PERIOD_MSEC / 1000)
 #define MVM_LL_PERIOD (10 * HZ)
 void iwl_mvm_send_tcm_event(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
-void iwl_mvm_tcm_timer(unsigned long data);
 void iwl_mvm_tcm_work(struct work_struct *work);
 void iwl_mvm_recalc_tcm(struct iwl_mvm *mvm);
 void iwl_mvm_pause_tcm(struct iwl_mvm *mvm);

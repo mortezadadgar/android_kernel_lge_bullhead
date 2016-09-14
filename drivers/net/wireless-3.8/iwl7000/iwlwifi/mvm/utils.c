@@ -1254,11 +1254,6 @@ iwl_mvm_tcm_load(struct iwl_mvm *mvm, u32 airtime, unsigned long elapsed)
 	return IWL_MVM_VENDOR_LOAD_LOW;
 }
 
-void iwl_mvm_tcm_timer(unsigned long data)
-{
-	iwl_mvm_recalc_tcm((void *)data);
-}
-
 struct iwl_mvm_tcm_iter_data {
 	struct iwl_mvm *mvm;
 	bool any_sent;
@@ -1296,9 +1291,8 @@ static void iwl_mvm_tcm_iter(void *_data, u8 *mac, struct ieee80211_vif *vif)
 	data->any_sent = true;
 }
 
-void iwl_mvm_tcm_work(struct work_struct *work)
+static void iwl_mvm_tcm_results(struct iwl_mvm *mvm)
 {
-	struct iwl_mvm *mvm = container_of(work, struct iwl_mvm, tcm.work);
 	struct iwl_mvm_tcm_iter_data data = {
 		.mvm = mvm,
 		.any_sent = false,
@@ -1467,8 +1461,6 @@ static unsigned long iwl_mvm_calc_tcm_stats(struct iwl_mvm *mvm,
 	mvm->tcm.result.global_change = load != mvm->tcm.result.global_load;
 	mvm->tcm.result.global_load = load;
 
-	schedule_work(&mvm->tcm.work);
-
 	if (load != IWL_MVM_VENDOR_LOAD_LOW)
 		return MVM_TCM_PERIOD;
 	if (low_latency)
@@ -1484,22 +1476,33 @@ void iwl_mvm_recalc_tcm(struct iwl_mvm *mvm)
 	/* re-check if somebody else won the recheck race */
 	if (!mvm->tcm.paused && time_after(ts, mvm->tcm.ts + MVM_TCM_PERIOD)) {
 		/* calculate statistics */
-		unsigned long timer_delay = iwl_mvm_calc_tcm_stats(mvm, ts);
+		unsigned long work_delay = iwl_mvm_calc_tcm_stats(mvm, ts);
 
 		/* the memset needs to be visible before the timestamp */
 		smp_mb();
 		mvm->tcm.ts = ts;
-		if (timer_delay)
-			mod_timer(&mvm->tcm.timer,
-				  mvm->tcm.ts + timer_delay);
+		if (work_delay)
+			queue_delayed_work(system_wq, &mvm->tcm.work,
+					   work_delay);
 	}
 	spin_unlock(&mvm->tcm.lock);
+
+	iwl_mvm_tcm_results(mvm);
+}
+
+void iwl_mvm_tcm_work(struct work_struct *work)
+{
+	struct delayed_work *delayed_work = to_delayed_work(work);
+	struct iwl_mvm *mvm = container_of(delayed_work, struct iwl_mvm,
+					   tcm.work);
+
+	iwl_mvm_recalc_tcm(mvm);
 }
 
 void iwl_mvm_pause_tcm(struct iwl_mvm *mvm)
 {
 	spin_lock_bh(&mvm->tcm.lock);
-	del_timer(&mvm->tcm.timer);
+	cancel_delayed_work(&mvm->tcm.work);
 	mvm->tcm.paused = true;
 	spin_unlock_bh(&mvm->tcm.lock);
 }
