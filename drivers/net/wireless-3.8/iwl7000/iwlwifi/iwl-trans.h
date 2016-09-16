@@ -1109,9 +1109,10 @@ static inline void iwl_trans_txq_set_shared_mode(struct iwl_trans *trans,
 static inline dma_addr_t iwl_trans_get_txq_byte_table(struct iwl_trans *trans,
 						      int queue)
 {
-	if (trans->ops->get_txq_byte_table)
-		return trans->ops->get_txq_byte_table(trans, queue);
-	return DMA_ERROR_CODE;
+	/* we should never be called if the trans doesn't support it */
+	BUG_ON(!trans->ops->get_txq_byte_table);
+
+	return trans->ops->get_txq_byte_table(trans, queue);
 }
 
 static inline void iwl_trans_txq_enable(struct iwl_trans *trans, int queue,
