@@ -412,7 +412,7 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 	char tag[8];
 #if defined(CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES) && \
 	defined(CPTCFG_IWLWIFI_DEVICE_TESTMODE)
-	char fw_name_temp[32];
+	char fw_name_temp[64];
 #endif
 
 	if (first) {
