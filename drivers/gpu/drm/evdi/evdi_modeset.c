@@ -213,7 +213,7 @@ static int evdi_crtc_cursor_set(struct drm_crtc *crtc,
 	mutex_lock(&dev->struct_mutex);
 	ret = evdi_cursor_set(crtc, file, handle, width, height, evdi->cursor);
 	mutex_unlock(&dev->struct_mutex);
-	EVDI_DEBUG("evdi_crtc_cursor_set unlock\n");
+	EVDI_VERBOSE("evdi_crtc_cursor_set unlock\n");
 	if (ret) {
 		DRM_ERROR("Failed to set evdi cursor\n");
 		return ret;
