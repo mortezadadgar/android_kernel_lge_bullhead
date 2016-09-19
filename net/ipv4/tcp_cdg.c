@@ -135,7 +135,7 @@ static u32 __pure nexp_u32(u32 ux)
  *   o Invoked at any cwnd (i.e. also when cwnd < 16).
  *   o Invoked only when cwnd < ssthresh (i.e. not when cwnd == ssthresh).
  */
-static void tcp_cdg_hystart_update(struct sock *sk)
+static void tcp_cdg_hystart_update(struct sock *sk, u32 in_flight)
 {
 	struct cdg *ca = inet_csk_ca(sk);
 	struct tcp_sock *tp = tcp_sk(sk);
@@ -147,7 +147,7 @@ static void tcp_cdg_hystart_update(struct sock *sk)
 	if (hystart_detect & HYSTART_ACK_TRAIN) {
 		u32 now_us = div_u64(local_clock(), NSEC_PER_USEC);
 
-		if (ca->last_ack == 0 || !tcp_is_cwnd_limited(sk)) {
+		if (ca->last_ack == 0 || !tcp_is_cwnd_limited(sk, in_flight)) {
 			ca->last_ack = now_us;
 			ca->round_start = now_us;
 		} else if (before(now_us, ca->last_ack + 3000)) {
@@ -257,7 +257,7 @@ static bool tcp_cdg_backoff(struct sock *sk, u32 grad)
 }
 
 /* Not called in CWR or Recovery state. */
-static void tcp_cdg_cong_avoid(struct sock *sk, u32 ack, u32 acked)
+static void tcp_cdg_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
 {
 	struct cdg *ca = inet_csk_ca(sk);
 	struct tcp_sock *tp = tcp_sk(sk);
@@ -265,7 +265,7 @@ static void tcp_cdg_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 	u32 incr;
 
 	if (tcp_in_slow_start(tp) && hystart_detect)
-		tcp_cdg_hystart_update(sk);
+		tcp_cdg_hystart_update(sk, in_flight);
 
 	if (after(ack, ca->rtt_seq) && ca->rtt.v64) {
 		s32 grad = 0;
@@ -282,13 +282,13 @@ static void tcp_cdg_cong_avoid(struct sock *sk, u32 ack, u32 acked)
 			return;
 	}
 
-	if (!tcp_is_cwnd_limited(sk)) {
+	if (!tcp_is_cwnd_limited(sk, in_flight)) {
 		ca->shadow_wnd = min(ca->shadow_wnd, tp->snd_cwnd);
 		return;
 	}
 
 	prior_snd_cwnd = tp->snd_cwnd;
-	tcp_reno_cong_avoid(sk, ack, acked);
+	tcp_reno_cong_avoid(sk, ack, in_flight);
 
 	incr = tp->snd_cwnd - prior_snd_cwnd;
 	ca->shadow_wnd = max(ca->shadow_wnd, ca->shadow_wnd + incr);
