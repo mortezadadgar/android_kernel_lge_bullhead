@@ -67,8 +67,6 @@
 #include "mvm.h"
 #include "fw-api-tof.h"
 #include "debugfs.h"
-#include "iwl-io.h"
-#include "iwl-prph.h"
 
 static void iwl_dbgfs_update_pm(struct iwl_mvm *mvm,
 				 struct ieee80211_vif *vif,
