@@ -8,6 +8,9 @@
 #define ieee80211_start_tx_ba_cb_irqsafe __iwl7000_ieee80211_start_tx_ba_cb_irqsafe
 #define ieee80211_stop_tx_ba_session __iwl7000_ieee80211_stop_tx_ba_session
 #define ieee80211_stop_tx_ba_cb_irqsafe __iwl7000_ieee80211_stop_tx_ba_cb_irqsafe
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,7,0)
+#define dev_coredumpsg __iwl7000_dev_coredumpsg
+#endif /* < 4.7.0 */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
 #ifdef CONFIG_DEBUG_FS
 #define iwl_debugfs_create_bool __iwl7000_iwl_debugfs_create_bool
@@ -27,6 +30,10 @@
 #define devm_kvasprintf __iwl7000_devm_kvasprintf
 #define devm_kasprintf __iwl7000_devm_kasprintf
 #endif /* < 3.17 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)
+#define sg_pcopy_from_buffer __iwl7000_sg_pcopy_from_buffer
+#define sg_pcopy_to_buffer __iwl7000_sg_pcopy_to_buffer
+#endif /* < 3.11 */
 #if CFG80211_VERSION < KERNEL_VERSION(4,1,0)
 #define ieee80211_ie_split_ric __iwl7000_ieee80211_ie_split_ric
 #define ieee80211_ie_split __iwl7000_ieee80211_ie_split

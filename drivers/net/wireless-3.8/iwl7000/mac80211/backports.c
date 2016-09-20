@@ -18,6 +18,70 @@
 #include <asm/unaligned.h>
 #include <linux/device.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,7,0)
+#include <linux/devcoredump.h>
+
+static void devcd_free_sgtable(void *data)
+{
+	struct scatterlist *table = data;
+	int i;
+	struct page *page;
+	struct scatterlist *iter;
+	struct scatterlist *delete_iter;
+
+	/* free pages */
+	iter = table;
+	for_each_sg(table, iter, sg_nents(table), i) {
+		page = sg_page(iter);
+		if (page)
+			__free_page(page);
+	}
+
+	/* then free all chained tables */
+	iter = table;
+	delete_iter = table;	/* always points on a head of a table */
+	while (!sg_is_last(iter)) {
+		iter++;
+		if (sg_is_chain(iter)) {
+			iter = sg_chain_ptr(iter);
+			kfree(delete_iter);
+			delete_iter = iter;
+		}
+	}
+
+	/* free the last table */
+	kfree(delete_iter);
+}
+
+static ssize_t devcd_read_from_sgtable(char *buffer, loff_t offset,
+				       size_t buf_len, void *data,
+				       size_t data_len)
+{
+	struct scatterlist *table = data;
+
+	if (offset > data_len)
+		return -EINVAL;
+
+	if (offset + buf_len > data_len)
+		buf_len = data_len - offset;
+	return sg_pcopy_to_buffer(table, sg_nents(table), buffer, buf_len,
+				  offset);
+}
+
+void dev_coredumpsg(struct device *dev, struct scatterlist *table,
+		    size_t datalen, gfp_t gfp)
+{
+	/*
+	 * those casts are needed due to const issues, but it's fine
+	 * since calling convention for const/non-const is identical
+	 */
+	dev_coredumpm(dev, THIS_MODULE, table, datalen, gfp,
+		      (void *)devcd_read_from_sgtable,
+		      (void *)devcd_free_sgtable);
+}
+EXPORT_SYMBOL_GPL(dev_coredumpsg);
+#endif /* < 4.7.0 */
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
 #ifdef CONFIG_DEBUG_FS
 static ssize_t _debugfs_read_file_bool(struct file *file, char __user *user_buf,
@@ -266,3 +330,68 @@ char *devm_kasprintf(struct device *dev, gfp_t gfp, const char *fmt, ...)
 }
 EXPORT_SYMBOL_GPL(devm_kasprintf);
 #endif /* < 3.17 */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)
+static size_t sg_copy_buffer(struct scatterlist *sgl, unsigned int nents,
+			     void *buf, size_t buflen, off_t skip,
+			     bool to_buffer)
+{
+	unsigned int offset = 0;
+	struct sg_mapping_iter miter;
+	unsigned long flags;
+	unsigned int sg_flags = SG_MITER_ATOMIC;
+
+	if (to_buffer)
+		sg_flags |= SG_MITER_FROM_SG;
+	else
+		sg_flags |= SG_MITER_TO_SG;
+
+	sg_miter_start(&miter, sgl, nents, sg_flags);
+
+	/* we'd like to call sg_miter_skip here, but it doesn't exist yet ... */
+
+	local_irq_save(flags);
+
+	while (sg_miter_next(&miter) && offset < buflen) {
+		unsigned int len;
+		unsigned int inner_offs = 0;
+
+		/* so we do some extra bookkeeping here */
+		if (miter.length <= skip) {
+			skip -= miter.length;
+			continue;
+		} else if (skip) {
+			inner_offs = skip;
+			skip = 0;
+		}
+
+		len = min(miter.length - inner_offs, buflen - offset);
+
+		if (to_buffer)
+			memcpy(buf + offset, miter.addr + inner_offs, len);
+		else
+			memcpy(miter.addr + inner_offs, buf + offset, len);
+
+		offset += len;
+	}
+
+	sg_miter_stop(&miter);
+
+	local_irq_restore(flags);
+	return offset;
+}
+
+size_t sg_pcopy_from_buffer(struct scatterlist *sgl, unsigned int nents,
+			    const void *buf, size_t buflen, off_t skip)
+{
+	return sg_copy_buffer(sgl, nents, (void *)buf, buflen, skip, false);
+}
+EXPORT_SYMBOL_GPL(sg_pcopy_from_buffer);
+
+size_t sg_pcopy_to_buffer(struct scatterlist *sgl, unsigned int nents,
+			  void *buf, size_t buflen, off_t skip)
+{
+	return sg_copy_buffer(sgl, nents, buf, buflen, skip, true);
+}
+EXPORT_SYMBOL_GPL(sg_pcopy_to_buffer);
+#endif /* < 3.11 */

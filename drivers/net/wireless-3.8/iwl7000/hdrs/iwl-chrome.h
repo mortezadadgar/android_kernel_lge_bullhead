@@ -136,6 +136,11 @@ static inline bool pm_runtime_active(struct device *dev) { return true; }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0)
 #define netdev_notifier_info_to_dev(ndev)	ndev
+
+size_t sg_pcopy_from_buffer(struct scatterlist *sgl, unsigned int nents,
+			    const void *buf, size_t buflen, off_t skip);
+size_t sg_pcopy_to_buffer(struct scatterlist *sgl, unsigned int nents,
+			  void *buf, size_t buflen, off_t skip);
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
@@ -427,6 +432,8 @@ static inline int nla_put_u64_64bit(struct sk_buff *skb, int attrtype,
 {
 	return nla_put_u64(skb, attrtype, value);
 }
+void dev_coredumpsg(struct device *dev, struct scatterlist *table,
+		    size_t datalen, gfp_t gfp);
 #endif /* < 4.7 */
 
 #endif /* __IWL_CHROME */
