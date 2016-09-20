@@ -327,6 +327,7 @@ enum iwl_phy_ops_subcmd_ids {
 
 enum iwl_system_subcmd_ids {
 	SHARED_MEM_CFG_CMD = 0x0,
+	SOC_CONFIGURATION_CMD = 0x01,
 };
 
 enum iwl_data_path_subcmd_ids {
@@ -345,6 +346,12 @@ enum iwl_prot_offload_subcmd_ids {
 enum iwl_fmac_debug_cmds {
 	LMAC_RD_WR = 0x0,
 	UMAC_RD_WR = 0x1,
+};
+
+/* type of devices for defining SOC latency */
+enum iwl_soc_device_types {
+	SOC_CONFIG_CMD_INTEGRATED   = 0x0,
+	SOC_CONFIG_CMD_DISCRETE     = 0x1,
 };
 
 /* command groups */
@@ -504,6 +511,17 @@ struct iwl_fw_paging_cmd {
 		__le64 addr64[NUM_OF_FW_PAGING_BLOCKS];
 	} device_phy_addr;
 } __packed; /* FW_PAGING_BLOCK_CMD_API_S_VER_2 */
+
+/*
+ * struct iwl_soc_configuration_cmd - Set device stabilization latency
+ *
+ * @device_type: the device type as defined in &enum iwl_soc_device_types
+ * @soc_latency: time for SOC to ensure stable power & XTAL
+*/
+struct iwl_soc_configuration_cmd {
+	__le32 device_type;
+	__le32 soc_latency;
+} __packed; /* SOC_CONFIGURATION_CMD_S_VER_1 */
 
 /*
  * Fw items ID's

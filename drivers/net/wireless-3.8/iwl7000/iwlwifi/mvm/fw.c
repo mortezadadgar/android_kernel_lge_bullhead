@@ -94,6 +94,25 @@ struct iwl_mvm_alive_data {
 	u32 scd_base_addr;
 };
 
+/* set device type and latency */
+static int iwl_set_soc_latency(struct iwl_mvm *mvm)
+{
+	struct iwl_soc_configuration_cmd cmd;
+	int ret;
+
+	cmd.device_type = (mvm->trans->cfg->integrated) ?
+		cpu_to_le32(SOC_CONFIG_CMD_INTEGRATED) :
+		cpu_to_le32(SOC_CONFIG_CMD_DISCRETE);
+	cmd.soc_latency = cpu_to_le32(mvm->trans->cfg->soc_latency);
+
+	ret = iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(SOC_CONFIGURATION_CMD,
+						   SYSTEM_GROUP, 0), 0,
+				   sizeof(cmd), &cmd);
+	if (ret)
+		IWL_ERR(mvm, "Failed to set soc latency: %d\n", ret);
+	return ret;
+}
+
 static int iwl_send_tx_ant_cfg(struct iwl_mvm *mvm, u8 valid_tx_ant)
 {
 	struct iwl_tx_ant_cfg_cmd tx_ant_cmd = {
@@ -1279,6 +1298,13 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 	ret = iwl_send_phy_cfg_cmd(mvm);
 	if (ret)
 		goto error;
+
+	if (fw_has_capa(&mvm->fw->ucode_capa,
+			IWL_UCODE_TLV_CAPA_SOC_LATENCY_SUPPORT)) {
+		ret = iwl_set_soc_latency(mvm);
+		if (ret)
+			goto error;
+	}
 
 	/* Init RSS configuration */
 	if (iwl_mvm_has_new_rx_api(mvm)) {

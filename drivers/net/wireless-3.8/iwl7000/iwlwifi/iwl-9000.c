@@ -185,6 +185,7 @@ const struct iwl_cfg iwl9460_2ac_cfg = {
 	.nvm_calib_ver = IWL9000_TX_POWER_VERSION,
 	.max_ht_ampdu_exponent = IEEE80211_HT_MAX_AMPDU_64K,
 	.integrated = true,
+	.soc_latency = 5000,
 };
 
 const struct iwl_cfg iwl9560_2ac_cfg = {
@@ -196,6 +197,7 @@ const struct iwl_cfg iwl9560_2ac_cfg = {
 	.nvm_calib_ver = IWL9000_TX_POWER_VERSION,
 	.max_ht_ampdu_exponent = IEEE80211_HT_MAX_AMPDU_64K,
 	.integrated = true,
+	.soc_latency = 5000,
 };
 
 /*

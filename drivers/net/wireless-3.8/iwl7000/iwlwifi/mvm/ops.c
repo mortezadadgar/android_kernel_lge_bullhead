@@ -477,6 +477,7 @@ static const struct iwl_hcmd_names iwl_mvm_legacy_names[] = {
  */
 static const struct iwl_hcmd_names iwl_mvm_system_names[] = {
 	HCMD_NAME(SHARED_MEM_CFG_CMD),
+	HCMD_NAME(SOC_CONFIGURATION_CMD),
 };
 
 /* Please keep this array *SORTED* by hex value.

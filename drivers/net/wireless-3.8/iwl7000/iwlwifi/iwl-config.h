@@ -350,6 +350,7 @@ struct iwl_cfg {
 	u32 dccm2_len;
 	u32 smem_offset;
 	u32 smem_len;
+	u32 soc_latency;
 	u16 nvm_ver;
 	u16 nvm_calib_ver;
 	u16 rx_with_siso_diversity:1,
