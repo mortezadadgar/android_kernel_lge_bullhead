@@ -340,6 +340,9 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 
 	memcpy(sta->addr, addr, ETH_ALEN);
 	memcpy(sta->sta.addr, addr, ETH_ALEN);
+	sta->sta.max_rx_aggregation_subframes =
+		local->hw.max_rx_aggregation_subframes;
+
 	sta->local = local;
 	sta->sdata = sdata;
 	sta->rx_stats.last_rx = jiffies;
@@ -1616,7 +1619,6 @@ ieee80211_sta_ps_deliver_response(struct sta_info *sta,
 
 		sta_info_recalc_tim(sta);
 	} else {
-		unsigned long tids = sta->txq_buffered_tids & driver_release_tids;
 		int tid;
 
 		/*
@@ -1648,7 +1650,8 @@ ieee80211_sta_ps_deliver_response(struct sta_info *sta,
 		for (tid = 0; tid < ARRAY_SIZE(sta->sta.txq); tid++) {
 			struct txq_info *txqi = to_txq_info(sta->sta.txq[tid]);
 
-			if (!(tids & BIT(tid)) || txqi->tin.backlog_packets)
+			if (!(driver_release_tids & BIT(tid)) ||
+			    txqi->tin.backlog_packets)
 				continue;
 
 			sta_info_recalc_tim(sta);

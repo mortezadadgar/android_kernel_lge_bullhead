@@ -625,12 +625,11 @@ ieee80211_rx_monitor(struct ieee80211_local *local, struct sk_buff *origskb,
 
 #if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 	mgmt = (void *)skb->data;
-	if (monitor_sdata && ieee80211_is_action(mgmt->frame_control) &&
-	    skb->len >= IEEE80211_MIN_ACTION_SIZE + 1 +
-		VHT_MUMIMO_GROUPS_DATA_LEN &&
+	if (monitor_sdata &&
+	    skb->len >= IEEE80211_MIN_ACTION_SIZE + 1 + VHT_MUMIMO_GROUPS_DATA_LEN &&
+	    ieee80211_is_action(mgmt->frame_control) &&
 	    mgmt->u.action.category == WLAN_CATEGORY_VHT &&
-	    mgmt->u.action.u.vht_group_notif.action_code ==
-		WLAN_VHT_ACTION_GROUPID_MGMT &&
+	    mgmt->u.action.u.vht_group_notif.action_code == WLAN_VHT_ACTION_GROUPID_MGMT &&
 	    is_valid_ether_addr(monitor_sdata->u.mntr.mu_follow_addr) &&
 	    ether_addr_equal(mgmt->da, monitor_sdata->u.mntr.mu_follow_addr)) {
 		struct sk_buff *mu_skb = skb_copy(skb, GFP_ATOMIC);

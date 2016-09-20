@@ -1745,6 +1745,9 @@ struct ieee80211_sta_rates {
  * @supp_rates: Bitmap of supported rates (per band)
  * @ht_cap: HT capabilities of this STA; restricted to our own capabilities
  * @vht_cap: VHT capabilities of this STA; restricted to our own capabilities
+ * @max_rx_aggregation_subframes: maximal amount of frames in a single AMPDU
+ *	that this station is allowed to transmit to us.
+ *	Can be modified by driver.
  * @wme: indicates whether the STA supports QoS/WME (if local devices does,
  *	otherwise always false)
  * @drv_priv: data area for driver use, will always be aligned to
@@ -1785,6 +1788,7 @@ struct ieee80211_sta {
 	u16 aid;
 	struct ieee80211_sta_ht_cap ht_cap;
 	struct ieee80211_sta_vht_cap vht_cap;
+	u8 max_rx_aggregation_subframes;
 	bool wme;
 	u8 uapsd_queues;
 	u8 max_sp;
@@ -2024,6 +2028,11 @@ struct ieee80211_txq {
  * @IEEE80211_HW_TX_FRAG_LIST: Hardware (or driver) supports sending frag_list
  *	skbs, needed for zero-copy software A-MSDU.
  *
+ * @IEEE80211_HW_REPORTS_LOW_ACK: The driver (or firmware) reports low ack event
+ *	by ieee80211_report_low_ack() based on its own algorithm. For such
+ *	drivers, mac80211 packet loss mechanism will not be triggered and driver
+ *	is completely depending on firmware event for station kickout.
+ *
  * @NUM_IEEE80211_HW_FLAGS: number of hardware flags, used for sizing arrays
  */
 enum ieee80211_hw_flags {
@@ -2064,6 +2073,7 @@ enum ieee80211_hw_flags {
 	IEEE80211_HW_USES_RSS,
 	IEEE80211_HW_TX_AMSDU,
 	IEEE80211_HW_TX_FRAG_LIST,
+	IEEE80211_HW_REPORTS_LOW_ACK,
 
 	/* keep last, obviously */
 	NUM_IEEE80211_HW_FLAGS
@@ -3132,11 +3142,8 @@ enum ieee80211_reconfig_type {
  *
  * @sta_add_debugfs: Drivers can use this callback to add debugfs files
  *	when a station is added to mac80211's station list. This callback
- *	and @sta_remove_debugfs should be within a CPTCFG_MAC80211_DEBUGFS
- *	conditional. This callback can sleep.
- *
- * @sta_remove_debugfs: Remove the debugfs files which were added using
- *	@sta_add_debugfs. This callback can sleep.
+ *	should be within a CPTCFG_MAC80211_DEBUGFS conditional. This
+ *	callback can sleep.
  *
  * @sta_notify: Notifies low level driver about power state transition of an
  *	associated station, AP,  IBSS/WDS/mesh peer etc. For a VIF operating
@@ -3553,10 +3560,6 @@ struct ieee80211_ops {
 				struct ieee80211_vif *vif,
 				struct ieee80211_sta *sta,
 				struct dentry *dir);
-	void (*sta_remove_debugfs)(struct ieee80211_hw *hw,
-				   struct ieee80211_vif *vif,
-				   struct ieee80211_sta *sta,
-				   struct dentry *dir);
 #endif
 	void (*sta_notify)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 			enum sta_notify_cmd, struct ieee80211_sta *sta);
