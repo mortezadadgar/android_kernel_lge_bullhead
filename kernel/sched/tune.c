@@ -367,7 +367,7 @@ void schedtune_enqueue_task(struct task_struct *p, int cpu)
 	raw_spin_unlock_irqrestore(&bg->lock, irq_flags);
 }
 
-int schedtune_can_attach(struct cgroup *cgrp,
+static int schedtune_can_attach(struct cgroup *cgrp,
 		struct cgroup_taskset *tset)
 {
 	struct task_struct *task;
@@ -439,8 +439,8 @@ int schedtune_can_attach(struct cgroup *cgrp,
 	return 0;
 }
 
-void schedtune_cancel_attach(struct cgroup *cgrp,
-		struct cgroup_taskset *tset)
+static void schedtune_cancel_attach(struct cgroup *cgrp,
+		    struct cgroup_taskset *tset)
 {
 	/* This can happen only if SchedTune controller is mounted with
 	 * other hierarchies ane one of them fails. Since usually SchedTune is
