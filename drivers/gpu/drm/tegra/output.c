@@ -237,6 +237,23 @@ static bool tegra_encoder_mode_fixup(struct drm_encoder *encoder,
 
 static void tegra_encoder_prepare(struct drm_encoder *encoder)
 {
+	struct tegra_output *output = encoder_to_output(encoder);
+	bool mode_changed = false;
+
+	if (encoder->crtc)
+		mode_changed = !drm_mode_equal(&encoder->crtc->mode,
+						&output->saved_mode);
+	if (mode_changed) {
+		output->saved_mode = encoder->crtc->mode;
+		/*
+		 * For some outputs(like HDMI), userspace may change resolutions
+		 * without disable output first. So we check mode change here.
+		 * In addition, in order to not break the output enable/disable
+		 * & panel enable/disable refcounting balance, we disable
+		 * encoder manually.
+		 */
+		tegra_encoder_disable(encoder);
+	}
 }
 
 static void tegra_encoder_mode_set(struct drm_encoder *encoder,

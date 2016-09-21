@@ -218,6 +218,8 @@ struct tegra_output {
 	bool enabled;
 	bool suspended;
 
+	struct drm_display_mode saved_mode;
+
 	struct drm_encoder encoder;
 	struct drm_connector connector;
 };

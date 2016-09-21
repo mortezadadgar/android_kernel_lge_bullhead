@@ -1065,6 +1065,7 @@ static void tegra_crtc_prepare(struct drm_crtc *crtc)
 	unsigned long value;
 	int ret;
 
+	tegra_crtc_disable(crtc);
 	tegra_dc_unpowergate_with_check(dc);
 
 	/* hardware initialization */
