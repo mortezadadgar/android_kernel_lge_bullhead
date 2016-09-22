@@ -957,7 +957,7 @@ static void hw_breakpoint_reset(void *unused)
 	}
 }
 
-static int __cpuinit hw_breakpoint_reset_notify(struct notifier_block *self,
+static int hw_breakpoint_reset_notify(struct notifier_block *self,
 						unsigned long action,
 						void *hcpu)
 {
@@ -967,7 +967,7 @@ static int __cpuinit hw_breakpoint_reset_notify(struct notifier_block *self,
 	return NOTIFY_OK;
 }
 
-static struct notifier_block __cpuinitdata hw_breakpoint_reset_nb = {
+static struct notifier_block hw_breakpoint_reset_nb = {
 	.notifier_call = hw_breakpoint_reset_notify,
 };
 
