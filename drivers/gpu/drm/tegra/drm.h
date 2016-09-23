@@ -98,6 +98,12 @@ int tegra_drm_exit(struct tegra_drm *tegra);
 struct tegra_dc_soc_info;
 struct tegra_output;
 
+struct dirty_fb {
+	struct list_head list;
+	struct tegra_bo *bo;
+	u32 offset;
+};
+
 struct tegra_dc {
 	struct host1x_client client;
 	struct device *dev;
@@ -115,6 +121,9 @@ struct tegra_dc {
 	struct tegra_output *rgb;
 
 	struct list_head list;
+	struct list_head dirty_fbs;
+	struct mutex dirty_fbs_lock;
+	struct work_struct dirty_fbs_work;
 
 	struct drm_info_list *debugfs_files;
 	struct drm_minor *minor;
