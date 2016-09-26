@@ -1575,6 +1575,41 @@ iwl_dbgfs_uapsd_noagg_bssids_read(struct file *file, char __user *user_buf,
 }
 #endif
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+static ssize_t iwl_dbgfs_tx_power_status_read(struct file *file,
+					      char __user *user_buf,
+					      size_t count, loff_t *ppos)
+{
+	struct iwl_mvm *mvm = file->private_data;
+	char buf[64];
+	int bufsz = sizeof(buf);
+	int pos = 0;
+	u32 mode = le32_to_cpu(mvm->txp_cmd.v3.set_mode);
+	bool txp_cmd_valid = mode == IWL_TX_POWER_MODE_SET_DEVICE;
+	u16 val_24 = le16_to_cpu(mvm->txp_cmd.v3.dev_24);
+	u16 val_52l = le16_to_cpu(mvm->txp_cmd.v3.dev_52_low);
+	u16 val_52h = le16_to_cpu(mvm->txp_cmd.v3.dev_52_high);
+	char buf_24[15] = "(not limited)";
+	char buf_52l[15] = "(not limited)";
+	char buf_52h[15] = "(not limited)";
+
+	if (txp_cmd_valid && val_24 < IWL_DEV_MAX_TX_POWER)
+		sprintf(buf_24, "%d.%03d dBm", val_24 >> 3, (val_24 & 7) * 125);
+	if (txp_cmd_valid && val_52l < IWL_DEV_MAX_TX_POWER)
+		sprintf(buf_52l, "%d.%03d dBm",
+			val_52l >> 3, (val_52l & 7) * 125);
+	if (txp_cmd_valid && val_52h < IWL_DEV_MAX_TX_POWER)
+		sprintf(buf_52h, "%d.%03d dBm",
+			val_52h >> 3, (val_52h & 7) * 125);
+
+	pos += scnprintf(buf + pos, bufsz - pos, "2.4 = %s\n", buf_24);
+	pos += scnprintf(buf + pos, bufsz - pos, "5.2L = %s\n", buf_52l);
+	pos += scnprintf(buf + pos, bufsz - pos, "5.2H = %s\n", buf_52h);
+
+	return simple_read_from_buffer(user_buf, count, ppos, buf, pos);
+}
+#endif
+
 MVM_DEBUGFS_READ_WRITE_FILE_OPS(prph_reg, 64);
 
 /* Device wide debugfs entries */
@@ -1608,6 +1643,9 @@ MVM_DEBUGFS_WRITE_FILE_OPS(max_amsdu_len, 8);
 MVM_DEBUGFS_WRITE_FILE_OPS(indirection_tbl,
 			   (IWL_RSS_INDIRECTION_TABLE_SIZE * 2));
 MVM_DEBUGFS_WRITE_FILE_OPS(inject_packet, 512);
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+MVM_DEBUGFS_READ_FILE_OPS(tx_power_status);
+#endif
 
 #ifdef CPTCFG_IWLMVM_TCM
 MVM_DEBUGFS_READ_FILE_OPS(uapsd_noagg_bssids);
@@ -1793,6 +1831,10 @@ int iwl_mvm_dbgfs_register(struct iwl_mvm *mvm, struct dentry *dbgfs_dir)
 	MVM_DEBUGFS_ADD_FILE(cont_recording, mvm->debugfs_dir, S_IWUSR);
 	MVM_DEBUGFS_ADD_FILE(indirection_tbl, mvm->debugfs_dir, S_IWUSR);
 	MVM_DEBUGFS_ADD_FILE(inject_packet, mvm->debugfs_dir, S_IWUSR);
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	MVM_DEBUGFS_ADD_FILE(tx_power_status, mvm->debugfs_dir, S_IRUSR);
+#endif
+
 	if (!debugfs_create_bool("enable_scan_iteration_notif",
 				 S_IRUSR | S_IWUSR,
 				 mvm->debugfs_dir,
