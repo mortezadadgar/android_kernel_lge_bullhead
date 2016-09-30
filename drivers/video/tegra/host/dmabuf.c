@@ -100,9 +100,8 @@ struct sg_table *nvhost_dmabuf_pin(struct mem_handle *handle,
 	if (IS_ERR(drvdata))
 		return (void *)drvdata;
 
-	/* We shouldn't have an existing drvdata */
 	if (drvdata)
-		return ERR_PTR(-EINVAL);
+		goto done;
 
 	/* Allocate drvdata struct */
 	drvdata = kzalloc(sizeof(*drvdata), GFP_KERNEL);
@@ -118,6 +117,7 @@ struct sg_table *nvhost_dmabuf_pin(struct mem_handle *handle,
 	/* Use attachment's priv to store device information */
 	attach->priv = dev;
 
+done:
 	return dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
 }
 
