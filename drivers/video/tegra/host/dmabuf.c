@@ -61,8 +61,8 @@ void nvhost_dmabuf_put(struct mem_handle *handle)
 	struct dma_buf_attachment *attach = to_dmabuf_att(handle);
 	struct dma_buf *dmabuf = attach->dmabuf;
 
-	nvmap_foreign_dmabuf_put(dmabuf);
-	dma_buf_detach(dmabuf, attach);
+	if (nvmap_foreign_dmabuf_put(dmabuf))
+		dma_buf_detach(dmabuf, attach);
 	dma_buf_put(dmabuf);
 #endif
 }

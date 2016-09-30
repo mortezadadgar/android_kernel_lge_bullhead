@@ -448,8 +448,11 @@ int nvmap_ioctl_create(struct file *filp, unsigned int cmd, void __user *arg)
 		err = -EFAULT;
 #ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
 		if (nvmap_dmabuf_is_foreign_dmabuf(ref->handle->dmabuf) &&
-				(int)op.handle > 0)
-			nvmap_foreign_dmabuf_put(ref->handle->dmabuf);
+				(int)op.handle > 0) {
+			if (nvmap_foreign_dmabuf_put(ref->handle->dmabuf))
+				dma_buf_detach(ref->handle->dmabuf,
+						ref->handle->attachment);
+		}
 #endif
 		nvmap_free_handle_id(client, __nvmap_ref_to_id(ref));
 	}

@@ -204,7 +204,7 @@ struct nvmap_handle *nvmap_foreign_dmabuf_find_by_fd(int fd);
 struct dma_buf_attachment *nvmap_foreign_dmabuf_get_att(
 		struct dma_buf *dmabuf);
 int nvmap_foreign_dmabuf_get(struct dma_buf *dmabuf);
-void nvmap_foreign_dmabuf_put(struct dma_buf *dmabuf);
+int nvmap_foreign_dmabuf_put(struct dma_buf *dmabuf);
 #endif
 
 #endif	/* __KERNEL__ */

@@ -937,8 +937,10 @@ void nvmap_free_handle_user_id(struct nvmap_client *client,
 #ifdef CONFIG_NVMAP_USE_FD_FOR_HANDLE
 		struct nvmap_handle *h = (struct nvmap_handle *)id;
 
-		if (nvmap_dmabuf_is_foreign_dmabuf(h->dmabuf))
-			nvmap_foreign_dmabuf_put(h->dmabuf);
+		if (nvmap_dmabuf_is_foreign_dmabuf(h->dmabuf)) {
+			if (nvmap_foreign_dmabuf_put(h->dmabuf))
+				dma_buf_detach(h->dmabuf, h->attachment);
+		}
 #endif
 
 		nvmap_free_handle_id(client, id);

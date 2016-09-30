@@ -193,22 +193,25 @@ static void nvmap_foreign_dmabuf_del_kref(struct kref *ref)
 	_nvmap_foreign_dmabuf_del_locked(df);
 }
 
-void nvmap_foreign_dmabuf_put(struct dma_buf *dmabuf)
+int nvmap_foreign_dmabuf_put(struct dma_buf *dmabuf)
 {
 	struct dmabuf_fd *df = NULL;
 	bool found = false;
+	int ret = 0;
 
 	mutex_lock(&dmabuf_fd_mutex);
 	list_for_each_entry(df, &dmabuf_fd_list, node) {
 		if (df->dmabuf == dmabuf) {
 			found = true;
-			kref_put(&df->ref, nvmap_foreign_dmabuf_del_kref);
+			ret = kref_put(&df->ref, nvmap_foreign_dmabuf_del_kref);
 			break;
 		}
 	}
 	mutex_unlock(&dmabuf_fd_mutex);
 
 	WARN(!found, "failed to find foreign dmabuf %p\n", dmabuf);
+
+	return ret;
 }
 #endif
 
