@@ -1810,6 +1810,9 @@ static struct branch_clk mdss_mdp_clk = {
 	},
 };
 
+static DEFINE_CLK_VOTER(mdss_mdp_vote_clk, &mdss_mdp_clk.c, 0);
+static DEFINE_CLK_VOTER(mdss_rotator_vote_clk, &mdss_mdp_clk.c, 0);
+
 static struct branch_clk mdss_pclk0_clk = {
 	.cbcr_reg = MDSS_PCLK0_CBCR,
 	.has_sibling = 0,
@@ -2265,6 +2268,8 @@ static struct clk_lookup msm_clocks_mmss_8992[] = {
 	CLK_LIST(venus0_core0_vcodec_clk),
 	CLK_LIST(venus0_core1_vcodec_clk),
 	CLK_LIST(mmss_debug_mux),
+	CLK_LIST(mdss_mdp_vote_clk),
+	CLK_LIST(mdss_rotator_vote_clk),
 };
 
 int msm_mmsscc_8992_probe(struct platform_device *pdev)

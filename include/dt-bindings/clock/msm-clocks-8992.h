@@ -355,6 +355,8 @@
 #define clk_mdss_hdmi_ahb_clk 0x01cef516
 #define clk_mdss_hdmi_clk 0x097a6de9
 #define clk_mdss_mdp_clk 0x618336ac
+#define clk_mdss_mdp_vote_clk 0x588460a4
+#define clk_mdss_rotator_vote_clk 0x5b1f675e
 #define clk_mdss_pclk0_clk 0x3487234a
 #define clk_mdss_pclk1_clk 0xd5804246
 #define clk_mdss_vsync_clk 0x42a022d3
