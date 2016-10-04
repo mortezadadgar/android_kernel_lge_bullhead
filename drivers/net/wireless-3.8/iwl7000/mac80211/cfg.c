@@ -160,7 +160,7 @@ static void ieee80211_stop_p2p_device(struct wiphy *wiphy,
 	ieee80211_sdata_stop(IEEE80211_WDEV_TO_SUB_IF(wdev));
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 static int ieee80211_start_nan(struct wiphy *wiphy,
 			       struct wireless_dev *wdev,
 			       struct cfg80211_nan_conf *conf)
@@ -188,7 +188,7 @@ static int ieee80211_start_nan(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 static void ieee80211_stop_nan(struct wiphy *wiphy,
 			       struct wireless_dev *wdev)
 {
@@ -199,7 +199,7 @@ static void ieee80211_stop_nan(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 static int ieee80211_nan_change_conf(struct wiphy *wiphy,
 				     struct wireless_dev *wdev,
 				     struct cfg80211_nan_conf *conf,
@@ -231,7 +231,7 @@ static int ieee80211_nan_change_conf(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 static int ieee80211_add_nan_func(struct wiphy *wiphy,
 				  struct wireless_dev *wdev,
 				  struct cfg80211_nan_func *nan_func)
@@ -271,7 +271,7 @@ static int ieee80211_add_nan_func(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 static struct cfg80211_nan_func *
 ieee80211_find_nan_func_by_cookie(struct ieee80211_sub_if_data *sdata,
 				  u64 cookie)
@@ -290,7 +290,7 @@ ieee80211_find_nan_func_by_cookie(struct ieee80211_sub_if_data *sdata,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 static void ieee80211_rm_nan_func(struct wiphy *wiphy,
 				  struct wireless_dev *wdev, u64 cookie)
 {
@@ -420,7 +420,7 @@ static int ieee80211_add_key(struct wiphy *wiphy, struct net_device *dev,
 	case NL80211_IFTYPE_WDS:
 	case NL80211_IFTYPE_MONITOR:
 	case NL80211_IFTYPE_P2P_DEVICE:
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 	case NL80211_IFTYPE_NAN:
 		/* keep code in case of fall-through (spatch generated) */
 #endif
@@ -2249,7 +2249,7 @@ static int ieee80211_scan(struct wiphy *wiphy,
 		     !(req->flags & NL80211_SCAN_FLAG_AP)))
 			return -EOPNOTSUPP;
 		break;
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 	case NL80211_IFTYPE_NAN:
 		/* keep code in case of fall-through (spatch generated) */
 #endif
@@ -3617,7 +3617,7 @@ static int ieee80211_del_tx_ts(struct wiphy *wiphy, struct net_device *dev,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,10,0)
 static u64 ieee80211_msrment_cookie(struct ieee80211_local *local,
 				    enum nl80211_msrment_type type)
 {
@@ -3631,7 +3631,7 @@ static u64 ieee80211_msrment_cookie(struct ieee80211_local *local,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,10,0)
 static int ieee80211_perform_msrment(struct wiphy *wiphy,
 				     struct wireless_dev *wdev,
 				     struct cfg80211_msrment_request *request,
@@ -3656,7 +3656,7 @@ static int ieee80211_perform_msrment(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,10,0)
 static int ieee80211_abort_msrment(struct wiphy *wiphy,
 				   struct wireless_dev *wdev, u64 cookie)
 {
@@ -3677,7 +3677,7 @@ static int ieee80211_abort_msrment(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,10,0)
 static int ieee80211_start_ftm_responder(struct wiphy *wiphy,
 					 struct net_device *dev,
 			       struct cfg80211_ftm_responder_params *params)
@@ -3689,7 +3689,7 @@ static int ieee80211_start_ftm_responder(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,10,0)
 static int ieee80211_get_ftm_responder_stats(struct wiphy *wiphy,
 					    struct net_device *dev,
 			       struct cfg80211_ftm_responder_stats *ftm_stats)
@@ -3701,13 +3701,13 @@ static int ieee80211_get_ftm_responder_stats(struct wiphy *wiphy,
 }
 #endif
 
-#if CFG80211_VERSION < KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION < KERNEL_VERSION(4,9,0)
 void ieee80211_nan_func_terminated(struct ieee80211_vif *vif, u8 inst_id,
 				   enum nl80211_nan_func_term_reason reason,
 				   gfp_t gfp){
 }
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 void ieee80211_nan_func_terminated(struct ieee80211_vif *vif,
 				   u8 inst_id,
 				   enum nl80211_nan_func_term_reason reason,
@@ -3744,13 +3744,13 @@ void ieee80211_nan_func_terminated(struct ieee80211_vif *vif,
 #endif
 EXPORT_SYMBOL(ieee80211_nan_func_terminated);
 
-#if CFG80211_VERSION < KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION < KERNEL_VERSION(4,9,0)
 void ieee80211_nan_func_match(struct ieee80211_vif *vif,
 		              struct cfg80211_nan_match_params *match,
 		              gfp_t gfp){
 }
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 void ieee80211_nan_func_match(struct ieee80211_vif *vif,
 			      struct cfg80211_nan_match_params *match,
 			      gfp_t gfp)
@@ -3819,16 +3819,16 @@ const struct cfg80211_ops mac80211_config_ops = {
 	.get_station = ieee80211_get_station,
 	.dump_station = ieee80211_dump_station,
 	.dump_survey = ieee80211_dump_survey,
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,10,0)
 	.perform_msrment = ieee80211_perform_msrment,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,10,0)
 	.abort_msrment = ieee80211_abort_msrment,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,10,0)
 	.start_ftm_responder = ieee80211_start_ftm_responder,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,10,0)
 	.get_ftm_responder_stats = ieee80211_get_ftm_responder_stats,
 #endif
 #ifdef CPTCFG_MAC80211_MESH
@@ -3922,19 +3922,19 @@ const struct cfg80211_ops mac80211_config_ops = {
 #if CFG80211_VERSION >= KERNEL_VERSION(3,18,0)
 	.del_tx_ts = ieee80211_del_tx_ts,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 	.start_nan = ieee80211_start_nan,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 	.stop_nan = ieee80211_stop_nan,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 	.nan_change_conf = ieee80211_nan_change_conf,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 	.add_nan_func = ieee80211_add_nan_func,
 #endif
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 	.rm_nan_func = ieee80211_rm_nan_func,
 #endif
 };

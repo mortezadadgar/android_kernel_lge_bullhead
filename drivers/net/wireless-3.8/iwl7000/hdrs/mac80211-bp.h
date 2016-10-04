@@ -1243,7 +1243,7 @@ cfg80211_inform_bss_frame_data(struct wiphy *wiphy,
 }
 #endif /* CFG80211_VERSION < KERNEL_VERSION(4,4,0) */
 
-#if CFG80211_VERSION < KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION < KERNEL_VERSION(4,10,0)
 struct cfg80211_ftm_target {
 	u64 cookie;
 	struct cfg80211_chan_def chan_def;

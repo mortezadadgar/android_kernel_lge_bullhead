@@ -246,7 +246,7 @@ iwl_mvm_scan_type iwl_mvm_get_scan_type(struct iwl_mvm *mvm, bool p2p_device)
 	return IWL_SCAN_TYPE_WILD;
 }
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 static int
 iwl_mvm_get_measurement_dwell(struct iwl_mvm *mvm,
 			      struct cfg80211_scan_request *req,
@@ -1321,7 +1321,7 @@ int iwl_mvm_reg_scan_start(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		iwl_mvm_get_scan_type(mvm,
 				      vif->type == NL80211_IFTYPE_P2P_DEVICE);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,8,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 	ret = iwl_mvm_get_measurement_dwell(mvm, req, &params);
 	if (ret < 0)
 		return ret;
