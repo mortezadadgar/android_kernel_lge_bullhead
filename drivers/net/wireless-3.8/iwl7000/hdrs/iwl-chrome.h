@@ -434,6 +434,11 @@ static inline int nla_put_u64_64bit(struct sk_buff *skb, int attrtype,
 }
 void dev_coredumpsg(struct device *dev, struct scatterlist *table,
 		    size_t datalen, gfp_t gfp);
+
+static inline void page_ref_inc(struct page *page)
+{
+	atomic_inc(&page->_count);
+}
 #endif /* < 4.7 */
 
 #endif /* __IWL_CHROME */

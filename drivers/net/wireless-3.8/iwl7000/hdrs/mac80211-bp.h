@@ -1651,15 +1651,12 @@ const u8 *bp_cfg80211_find_ie_match(u8 eid, const u8 *ies, int len,
 
 int ieee80211_data_to_8023_exthdr(struct sk_buff *skb, struct ethhdr *ehdr,
 				  const u8 *addr, enum nl80211_iftype iftype);
-static inline void
-iwl7000_ieee80211_amsdu_to_8023s(struct sk_buff *skb, struct sk_buff_head *list,
-				 const u8 *addr, enum nl80211_iftype iftype,
-				 const unsigned int extra_headroom)
-{
-	ieee80211_amsdu_to_8023s(skb, list, addr, iftype,
-				 extra_headroom, false);
-}
+/* manually renamed to avoid symbol issues with cfg80211 */
 #define ieee80211_amsdu_to_8023s iwl7000_ieee80211_amsdu_to_8023s
+void ieee80211_amsdu_to_8023s(struct sk_buff *skb, struct sk_buff_head *list,
+			      const u8 *addr, enum nl80211_iftype iftype,
+			      const unsigned int extra_headroom,
+			      const u8 *check_da, const u8 *check_sa);
 #endif /* CFG80211_VERSION < KERNEL_VERSION(4,9,0) */
 
 #ifndef IEEE80211_RADIOTAP_TIMESTAMP_UNIT_MASK
