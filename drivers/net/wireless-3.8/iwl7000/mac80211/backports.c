@@ -18,6 +18,94 @@
 #include <asm/unaligned.h>
 #include <linux/device.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,9,0)
+int ieee80211_data_to_8023_exthdr(struct sk_buff *skb, struct ethhdr *ehdr,
+				  const u8 *addr, enum nl80211_iftype iftype)
+{
+	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *) skb->data;
+	struct {
+		u8 hdr[ETH_ALEN] __aligned(2);
+		__be16 proto;
+	} payload;
+	struct ethhdr tmp;
+	u16 hdrlen;
+	u8 mesh_flags = 0;
+
+	if (unlikely(!ieee80211_is_data_present(hdr->frame_control)))
+		return -1;
+
+	hdrlen = ieee80211_hdrlen(hdr->frame_control);
+	if (skb->len < hdrlen + 8)
+		return -1;
+
+	/* convert IEEE 802.11 header + possible LLC headers into Ethernet
+	 * header
+	 * IEEE 802.11 address fields:
+	 * ToDS FromDS Addr1 Addr2 Addr3 Addr4
+	 *   0     0   DA    SA    BSSID n/a
+	 *   0     1   DA    BSSID SA    n/a
+	 *   1     0   BSSID SA    DA    n/a
+	 *   1     1   RA    TA    DA    SA
+	 */
+	memcpy(tmp.h_dest, ieee80211_get_DA(hdr), ETH_ALEN);
+	memcpy(tmp.h_source, ieee80211_get_SA(hdr), ETH_ALEN);
+
+	if (iftype == NL80211_IFTYPE_MESH_POINT)
+		skb_copy_bits(skb, hdrlen, &mesh_flags, 1);
+
+	switch (hdr->frame_control &
+		cpu_to_le16(IEEE80211_FCTL_TODS | IEEE80211_FCTL_FROMDS)) {
+	case cpu_to_le16(IEEE80211_FCTL_TODS):
+		if (unlikely(iftype != NL80211_IFTYPE_AP &&
+			     iftype != NL80211_IFTYPE_AP_VLAN &&
+			     iftype != NL80211_IFTYPE_P2P_GO))
+			return -1;
+		break;
+	case cpu_to_le16(IEEE80211_FCTL_TODS | IEEE80211_FCTL_FROMDS):
+		if (unlikely(iftype != NL80211_IFTYPE_WDS &&
+			     iftype != NL80211_IFTYPE_AP_VLAN &&
+			     iftype != NL80211_IFTYPE_STATION))
+			return -1;
+		break;
+	case cpu_to_le16(IEEE80211_FCTL_FROMDS):
+		if ((iftype != NL80211_IFTYPE_STATION &&
+		     iftype != NL80211_IFTYPE_P2P_CLIENT) ||
+		    (is_multicast_ether_addr(tmp.h_dest) &&
+		     ether_addr_equal(tmp.h_source, addr)))
+			return -1;
+		break;
+	case cpu_to_le16(0):
+		if (iftype != NL80211_IFTYPE_ADHOC &&
+		    iftype != NL80211_IFTYPE_STATION &&
+		    !ieee80211_viftype_ocb(iftype))
+			return -1;
+		break;
+	}
+
+	skb_copy_bits(skb, hdrlen, &payload, sizeof(payload));
+	tmp.h_proto = payload.proto;
+
+	if (likely((ether_addr_equal(payload.hdr, rfc1042_header) &&
+		    tmp.h_proto != htons(ETH_P_AARP) &&
+		    tmp.h_proto != htons(ETH_P_IPX)) ||
+		   ether_addr_equal(payload.hdr, bridge_tunnel_header)))
+		/* remove RFC1042 or Bridge-Tunnel encapsulation and
+		 * replace EtherType */
+		hdrlen += ETH_ALEN + 2;
+	else
+		tmp.h_proto = htons(skb->len - hdrlen);
+
+	pskb_pull(skb, hdrlen);
+
+	if (!ehdr)
+		ehdr = (struct ethhdr *) skb_push(skb, sizeof(struct ethhdr));
+	memcpy(ehdr, &tmp, sizeof(tmp));
+
+	return 0;
+}
+EXPORT_SYMBOL(ieee80211_data_to_8023_exthdr);
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,7,0)
 #include <linux/devcoredump.h>
 
