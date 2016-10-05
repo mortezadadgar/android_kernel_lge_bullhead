@@ -89,7 +89,7 @@ static inline int is_x32_frame(void)
 
 static __always_inline __pure bool use_eager_fpu(void)
 {
-	return static_cpu_has(X86_FEATURE_EAGER_FPU);
+	return true;
 }
 
 static __always_inline __pure bool use_xsaveopt(void)
@@ -345,8 +345,6 @@ static inline void __thread_fpu_end(struct task_struct *tsk)
 
 static inline void __thread_fpu_begin(struct task_struct *tsk)
 {
-	if (!use_eager_fpu())
-		clts();
 	__thread_set_has_fpu(tsk);
 }
 
