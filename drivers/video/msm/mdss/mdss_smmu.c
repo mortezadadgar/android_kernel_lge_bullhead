@@ -160,6 +160,7 @@ static int mdss_smmu_attach_v1(struct mdss_data_type *mdata)
 	struct mdss_iommu_map_type *iomap;
 	int i, rc = 0;
 
+	mutex_lock(&mdp_iommu_lock);
 	for (i = 0; i < MDSS_IOMMU_MAX_DOMAIN; i++) {
 
 		if (!mdss_smmu_is_valid_domain_type(mdata, i))
@@ -187,6 +188,7 @@ static int mdss_smmu_attach_v1(struct mdss_data_type *mdata)
 		}
 	}
 end:
+	mutex_unlock(&mdp_iommu_lock);
 	return rc;
 }
 
@@ -306,6 +308,7 @@ static int mdss_smmu_detach_v1(struct mdss_data_type *mdata)
 	struct mdss_iommu_map_type *iomap;
 	int i;
 
+	mutex_lock(&mdp_iommu_lock);
 	for (i = 0; i < MDSS_IOMMU_MAX_DOMAIN; i++) {
 		if (!mdss_smmu_is_valid_domain_type(mdata, i))
 			continue;
@@ -320,6 +323,7 @@ static int mdss_smmu_detach_v1(struct mdss_data_type *mdata)
 		}
 		iommu_detach_device(domain, iomap->ctx);
 	}
+	mutex_unlock(&mdp_iommu_lock);
 	return 0;
 }
 
