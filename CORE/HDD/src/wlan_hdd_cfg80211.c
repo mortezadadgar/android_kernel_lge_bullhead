@@ -2858,7 +2858,7 @@ __wlan_hdd_cfg80211_extscan_set_ssid_hotlist(struct wiphy *wiphy,
 	struct hdd_ext_scan_context *context;
 	uint32_t request_id;
 	char ssid_string[SIR_MAC_MAX_SSID_LENGTH + 1];
-	int ssid_len;
+	int ssid_len, ssid_length;
 	eHalStatus status;
 	int i, rem, retval;
 	unsigned long rc;
@@ -2937,12 +2937,16 @@ __wlan_hdd_cfg80211_extscan_set_ssid_hotlist(struct wiphy *wiphy,
 			hddLog(LOGE, FL("attr ssid failed"));
 			goto fail;
 		}
-		nla_memcpy(ssid_string,
+		ssid_length = nla_strlcpy(ssid_string,
 			   tb2[PARAM_SSID],
 			   sizeof(ssid_string));
 		hddLog(LOG1, FL("SSID %s"),
 		       ssid_string);
 		ssid_len = strlen(ssid_string);
+		if (ssid_length > SIR_MAC_MAX_SSID_LENGTH) {
+			hddLog(LOGE, FL("Invalid ssid length"));
+			goto fail;
+		}
 		memcpy(request->ssids[i].ssid.ssId, ssid_string, ssid_len);
 		request->ssids[i].ssid.length = ssid_len;
 
@@ -10442,7 +10446,7 @@ __wlan_hdd_cfg80211_bpf_offload(struct wiphy *wiphy,
 	}
 
 	if (!hdd_ctx->bpf_enabled) {
-		hddLog(LOGE, FL("BPF offload is not supported by firmware"));
+		hddLog(LOGE, FL("BPF offload is not supported/enabled"));
 		return -ENOTSUPP;
 	}
 
@@ -14655,6 +14659,12 @@ static int __wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
                      TRACE_CODE_HDD_CFG80211_STOP_AP,
                      pAdapter->sessionId, pAdapter->device_mode));
 
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    status = wlan_hdd_validate_context(pHddCtx);
+    if (0 != status)
+    {
+        return status;
+    }
 
     if (VOS_FTM_MODE == hdd_get_conparam()) {
         hddLog(LOGE, FL("Command not allowed in FTM mode"));
@@ -14669,8 +14679,6 @@ static int __wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
     hddLog(LOG1, FL("Device_mode %s(%d)"),
            hdd_device_mode_to_string(pAdapter->device_mode),
            pAdapter->device_mode);
-
-    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
     status = hdd_get_front_adapter (pHddCtx, &pAdapterNode);
     while (NULL != pAdapterNode && VOS_STATUS_SUCCESS == status) {
@@ -15982,7 +15990,8 @@ static int __wlan_hdd_change_station(struct wiphy *wiphy,
             }
 
             if (pHddCtx->cfg_ini->fEnableTDLSWmmMode &&
-                (params->sta_flags_set & BIT(NL80211_STA_FLAG_WME)))
+                (params->ht_capa || params->vht_capa ||
+                (params->sta_flags_set & BIT(NL80211_STA_FLAG_WME))))
                 is_qos_wmm_sta = true;
 
             hddLog(VOS_TRACE_LEVEL_INFO,
