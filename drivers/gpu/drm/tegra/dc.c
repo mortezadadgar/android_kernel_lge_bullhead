@@ -501,6 +501,7 @@ static void tegra_dc_cleanup_dirty_fbs(struct work_struct *work)
 						dirty_fbs_work);
 	struct dirty_fb *loop_fb;
 	struct dirty_fb *temp_fb;
+	struct dirty_fb *fb_to_release = NULL;
 	unsigned long winbuf_addr;
 
 	mutex_lock(&dc->dirty_fbs_lock);
@@ -520,12 +521,17 @@ static void tegra_dc_cleanup_dirty_fbs(struct work_struct *work)
 
 	list_for_each_entry_safe(loop_fb, temp_fb, &dc->dirty_fbs, list) {
 		if ((loop_fb->bo->paddr + loop_fb->offset) != winbuf_addr) {
-			drm_gem_object_unreference_unlocked(&loop_fb->bo->gem);
 			list_del(&loop_fb->list);
-			kfree(loop_fb);
+			fb_to_release = loop_fb;
+			break;
 		}
 	}
 	mutex_unlock(&dc->dirty_fbs_lock);
+
+	if (fb_to_release) {
+		drm_gem_object_unreference_unlocked(&fb_to_release->bo->gem);
+		kfree(fb_to_release);
+	}
 }
 
 static int tegra_dc_set_base(struct tegra_dc *dc, int x, int y,
