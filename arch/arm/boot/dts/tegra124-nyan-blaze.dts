@@ -97,7 +97,7 @@
 			wakeup-source;
 		};
 		touchscreen {
-			compatible = "elan,i2c_touchscreen";
+			compatible = "elan,ekth3500";
 			reg = <0x10>;
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(K, 2) IRQ_TYPE_EDGE_FALLING>;
