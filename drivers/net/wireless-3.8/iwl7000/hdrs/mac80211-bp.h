@@ -1651,6 +1651,8 @@ const u8 *bp_cfg80211_find_ie_match(u8 eid, const u8 *ies, int len,
 }
 
 #define cfg80211_find_ie_match bp_cfg80211_find_ie_match
+
+#define NL80211_EXT_FEATURE_MU_MIMO_AIR_SNIFFER -1
 #endif /* CFG80211_VERSION < KERNEL_VERSION(4,9,0) */
 
 #ifndef IEEE80211_RADIOTAP_TIMESTAMP_UNIT_MASK

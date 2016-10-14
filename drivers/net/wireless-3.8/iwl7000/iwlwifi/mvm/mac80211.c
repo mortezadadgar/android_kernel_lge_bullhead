@@ -824,11 +824,9 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 	if (ret)
 		iwl_mvm_leds_exit(mvm);
 
-#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 	if (mvm->cfg->vht_mu_mimo_supported)
 		wiphy_ext_feature_set(hw->wiphy,
 				      NL80211_EXT_FEATURE_MU_MIMO_AIR_SNIFFER);
-#endif
 
 	return ret;
 }
