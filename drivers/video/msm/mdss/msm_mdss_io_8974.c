@@ -458,6 +458,10 @@ static void mdss_dsi_phy_sw_reset_sub(struct mdss_dsi_ctrl_pdata *ctrl)
 	sdata = ctrl->shared_data;
 	octrl = mdss_dsi_get_other_ctrl(ctrl);
 
+#ifdef CONFIG_ARCH_MSM8992
+	ctrl->shared_data->phy_rev = DSI_PHY_REV_10;
+#endif
+
 	if (ctrl->shared_data->phy_rev == DSI_PHY_REV_20) {
 		if (mdss_dsi_is_ctrl_clk_master(ctrl))
 			sctrl = mdss_dsi_get_ctrl_clk_slave();
@@ -558,9 +562,10 @@ static void mdss_dsi_phy_regulator_disable(struct mdss_dsi_ctrl_pdata *ctrl)
 		return;
 	}
 
+#ifndef CONFIG_ARCH_MSM8992
 	if (ctrl->shared_data->phy_rev == DSI_PHY_REV_20)
 		return;
-
+#endif
 	MIPI_OUTP(ctrl->phy_regulator_io.base + 0x018, 0x000);
 }
 
@@ -570,6 +575,10 @@ static void mdss_dsi_phy_shutdown(struct mdss_dsi_ctrl_pdata *ctrl)
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
 	}
+
+#ifdef CONFIG_ARCH_MSM8992
+	ctrl->shared_data->phy_rev = DSI_PHY_REV_10;
+#endif
 
 	if (ctrl->shared_data->phy_rev == DSI_PHY_REV_20) {
 		MIPI_OUTP(ctrl->phy_io.base + DSIPHY_PLL_CLKBUFLR_EN, 0);
@@ -595,10 +604,10 @@ void mdss_dsi_lp_cd_rx(struct mdss_dsi_ctrl_pdata *ctrl)
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
 	}
-
+#ifndef CONFIG_ARCH_MSM8992
 	if (ctrl->shared_data->phy_rev == DSI_PHY_REV_20)
 		return;
-
+#endif
 	pd = &(((ctrl->panel_data).panel_info.mipi).dsi_phy_db);
 
 	/* Strength ctrl 1, LP Rx + CD Rxcontention detection */
@@ -1143,6 +1152,9 @@ static void mdss_dsi_phy_regulator_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	sdata = ctrl->shared_data;
 	other_ctrl = mdss_dsi_get_other_ctrl(ctrl);
+#ifdef CONFIG_ARCH_MSM8992
+	ctrl->shared_data->phy_rev = DSI_PHY_REV_10;
+#endif
 
 	mutex_lock(&sdata->phy_reg_lock);
 	if (enable) {
@@ -1192,6 +1204,10 @@ static void mdss_dsi_phy_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, bool enable)
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
 	}
+
+#ifdef CONFIG_ARCH_MSM8992
+	ctrl->shared_data->phy_rev = DSI_PHY_REV_10;
+#endif
 
 	if (enable) {
 
