@@ -1430,14 +1430,9 @@ static inline bool ieee80211_viftype_nan(unsigned int iftype)
 #define ieee80211_has_nan_iftype(x)	0
 
 enum nl80211_nan_dual_band_conf {
-	NL80211_NAN_BAND_DEFAULT,
-	NL80211_NAN_BAND_SINGLE,
-	NL80211_NAN_BAND_DUAL,
-
-	/* keep last */
-	__NL80211_NAN_BAND_AFTER_LAST,
-	NL80211_NAN_BAND_MAX =
-	__NL80211_NAN_BAND_AFTER_LAST - 1,
+	NL80211_NAN_BAND_DEFAULT	= 1 << 0,
+	NL80211_NAN_BAND_2GHZ		= 1 << 1,
+	NL80211_NAN_BAND_5GHZ		= 1 << 2,
 };
 
 struct cfg80211_nan_conf {

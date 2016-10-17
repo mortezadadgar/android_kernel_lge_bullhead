@@ -4668,5 +4668,5 @@ const struct ieee80211_ops iwl_mvm_hw_ops = {
 	.start_nan = iwl_mvm_start_nan,
 	.stop_nan = iwl_mvm_stop_nan,
 	.add_nan_func = iwl_mvm_add_nan_func,
-	.rm_nan_func = iwl_mvm_rm_nan_func,
+	.del_nan_func = iwl_mvm_del_nan_func,
 };

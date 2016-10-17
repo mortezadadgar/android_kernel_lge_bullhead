@@ -1782,7 +1782,6 @@ static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
 	spin_unlock_bh(&sdata->u.nan.func_lock);
 
 	for (i = 0; funcs[i]; i++) {
-		/* TODO: need to adjust TTL of the function */
 		res = drv_add_nan_func(sdata->local, sdata, funcs[i]);
 		if (WARN_ON(res))
 			ieee80211_nan_func_terminated(&sdata->vif,
@@ -3479,12 +3478,19 @@ void ieee80211_txq_get_depth(struct ieee80211_txq *txq,
 			     unsigned long *byte_cnt)
 {
 	struct txq_info *txqi = to_txq_info(txq);
+	u32 frag_cnt = 0, frag_bytes = 0;
+	struct sk_buff *skb;
+
+	skb_queue_walk(&txqi->frags, skb) {
+		frag_cnt++;
+		frag_bytes += skb->len;
+	}
 
 	if (frame_cnt)
-		*frame_cnt = txqi->tin.backlog_packets;
+		*frame_cnt = txqi->tin.backlog_packets + frag_cnt;
 
 	if (byte_cnt)
-		*byte_cnt = txqi->tin.backlog_bytes;
+		*byte_cnt = txqi->tin.backlog_bytes + frag_bytes;
 }
 EXPORT_SYMBOL(ieee80211_txq_get_depth);
 

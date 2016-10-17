@@ -99,8 +99,10 @@ int iwl_mvm_start_nan(struct ieee80211_hw *hw,
 
 	IWL_DEBUG_MAC80211(IWL_MAC80211_GET_MVM(hw), "Start NAN\n");
 
-	if (!iwl_mvm_can_beacon(vif, NL80211_BAND_2GHZ, NAN_CHANNEL_24))
-		return -EINVAL;
+	/* apparently the FW doesn't support 5GHz without 2GHz */
+	if ((conf->dual & NL80211_NAN_BAND_5GHZ) &&
+	    !(conf->dual & NL80211_NAN_BAND_2GHZ))
+	    return -EOPNOTSUPP;
 
 	mutex_lock(&mvm->mutex);
 
@@ -111,7 +113,22 @@ int iwl_mvm_start_nan(struct ieee80211_hw *hw,
 	ether_addr_copy(cmd.node_addr, vif->addr);
 	cmd.sta_id = cpu_to_le32(mvm->aux_sta.sta_id);
 	cmd.master_pref = conf->master_pref;
-	if (conf->dual == NL80211_NAN_BAND_DUAL) {
+
+	if (conf->dual & (NL80211_NAN_BAND_2GHZ | NL80211_NAN_BAND_DEFAULT)) {
+		if (!iwl_mvm_can_beacon(vif, NL80211_BAND_2GHZ,
+					NAN_CHANNEL_24)) {
+			IWL_ERR(mvm, "Can't beacon on %d\n", NAN_CHANNEL_24);
+			ret = -EINVAL;
+			goto out;
+		}
+
+		cmd.chan24 = NAN_CHANNEL_24;
+
+		/* available on each DW in on 2.4GHZ */
+		cdw |= 1;
+	}
+
+	if (conf->dual & NL80211_NAN_BAND_5GHZ) {
 		if (!iwl_mvm_can_beacon(vif, NL80211_BAND_5GHZ,
 					NAN_CHANNEL_52)) {
 			IWL_ERR(mvm, "Can't beacon on %d\n", NAN_CHANNEL_52);
@@ -119,20 +136,19 @@ int iwl_mvm_start_nan(struct ieee80211_hw *hw,
 			goto out;
 		}
 
-		cmd.dual_band = cpu_to_le32(1);
 		cmd.chan52 = NAN_CHANNEL_52;
 
 		/* available on each dw on 5GHZ */
 		cdw |= 1 << 3;
 	}
 
-	cmd.chan24 = NAN_CHANNEL_24;
 	cmd.warmup_timer = cpu_to_le32(NAN_WARMUP_TIMEOUT_USEC);
 	cmd.op_bands = 3;
-
-	/* available on each DW in on 2.4GHZ */
-	cdw |= 1;
 	cmd.cdw = cpu_to_le16(cdw);
+
+	if ((conf->dual & NL80211_NAN_BAND_2GHZ) &&
+	    (conf->dual & NL80211_NAN_BAND_5GHZ))
+		cmd.dual_band = cpu_to_le32(1);
 
 	ret = iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(NAN_CONFIG_CMD,
 						   NAN_GROUP, 0),
@@ -406,9 +422,9 @@ unlock:
 	return ret;
 }
 
-void iwl_mvm_rm_nan_func(struct ieee80211_hw *hw,
-			 struct ieee80211_vif *vif,
-			 u8 instance_id)
+void iwl_mvm_del_nan_func(struct ieee80211_hw *hw,
+			  struct ieee80211_vif *vif,
+			  u8 instance_id)
 {
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 	struct iwl_nan_add_func_cmd cmd = {0};

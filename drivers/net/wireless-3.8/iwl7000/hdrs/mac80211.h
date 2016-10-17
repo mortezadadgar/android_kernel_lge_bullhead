@@ -717,6 +717,7 @@ enum mac80211_tx_info_flags {
  *	frame (PS-Poll or uAPSD).
  * @IEEE80211_TX_CTRL_RATE_INJECT: This frame is injected with rate information
  * @IEEE80211_TX_CTRL_AMSDU: This frame is an A-MSDU frame
+ * @IEEE80211_TX_CTRL_FAST_XMIT: This frame is going through the fast_xmit path
  *
  * These flags are used in tx_info->control.flags.
  */
@@ -725,6 +726,7 @@ enum mac80211_tx_control_flags {
 	IEEE80211_TX_CTRL_PS_RESPONSE		= BIT(1),
 	IEEE80211_TX_CTRL_RATE_INJECT		= BIT(2),
 	IEEE80211_TX_CTRL_AMSDU			= BIT(3),
+	IEEE80211_TX_CTRL_FAST_XMIT		= BIT(4),
 };
 
 /*
@@ -2214,7 +2216,6 @@ struct ieee80211_tx_thrshld_md {
  * @n_cipher_schemes: a size of an array of cipher schemes definitions.
  * @cipher_schemes: a pointer to an array of cipher scheme definitions
  *	supported by HW.
- *
  * @max_nan_de_entries: maximum number of NAN DE functions supported by the
  *	device.
  */
@@ -3208,6 +3209,12 @@ enum ieee80211_reconfig_type {
  *	required function.
  *	The callback can sleep.
  *
+ * @offset_tsf: Offset the TSF timer by the specified value in the
+ *	firmware/hardware.  Preferred to set_tsf as it avoids delay between
+ *	calling set_tsf() and hardware getting programmed, which will show up
+ *	as TSF delay. Is not a required function.
+ *	The callback can sleep.
+ *
  * @reset_tsf: Reset the TSF timer and allow firmware/hardware to synchronize
  *	with other STAs in the IBSS. This is only used in IBSS mode. This
  *	function is optional if the firmware/hardware takes full care of
@@ -3480,7 +3487,7 @@ enum ieee80211_reconfig_type {
  * @add_nan_func: Add a NAN function. Returns 0 on success. The data in
  *	cfg80211_nan_func must not be referenced outside the scope of
  *	this call.
- * @rm_nan_func: Remove a NAN function. The driver must call
+ * @del_nan_func: Remove a NAN function. The driver must call
  *	ieee80211_nan_func_terminated() with
  *	NL80211_NAN_FUNC_TERM_REASON_USER_REQUEST reason code upon removal.
  */
@@ -3594,6 +3601,8 @@ struct ieee80211_ops {
 	u64 (*get_tsf)(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
 	void (*set_tsf)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 			u64 tsf);
+	void (*offset_tsf)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+			   s64 offset);
 	void (*reset_tsf)(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
 	int (*tx_last_beacon)(struct ieee80211_hw *hw);
 	int (*ampdu_action)(struct ieee80211_hw *hw,
@@ -3741,7 +3750,7 @@ struct ieee80211_ops {
 	int (*add_nan_func)(struct ieee80211_hw *hw,
 			    struct ieee80211_vif *vif,
 			    const struct cfg80211_nan_func *nan_func);
-	void (*rm_nan_func)(struct ieee80211_hw *hw,
+	void (*del_nan_func)(struct ieee80211_hw *hw,
 			    struct ieee80211_vif *vif,
 			    u8 instance_id);
 };
@@ -5826,6 +5835,7 @@ void ieee80211_txq_get_depth(struct ieee80211_txq *txq,
  * ieee80211_nan_func_terminated - notify about NAN function termination.
  *
  * This function is used to notify mac80211 about NAN function termination.
+ * Note that this function can't be called from hard irq.
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @inst_id: the local instance id
@@ -5842,6 +5852,7 @@ void ieee80211_nan_func_terminated(struct ieee80211_vif *vif,
  *
  * This function is used to notify mac80211 about NAN function match. The
  * cookie inside the match struct will be assigned by mac80211.
+ * Note that this function can't be called from hard irq.
  *
  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
  * @match: match event information
