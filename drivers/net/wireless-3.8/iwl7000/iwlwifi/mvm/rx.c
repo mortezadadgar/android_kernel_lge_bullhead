@@ -797,7 +797,7 @@ void iwl_mvm_handle_rx_statistics(struct iwl_mvm *mvm,
 
 #ifdef CPTCFG_IWLMVM_TCM
 		spin_lock(&mvm->tcm.lock);
-		for (i = 0; i < NUM_MAC_INDEX; i++) {
+		for (i = 0; i < NUM_MAC_INDEX_DRIVER; i++) {
 			struct iwl_mvm_tcm_mac *mdata = &mvm->tcm.data[i];
 			u32 rx_bytes = le32_to_cpu(data.load->byte_count[i]);
 			u32 airtime = le32_to_cpu(data.load->air_time[i]);
