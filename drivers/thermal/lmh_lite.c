@@ -263,7 +263,8 @@ static void lmh_read_and_update(struct lmh_driver_data *lmh_dat)
 			= SCM_BUFFER_SIZE(struct lmh_sensor_packet);
 	desc_arg.arginfo = SCM_ARGS(2, SCM_RW, SCM_VAL);
 	trace_lmh_event_call("GET_INTENSITY enter");
-	dmac_flush_range(&payload, &payload + sizeof(struct lmh_sensor_packet));
+	dmac_flush_range(&payload, (void *)&payload +
+			sizeof(struct lmh_sensor_packet));
 	if (!is_scm_armv8())
 		ret = scm_call(SCM_SVC_LMH, LMH_GET_INTENSITY,
 			(void *) &cmd_buf, SCM_BUFFER_SIZE(cmd_buf), NULL, 0);
@@ -711,7 +712,7 @@ static int lmh_get_dev_info(void)
 		desc_arg.args[2] = cmd_buf.list_start = next;
 		desc_arg.arginfo = SCM_ARGS(3, SCM_RW, SCM_VAL, SCM_VAL);
 		trace_lmh_event_call("GET_PROFILE enter");
-		dmac_flush_range(payload, payload + sizeof(uint32_t) *
+		dmac_flush_range(payload, (void *)payload + sizeof(uint32_t) *
 			LMH_GET_PROFILE_SIZE);
 		if (!is_scm_armv8()) {
 			ret = scm_call(SCM_SVC_LMH, LMH_GET_PROFILES,
