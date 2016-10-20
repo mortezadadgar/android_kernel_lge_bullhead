@@ -583,6 +583,13 @@ int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
 	mvm->tof_data.active_cookie = cookie;
 	memcpy(&mvm->tof_data.active_request, req,
 	       sizeof(struct cfg80211_ftm_request));
+	mvm->tof_data.active_request.targets =
+		kmemdup(req->targets, sizeof(struct cfg80211_ftm_target) *
+			req->num_of_targets, GFP_KERNEL);
+	if (!mvm->tof_data.active_request.targets) {
+		ret = -ENOMEM;
+		goto err;
+	}
 	if (vif->bss_conf.assoc && req->report_tsf)
 		memcpy(mvm->tof_data.active_bssid_for_tsf, vif->bss_conf.bssid,
 		       ETH_ALEN);
