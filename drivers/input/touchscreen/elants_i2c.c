@@ -785,7 +785,7 @@ static int elants_i2c_fw_update(struct elants_data *ts)
 out_enable_irq:
 	ts->state = ELAN_STATE_NORMAL;
 	enable_irq(client->irq);
-	msleep(100);
+	msleep(600);
 
 	if (!error)
 		elants_i2c_calibrate(ts);
