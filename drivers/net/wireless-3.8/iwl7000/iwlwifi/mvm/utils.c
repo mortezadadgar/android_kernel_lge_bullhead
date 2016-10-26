@@ -1479,8 +1479,11 @@ void iwl_mvm_recalc_tcm(struct iwl_mvm *mvm)
 {
 	unsigned long ts = jiffies;
 
-	if (iwl_mvm_has_new_rx_api(mvm))
+	if (iwl_mvm_has_new_rx_api(mvm)) {
+		mutex_lock(&mvm->mutex);
 		iwl_mvm_request_statistics(mvm, true);
+		mutex_unlock(&mvm->mutex);
+	}
 
 	spin_lock(&mvm->tcm.lock);
 	/* re-check if somebody else won the recheck race */
