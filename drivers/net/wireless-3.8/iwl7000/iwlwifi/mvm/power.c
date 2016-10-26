@@ -174,6 +174,20 @@ static void iwl_mvm_power_configure_uapsd(struct iwl_mvm *mvm,
 	enum ieee80211_ac_numbers ac;
 	bool tid_found = false;
 
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
+	/* set advanced pm flag with no uapsd ACs to enable ps-poll */
+	if (mvmvif->dbgfs_pm.use_ps_poll) {
+		cmd->flags |= cpu_to_le16(POWER_FLAGS_ADVANCE_PM_ENA_MSK);
+		return;
+	}
+#endif
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (mvm->trans->dbg_cfg.MVM_USE_PS_POLL) {
+		cmd->flags |= cpu_to_le16(POWER_FLAGS_ADVANCE_PM_ENA_MSK);
+		return;
+	}
+#endif
+
 	for (ac = IEEE80211_AC_VO; ac <= IEEE80211_AC_BK; ac++) {
 		if (!mvmvif->queue_params[ac].uapsd)
 			continue;
@@ -202,21 +216,6 @@ static void iwl_mvm_power_configure_uapsd(struct iwl_mvm *mvm,
 				break;
 			}
 		}
-	}
-
-	if (!(cmd->flags & cpu_to_le16(POWER_FLAGS_ADVANCE_PM_ENA_MSK))) {
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
-		/* set advanced pm flag with no uapsd ACs to enable ps-poll */
-		if (mvmvif->dbgfs_pm.use_ps_poll)
-			cmd->flags |=
-				cpu_to_le16(POWER_FLAGS_ADVANCE_PM_ENA_MSK);
-#endif
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-		if (mvm->trans->dbg_cfg.MVM_USE_PS_POLL)
-			cmd->flags |=
-				cpu_to_le16(POWER_FLAGS_ADVANCE_PM_ENA_MSK);
-#endif
-		return;
 	}
 
 	cmd->flags |= cpu_to_le16(POWER_FLAGS_UAPSD_MISBEHAVING_ENA_MSK);
