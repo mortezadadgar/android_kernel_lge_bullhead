@@ -121,8 +121,9 @@ struct tegra_dc {
 	struct tegra_output *rgb;
 
 	struct list_head list;
+	struct dirty_fb *fb;
 	struct list_head dirty_fbs;
-	struct mutex dirty_fbs_lock;
+	spinlock_t dirty_fbs_lock;
 	struct work_struct dirty_fbs_work;
 
 	struct drm_info_list *debugfs_files;

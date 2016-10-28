@@ -475,16 +475,13 @@ static int tegra_dc_add_planes(struct drm_device *drm, struct tegra_dc *dc)
 static void tegra_dc_retain_fb(struct tegra_dc *dc,
 				struct tegra_bo *bo, u32 offset)
 {
-	struct dirty_fb *current_fb;
+	INIT_LIST_HEAD(&dc->fb->list);
+	dc->fb->bo = bo;
+	dc->fb->offset = offset;
 
-	current_fb = kzalloc(sizeof(struct dirty_fb), GFP_KERNEL);
-	INIT_LIST_HEAD(&current_fb->list);
-	current_fb->bo = bo;
-	current_fb->offset = offset;
-
-	mutex_lock(&dc->dirty_fbs_lock);
-	list_add_tail(&current_fb->list, &dc->dirty_fbs);
-	mutex_unlock(&dc->dirty_fbs_lock);
+	spin_lock(&dc->dirty_fbs_lock);
+	list_add_tail(&dc->fb->list, &dc->dirty_fbs);
+	spin_unlock(&dc->dirty_fbs_lock);
 
 	drm_gem_object_reference(&bo->gem);
 }
@@ -498,14 +495,14 @@ static void tegra_dc_cleanup_dirty_fbs(struct work_struct *work)
 	struct dirty_fb *fb_to_release = NULL;
 	unsigned long winbuf_addr;
 
-	mutex_lock(&dc->dirty_fbs_lock);
+	spin_lock(&dc->dirty_fbs_lock);
 	if (!dc->enabled) {
-		mutex_unlock(&dc->dirty_fbs_lock);
+		spin_unlock(&dc->dirty_fbs_lock);
 		return;
 	}
 
 	if (list_empty(&dc->dirty_fbs)) {
-		mutex_unlock(&dc->dirty_fbs_lock);
+		spin_unlock(&dc->dirty_fbs_lock);
 		return;
 	}
 
@@ -520,7 +517,7 @@ static void tegra_dc_cleanup_dirty_fbs(struct work_struct *work)
 			break;
 		}
 	}
-	mutex_unlock(&dc->dirty_fbs_lock);
+	spin_unlock(&dc->dirty_fbs_lock);
 
 	if (fb_to_release) {
 		drm_gem_object_unreference_unlocked(&fb_to_release->bo->gem);
@@ -846,6 +843,12 @@ static int tegra_dc_page_flip(struct drm_crtc *crtc, struct drm_framebuffer *fb,
 	if (dc->event)
 		return -EBUSY;
 
+	dc->fb = kzalloc(sizeof(struct dirty_fb), GFP_KERNEL);
+	if (!dc->fb) {
+		dev_err(dc->dev, "allocate struct dirty_fb failed.\n");
+		return -ENOMEM;
+	}
+
 	/*
 	 * drm_vblank_get can't be called inside spinlock since that brings
 	 * a deadlock between tegra_dc_irq->drm_handle_vblank and this func.
@@ -913,7 +916,7 @@ static void tegra_crtc_disable(struct drm_crtc *crtc)
 	disable_irq(dc->irq);
 	drm_vblank_off(drm, dc->pipe);
 
-	mutex_lock(&dc->dirty_fbs_lock);
+	cancel_work_sync(&dc->dirty_fbs_work);
 	list_for_each_entry_safe(loop_fb, temp_fb, &dc->dirty_fbs, list) {
 		drm_gem_object_unreference_unlocked(&loop_fb->bo->gem);
 		list_del(&loop_fb->list);
@@ -926,7 +929,6 @@ static void tegra_crtc_disable(struct drm_crtc *crtc)
 		clk_set_rate(dc->emc_clk, 0);
 	tegra_dc_powergate_locked(dc);
 	dc->enabled = false;
-	mutex_unlock(&dc->dirty_fbs_lock);
 }
 
 static bool tegra_crtc_mode_fixup(struct drm_crtc *crtc,
@@ -1095,6 +1097,11 @@ static int tegra_crtc_mode_set(struct drm_crtc *crtc,
 	window.base[0] = bo->paddr;
 	window.tiling = bo->tiling;
 
+	dc->fb = kzalloc(sizeof(struct dirty_fb), GFP_KERNEL);
+	if (!dc->fb) {
+		dev_err(dc->dev, "allocate struct dirty_fb failed.\n");
+		return -ENOMEM;
+	}
 	tegra_dc_retain_fb(dc, bo, 0);
 
 	err = tegra_dc_setup_window(dc, 0, &window);
@@ -1118,6 +1125,12 @@ static int tegra_crtc_mode_set_base(struct drm_crtc *crtc, int x, int y,
 				    struct drm_framebuffer *old_fb)
 {
 	struct tegra_dc *dc = to_tegra_dc(crtc);
+
+	dc->fb = kzalloc(sizeof(struct dirty_fb), GFP_KERNEL);
+	if (!dc->fb) {
+		dev_err(dc->dev, "allocate struct dirty_fb failed.\n");
+		return -ENOMEM;
+	}
 
 	return tegra_dc_set_base(dc, x, y, crtc->primary->fb);
 }
@@ -1728,7 +1741,7 @@ static int tegra_dc_probe(struct platform_device *pdev)
 	spin_lock_init(&dc->lock);
 	INIT_LIST_HEAD(&dc->list);
 	INIT_LIST_HEAD(&dc->dirty_fbs);
-	mutex_init(&dc->dirty_fbs_lock);
+	spin_lock_init(&dc->dirty_fbs_lock);
 	INIT_WORK(&dc->dirty_fbs_work, tegra_dc_cleanup_dirty_fbs);
 	dc->dev = &pdev->dev;
 	dc->soc = id->data;
