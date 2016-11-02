@@ -28,6 +28,7 @@
 #include <linux/path.h>
 #include <linux/root_dev.h>
 
+#include "inode_mark.h"
 #include "utils.h"
 
 static int chromiumos_security_sb_mount(const char *dev_name, struct path *path,
@@ -201,12 +202,34 @@ static int chromiumos_security_load_module(struct file *file)
 	return 0;
 }
 
+static int chromiumos_security_inode_follow_link(struct dentry *dentry,
+						 struct nameidata *nd)
+{
+	static char accessed_path[PATH_MAX];
+	enum chromiumos_symlink_traversal_policy policy;
+
+	policy = chromiumos_get_symlink_traversal_policy(dentry);
+
+	/*
+	 * Emit a warning in cases of blocked symlink traversal attempts. These
+	 * will show up in kernel warning reports collected by the crash
+	 * reporter, so we have some insight on spurious failures that need
+	 * addressing.
+	 */
+	WARN(policy == CHROMIUMOS_SYMLINK_TRAVERSAL_BLOCK,
+	     "Blocked symlink traversal for path %x:%x:%s\n",
+	     MAJOR(dentry->d_sb->s_dev), MINOR(dentry->d_sb->s_dev),
+	     dentry_path(dentry, accessed_path, PATH_MAX));
+
+	return policy == CHROMIUMOS_SYMLINK_TRAVERSAL_BLOCK ? -EACCES : 0;
+}
+
 static struct security_operations chromiumos_security_ops = {
 	.name	= "chromiumos",
 	.sb_mount = chromiumos_security_sb_mount,
 	.kernel_module_from_file = chromiumos_security_load_module,
+	.inode_follow_link = chromiumos_security_inode_follow_link,
 };
-
 
 static int __init chromiumos_security_init(void)
 {
