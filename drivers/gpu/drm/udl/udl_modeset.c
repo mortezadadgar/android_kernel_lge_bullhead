@@ -330,7 +330,7 @@ static int udl_crtc_mode_set(struct drm_crtc *crtc,
 
 {
 	struct drm_device *dev = crtc->dev;
-	struct udl_framebuffer *ufb = to_udl_fb(crtc->fb);
+	struct udl_framebuffer *ufb = to_udl_fb(crtc->primary->fb);
 	struct udl_device *udl = dev->dev_private;
 	struct udl_flip_queue *flip_queue = udl->flip_queue;
 	char *buf;
@@ -407,7 +407,7 @@ static void udl_sched_page_flip(struct work_struct *work)
 	crtc = flip_queue->crtc;
 	dev = crtc->dev;
 	event = flip_queue->event;
-	fb = crtc->fb;
+	fb = crtc->primary->fb;
 	flip_queue->event = NULL;
 	mutex_unlock(&flip_queue->lock);
 
@@ -442,13 +442,13 @@ static int udl_crtc_page_flip(struct drm_crtc *crtc,
 		struct drm_framebuffer *old_fb;
 		struct udl_framebuffer *ufb;
 		ufb = to_udl_fb(fb);
-		old_fb = crtc->fb;
+		old_fb = crtc->primary->fb;
 		if (old_fb) {
 			struct udl_framebuffer *uold_fb = to_udl_fb(old_fb);
 			uold_fb->active_16 = false;
 		}
 		ufb->active_16 = true;
-		crtc->fb = fb;
+		crtc->primary->fb = fb;
 	}
 	if (event) {
 		if (flip_queue->event) {
@@ -627,10 +627,10 @@ void udl_modeset_restore(struct drm_device *dev)
 {
 	struct udl_device *udl = dev->dev_private;
 	struct udl_framebuffer *ufb;
-	if (!udl->crtc || !udl->crtc->fb)
+	if (!udl->crtc || !udl->crtc->primary->fb)
 		return;
 	udl_crtc_commit(udl->crtc);
-	ufb = to_udl_fb(udl->crtc->fb);
+	ufb = to_udl_fb(udl->crtc->primary->fb);
 	udl_handle_damage(ufb, 0, 0, ufb->base.width, ufb->base.height);
 }
 

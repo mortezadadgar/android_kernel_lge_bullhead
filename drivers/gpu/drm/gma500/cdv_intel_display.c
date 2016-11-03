@@ -594,7 +594,7 @@ static int cdv_intel_pipe_set_base(struct drm_crtc *crtc,
 	struct drm_device *dev = crtc->dev;
 	struct drm_psb_private *dev_priv = dev->dev_private;
 	struct psb_intel_crtc *psb_intel_crtc = to_psb_intel_crtc(crtc);
-	struct psb_framebuffer *psbfb = to_psb_fb(crtc->fb);
+	struct psb_framebuffer *psbfb = to_psb_fb(crtc->primary->fb);
 	int pipe = psb_intel_crtc->pipe;
 	const struct psb_offset *map = &dev_priv->regmap[pipe];
 	unsigned long start, offset;
@@ -605,7 +605,7 @@ static int cdv_intel_pipe_set_base(struct drm_crtc *crtc,
 		return 0;
 
 	/* no fb bound */
-	if (!crtc->fb) {
+	if (!crtc->primary->fb) {
 		dev_err(dev->dev, "No FB bound\n");
 		goto psb_intel_pipe_cleaner;
 	}
@@ -617,19 +617,19 @@ static int cdv_intel_pipe_set_base(struct drm_crtc *crtc,
 	if (ret < 0)
 		goto psb_intel_pipe_set_base_exit;
 	start = psbfb->gtt->offset;
-	offset = y * crtc->fb->pitches[0] + x * (crtc->fb->bits_per_pixel / 8);
+	offset = y * crtc->primary->fb->pitches[0] + x * (crtc->primary->fb->bits_per_pixel / 8);
 
-	REG_WRITE(map->stride, crtc->fb->pitches[0]);
+	REG_WRITE(map->stride, crtc->primary->fb->pitches[0]);
 
 	dspcntr = REG_READ(map->cntr);
 	dspcntr &= ~DISPPLANE_PIXFORMAT_MASK;
 
-	switch (crtc->fb->bits_per_pixel) {
+	switch (crtc->primary->fb->bits_per_pixel) {
 	case 8:
 		dspcntr |= DISPPLANE_8BPP;
 		break;
 	case 16:
-		if (crtc->fb->depth == 15)
+		if (crtc->primary->fb->depth == 15)
 			dspcntr |= DISPPLANE_15_16BPP;
 		else
 			dspcntr |= DISPPLANE_16BPP;
@@ -675,7 +675,7 @@ static bool cdv_intel_pipe_enabled(struct drm_device *dev, int pipe)
 	crtc = dev_priv->pipe_to_crtc_mapping[pipe];
 	psb_intel_crtc = to_psb_intel_crtc(crtc);
 
-	if (crtc->fb == NULL || !psb_intel_crtc->active)
+	if (crtc->primary->fb == NULL || !psb_intel_crtc->active)
 		return false;
 	return true;
 }
@@ -1763,8 +1763,8 @@ static void cdv_intel_crtc_disable(struct drm_crtc *crtc)
 
 	crtc_funcs->dpms(crtc, DRM_MODE_DPMS_OFF);
 
-	if (crtc->fb) {
-		gt = to_psb_fb(crtc->fb)->gtt;
+	if (crtc->primary->fb) {
+		gt = to_psb_fb(crtc->primary->fb)->gtt;
 		psb_gtt_unpin(gt);
 	}
 }

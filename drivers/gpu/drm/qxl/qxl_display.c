@@ -544,7 +544,7 @@ static int qxl_crtc_mode_set(struct drm_crtc *crtc,
 	bool recreate_primary = false;
 	int ret;
 
-	if (!crtc->fb) {
+	if (!crtc->primary->fb) {
 		DRM_DEBUG_KMS("No FB bound\n");
 		return 0;
 	}
@@ -553,7 +553,7 @@ static int qxl_crtc_mode_set(struct drm_crtc *crtc,
 		qfb = to_qxl_framebuffer(old_fb);
 		old_bo = gem_to_qxl_bo(qfb->obj);
 	}
-	qfb = to_qxl_framebuffer(crtc->fb);
+	qfb = to_qxl_framebuffer(crtc->primary->fb);
 	bo = gem_to_qxl_bo(qfb->obj);
 	if (!m)
 		/* and do we care? */

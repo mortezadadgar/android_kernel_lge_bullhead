@@ -167,7 +167,7 @@ static int ipu_drm_set_base(struct drm_crtc *crtc, int x, int y)
 {
 	struct ipu_crtc *ipu_crtc = to_ipu_crtc(crtc);
 	struct drm_gem_cma_object *cma_obj;
-	struct drm_framebuffer *fb = crtc->fb;
+	struct drm_framebuffer *fb = crtc->primary->fb;
 	unsigned long phys;
 
 	cma_obj = drm_fb_cma_get_gem_obj(fb, 0);
@@ -197,7 +197,7 @@ static int ipu_crtc_mode_set(struct drm_crtc *crtc,
 			       struct drm_framebuffer *old_fb)
 {
 	struct ipu_crtc *ipu_crtc = to_ipu_crtc(crtc);
-	struct drm_framebuffer *fb = ipu_crtc->base.fb;
+	struct drm_framebuffer *fb = ipu_crtc->base.primary->fb;
 	int ret;
 	struct ipu_di_signal_cfg sig_cfg = {};
 	u32 out_pixel_fmt;
@@ -335,7 +335,7 @@ static irqreturn_t ipu_irq_handler(int irq, void *dev_id)
 	imx_drm_handle_vblank(ipu_crtc->imx_crtc);
 
 	if (ipu_crtc->newfb) {
-		ipu_crtc->base.fb = ipu_crtc->newfb;
+		ipu_crtc->base.primary->fb = ipu_crtc->newfb;
 		ipu_crtc->newfb = NULL;
 		ipu_drm_set_base(&ipu_crtc->base, 0, 0);
 		ipu_crtc_handle_pageflip(ipu_crtc);

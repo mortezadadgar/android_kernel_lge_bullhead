@@ -59,7 +59,7 @@ static int evdi_crtc_mode_set(struct drm_crtc *crtc,
 
 	EVDI_ENTER();
 
-	efb = to_evdi_fb(crtc->fb);
+	efb = to_evdi_fb(crtc->primary->fb);
 	if (old_fb) {
 		struct evdi_framebuffer *eold_fb = to_evdi_fb(old_fb);
 
@@ -121,7 +121,7 @@ static void evdi_sched_page_flip(struct work_struct *work)
 	crtc = flip_queue->crtc;
 	dev = crtc->dev;
 	event = flip_queue->event;
-	fb = crtc->fb;
+	fb = crtc->primary->fb;
 	flip_queue->event = NULL;
 	mutex_unlock(&flip_queue->lock);
 
@@ -164,7 +164,7 @@ static int evdi_crtc_page_flip(struct drm_crtc *crtc,
 	flip_queue->crtc = crtc;
 	if (fb) {
 		struct evdi_framebuffer *efb = to_evdi_fb(fb);
-		struct drm_framebuffer *old_fb = crtc->fb;
+		struct drm_framebuffer *old_fb = crtc->primary->fb;
 
 		if (old_fb) {
 			struct evdi_framebuffer *eold_fb = to_evdi_fb(old_fb);
@@ -172,7 +172,7 @@ static int evdi_crtc_page_flip(struct drm_crtc *crtc,
 			eold_fb->active = false;
 		}
 		efb->active = true;
-		crtc->fb = fb;
+		crtc->primary->fb = fb;
 		evdi_painter_set_new_scanout_buffer(evdi, efb);
 	}
 	if (event) {
