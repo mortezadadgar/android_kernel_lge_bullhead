@@ -286,6 +286,10 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 			tegra_dpaux_read_fifo(dpaux, msg->buffer, count);
 			ret = count;
 		}
+	} else if (msg->reply &
+			(DP_AUX_NATIVE_REPLY_DEFER | DP_AUX_I2C_REPLY_DEFER)) {
+		/* return the requested size for retry */
+		ret = msg->size;
 	}
 
 out:
