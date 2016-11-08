@@ -1070,9 +1070,9 @@ enum
 #define CFG_TELE_BCN_MAX_LI_NUM_IDLE_BCNS_DEFAULT    ( 15 )
 
 #define CFG_BCN_EARLY_TERM_WAKE_NAME                 "beaconEarlyTerminationWakeInterval"
-#define CFG_BCN_EARLY_TERM_WAKE_MIN                  ( 2 )
-#define CFG_BCN_EARLY_TERM_WAKE_MAX                  ( 255 )
-#define CFG_BCN_EARLY_TERM_WAKE_DEFAULT              ( 3 )
+#define CFG_BCN_EARLY_TERM_WAKE_MIN                  ( 8 )
+#define CFG_BCN_EARLY_TERM_WAKE_MAX                  ( 8 )
+#define CFG_BCN_EARLY_TERM_WAKE_DEFAULT              ( 8 )
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
 #define CFG_NEIGHBOR_SCAN_TIMER_PERIOD_NAME             "gNeighborScanTimerPeriod"
@@ -1277,9 +1277,9 @@ enum
 #define CFG_BAND_CAPABILITY_DEFAULT       (0)
 
 #define CFG_ENABLE_BEACON_EARLY_TERMINATION_NAME          "enableBeaconEarlyTermination"
-#define CFG_ENABLE_BEACON_EARLY_TERMINATION_MIN           ( 0 )
+#define CFG_ENABLE_BEACON_EARLY_TERMINATION_MIN           ( 1 )
 #define CFG_ENABLE_BEACON_EARLY_TERMINATION_MAX           ( 1 )
-#define CFG_ENABLE_BEACON_EARLY_TERMINATION_DEFAULT       ( 0 )
+#define CFG_ENABLE_BEACON_EARLY_TERMINATION_DEFAULT       ( 1 )
 
 #define CFG_ENABLE_CLOSE_LOOP_NAME                 "gEnableCloseLoop"
 #define CFG_ENABLE_CLOSE_LOOP_MIN                  WNI_CFG_FIXED_RATE_STAMIN
