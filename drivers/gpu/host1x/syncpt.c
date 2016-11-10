@@ -442,7 +442,7 @@ int host1x_syncpt_nb_mlocks(struct host1x *host)
 
 struct host1x_syncpt *host1x_syncpt_get(struct host1x *host, u32 id)
 {
-	if (host->info->nb_pts < id)
+	if (host->info->nb_pts <= id)
 		return NULL;
 	return host->syncpt + id;
 }
