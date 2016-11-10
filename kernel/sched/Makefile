@@ -2,6 +2,14 @@ ifdef CONFIG_FUNCTION_TRACER
 CFLAGS_REMOVE_clock.o = -pg
 endif
 
+# KASAN instrumentation is temporarily disabled for energy.o due to the repeated
+# reports that caused the kernel to not boot as seen in b/31800756. Should a fix
+# be provided, this line can be removed again. But given that KCOV is also disabled
+# for this module, it might be worth thinking about whether or not we should also
+# just turn off KASAN instrumentation entirely here.
+KASAN_SANITIZE_core.o := n
+KASAN_SANITIZE_fair.o := n
+
 ifneq ($(CONFIG_SCHED_OMIT_FRAME_POINTER),y)
 # According to Alan Modra <alan@linuxcare.com.au>, the -fno-omit-frame-pointer is
 # needed for x86 only.  Why this used to be enabled for all architectures is beyond
