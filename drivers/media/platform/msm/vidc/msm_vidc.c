@@ -258,9 +258,9 @@ struct buffer_info *get_registered_buf(struct msm_vidc_inst *inst,
 	list_for_each_entry(temp, &inst->registeredbufs.list, list) {
 		for (i = 0; (i < temp->num_planes)
 			&& (i < VIDEO_MAX_PLANES); i++) {
-			bool ion_hndl_matches =
-				msm_smem_compare_buffers(inst->mem_client, fd,
-				temp->handle[i]->smem_priv);
+			bool ion_hndl_matches = temp->handle[i] ?
+						msm_smem_compare_buffers(inst->mem_client, fd,
+						temp->handle[i]->smem_priv) : false;
 			if (temp &&
 				(ion_hndl_matches ||
 				(device_addr == temp->device_addr[i])) &&
@@ -1484,4 +1484,3 @@ int msm_vidc_suspend(int core_id)
 	return msm_comm_suspend(core_id);
 }
 EXPORT_SYMBOL(msm_vidc_suspend);
-
