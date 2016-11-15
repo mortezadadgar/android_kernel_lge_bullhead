@@ -445,4 +445,16 @@ config DM_VERITY_FEC
 
 	  If unsure, say N.
 
+config DM_VERITY_HASH_PREFETCH_MIN_SIZE
+	int "Verity hash prefetch minimum size"
+	depends on DM_VERITY
+	range 1 4096
+	default 128
+	default 1
+	---help---
+	  This sets minimum number of hash blocks to prefetch for dm-verity.
+	  For devices like eMMC, having larger prefetch size like 128 can improve
+	  performance with increased memory consumption for keeping more hashes
+	  in RAM.
+
 endif # MD
