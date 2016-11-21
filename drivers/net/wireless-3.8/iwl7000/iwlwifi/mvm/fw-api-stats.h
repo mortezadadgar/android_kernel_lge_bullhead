@@ -7,7 +7,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
- * Copyright(c) 2016 Intel Deutschland GmbH
+ * Copyright(c) 2016 - 2017 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -296,6 +296,7 @@ struct iwl_notif_statistics_v11 {
 	struct mvm_statistics_load load_stats;
 } __packed; /* STATISTICS_NTFY_API_S_VER_11 */
 
+#define IWL_STATISTICS_REPLY_FLG_CLEAR	        0x1
 #define IWL_STATISTICS_FLG_CLEAR		0x1
 #define IWL_STATISTICS_FLG_DISABLE_NOTIF	0x2
 

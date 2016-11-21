@@ -817,6 +817,14 @@ void iwl_mvm_handle_rx_statistics(struct iwl_mvm *mvm,
 	rcu_read_unlock();
 
 #ifdef CPTCFG_IWLMVM_TCM
+	/*
+	 * Don't update in case the statistics are not cleared, since
+	 * we will end up counting twice the same airtime, once in TCM
+	 * request and once in statistics notification.
+	 */
+	if (!(le32_to_cpu(stats->flag) & IWL_STATISTICS_REPLY_FLG_CLEAR))
+		return;
+
 	spin_lock(&mvm->tcm.lock);
 	for (i = 0; i < NUM_MAC_INDEX_DRIVER; i++) {
 		struct iwl_mvm_tcm_mac *mdata = &mvm->tcm.data[i];
