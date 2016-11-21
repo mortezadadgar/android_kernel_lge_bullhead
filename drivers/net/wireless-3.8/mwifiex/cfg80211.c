@@ -1659,6 +1659,16 @@ mwifiex_cfg80211_assoc(struct mwifiex_private *priv, size_t ssid_len, u8 *ssid,
 	priv->sta_assoc_11ac_enabled = !(channel && channel->flags &
 					 IEEE80211_CHAN_NO_80MHZ);
 	if (mode == NL80211_IFTYPE_ADHOC) {
+		u16 enable = true;
+
+		/* set ibss coalescing_status */
+		ret = mwifiex_send_cmd(
+				priv,
+				HostCmd_CMD_802_11_IBSS_COALESCING_STATUS,
+				HostCmd_ACT_GEN_SET, 0, &enable, true);
+		if (ret)
+			return ret;
+
 		/* "privacy" is set only for ad-hoc mode */
 		if (privacy) {
 			/*
