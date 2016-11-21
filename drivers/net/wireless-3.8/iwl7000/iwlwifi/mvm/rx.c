@@ -7,7 +7,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
- * Copyright(c) 2016 Intel Deutschland GmbH
+ * Copyright(c) 2016 - 2017 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -769,6 +769,7 @@ void iwl_mvm_handle_rx_statistics(struct iwl_mvm *mvm,
 	int expected_size = iwl_mvm_has_new_rx_api(mvm) ? sizeof(*stats) :
 			    sizeof(struct iwl_notif_statistics_v10);
 	u32 temperature;
+	int i;
 
 	if (iwl_rx_packet_payload_len(pkt) != expected_size)
 		goto invalid;
@@ -788,42 +789,6 @@ void iwl_mvm_handle_rx_statistics(struct iwl_mvm *mvm,
 		le64_to_cpu(stats->general.on_time_scan);
 
 	data.general = &stats->general;
-	if (iwl_mvm_has_new_rx_api(mvm)) {
-		int i;
-
-		data.load = &stats->load_stats;
-
-		rcu_read_lock();
-		for (i = 0; i < IWL_MVM_STATION_COUNT; i++) {
-			struct iwl_mvm_sta *sta;
-
-			if (!data.load->avg_energy[i])
-				continue;
-
-			sta = iwl_mvm_sta_from_staid_rcu(mvm, i);
-			if (!sta)
-				continue;
-			sta->avg_energy = data.load->avg_energy[i];
-		}
-		rcu_read_unlock();
-
-#ifdef CPTCFG_IWLMVM_TCM
-		spin_lock(&mvm->tcm.lock);
-		for (i = 0; i < NUM_MAC_INDEX_DRIVER; i++) {
-			struct iwl_mvm_tcm_mac *mdata = &mvm->tcm.data[i];
-			u32 rx_bytes = le32_to_cpu(data.load->byte_count[i]);
-			u32 airtime = le32_to_cpu(data.load->air_time[i]);
-
-			mdata->rx.airtime += airtime;
-			mdata->uapsd_nonagg_detect.rx_bytes += rx_bytes;
-			if (airtime) {
-				ewma_rate_add(&mdata->uapsd_nonagg_detect.rate,
-					      rx_bytes * 8 / airtime);
-			}
-		}
-		spin_unlock(&mvm->tcm.lock);
-#endif
-	}
 
 	iwl_mvm_rx_stats_check_trigger(mvm, pkt);
 
@@ -831,7 +796,44 @@ void iwl_mvm_handle_rx_statistics(struct iwl_mvm *mvm,
 					    IEEE80211_IFACE_ITER_NORMAL,
 					    iwl_mvm_stat_iterator,
 					    &data);
+
+	if (!iwl_mvm_has_new_rx_api(mvm))
+		return;
+
+	data.load = &stats->load_stats;
+
+	rcu_read_lock();
+	for (i = 0; i < IWL_MVM_STATION_COUNT; i++) {
+		struct iwl_mvm_sta *sta;
+
+		if (!data.load->avg_energy[i])
+			continue;
+
+		sta = iwl_mvm_sta_from_staid_rcu(mvm, i);
+		if (!sta)
+			continue;
+		sta->avg_energy = data.load->avg_energy[i];
+	}
+	rcu_read_unlock();
+
+#ifdef CPTCFG_IWLMVM_TCM
+	spin_lock(&mvm->tcm.lock);
+	for (i = 0; i < NUM_MAC_INDEX_DRIVER; i++) {
+		struct iwl_mvm_tcm_mac *mdata = &mvm->tcm.data[i];
+		u32 rx_bytes = le32_to_cpu(data.load->byte_count[i]);
+		u32 airtime = le32_to_cpu(data.load->air_time[i]);
+
+		mdata->rx.airtime += airtime;
+		mdata->uapsd_nonagg_detect.rx_bytes += rx_bytes;
+		if (airtime) {
+			ewma_rate_add(&mdata->uapsd_nonagg_detect.rate,
+				      rx_bytes * 8 / airtime);
+		}
+	}
+	spin_unlock(&mvm->tcm.lock);
+#endif
 	return;
+
  invalid:
 	IWL_ERR(mvm, "received invalid statistics size (%d)!\n",
 		iwl_rx_packet_payload_len(pkt));
