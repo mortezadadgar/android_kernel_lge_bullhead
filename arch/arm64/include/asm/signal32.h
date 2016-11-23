@@ -20,9 +20,6 @@
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
 
-#define AARCH32_KERN_SIGRET_CODE_OFFSET	0x500
-
-
 int compat_setup_frame(int usig, struct k_sigaction *ka, sigset_t *set,
 		       struct pt_regs *regs);
 int compat_setup_rt_frame(int usig, struct k_sigaction *ka, siginfo_t *info,
