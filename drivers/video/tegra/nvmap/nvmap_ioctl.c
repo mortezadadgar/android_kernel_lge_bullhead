@@ -297,6 +297,25 @@ const struct file_operations nvmap_fd_fops = {
 	.mmap		= nvmap_share_mmap,
 };
 
+int nvmap_install_fd(struct nvmap_client *client,
+	struct nvmap_handle *handle, int fd, void __user *arg,
+	void *op, size_t op_size)
+{
+	int err = 0;
+
+	if (fd < 0)
+		return fd;
+
+	if (copy_to_user(arg, op, op_size)) {
+		err = -EFAULT;
+		put_unused_fd(fd);
+		return err;
+	}
+
+	fd_install(fd, handle->dmabuf->file);
+	return err;
+}
+
 int nvmap_ioctl_getfd(struct file *filp, void __user *arg)
 {
 	ulong handle;
@@ -312,14 +331,9 @@ int nvmap_ioctl_getfd(struct file *filp, void __user *arg)
 
 	op.fd = nvmap_get_dmabuf_fd(client, handle);
 	nvmap_handle_put((struct nvmap_handle *)handle);
-	if (op.fd < 0)
-		return op.fd;
 
-	if (copy_to_user(arg, &op, sizeof(op))) {
-		sys_close(op.fd);
-		return -EFAULT;
-	}
-	return 0;
+	return nvmap_install_fd(client, (struct nvmap_handle *)handle,
+				op.fd, arg, &op, sizeof(op));
 }
 
 int nvmap_ioctl_alloc(struct file *filp, void __user *arg)
@@ -405,6 +419,7 @@ int nvmap_create_fd(struct nvmap_handle *h)
 	if (nvmap_dmabuf_is_foreign_dmabuf(h->dmabuf))
 		nvmap_foreign_dmabuf_add(h, h->dmabuf, fd);
 
+	fd_install(fd, h->dmabuf->file);
 	return fd;
 }
 

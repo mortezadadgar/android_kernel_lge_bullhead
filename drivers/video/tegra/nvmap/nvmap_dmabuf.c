@@ -731,8 +731,6 @@ int __nvmap_dmabuf_fd(struct dma_buf *dmabuf, int flags)
 			(start == NVMAP_HANDLE_FOREIGN_FD_START &&
 			fd > NVMAP_HANDLE_FOREIGN_FD_END));
 
-	fd_install(fd, dmabuf->file);
-
 	return fd;
 }
 
@@ -890,14 +888,8 @@ int nvmap_ioctl_share_dmabuf(struct file *filp, void __user *arg)
 
 	op.fd = nvmap_get_dmabuf_fd(client, handle);
 	nvmap_handle_put((struct nvmap_handle *)handle);
-	if (op.fd < 0)
-		return op.fd;
-
-	if (copy_to_user((void __user *)arg, &op, sizeof(op))) {
-		sys_close(op.fd);
-		return -EFAULT;
-	}
-	return 0;
+	return nvmap_install_fd(client, (struct nvmap_handle *)handle,
+				op.fd, arg, &op, sizeof(op));
 }
 
 int nvmap_get_dmabuf_param(struct dma_buf *dmabuf, u32 param, u64 *result)
