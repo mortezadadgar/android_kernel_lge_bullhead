@@ -168,6 +168,9 @@ struct nvhost_channel_userctx {
 	int clientid;
 	bool timeout_debug_dump;
 
+	/* lock to protect this structure from concurrent ioctl usage */
+	struct mutex ioctl_lock;
+
 	/* context address space */
 	struct nvhost_vm *vm;
 };
@@ -243,6 +246,7 @@ static int __nvhost_channelopen(struct inode *inode,
 	pdata = dev_get_drvdata(ch->dev->dev.parent);
 	priv->timeout = pdata->nvhost_timeout_default;
 	priv->timeout_debug_dump = true;
+	mutex_init(&priv->ioctl_lock);
 
 	priv->vm = nvhost_vm_allocate(ch->dev);
 
@@ -1016,6 +1020,9 @@ static long nvhost_channelctl(struct file *filp,
 			return -EFAULT;
 	}
 
+	/* serialize calls from this fd */
+	mutex_lock(&priv->ioctl_lock);
+
 	switch (cmd) {
 	case NVHOST_IOCTL_CHANNEL_OPEN:
 	{
@@ -1070,8 +1077,10 @@ static long nvhost_channelctl(struct file *filp,
 		struct nvhost_get_param_arg *arg =
 			(struct nvhost_get_param_arg *)buf;
 		if (arg->param >= NVHOST_MODULE_MAX_SYNCPTS
-				|| !pdata->syncpts[arg->param])
-			return -EINVAL;
+				|| !pdata->syncpts[arg->param]) {
+			err = -EINVAL;
+			break;
+		}
 		arg->value = pdata->syncpts[arg->param];
 		break;
 	}
@@ -1091,8 +1100,10 @@ static long nvhost_channelctl(struct file *filp,
 		struct nvhost_get_param_arg *arg =
 			(struct nvhost_get_param_arg *)buf;
 		if (arg->param >= NVHOST_MODULE_MAX_WAITBASES
-				|| !pdata->waitbases[arg->param])
-			return -EINVAL;
+				|| !pdata->waitbases[arg->param]) {
+			err = -EINVAL;
+			break;
+		}
 		arg->value = pdata->waitbases[arg->param];
 		break;
 	}
@@ -1112,8 +1123,10 @@ static long nvhost_channelctl(struct file *filp,
 		struct nvhost_get_param_arg *arg =
 			(struct nvhost_get_param_arg *)buf;
 		if (arg->param >= NVHOST_MODULE_MAX_MODMUTEXES
-				|| !pdata->modulemutexes[arg->param])
-			return -EINVAL;
+				|| !pdata->modulemutexes[arg->param]) {
+			err = -EINVAL;
+			break;
+		}
 		arg->value = pdata->modulemutexes[arg->param];
 		break;
 	}
@@ -1243,6 +1256,8 @@ static long nvhost_channelctl(struct file *filp,
 		err = -ENOTTY;
 		break;
 	}
+
+	mutex_unlock(&priv->ioctl_lock);
 
 	if ((err == 0) && (_IOC_DIR(cmd) & _IOC_READ))
 		err = copy_to_user((void __user *)arg, buf, _IOC_SIZE(cmd));
