@@ -250,6 +250,9 @@ static int mdss_fb_notify_update(struct msm_fb_data_type *mfd,
 
 static int lcd_backlight_registered;
 
+int mdss_backlight_value_percentage = 0;
+EXPORT_SYMBOL(mdss_backlight_value_percentage);
+
 static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 				      enum led_brightness value)
 {
@@ -267,6 +270,10 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	if (backlight_dimmer) {
 		MDSS_BRIGHT_TO_BL_DIMMER(bl_lvl, value);
 	} else {
+
+                /* Get percentage of mdss backlight value */
+	mdss_backlight_value_percentage =
+		value * 100 / mfd->panel_info->brightness_max;
 		/* This maps android backlight level 0 to 255 into
 		   driver backlight level 0 to bl_max with rounding */
 		MDSS_BRIGHT_TO_BL(bl_lvl, value, mfd->panel_info->bl_max,

@@ -1739,11 +1739,29 @@ static int qpnp_kpdbl_set(struct qpnp_led_data *led)
 	return 0;
 }
 
-static int charging_led_duty_pcts[] = {
-	1, 1, 4, 8, 12, 16, 20, 24, 28, 32, 36,
-	40, 44, 46, 52, 56, 60, 64, 68, 72, 76,
-	80, 84, 88, 92, 96, 100, 100
+#define CHARGING_LED_DUTY_PCTS_LOW_SIZE 24
+#define CHARGING_LED_DUTY_PCTS_MID_SIZE 24
+#define CHARGING_LED_DUTY_PCTS_HIGH_SIZE 30
+
+static int charging_led_duty_pcts_low[] = {
+	1, 1, 2, 2, 4, 4, 6, 6, 8, 8,
+	10, 12, 14, 16, 18, 20, 22, 24, 26, 28,
+	30, 32,	32, 32
 };
+
+static int charging_led_duty_pcts_mid[] = {
+	1, 1, 2, 4, 6, 8, 10, 12, 16, 20,
+	24, 28, 32, 36, 40, 44, 48, 52, 56, 60,
+	62, 64, 66, 66
+};
+
+static int charging_led_duty_pcts_high[] = {
+	1, 1, 4, 8, 12, 16, 20, 24, 28, 32,
+	36, 40, 44, 48, 52, 56, 60, 64, 68, 72,
+	76, 80, 84, 88, 92, 94, 96, 98, 100, 100
+};
+
+extern int mdss_backlight_value_percentage;
 
 static int rgb_duration_config(struct qpnp_led_data *led)
 {
@@ -1754,11 +1772,26 @@ static int rgb_duration_config(struct qpnp_led_data *led)
 	unsigned long ramp_step_ms, num_duty_pcts;
 	struct pwm_config_data  *pwm_cfg = led->rgb_cfg->pwm_cfg;
 
-	if (!on_ms) {
+	if (!on_ms)
 		return -EINVAL;
-	} else if (!off_ms) { // Charging
+
+	if (!off_ms) { // Charging
+		int *charging_led_duty_pcts;
+
+		if (mdss_backlight_value_percentage >= 0 &&
+				mdss_backlight_value_percentage < 20) {
+			charging_led_duty_pcts = charging_led_duty_pcts_low;
+			num_duty_pcts = CHARGING_LED_DUTY_PCTS_LOW_SIZE;
+		} else if (mdss_backlight_value_percentage >= 20 &&
+				mdss_backlight_value_percentage < 35) {
+			charging_led_duty_pcts = charging_led_duty_pcts_mid;
+			num_duty_pcts = CHARGING_LED_DUTY_PCTS_MID_SIZE;
+		} else {
+			charging_led_duty_pcts = charging_led_duty_pcts_high;
+			num_duty_pcts = CHARGING_LED_DUTY_PCTS_HIGH_SIZE;
+		}
+
 		ramp_step_ms = 85;
-		num_duty_pcts = ARRAY_SIZE(charging_led_duty_pcts);
 
 		for (i = 0; i < num_duty_pcts; i++) {
 			pwm_cfg->duty_cycles->duty_pcts[i] =
