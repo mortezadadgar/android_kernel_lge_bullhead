@@ -1745,8 +1745,8 @@ static int qpnp_kpdbl_set(struct qpnp_led_data *led)
 
 static int charging_led_duty_pcts_low[] = {
 	1, 1, 2, 2, 4, 4, 6, 6, 8, 8,
-	10, 12, 14, 16, 18, 20, 22, 24, 26, 28,
-	30, 32,	32, 32
+	10, 10, 12, 14, 16, 18, 20, 22, 24, 26,
+	26, 28, 28, 28
 };
 
 static int charging_led_duty_pcts_mid[] = {
@@ -1770,7 +1770,7 @@ static int rgb_duration_config(struct qpnp_led_data *led)
 	unsigned long on_ms = led->rgb_cfg->on_ms;
 	unsigned long off_ms = led->rgb_cfg->off_ms;
 	unsigned long ramp_step_ms, num_duty_pcts;
-	struct pwm_config_data  *pwm_cfg = led->rgb_cfg->pwm_cfg;
+	struct pwm_config_data *pwm_cfg = led->rgb_cfg->pwm_cfg;
 
 	if (!on_ms)
 		return -EINVAL;
