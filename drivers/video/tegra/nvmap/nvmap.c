@@ -275,6 +275,11 @@ void *__nvmap_mmap(struct nvmap_handle *h)
 	if (!h)
 		return NULL;
 
+	if (!h->alloc) {
+		nvmap_handle_put(h);
+		return NULL;
+	}
+
 	prot = nvmap_pgprot(h, pgprot_kernel);
 
 	if (h->heap_pgalloc)
