@@ -1050,7 +1050,6 @@ static long nvhost_channelctl(struct file *filp,
 			put_unused_fd(fd);
 			break;
 		}
-		fd_install(fd, file);
 
 		err = __nvhost_channelopen(NULL, priv->ch, file);
 		if (err) {
@@ -1060,6 +1059,7 @@ static long nvhost_channelctl(struct file *filp,
 		}
 
 		((struct nvhost_channel_open_args *)buf)->channel_fd = fd;
+		fd_install(fd, file);
 		break;
 	}
 	case NVHOST_IOCTL_CHANNEL_GET_SYNCPOINTS:
