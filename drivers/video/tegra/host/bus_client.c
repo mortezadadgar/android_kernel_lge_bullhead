@@ -404,6 +404,7 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 	u32 __user *waitbases = (u32 *)(uintptr_t)args->waitbases;
 	u32 __user *fences = (u32 *)(uintptr_t)args->fences;
 	u32 __user *class_ids = (u32 *)(uintptr_t)args->class_ids;
+	struct nvhost_device_data *pdata = platform_get_drvdata(ctx->ch->dev);
 
 	struct nvhost_master *host = nvhost_get_host(ctx->ch->dev);
 	u32 *local_waitbases = NULL, *local_class_ids = NULL;
@@ -452,6 +453,13 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 		err = copy_from_user(&cmdbuf, cmdbufs + i, sizeof(cmdbuf));
 		if (err)
 			goto fail;
+
+		if (class_id &&
+		    class_id != pdata->class &&
+		    class_id != NV_HOST1X_CLASS_ID) {
+			err = -EINVAL;
+			goto fail;
+		}
 
 		nvhost_job_add_gather(job, cmdbuf.mem, cmdbuf.words,
 				cmdbuf.offset, class_id);
@@ -507,6 +515,8 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 	for (i = 0; i < num_syncpt_incrs; ++i) {
 		u32 waitbase;
 		struct nvhost_syncpt_incr sp;
+		bool found = false;
+		int j;
 
 		/* Copy */
 		err = copy_from_user(&sp, syncpt_incrs + i, sizeof(sp));
@@ -514,7 +524,19 @@ static int nvhost_ioctl_channel_submit(struct nvhost_channel_userctx *ctx,
 			goto fail;
 
 		/* Validate */
-		if (sp.syncpt_id > host->info.nb_pts) {
+		if (sp.syncpt_id == 0) {
+			err = -EINVAL;
+			goto fail;
+		}
+
+		for (j = 0; j < NVHOST_MODULE_MAX_SYNCPTS; ++j) {
+			if (pdata->syncpts[j] == sp.syncpt_id) {
+				found = true;
+				break;
+			}
+		}
+
+		if (!found) {
 			err = -EINVAL;
 			goto fail;
 		}
