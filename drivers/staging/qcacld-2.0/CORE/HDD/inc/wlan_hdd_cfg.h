@@ -1157,14 +1157,14 @@ enum
 #define CFG_EMPTY_SCAN_REFRESH_PERIOD_DEFAULT      (0)
 
 #define CFG_ROAM_BMISS_FIRST_BCNT_NAME                  "gRoamBmissFirstBcnt"
-#define CFG_ROAM_BMISS_FIRST_BCNT_MIN                   (5)
-#define CFG_ROAM_BMISS_FIRST_BCNT_MAX                   (100)
-#define CFG_ROAM_BMISS_FIRST_BCNT_DEFAULT               (10)
+#define CFG_ROAM_BMISS_FIRST_BCNT_MIN                   (25)
+#define CFG_ROAM_BMISS_FIRST_BCNT_MAX                   (25)
+#define CFG_ROAM_BMISS_FIRST_BCNT_DEFAULT               (25)
 
 #define CFG_ROAM_BMISS_FINAL_BCNT_NAME                  "gRoamBmissFinalBcnt"
-#define CFG_ROAM_BMISS_FINAL_BCNT_MIN                   (5)
-#define CFG_ROAM_BMISS_FINAL_BCNT_MAX                   (100)
-#define CFG_ROAM_BMISS_FINAL_BCNT_DEFAULT               (10)
+#define CFG_ROAM_BMISS_FINAL_BCNT_MIN                   (35)
+#define CFG_ROAM_BMISS_FINAL_BCNT_MAX                   (35)
+#define CFG_ROAM_BMISS_FINAL_BCNT_DEFAULT               (35)
 
 #define CFG_ROAM_BEACON_RSSI_WEIGHT_NAME                "gRoamBeaconRssiWeight"
 #define CFG_ROAM_BEACON_RSSI_WEIGHT_MIN                 (0)
