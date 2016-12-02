@@ -378,10 +378,17 @@ config TEGRA_GK20A_DEVFREQ
 
 endchoice
 
+config TEGRA_GK20A_DEBUG_SESSION
+	bool "Enable GK20A debug session"
+	depends on TEGRA_GK20A
+	default n
+	help
+	  Enables using debug session on GK20A.
+
 config TEGRA_GPU_CYCLE_STATS
 	bool "Support GK20A GPU CYCLE STATS"
-	depends on TEGRA_GK20A
-	default y
+	depends on TEGRA_GK20A_DEBUG_SESSION
+	default n
 	help
 	  Say Y here to enable the cycle stats debugging features.
 

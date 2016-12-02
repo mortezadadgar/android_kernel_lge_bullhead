@@ -53,7 +53,10 @@
 #include "gk20a_power.h"
 #include "gk20a_scale.h"
 #include "gr3d/pod_scaling.h"
+
+#ifdef CONFIG_TEGRA_GK20A_DEBUG_SESSION
 #include "dbg_gpu_gk20a.h"
+#endif
 
 static inline void set_gk20a(struct platform_device *dev, struct gk20a *gk20a)
 {
@@ -92,6 +95,7 @@ const struct file_operations tegra_gk20a_ctrl_ops = {
 	.unlocked_ioctl = gk20a_ctrl_dev_ioctl,
 };
 
+#ifdef CONFIG_TEGRA_GK20A_DEBUG_SESSION
 const struct file_operations tegra_gk20a_dbg_gpu_ops = {
 	.owner = THIS_MODULE,
 	.release        = gk20a_dbg_gpu_dev_release,
@@ -121,7 +125,7 @@ const struct file_operations tegra_gk20a_prof_gpu_ops = {
 	.compat_ioctl = gk20a_dbg_gpu_dev_ioctl,
 #endif
 };
-
+#endif
 
 static inline void sim_writel(struct gk20a *g, u32 r, u32 v)
 {

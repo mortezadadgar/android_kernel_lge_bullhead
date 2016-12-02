@@ -19,9 +19,12 @@
 #ifndef __REGOPS_GK20A_H_
 #define __REGOPS_GK20A_H_
 
+#ifdef CONFIG_TEGRA_GK20A_DEBUG_SESSION
+struct dbg_session_gk20a;
 int exec_regops_gk20a(struct dbg_session_gk20a *dbg_s,
 		      struct nvhost_dbg_gpu_reg_op *ops,
 		      u64 num_ops);
+#endif
 
 /* turn seriously unwieldy names -> something shorter */
 #define REGOP(x) NVHOST_DBG_GPU_REG_OP_##x

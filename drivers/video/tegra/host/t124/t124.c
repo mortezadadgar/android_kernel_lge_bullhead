@@ -250,8 +250,10 @@ struct nvhost_device_data tegra_gk20a_info = {
 	.can_powergate		= true,
 	.alloc_hwctx_handler	= nvhost_gk20a_alloc_hwctx_handler,
 	.ctrl_ops		= &tegra_gk20a_ctrl_ops,
+#ifdef CONFIG_TEGRA_GK20A_DEBUG_SESSION
 	.dbg_ops                = &tegra_gk20a_dbg_gpu_ops,
 	.prof_ops                = &tegra_gk20a_prof_gpu_ops,
+#endif
 	.as_ops			= &tegra_gk20a_as_ops,
 	.moduleid		= NVHOST_MODULE_GPU,
 	.init			= nvhost_gk20a_init,

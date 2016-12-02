@@ -19,6 +19,8 @@
 #define __DBG_GPU_GK20A_H_
 #include <linux/poll.h>
 
+struct dbg_session_gk20a;
+
 /* module debug driver interface */
 int gk20a_dbg_gpu_dev_release(struct inode *inode, struct file *filp);
 int gk20a_dbg_gpu_dev_open(struct inode *inode, struct file *filp);
