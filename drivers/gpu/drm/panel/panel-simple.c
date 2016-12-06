@@ -243,6 +243,27 @@ static const struct drm_panel_funcs panel_simple_funcs = {
 	.get_modes = panel_simple_get_modes,
 };
 
+static void panel_simple_powerwash(struct panel_simple *p)
+{
+	int err;
+
+	if (p->backlight) {
+		p->backlight->props.power = FB_BLANK_POWERDOWN;
+		backlight_update_status(p->backlight);
+	}
+
+	if (p->desc->delay.disable)
+		msleep(p->desc->delay.disable);
+
+	err = regulator_enable(p->supply);
+	if (err < 0)
+		dev_err(p->base.dev, "failed to enable supply: %d\n", err);
+	regulator_disable(p->supply);
+
+	if (p->desc->delay.unprepare)
+		msleep(p->desc->delay.unprepare);
+}
+
 static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 {
 	struct device_node *backlight, *ddc;
@@ -317,9 +338,9 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	err = drm_panel_add(&panel->base);
 	if (err < 0)
 		goto free_ddc;
-
 	dev_set_drvdata(dev, panel);
 
+	panel_simple_powerwash(panel);
 	return 0;
 
 free_ddc:
