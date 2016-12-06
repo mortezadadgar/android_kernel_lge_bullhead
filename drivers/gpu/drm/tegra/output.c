@@ -143,46 +143,82 @@ static const struct drm_connector_funcs connector_funcs = {
 
 int tegra_output_panel_enable(struct tegra_output *output)
 {
+	int err;
+
 	if (!output->panel)
 		return 0;
 
-	if (++output->panel_enable_count != 1)
+	if (output->panel_enabled)
 		return 0;
 
-	return drm_panel_enable(output->panel);
+	err = drm_panel_enable(output->panel);
+	if (err < 0) {
+		dev_err(output->dev, "panel enable failed: %d\n", err);
+		return err;
+	}
+
+	output->panel_enabled = true;
+	return 0;
 }
 
 int tegra_output_panel_disable(struct tegra_output *output)
 {
+	int err;
+
 	if (!output->panel)
 		return 0;
 
-	if (--output->panel_enable_count != 0)
+	if (!output->panel_enabled)
 		return 0;
 
-	return drm_panel_disable(output->panel);
+	err = drm_panel_disable(output->panel);
+	if (err < 0) {
+		dev_err(output->dev, "panel disable failed: %d\n", err);
+		return err;
+	}
+
+	output->panel_enabled = false;
+	return 0;
 }
 
 int tegra_output_panel_prepare(struct tegra_output *output)
 {
+	int err;
+
 	if (!output->panel)
 		return 0;
 
-	if (++output->panel_prepare_count != 1)
+	if (output->panel_prepared)
 		return 0;
 
-	return drm_panel_prepare(output->panel);
+	err = drm_panel_prepare(output->panel);
+	if (err < 0) {
+		dev_err(output->dev, "panel prepare failed: %d\n", err);
+		return err;
+	}
+
+	output->panel_prepared = true;
+	return 0;
 }
 
 int tegra_output_panel_unprepare(struct tegra_output *output)
 {
+	int err;
+
 	if (!output->panel)
 		return 0;
 
-	if (--output->panel_prepare_count != 0)
+	if (!output->panel_prepared)
 		return 0;
 
-	return drm_panel_unprepare(output->panel);
+	err = drm_panel_unprepare(output->panel);
+	if (err < 0) {
+		dev_err(output->dev, "panel unprepare failed: %d\n", err);
+		return err;
+	}
+
+	output->panel_prepared = false;
+	return 0;
 }
 
 static void drm_encoder_clear(struct drm_encoder *encoder)
@@ -209,7 +245,6 @@ static void tegra_encoder_disable(struct drm_encoder *encoder)
 
 	tegra_output_panel_disable(output);
 	tegra_output_disable(output);
-	tegra_output_panel_unprepare(output);
 
 	output->enabled = false;
 }
@@ -221,7 +256,6 @@ static void tegra_encoder_enable(struct drm_encoder *encoder)
 	if (output->enabled)
 		return;
 
-	tegra_output_panel_prepare(output);
 	tegra_output_enable(output);
 	tegra_output_panel_enable(output);
 

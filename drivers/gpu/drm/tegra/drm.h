@@ -218,8 +218,8 @@ struct tegra_output {
 	enum tegra_output_type type;
 
 	struct drm_panel *panel;
-	int panel_enable_count;
-	int panel_prepare_count;
+	bool panel_enabled;
+	bool panel_prepared;
 	struct i2c_adapter *ddc;
 	const struct edid *edid;
 	unsigned int hpd_irq;

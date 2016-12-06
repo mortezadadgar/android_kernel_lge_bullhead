@@ -1165,14 +1165,10 @@ tegra_output_sor_detect(struct tegra_output *output)
 	enum drm_connector_status ret;
 
 	mutex_lock(&sor->lock);
-	tegra_output_panel_prepare(output);
-
 	if (sor->dpaux)
 		ret = tegra_dpaux_detect(sor->dpaux);
 	else
 		ret = connector_status_unknown;
-
-	tegra_output_panel_unprepare(output);
 	mutex_unlock(&sor->lock);
 
 	return ret;

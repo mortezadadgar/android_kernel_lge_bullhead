@@ -144,7 +144,6 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 	unsigned long status;
 	ssize_t ret = 0;
 	u32 value;
-	bool restore_dpaux_state = false;
 
 	/* Tegra has 4x4 byte DP AUX transmit and receive FIFOs. */
 	if (msg->size > 16)
@@ -206,10 +205,8 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 		return -EINVAL;
 	}
 
-	if (!dpaux->enabled) {
-		restore_dpaux_state = true;
+	if (!dpaux->enabled)
 		tegra_dpaux_enable(dpaux);
-	}
 
 	if (tegra_dpaux_wait_plugged(dpaux) < 0) {
 		WARN(1, "wait HPD failed in dpaux transfer.\n");
@@ -293,8 +290,6 @@ static ssize_t tegra_dpaux_transfer(struct drm_dp_aux *aux,
 	}
 
 out:
-	if (restore_dpaux_state)
-		tegra_dpaux_disable(dpaux);
 	return ret;
 }
 
@@ -600,7 +595,6 @@ int tegra_dpaux_attach(struct tegra_dpaux *dpaux, struct tegra_output *output)
 	output->ddc = &dpaux->aux.ddc;
 	dpaux->output = output;
 
-	tegra_output_panel_prepare(output);
 	timeout = jiffies + msecs_to_jiffies(250);
 	while (time_before(jiffies, timeout)) {
 		enum drm_connector_status status;
@@ -623,7 +617,6 @@ int tegra_dpaux_detach(struct tegra_dpaux *dpaux)
 
 	disable_irq(dpaux->irq);
 
-	tegra_output_panel_unprepare(dpaux->output);
 	timeout = jiffies + msecs_to_jiffies(250);
 	while (time_before(jiffies, timeout)) {
 		enum drm_connector_status status;
@@ -654,6 +647,7 @@ int tegra_dpaux_enable(struct tegra_dpaux *dpaux)
 	if (dpaux->enabled)
 		return 0;
 
+	tegra_output_panel_prepare(dpaux->output);
 	tegra_unpowergate_partition(TEGRA_POWERGATE_SOR);
 	err = clk_prepare_enable(dpaux->clk);
 	if (err < 0) {
@@ -704,6 +698,7 @@ int tegra_dpaux_disable(struct tegra_dpaux *dpaux)
 	udelay(10);
 	clk_disable_unprepare(dpaux->clk);
 
+	tegra_output_panel_unprepare(dpaux->output);
 	dpaux->enabled = false;
 	return 0;
 }
