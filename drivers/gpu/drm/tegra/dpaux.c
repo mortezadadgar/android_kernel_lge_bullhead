@@ -496,12 +496,6 @@ static int tegra_dpaux_probe(struct platform_device *pdev)
 	if (IS_ERR(dpaux->clk))
 		return PTR_ERR(dpaux->clk);
 
-	err = clk_prepare_enable(dpaux->clk);
-	if (err < 0)
-		return err;
-
-	reset_control_deassert(dpaux->rst);
-
 	dpaux->clk_parent = devm_clk_get(&pdev->dev, "parent");
 	if (IS_ERR(dpaux->clk_parent))
 		return PTR_ERR(dpaux->clk_parent);
@@ -655,11 +649,18 @@ enum drm_connector_status tegra_dpaux_detect(struct tegra_dpaux *dpaux)
 int tegra_dpaux_enable(struct tegra_dpaux *dpaux)
 {
 	unsigned long value;
+	int err;
 
 	if (dpaux->enabled)
 		return 0;
 
 	tegra_unpowergate_partition(TEGRA_POWERGATE_SOR);
+	err = clk_prepare_enable(dpaux->clk);
+	if (err < 0) {
+		dev_info(dpaux->dev, "enable dpaux clock failed: %d\n", err);
+		tegra_powergate_partition(TEGRA_POWERGATE_SOR);
+		return err;
+	}
 	reset_control_deassert(dpaux->rst);
 	udelay(10);
 
@@ -701,6 +702,7 @@ int tegra_dpaux_disable(struct tegra_dpaux *dpaux)
 	tegra_powergate_partition(TEGRA_POWERGATE_SOR);
 	reset_control_assert(dpaux->rst);
 	udelay(10);
+	clk_disable_unprepare(dpaux->clk);
 
 	dpaux->enabled = false;
 	return 0;
