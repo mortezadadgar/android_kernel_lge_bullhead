@@ -599,9 +599,9 @@ int nvmap_ioctl_get_param(struct file *filp, void __user *arg)
 {
 	struct nvmap_handle_param op;
 	struct nvmap_client *client = filp->private_data;
-	struct nvmap_handle_ref *ref;
-	struct nvmap_handle *h;
-	u64 result;
+	struct nvmap_handle_ref *ref = NULL;
+	struct nvmap_handle *h = NULL;
+	u64 result = 0;
 	int err = 0;
 	ulong handle;
 
@@ -621,6 +621,8 @@ int nvmap_ioctl_get_param(struct file *filp, void __user *arg)
 	}
 
 	err = nvmap_get_handle_param(client, ref, op.param, &result);
+	if (err)
+		goto ref_fail;
 	op.result = (long unsigned int)result;
 
 	if (!err && copy_to_user(arg, &op, sizeof(op)))
