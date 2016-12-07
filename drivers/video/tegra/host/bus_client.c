@@ -179,6 +179,9 @@ static int nvhost_channelrelease(struct inode *inode, struct file *filp)
 {
 	struct nvhost_channel_userctx *priv = filp->private_data;
 
+	if (!priv)
+		return 0;
+
 	trace_nvhost_channel_release(dev_name(&priv->ch->dev->dev));
 
 	filp->private_data = NULL;
@@ -228,7 +231,6 @@ static int __nvhost_channelopen(struct inode *inode,
 		nvhost_putchannel(ch);
 		return -ENOMEM;
 	}
-	filp->private_data = priv;
 	priv->ch = ch;
 	if (nvhost_module_add_client(ch->dev, priv))
 		goto fail;
@@ -250,6 +252,7 @@ static int __nvhost_channelopen(struct inode *inode,
 
 	priv->vm = nvhost_vm_allocate(ch->dev);
 
+	filp->private_data = priv;
 	return 0;
 fail:
 	nvhost_channelrelease(inode, filp);
