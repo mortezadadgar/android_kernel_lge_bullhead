@@ -1648,7 +1648,7 @@ static u32 * __init tegra124_init_suspend_ctx(void)
 	int i, size = 0;
 
 	for (i = 0; i < ARRAY_SIZE(periph_srcs); i++)
-		size += periph_srcs[i].end - periph_srcs[i].start + 1;
+		size += periph_srcs[i].end - periph_srcs[i].start + 4;
 
 	periph_clk_src_ctx = kmalloc(size, GFP_KERNEL);
 
@@ -1697,8 +1697,10 @@ static int tegra124_clk_suspend(void)
 	for (i = 0; i < ARRAY_SIZE(periph_srcs); i++) {
 		for (off = periph_srcs[i].start; off <= periph_srcs[i].end;
 			off += 4) {
-			if (off == CLK_SOURCE_EMC)
+			if (off == CLK_SOURCE_EMC) {
+				clk_rst_ctx++;
 				continue;
+			}
 			*clk_rst_ctx++ = car_readl(off, 0);
 		}
 	}
@@ -1789,8 +1791,10 @@ static void tegra124_clk_resume(void)
 	for (i = 0; i < ARRAY_SIZE(periph_srcs); i++) {
 		for (off = periph_srcs[i].start; off <= periph_srcs[i].end;
 			off += 4) {
-			if (off == CLK_SOURCE_EMC)
+			if (off == CLK_SOURCE_EMC) {
+				clk_rst_ctx++;
 				continue;
+			}
 			car_writel(*clk_rst_ctx++, off, 0);
 		}
 	}
