@@ -2001,9 +2001,10 @@ static int gk20a_as_map_buffer(struct nvhost_as_share *as_share,
 
 	/* get ref to the mem handle (released on unmap_locked) */
 	r = nvhost_memmgr_get(memmgr, mem_id, g->dev);
-	if (!r) {
+	if (IS_ERR(r)) {
+		nvhost_err(&g->dev->dev, "invalid mem_id: %lu\n", mem_id);
 		nvhost_memmgr_put_mgr(memmgr);
-		return 0;
+		return -EINVAL;
 	}
 
 	ret_va = gk20a_vm_map(vm, memmgr, r, *offset_align,
