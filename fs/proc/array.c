@@ -342,6 +342,7 @@ static inline void task_cap(struct seq_file *m, struct task_struct *p)
 
 static inline void task_seccomp(struct seq_file *m, struct task_struct *p)
 {
+	seq_printf(m, "NoNewPrivs:\t%d\n", task_no_new_privs(p));
 #ifdef CONFIG_SECCOMP
 	seq_printf(m, "Seccomp:\t%d\n", p->seccomp.mode);
 #endif
