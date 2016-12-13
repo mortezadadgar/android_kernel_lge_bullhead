@@ -1590,6 +1590,9 @@ int iwl_mvm_enter_d0i3(struct iwl_op_mode *op_mode)
 		mvm->d0i3_offloading = false;
 	}
 
+#ifdef CPTCFG_IWLMVM_TCM
+	iwl_mvm_pause_tcm(mvm);
+#endif
 	/* make sure we have no running tx while configuring the seqno */
 	synchronize_net();
 
@@ -1770,6 +1773,9 @@ out:
 	/* the FW might have updated the regdomain */
 	iwl_mvm_update_changed_regdom(mvm);
 
+#ifdef CPTCFG_IWLMVM_TCM
+	iwl_mvm_resume_tcm(mvm);
+#endif
 	iwl_mvm_unref(mvm, IWL_MVM_REF_EXIT_WORK);
 	mutex_unlock(&mvm->mutex);
 }
