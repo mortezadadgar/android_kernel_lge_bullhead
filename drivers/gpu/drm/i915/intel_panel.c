@@ -910,7 +910,7 @@ void intel_panel_enable_backlight(struct intel_connector *connector)
 
 	spin_lock_irqsave(&dev_priv->backlight_lock, flags);
 
-	if (panel->backlight.level == 0) {
+	if (panel->backlight.level <= panel->backlight.min) {
 		if (panel->backlight.device) {
 			panel->backlight.level =
 				scale_user_to_hw(connector,
