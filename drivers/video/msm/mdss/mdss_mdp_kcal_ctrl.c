@@ -36,26 +36,6 @@
 #define DEF_PA 0xff
 #define PCC_ADJ 0x80
 
-struct kcal_lut_data {
-#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS) && defined(CONFIG_FB)
-	struct mmi_notifier panel_nb;
-#elif defined(CONFIG_FB)
-	struct device dev;
-	struct notifier_block panel_nb;
-#endif
-	bool queue_changes;
-	int red;
-	int green;
-	int blue;
-	int minimum;
-	int enable;
-	int invert;
-	int sat;
-	int hue;
-	int val;
-	int cont;
-};
-
 static uint32_t igc_Table_Inverted[IGC_LUT_ENTRIES] = {
 	267390960, 266342368, 265293776, 264245184,
 	263196592, 262148000, 261099408, 260050816,
@@ -248,6 +228,31 @@ static void mdss_mdp_kcal_update_igc(struct kcal_lut_data *lut_data)
 	igc_config.c2_data = &igc_Table_RGB[0];
 
 	mdss_mdp_igc_lut_config(&igc_config, &copyback, copy_from_kernel);
+}
+
+static struct platform_device kcal_ctrl_device;
+
+void kcal_ext_apply_values(int red, int green, int blue)
+{
+	struct kcal_lut_data *lut_data =
+				platform_get_drvdata(&kcal_ctrl_device);
+
+	lut_data->red = red / 128;
+	lut_data->green = green / 128;
+	lut_data->blue = blue / 128;
+
+	if (mdss_mdp_kcal_is_panel_on())
+		mdss_mdp_kcal_update_pcc(lut_data);
+	else
+		lut_data->queue_changes = true;
+}
+
+struct kcal_lut_data kcal_ext_show_values(void)
+{
+	struct kcal_lut_data *lut_data =
+				platform_get_drvdata(&kcal_ctrl_device);
+
+	return *lut_data;
 }
 
 static ssize_t kcal_store(struct device *dev, struct device_attribute *attr,
