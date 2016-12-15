@@ -1769,6 +1769,12 @@ static int rgb_duration_config(struct qpnp_led_data *led)
 			low_brightness = 6; // max = 48
 		else
 			low_brightness = 7; // max = 49
+	} else if (mdss_backlight_value_percentage >= 35 &&
+			mdss_backlight_value_percentage < 50) {
+		if (!off_ms)
+			low_brightness = 9; // max = 72
+		else
+			low_brightness = 10; // max = 70
 	} else {
 		if (!off_ms)
 			low_brightness = 12; // max = 96
