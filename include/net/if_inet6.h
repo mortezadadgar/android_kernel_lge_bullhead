@@ -50,7 +50,7 @@ struct inet6_ifaddr {
 
 	int			state;
 
-	__u8			probes;
+	__u8			dad_probes;
 	__u8			flags;
 
 	__u16			scope;
@@ -58,7 +58,7 @@ struct inet6_ifaddr {
 	unsigned long		cstamp;	/* created timestamp */
 	unsigned long		tstamp; /* updated timestamp */
 
-	struct timer_list	timer;
+	struct timer_list	dad_timer;
 
 	struct inet6_dev	*idev;
 	struct rt6_info		*rt;
@@ -196,7 +196,9 @@ struct inet6_dev {
 	struct ipv6_devconf	cnf;
 	struct ipv6_devstat	stats;
 
+        struct timer_list	rs_timer;
 	__s32			rs_interval;	/* in jiffies */
+	__u8			rs_probes;
 
 	unsigned long		tstamp; /* ipv6InterfaceTable update timestamp */
 	struct rcu_head		rcu;
