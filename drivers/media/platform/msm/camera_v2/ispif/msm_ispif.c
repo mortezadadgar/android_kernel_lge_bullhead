@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -136,7 +136,7 @@ static int msm_ispif_reset_hw(struct ispif_device *ispif)
 				ispif->base + ISPIF_RST_CMD_ADDR);
 
 
-	timeout = wait_for_completion_timeout(
+	timeout = wait_for_completion_interruptible_timeout(
 			&ispif->reset_complete[VFE0], msecs_to_jiffies(500));
 	CDBG("%s: VFE0 done\n", __func__);
 
@@ -159,7 +159,7 @@ static int msm_ispif_reset_hw(struct ispif_device *ispif)
 	if (ispif->hw_num_isps > 1) {
 		msm_camera_io_w(ISPIF_RST_CMD_1_MASK,
 					ispif->base + ISPIF_RST_CMD_1_ADDR);
-		timeout = wait_for_completion_timeout(
+		timeout = wait_for_completion_interruptible_timeout(
 				&ispif->reset_complete[VFE1],
 				msecs_to_jiffies(500));
 		CDBG("%s: VFE1 done\n", __func__);
@@ -857,7 +857,7 @@ static int msm_ispif_restart_frame_boundary(struct ispif_device *ispif,
 	}
 
 	if (vfe_mask & (1 << VFE0)) {
-		timeout = wait_for_completion_timeout(
+		timeout = wait_for_completion_interruptible_timeout(
 			&ispif->reset_complete[VFE0], msecs_to_jiffies(500));
 		if (timeout <= 0) {
 			pr_err("%s: VFE0 reset wait timeout\n", __func__);
@@ -867,7 +867,7 @@ static int msm_ispif_restart_frame_boundary(struct ispif_device *ispif,
 	}
 
 	if (ispif->hw_num_isps > 1  && (vfe_mask & (1 << VFE1))) {
-		timeout = wait_for_completion_timeout(
+		timeout = wait_for_completion_interruptible_timeout(
 				&ispif->reset_complete[VFE1],
 				msecs_to_jiffies(500));
 		if (timeout <= 0) {
