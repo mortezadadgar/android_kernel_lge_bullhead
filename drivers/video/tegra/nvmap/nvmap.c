@@ -198,6 +198,9 @@ void *__nvmap_kmap(struct nvmap_handle *h, unsigned int pagenum)
 	if (!h)
 		return NULL;
 
+	if (!h->alloc)
+		goto out;
+
 	if (pagenum >= h->size >> PAGE_SHIFT)
 		goto out;
 	prot = nvmap_pgprot(h, pgprot_kernel);
@@ -225,7 +228,7 @@ void __nvmap_kunmap(struct nvmap_handle *h, unsigned int pagenum,
 	phys_addr_t paddr;
 	pte_t **pte;
 
-	if (!h ||
+	if (!h || !h->alloc ||
 	    WARN_ON(!virt_addr_valid(h)) ||
 	    WARN_ON(!addr))
 		return;
@@ -337,7 +340,7 @@ void *__nvmap_mmap(struct nvmap_handle *h)
 
 void __nvmap_munmap(struct nvmap_handle *h, void *addr)
 {
-	if (!h ||
+	if (!h || !h->alloc ||
 	    WARN_ON(!virt_addr_valid(h)) ||
 	    WARN_ON(!addr))
 		return;
@@ -475,6 +478,11 @@ struct sg_table *__nvmap_sg_table(struct nvmap_client *client,
 	h = nvmap_handle_get(h);
 	if (!h)
 		return ERR_PTR(-EINVAL);
+
+	if (!h->alloc) {
+		nvmap_handle_put(h);
+		return ERR_PTR(-EINVAL);
+	}
 
 	npages = PAGE_ALIGN(h->size) >> PAGE_SHIFT;
 	sgt = kzalloc(sizeof(*sgt), GFP_KERNEL);
