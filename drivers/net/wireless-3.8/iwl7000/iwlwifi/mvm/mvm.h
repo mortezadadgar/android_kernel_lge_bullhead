@@ -1182,6 +1182,10 @@ struct iwl_mvm {
 	struct delayed_work cs_tx_unblock_dwork;
 #ifdef CONFIG_ACPI
 	struct iwl_mvm_sar_profile sar_profiles[IWL_MVM_SAR_PROFILE_NUM];
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	u8 sar_chain_a_profile;
+	u8 sar_chain_b_profile;
+#endif
 #endif
 };
 
@@ -2032,5 +2036,6 @@ int iwl_mvm_send_lqm_cmd(struct ieee80211_vif *vif,
 			 enum iwl_lqm_cmd_operatrions operation,
 			 u32 duration, u32 timeout);
 bool iwl_mvm_lqm_active(struct iwl_mvm *mvm);
+int iwl_mvm_sar_select_profile(struct iwl_mvm *mvm, int prof_a, int prof_b);
 
 #endif /* __IWL_MVM_H__ */

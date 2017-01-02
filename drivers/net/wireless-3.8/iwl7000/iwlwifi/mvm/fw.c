@@ -1287,8 +1287,7 @@ static int iwl_mvm_sar_get_ewrd_table(struct iwl_mvm *mvm)
 }
 #endif /* CONFIG_ACPI */
 
-static int
-iwl_mvm_sar_select_profile(struct iwl_mvm *mvm, int prof_a, int prof_b)
+int iwl_mvm_sar_select_profile(struct iwl_mvm *mvm, int prof_a, int prof_b)
 {
 	struct iwl_dev_tx_power_cmd cmd = {
 		.v3.set_mode = cpu_to_le32(IWL_TX_POWER_MODE_SET_CHAINS),
@@ -1330,6 +1329,10 @@ iwl_mvm_sar_select_profile(struct iwl_mvm *mvm, int prof_a, int prof_b)
 		}
 	}
 
+#ifdef CPTCFG_IWLMVM_VENDOR_CMDS
+	mvm->sar_chain_a_profile = prof_a;
+	mvm->sar_chain_b_profile = prof_b;
+#endif
 	IWL_DEBUG_RADIO(mvm, "Sending REDUCE_TX_POWER_CMD per chain\n");
 
 	return iwl_mvm_send_cmd_pdu(mvm, REDUCE_TX_POWER_CMD, 0, len, &cmd);

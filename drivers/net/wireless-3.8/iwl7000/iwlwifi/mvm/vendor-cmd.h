@@ -7,7 +7,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
- * Copyright(c) 2016 Intel Deutschland GmbH
+ * Copyright(c) 2016 - 2017 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -34,7 +34,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
- * Copyright(c) 2016 Intel Deutschland GmbH
+ * Copyright(c) 2016 - 2017 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -124,6 +124,13 @@
  *	Must include %IWL_MVM_VENDOR_ATTR_LQM_DURATION and
  *	%IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT. The results will be notified with
  *	this same command.
+ * @IWL_MVM_VENDOR_CMD_SET_SAR_PROFILE: set the NIC's tx power limits
+ *	according to the specified tx power profiles. In this command
+ *	%IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE and
+ *	%IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE must be passed.
+ * @IWL_MVM_VENDOR_CMD_GET_SAR_PROFILE_INFO: get sar profile information.
+ *	This command provides the user with the following information:
+ *	Number of enabled SAR profiles, current used SAR profile per chain.
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -155,6 +162,8 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_DBG_COLLECT,
 	IWL_MVM_VENDOR_CMD_NAN_FAW_CONF,
 	IWL_MVM_VENDOR_CMD_QUALITY_MEASUREMENTS,
+	IWL_MVM_VENDOR_CMD_SET_SAR_PROFILE,
+	IWL_MVM_VENDOR_CMD_GET_SAR_PROFILE_INFO,
 };
 
 /**
@@ -579,6 +588,12 @@ enum iwl_mvm_vendor_lqm_result {
  *	&enum iwl_mvm_vendor_gscan_cached_scan_res.
  * @IWL_MVM_VENDOR_ATTR_LAST_MSG: Indicates that this message is the last one
  *	in the series of messages. (flag)
+ * @IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE: SAR table idx for chain A.
+ *	This is a u8.
+ * @IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE: SAR table idx for chain B.
+ *	This is a u8.
+ * @IWL_MVM_VENDOR_ATTR_SAR_ENABLED_PROFILE_NUM: number of enabled SAR profile
+ *	This is a u8.
  *
  */
 enum iwl_mvm_vendor_attr {
@@ -640,6 +655,9 @@ enum iwl_mvm_vendor_attr {
 	IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM,
 	IWL_MVM_VENDOR_ATTR_GSCAN_CACHED_RESULTS,
 	IWL_MVM_VENDOR_ATTR_LAST_MSG,
+	IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE,
+	IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE,
+	IWL_MVM_VENDOR_ATTR_SAR_ENABLED_PROFILE_NUM,
 
 	NUM_IWL_MVM_VENDOR_ATTR,
 	MAX_IWL_MVM_VENDOR_ATTR = NUM_IWL_MVM_VENDOR_ATTR - 1,

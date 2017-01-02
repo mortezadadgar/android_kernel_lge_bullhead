@@ -7,7 +7,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
- * Copyright(c) 2016 Intel Deutschland GmbH
+ * Copyright(c) 2016 - 2017 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -34,7 +34,7 @@
  *
  * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
- * Copyright(c) 2016 Intel Deutschland GmbH
+ * Copyright(c) 2016 - 2017 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -104,6 +104,8 @@ iwl_mvm_vendor_attr_policy[NUM_IWL_MVM_VENDOR_ATTR] = {
 	[IWL_MVM_VENDOR_ATTR_LQM_DURATION] = { .type = NLA_U32 },
 	[IWL_MVM_VENDOR_ATTR_LQM_TIMEOUT] = { .type = NLA_U32 },
 	[IWL_MVM_VENDOR_ATTR_GSCAN_REPORT_THRESHOLD_NUM] = { .type = NLA_U32 },
+	[IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE] = { .type = NLA_U8 },
+	[IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE] = { .type = NLA_U8 },
 };
 
 static int iwl_mvm_parse_vendor_data(struct nlattr **tb,
@@ -1416,6 +1418,69 @@ static int iwl_mvm_vendor_link_quality_measurements(struct wiphy *wiphy,
 	return retval;
 }
 
+#ifdef CONFIG_ACPI
+static int iwl_mvm_vendor_set_dynamic_txp_profile(struct wiphy *wiphy,
+						  struct wireless_dev *wdev,
+						  const void *data,
+						  int data_len)
+{
+	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
+	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
+	struct nlattr *tb[NUM_IWL_MVM_VENDOR_ATTR];
+	int ret;
+	u8 chain_a, chain_b;
+
+	ret = iwl_mvm_parse_vendor_data(tb, data, data_len);
+	if (ret)
+		return ret;
+
+	if (!tb[IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE] ||
+	    !tb[IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE])
+		return -EINVAL;
+
+	chain_a = nla_get_u8(tb[IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE]);
+	chain_b = nla_get_u8(tb[IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE]);
+
+	if (mvm->sar_chain_a_profile == chain_a &&
+	    mvm->sar_chain_b_profile == chain_b)
+		return 0;
+
+	return iwl_mvm_sar_select_profile(mvm, chain_a, chain_b);
+}
+
+static int iwl_mvm_vendor_get_sar_profile_info(struct wiphy *wiphy,
+					       struct wireless_dev *wdev,
+					       const void *data,
+					       int data_len)
+{
+	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
+	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
+	struct sk_buff *skb;
+	int i;
+	u32 n_profiles = 0;
+
+	for (i = 0; i < IWL_MVM_SAR_PROFILE_NUM; i++) {
+		if (mvm->sar_profiles[i].enabled)
+			n_profiles++;
+	}
+
+	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, 100);
+	if (!skb)
+		return -ENOMEM;
+	if (nla_put_u8(skb, IWL_MVM_VENDOR_ATTR_SAR_ENABLED_PROFILE_NUM,
+		       n_profiles) ||
+	    nla_put_u8(skb, IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE,
+		       mvm->sar_chain_a_profile) ||
+	    nla_put_u8(skb, IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE,
+		       mvm->sar_chain_b_profile)) {
+		kfree_skb(skb);
+		return -ENOBUFS;
+	}
+
+	return cfg80211_vendor_cmd_reply(skb);
+}
+#endif
+
 static const struct wiphy_vendor_command iwl_mvm_vendor_commands[] = {
 	{
 		.info = {
@@ -1585,6 +1650,26 @@ static const struct wiphy_vendor_command iwl_mvm_vendor_commands[] = {
 			 WIPHY_VENDOR_CMD_NEED_RUNNING,
 		.doit = iwl_mvm_vendor_link_quality_measurements,
 	},
+#ifdef CONFIG_ACPI
+	{
+		.info = {
+			.vendor_id = INTEL_OUI,
+			.subcmd = IWL_MVM_VENDOR_CMD_SET_SAR_PROFILE,
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
+			 WIPHY_VENDOR_CMD_NEED_RUNNING,
+		.doit = iwl_mvm_vendor_set_dynamic_txp_profile,
+	},
+	{
+		.info = {
+			.vendor_id = INTEL_OUI,
+			.subcmd = IWL_MVM_VENDOR_CMD_GET_SAR_PROFILE_INFO,
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
+			 WIPHY_VENDOR_CMD_NEED_RUNNING,
+		.doit = iwl_mvm_vendor_get_sar_profile_info,
+	},
+#endif
 };
 
 enum iwl_mvm_vendor_events_idx {
