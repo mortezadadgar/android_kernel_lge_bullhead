@@ -532,6 +532,7 @@ static struct nvhost_hwctx *gk20a_alloc_hwctx(struct nvhost_hwctx_handler *h,
 	kref_init(&ctx->ref);
 	ctx->h = h;
 	ctx->channel = ch;
+	mutex_init(&ctx->error_notifier_mutex);
 
 	return gk20a_open_channel(ch, ctx);
 }

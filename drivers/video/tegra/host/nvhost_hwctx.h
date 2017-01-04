@@ -43,6 +43,7 @@ struct nvhost_hwctx {
 	struct mem_handle *error_notifier_ref;
 	struct nvhost_notification *error_notifier;
 	void *error_notifier_va;
+	struct mutex error_notifier_mutex;
 
 	u32 save_incrs;
 	u32 save_slots;

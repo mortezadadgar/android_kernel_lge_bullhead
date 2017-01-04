@@ -188,6 +188,7 @@ void gk20a_disable_channel(struct channel_gk20a *ch,
 void gk20a_disable_channel_no_update(struct channel_gk20a *ch);
 int gk20a_channel_finish(struct channel_gk20a *ch, unsigned long timeout);
 void gk20a_set_error_notifier(struct nvhost_hwctx *ctx, __u32 error);
+void gk20a_set_error_notifier_locked(struct nvhost_hwctx *ctx, __u32 error);
 int gk20a_channel_wait(struct channel_gk20a *ch,
 		       struct nvhost_wait_args *args);
 int gk20a_channel_zcull_bind(struct channel_gk20a *ch,

@@ -559,8 +559,7 @@ int gk20a_init_error_notifier(struct nvhost_hwctx *ctx,
 	memmgr = gk20a_channel_mem_mgr(ch);
 	handle_ref = nvhost_memmgr_get(memmgr, memhandle, dev);
 
-	if (ctx->error_notifier_ref)
-		gk20a_free_error_notifiers(ctx);
+	gk20a_free_error_notifiers(ctx);
 
 	if (IS_ERR(handle_ref)) {
 		pr_err("Invalid handle: %d\n", memhandle);
@@ -590,14 +589,22 @@ int gk20a_init_error_notifier(struct nvhost_hwctx *ctx,
 		return -ENOMEM;
 	}
 
-	/* set hwctx notifiers pointer */
-	ctx->error_notifier_ref = handle_ref;
 	ctx->error_notifier = va + offset;
 	ctx->error_notifier_va = va;
+
+	/* set hwctx notifiers pointer */
+	mutex_lock(&ctx->error_notifier_mutex);
+	ctx->error_notifier_ref = handle_ref;
+	mutex_unlock(&ctx->error_notifier_mutex);
+
 	return 0;
 }
 
-void gk20a_set_error_notifier(struct nvhost_hwctx *ctx, __u32 error)
+/*
+ * gk20a_set_error_notifier_locked()
+ * Should be called with ch->error_notifier_mutex held
+ */
+void gk20a_set_error_notifier_locked(struct nvhost_hwctx *ctx, __u32 error)
 {
 	if (ctx->error_notifier_ref) {
 		struct timespec time_data;
@@ -616,8 +623,16 @@ void gk20a_set_error_notifier(struct nvhost_hwctx *ctx, __u32 error)
 	}
 }
 
+void gk20a_set_error_notifier(struct nvhost_hwctx *ctx, __u32 error)
+{
+	mutex_lock(&ctx->error_notifier_mutex);
+	gk20a_set_error_notifier_locked(ctx, error);
+	mutex_unlock(&ctx->error_notifier_mutex);
+}
+
 void gk20a_free_error_notifiers(struct nvhost_hwctx *ctx)
 {
+	mutex_lock(&ctx->error_notifier_mutex);
 	if (ctx->error_notifier_ref) {
 		struct channel_gk20a *ch = ctx->priv;
 		struct mem_mgr *memmgr = gk20a_channel_mem_mgr(ch);
@@ -625,7 +640,10 @@ void gk20a_free_error_notifiers(struct nvhost_hwctx *ctx)
 				ctx->error_notifier_va);
 		nvhost_memmgr_put(memmgr, ctx->error_notifier_ref);
 		ctx->error_notifier_ref = 0;
+		ctx->error_notifier_ref = NULL;
+		ctx->error_notifier_va = NULL;
 	}
+	mutex_unlock(&ctx->error_notifier_mutex);
 }
 
 void gk20a_free_channel(struct nvhost_hwctx *ctx, bool finish)

@@ -915,7 +915,8 @@ static bool gk20a_fifo_set_ctx_mmu_error(struct gk20a *g,
 	nvhost_err(dev_from_gk20a(g),
 		"channel %d with hwctx generated a mmu fault",
 		ch->hw_chid);
-	if (ch->hwctx->error_notifier) {
+	mutex_lock(&ch->hwctx->error_notifier_mutex);
+	if (ch->hwctx->error_notifier_ref) {
 		u32 err = ch->hwctx->error_notifier->info32;
 		if (err) {
 			/* If error code is already set, this mmu fault
@@ -927,10 +928,12 @@ static bool gk20a_fifo_set_ctx_mmu_error(struct gk20a *g,
 			if (err == NVHOST_CHANNEL_FIFO_ERROR_IDLE_TIMEOUT)
 				verbose = ch->hwctx->timeout_debug_dump;
 		} else {
-			gk20a_set_error_notifier(ch->hwctx,
+			gk20a_set_error_notifier_locked(ch->hwctx,
 				NVHOST_CHANNEL_FIFO_ERROR_MMU_ERR_FLT);
 		}
 	}
+	mutex_unlock(&ch->hwctx->error_notifier_mutex);
+
 	/* mark channel as faulted */
 	ch->hwctx->has_timedout = true;
 	wmb();
