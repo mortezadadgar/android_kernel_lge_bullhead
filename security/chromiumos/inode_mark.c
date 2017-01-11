@@ -274,6 +274,9 @@ chromiumos_get_symlink_traversal_policy(struct dentry *dentry)
 	struct chromiumos_super_block_mark *sbm;
 	enum chromiumos_symlink_traversal_policy policy;
 
+	if (!dentry || !dentry->d_inode)
+		return CHROMIUMOS_SYMLINK_TRAVERSAL_INHERIT;
+
 	sbm = chromiumos_super_block_lookup(dentry->d_inode->i_sb);
 	if (!sbm)
 		return CHROMIUMOS_SYMLINK_TRAVERSAL_INHERIT;
