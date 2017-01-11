@@ -29,6 +29,7 @@
 #include <linux/genhd.h>
 #include <linux/highmem.h>
 #include <linux/slab.h>
+#include <linux/backing-dev.h>
 #include <linux/string.h>
 #include <linux/vmalloc.h>
 #include <linux/ratelimit.h>
@@ -120,7 +121,16 @@ static inline bool zram_meta_get(struct zram *zram)
        return false;
 }
 
+static void zram_revalidate_disk(struct zram *zram)
+{
+	revalidate_disk(zram->disk);
+	/* revalidate_disk reset the BDI_CAP_STABLE_WRITES so set again */
+	zram->disk->queue->backing_dev_info.capabilities |=
+		BDI_CAP_STABLE_WRITES;
+}
+
 static inline void zram_meta_put(struct zram *zram)
+
 {
        atomic_dec(&zram->refcount);
 }
@@ -894,7 +904,7 @@ static ssize_t disksize_store(struct device *dev,
 	init_waitqueue_head(&zram->io_done);
         atomic_set(&zram->refcount, 1);
 	set_capacity(zram->disk, zram->disksize >> SECTOR_SHIFT);
-	revalidate_disk(zram->disk);
+	zram_revalidate_disk(zram);
 	up_write(&zram->init_lock);
 
 	return len;
@@ -942,7 +952,7 @@ static ssize_t reset_store(struct device *dev,
 	/* Make sure all the pending I/O are finished */
 	fsync_bdev(bdev);
 	zram_reset_device(zram);
-	revalidate_disk(zram->disk);
+	zram_revalidate_disk(zram);
 	bdput(bdev);
 
 	mutex_lock(&bdev->bd_mutex);
