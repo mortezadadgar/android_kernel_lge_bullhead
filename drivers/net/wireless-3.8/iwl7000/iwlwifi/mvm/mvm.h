@@ -805,7 +805,7 @@ enum iwl_mvm_queue_status {
 
 #ifdef CONFIG_ACPI
 #define IWL_MVM_SAR_TABLE_SIZE		10
-#define IWL_MVM_SAR_PROFILE_NUM		1
+#define IWL_MVM_SAR_PROFILE_NUM		4
 
 struct iwl_mvm_sar_profile {
 	bool enabled;
