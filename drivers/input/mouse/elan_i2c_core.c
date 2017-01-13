@@ -559,7 +559,7 @@ static ssize_t elan_sysfs_update_fw(struct device *dev,
 		return -EINVAL;
 
 	/* Look for a firmware with the product id appended. */
-	fw_name = kasprintf(GFP_KERNEL, ETP_FW_NAME, data->product_id);
+	fw_name = kasprintf(GFP_KERNEL, ETP_FW_NAME);
 	if (!fw_name) {
 		dev_err(dev, "failed to allocate memory for firmware name\n");
 		return -ENOMEM;
