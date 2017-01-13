@@ -86,7 +86,6 @@ extern unsigned int sysctl_sched_new_task_windows;
 #define sysctl_sched_enable_hmp_task_placement 0
 
 #endif /* CONFIG_SCHED_HMP */
-extern unsigned int sysctl_sched_is_big_little;
 extern unsigned int sysctl_sched_sync_hint_enable;
 extern unsigned int sysctl_sched_initial_task_util;
 extern unsigned int sysctl_sched_cstate_aware;
