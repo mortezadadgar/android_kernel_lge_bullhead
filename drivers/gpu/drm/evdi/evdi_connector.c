@@ -46,14 +46,20 @@ static int evdi_mode_valid(struct drm_connector *connector,
 			   struct drm_display_mode *mode)
 {
 	struct evdi_device *evdi = connector->dev->dev_private;
+	uint32_t mode_area = mode->hdisplay * mode->vdisplay;
 
-	if (!evdi->sku_pixel_limit)
-		return 0;
+	if (evdi->sku_area_limit == 0)
+		return MODE_OK;
 
-	if (mode->vdisplay * mode->hdisplay > evdi->sku_pixel_limit)
-		return MODE_VIRTUAL_Y;
+	if (mode_area > evdi->sku_area_limit) {
+		EVDI_WARN("Mode %dx%d@%d rejected\n",
+			mode->hdisplay,
+			mode->vdisplay,
+			drm_mode_vrefresh(mode));
+		return MODE_BAD;
+	}
 
-	return 0;
+	return MODE_OK;
 }
 
 static enum drm_connector_status

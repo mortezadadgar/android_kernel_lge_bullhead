@@ -36,7 +36,7 @@ struct evdi_device {
 	struct device *dev;
 	struct drm_device *ddev;
 	struct evdi_cursor *cursor;
-	int sku_pixel_limit;
+	uint32_t sku_area_limit;
 
 	struct evdi_fbdev *fbdev;
 	struct evdi_painter *painter;

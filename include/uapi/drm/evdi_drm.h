@@ -42,7 +42,8 @@ struct drm_evdi_connect {
 	int32_t connected;
 	int32_t dev_index;
 	const unsigned char * __user edid;
-	unsigned int edid_length;
+	uint32_t edid_length;
+	uint32_t sku_area_limit;
 };
 
 struct drm_evdi_mapfifo {
