@@ -154,9 +154,6 @@ static void wdm_out_callback(struct urb *urb)
 	wake_up(&desc->wait);
 }
 
-/* forward declaration */
-static int service_outstanding_interrupt(struct wdm_device *desc);
-
 static void wdm_in_callback(struct urb *urb)
 {
 	struct wdm_device *desc = urb->context;
@@ -204,22 +201,9 @@ static void wdm_in_callback(struct urb *urb)
 		}
 	}
 skip_error:
-	set_bit(WDM_READ, &desc->flags);
 	wake_up(&desc->wait);
 
-	if (desc->rerr) {
-		/*
-		 * Since there was an error, userspace may decide to not read
-		 * any data after poll'ing.
-		 * We should respond to further attempts from the device to send
-		 * data, so that we can get unstuck.
-		 * Note that, this means it is no longer guaranteed that
-		 * userspace will see desc->rerr, since the device could send us
-		 * new data before userspace has a chance to see the error.
-		 */
-		service_outstanding_interrupt(desc);
-	}
-
+	set_bit(WDM_READ, &desc->flags);
 	spin_unlock(&desc->iuspin);
 }
 
@@ -449,13 +433,16 @@ outnl:
 }
 
 /*
- * Submit the read urb if resp_count is non-zero.
+ * clear WDM_READ flag and possibly submit the read urb if resp_count
+ * is non-zero.
  *
  * Called with desc->iuspin locked
  */
-static int service_outstanding_interrupt(struct wdm_device *desc)
+static int clear_wdm_read_flag(struct wdm_device *desc)
 {
 	int rv = 0;
+
+	clear_bit(WDM_READ, &desc->flags);
 
 	/* submit read urb only if the device is waiting for it */
 	if (!desc->resp_count || !--desc->resp_count)
@@ -548,8 +535,7 @@ retry:
 
 		if (!desc->reslength) { /* zero length read */
 			dev_dbg(&desc->intf->dev, "%s: zero length - clearing WDM_READ\n", __func__);
-			clear_bit(WDM_READ, &desc->flags);
-			rv = service_outstanding_interrupt(desc);
+			rv = clear_wdm_read_flag(desc);
 			spin_unlock_irq(&desc->iuspin);
 			if (rv < 0)
 				goto err;
@@ -574,10 +560,8 @@ retry:
 
 	desc->length -= cntr;
 	/* in case we had outstanding data */
-	if (!desc->length) {
-		clear_bit(WDM_READ, &desc->flags);
-		service_outstanding_interrupt(desc);
-	}
+	if (!desc->length)
+		clear_wdm_read_flag(desc);
 	spin_unlock_irq(&desc->iuspin);
 	rv = cntr;
 
