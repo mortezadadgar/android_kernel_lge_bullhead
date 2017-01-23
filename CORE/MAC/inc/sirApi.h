@@ -4468,6 +4468,7 @@ typedef struct sSirScanOffloadReq {
     tSirP2pScanType p2pScanType;
     tANI_U16 uIEFieldLen;
     tANI_U16 uIEFieldOffset;
+    uint32_t burst_scan_duration;
     tSirChannelList channelList;
     /*-----------------------------
       sSirScanOffloadReq....
