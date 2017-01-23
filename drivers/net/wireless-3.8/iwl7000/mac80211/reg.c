@@ -4,6 +4,7 @@
  * Copyright 2007	Johannes Berg <johannes@sipsolutions.net>
  * Copyright 2008-2011	Luis R. Rodriguez <mcgrof@qca.qualcomm.com>
  * Copyright 2013-2014  Intel Mobile Communications GmbH
+ * Copyright 2017	Intel Deutschland GmbH
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -59,6 +60,8 @@ static struct cfg80211_registered_device *wiphy_to_rdev(struct wiphy *wiphy)
 {
 	struct cfg80211_registered_device *rdev;
 	struct ieee80211_local *local;
+
+	ASSERT_RTNL();
 
 	list_for_each_entry(rdev, &cfg80211_rdev_list, list) {
 		local = container_of(rdev, struct ieee80211_local, rdev);
@@ -529,6 +532,8 @@ static void reg_process_self_managed_hints(void)
 	enum nl80211_band band;
 	struct ieee80211_local *local;
 
+	ASSERT_RTNL();
+
 	list_for_each_entry(rdev, &cfg80211_rdev_list, list) {
 		local = container_of(rdev, struct ieee80211_local, rdev);
 		wiphy = local->hw.wiphy;
@@ -668,6 +673,7 @@ void intel_regulatory_register(struct ieee80211_local *local)
 {
 	struct wiphy *wiphy = local->hw.wiphy;
 
+	rtnl_lock();
 	if (!reg_initialized) {
 		spin_lock_init(&reg_requests_lock);
 		reg_initialized = true;
@@ -680,24 +686,28 @@ void intel_regulatory_register(struct ieee80211_local *local)
 		list_add(&local->rdev.list, &cfg80211_rdev_list);
 		dev_info(&wiphy->dev, "LAR device registered\n");
 	}
+	rtnl_unlock();
 }
 
 void intel_regulatory_deregister(struct ieee80211_local *local)
 {
 	struct wiphy *wiphy = local->hw.wiphy;
-	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
-
-	/* intel non-LAR device */
-	if (!rdev)
-		return;
+	struct cfg80211_registered_device *rdev;
 
 	rtnl_lock();
+	rdev = wiphy_to_rdev(wiphy);
+
+	/* intel non-LAR device */
+	if (!rdev) {
+		rtnl_unlock();
+		return;
+	}
+
 	list_del(&rdev->list);
 	kfree(rdev->requested_regd);
 	rdev->requested_regd = NULL;
 	rtnl_unlock();
 	dev_info(&wiphy->dev, "LAR device unregistered\n");
 
-	if (list_empty(&cfg80211_rdev_list))
-		cancel_work_sync(&reg_work);
+	flush_work(&reg_work);
 }
