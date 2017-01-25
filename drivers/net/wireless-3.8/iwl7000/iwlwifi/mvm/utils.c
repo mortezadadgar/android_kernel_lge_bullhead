@@ -1388,7 +1388,7 @@ static void iwl_mvm_check_uapsd_agg_expected_tpt(struct iwl_mvm *mvm,
 		tpt = 8 * bytes; /* kbps */
 		do_div(tpt, elapsed);
 		rate *= 1000; /* kbps */
-		if (tpt >= 22 * rate / 100)
+		if (tpt < 22 * rate / 100)
 			return;
 	} else {
 		tpt = 100 * 8 * bytes;
