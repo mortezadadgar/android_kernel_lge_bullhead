@@ -639,6 +639,10 @@ static int ocmem_zone_init(struct platform_device *pdev)
 
 	for (i = 0; i < pdata->nr_parts; i++) {
 		struct ocmem_partition *part = &pdata->parts[i];
+
+		if (!check_id(part->id))
+			return -EINVAL;
+
 		zone = get_zone(part->id);
 		if (!zone) {
 			pr_err("Unable to get zone for client %s\n",
