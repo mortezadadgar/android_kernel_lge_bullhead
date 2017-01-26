@@ -27,7 +27,7 @@
  * The amount of windows we need to see for each pressure level before
  * reporting an event for that pressure level.
  */
-static const int const vmpressure_windows_needed[] = {
+static const int vmpressure_windows_needed[] = {
 	[VMPRESSURE_LOW] = 4,
 	[VMPRESSURE_MEDIUM] = 2,
 	[VMPRESSURE_CRITICAL] = 1,
