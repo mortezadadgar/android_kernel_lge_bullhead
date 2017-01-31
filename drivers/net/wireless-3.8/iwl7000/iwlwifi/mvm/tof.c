@@ -622,39 +622,44 @@ static void iwl_mvm_debug_range_req(struct iwl_mvm *mvm)
 	struct iwl_tof_range_req_cmd *req = &mvm->tof_data.range_req;
 	int i;
 
-	IWL_DEBUG_INFO(mvm,
-		       "Sending FTM request, params:\n  request id: %hhu\n"
-		       "  initiator: %hhu\n  OSLD: %hhu\n  TO: %hhu\n"
-		       "  report policy: %hhu\n"
-		       "  num of aps: %hhu\n  mac rand: %hhu\n"
-		       "  mac temp: %pM\n  mac mask: %pM\n",
-		       req->request_id, req->initiator,
-		       req->one_sided_los_disable, req->req_timeout,
-		       req->report_policy, req->num_of_ap,
-		       req->macaddr_random, req->macaddr_template,
-		       req->macaddr_mask);
+	IWL_DEBUG_INFO(mvm, "Sending FTM request, params:\n");
+	IWL_DEBUG_INFO(mvm, "\trequest id: %hhu\n", req->request_id);
+	IWL_DEBUG_INFO(mvm, "\tinitiator: %hhu\n", req->initiator);
+	IWL_DEBUG_INFO(mvm, "\tOSLD: %hhu\n", req->one_sided_los_disable);
+	IWL_DEBUG_INFO(mvm, "\tTO: %hhu\n", req->req_timeout);
+	IWL_DEBUG_INFO(mvm, "\treport policy: %hhu\n", req->report_policy);
+	IWL_DEBUG_INFO(mvm, "\tnum of aps: %hhu\n", req->num_of_ap);
+	IWL_DEBUG_INFO(mvm, "\tmac rand: %hhu\n", req->macaddr_random);
+	IWL_DEBUG_INFO(mvm, "\tmac temp: %pM\n", req->macaddr_template);
+	IWL_DEBUG_INFO(mvm, "\tmac mask: %pM\n", req->macaddr_mask);
 
 	for (i = 0; i < req->num_of_ap; i++) {
 		struct iwl_tof_range_req_ap_entry ap = req->ap[i];
 
-		IWL_DEBUG_INFO(mvm,
-			       "  ap[%d]:\n    channel: %hhu\n    bw: %hhu\n"
-			       "    tsf delta direction: %hhu\n"
-			       "    ctrl channel: %hhu\n    bssid: %pM\n"
-			       "    one sided: %hhu\n    num of bursts: %hhu\n"
-			       "    burst period: %hu\n"
-			       "    samples/burst: %hhu\n"
-			       "    retries/sample: %hhu\n    tsf delta: %u\n"
-			       "    location: %hhu\n    asap: %hhu\n"
-			       "    dyn ack: %hhu\n    rssi: %hhd\n"
-			       "    notify MCSI: %hhu\n",
-			       i, ap.channel_num, ap.bandwidth, ap.tsf_delta,
-			       ap.ctrl_ch_position, ap.bssid, ap.measure_type,
-			       ap.num_of_bursts, le16_to_cpu(ap.burst_period),
-			       ap.samples_per_burst, ap.retries_per_sample,
-			       le32_to_cpu(ap.tsf_delta), ap.location_req,
-			       ap.asap_mode, ap.enable_dyn_ack, ap.rssi,
-			       ap.notify_mcsi);
+		IWL_DEBUG_INFO(mvm, "ap[%d]:\n", i);
+		IWL_DEBUG_INFO(mvm, "\tchannel: %hhu\n", ap.channel_num);
+		IWL_DEBUG_INFO(mvm, "\tbw: %hhu\n", ap.bandwidth);
+		IWL_DEBUG_INFO(mvm, "\ttsf delta direction: %hhu\n",
+			       ap.tsf_delta);
+		IWL_DEBUG_INFO(mvm, "\tctrl channel: %hhu\n",
+			       ap.ctrl_ch_position);
+		IWL_DEBUG_INFO(mvm, "\tbssid: %pM\n", ap.bssid);
+		IWL_DEBUG_INFO(mvm, "\tone sided: %hhu\n", ap.measure_type);
+		IWL_DEBUG_INFO(mvm, "\tnum of bursts: %hhu\n",
+			       ap.num_of_bursts);
+		IWL_DEBUG_INFO(mvm, "\tburst period: %hu\n",
+			       le16_to_cpu(ap.burst_period));
+		IWL_DEBUG_INFO(mvm, "\tsamples/burst: %hhu\n",
+			       ap.samples_per_burst);
+		IWL_DEBUG_INFO(mvm, "\tretries/sample: %hhu\n",
+			       ap.retries_per_sample);
+		IWL_DEBUG_INFO(mvm, "\ttsf delta: %u\n",
+			       le32_to_cpu(ap.tsf_delta));
+		IWL_DEBUG_INFO(mvm, "\tlocation: %hhu\n", ap.location_req);
+		IWL_DEBUG_INFO(mvm, "\tasap: %hhu\n", ap.asap_mode);
+		IWL_DEBUG_INFO(mvm, "\tdyn ack: %hhu\n", ap.enable_dyn_ack);
+		IWL_DEBUG_INFO(mvm, "\trssi: %hhd\n", ap.rssi);
+		IWL_DEBUG_INFO(mvm, "\tnotify MCSI: %hhu\n", ap.notify_mcsi);
 	}
 }
 
@@ -810,35 +815,43 @@ static void iwl_mvm_debug_range_resp(struct iwl_mvm *mvm,
 	u8 num_of_entries = resp->u.ftm.num_of_entries;
 	int i;
 
-	IWL_DEBUG_INFO(mvm,
-		       "Range response received. status: %d, cookie: %lld, num of entries: %hhx\n",
+	IWL_DEBUG_INFO(mvm, "Range response received\n");
+	IWL_DEBUG_INFO(mvm, "status: %d, cookie: %lld, num of entries: %hhx\n",
 		       resp->status, resp->cookie, num_of_entries);
 
 	for (i = 0; i < num_of_entries; i++) {
 		struct cfg80211_ftm_result *res = &resp->u.ftm.entries[i];
 
-		IWL_DEBUG_INFO(mvm,
-			       "  entry %d\n  status: %d\n  complete: %s\n"
-			       "  BSSID: %pM\n  host time: %llu\n  tsf: %llu\n"
-			       "  burst index: %hhu\n  measurement num: %u\n"
-			       "  success num: %u\n  num per burst: %hhu\n"
-			       "  retry after duration: %u\n"
-			       "  burst duration: %u\n  negotiated burst: %u\n"
-			       "  rssi: %hhd\n  rssi spread: %hhu\n"
-			       "  rtt: %lld\n  rtt var: %llu\n"
-			       "  rtt spread: %llu\n  distance: %lld\n"
-			       "  distance variance: %llu\n"
-			       "  distance spread: %llu\n  filled: %x\n\n",
-			       i, res->status, res->complete ? "true" : "false",
-			       res->target->bssid, res->host_time, res->tsf,
-			       res->burst_index, res->measurement_num,
-			       res->success_num, res->num_per_burst,
-			       res->retry_after_duration, res->burst_duration,
-			       res->negotiated_burst_num, res->rssi,
-			       res->rssi_spread, res->rtt, res->rtt_variance,
-			       res->rtt_spread, res->distance,
-			       res->distance_variance, res->distance_spread,
-			       res->filled);
+		IWL_DEBUG_INFO(mvm, "entry %d\n", i);
+		IWL_DEBUG_INFO(mvm, "\tstatus: %d\n", res->status);
+		IWL_DEBUG_INFO(mvm, "\tcomplete: %s\n",
+			       res->complete ? "true" : "false");
+		IWL_DEBUG_INFO(mvm, "\tBSSID: %pM\n", res->target->bssid);
+		IWL_DEBUG_INFO(mvm, "\thost time: %llu\n", res->host_time);
+		IWL_DEBUG_INFO(mvm, "\ttsf: %llu\n", res->tsf);
+		IWL_DEBUG_INFO(mvm, "\tburst index: %hhu\n", res->burst_index);
+		IWL_DEBUG_INFO(mvm, "\tmeasurement num: %u\n",
+			       res->measurement_num);
+		IWL_DEBUG_INFO(mvm, "\tsuccess num: %u\n", res->success_num);
+		IWL_DEBUG_INFO(mvm, "\tnum per burst: %hhu\n",
+			       res->num_per_burst);
+		IWL_DEBUG_INFO(mvm, "\tretry after duration: %u\n",
+			       res->retry_after_duration);
+		IWL_DEBUG_INFO(mvm, "\tburst duration: %u\n",
+			       res->burst_duration);
+		IWL_DEBUG_INFO(mvm, "\tnegotiated burst: %u\n",
+			       res->negotiated_burst_num);
+		IWL_DEBUG_INFO(mvm, "\trssi: %hhd\n", res->rssi);
+		IWL_DEBUG_INFO(mvm, "\trssi spread: %hhu\n", res->rssi_spread);
+		IWL_DEBUG_INFO(mvm, "\trtt: %lld\n", res->rtt);
+		IWL_DEBUG_INFO(mvm, "\trtt var: %llu\n", res->rtt_variance);
+		IWL_DEBUG_INFO(mvm, "\trtt spread: %llu\n", res->rtt_spread);
+		IWL_DEBUG_INFO(mvm, "\tdistance: %lld\n", res->distance);
+		IWL_DEBUG_INFO(mvm, "\tdistance variance: %llu\n",
+			       res->distance_variance);
+		IWL_DEBUG_INFO(mvm, "\tdistance spread: %llu\n",
+			       res->distance_spread);
+		IWL_DEBUG_INFO(mvm, "\tfilled: %x\n", res->filled);
 	}
 }
 
