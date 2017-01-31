@@ -1479,6 +1479,13 @@ void iwl_mvm_recalc_tcm(struct iwl_mvm *mvm)
 {
 	unsigned long ts = jiffies;
 
+	spin_lock(&mvm->tcm.lock);
+	if (mvm->tcm.paused || !time_after(ts, mvm->tcm.ts + MVM_TCM_PERIOD)) {
+		spin_unlock(&mvm->tcm.lock);
+		return;
+	}
+	spin_unlock(&mvm->tcm.lock);
+
 	if (iwl_mvm_has_new_rx_api(mvm)) {
 		mutex_lock(&mvm->mutex);
 		iwl_mvm_request_statistics(mvm, true);
