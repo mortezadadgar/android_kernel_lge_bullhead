@@ -559,7 +559,7 @@ static ssize_t elan_sysfs_update_fw(struct device *dev,
 		return -EINVAL;
 
 	/* Look for a firmware with the product id appended. */
-	fw_name = kasprintf(GFP_KERNEL, ETP_FW_NAME);
+	fw_name = kasprintf(GFP_KERNEL, ETP_FW_NAME, data->product_id);
 	if (!fw_name) {
 		dev_err(dev, "failed to allocate memory for firmware name\n");
 		return -ENOMEM;
@@ -568,9 +568,18 @@ static ssize_t elan_sysfs_update_fw(struct device *dev,
 	dev_info(dev, "requesting fw '%s'\n", fw_name);
 	error = request_firmware(&fw, fw_name, dev);
 	kfree(fw_name);
+
+	/* If that was unsuccessful try the fallback fw location instead. */
 	if (error) {
-		dev_err(dev, "failed to request firmware: %d\n", error);
-		return error;
+		dev_info(dev, "failed to request firmware: %d\n", error);
+		dev_info(dev, "requesting fallback fw '%s'\n",
+			 ETP_FALLBACK_FW_NAME);
+		error = request_firmware(&fw, ETP_FALLBACK_FW_NAME, dev);
+		if (error) {
+			dev_err(dev, "failed to request fallback fw: %d\n",
+				error);
+			return error;
+		}
 	}
 
 	/* Firmware file must match signature data */

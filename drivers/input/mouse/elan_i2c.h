@@ -29,7 +29,8 @@
 
 /* IAP Firmware handling */
 #define ETP_PRODUCT_ID_FORMAT_STRING	"%d.0"
-#define ETP_FW_NAME		"elan_i2c.bin"
+#define ETP_FW_NAME		"elan_i2c_" ETP_PRODUCT_ID_FORMAT_STRING ".bin"
+#define ETP_FALLBACK_FW_NAME	"elan_i2c.bin"
 #define ETP_IAP_START_ADDR	0x0083
 #define ETP_FW_IAP_PAGE_ERR	(1 << 5)
 #define ETP_FW_IAP_INTF_ERR	(1 << 4)
