@@ -122,7 +122,7 @@ static int __zcomp_cpu_notifier(struct zcomp *comp,
 	case CPU_UP_PREPARE:
 		if (WARN_ON(*per_cpu_ptr(comp->stream, cpu)))
 			break;
-		zstrm = zcomp_strm_alloc(comp, GFP_KERNEL);
+		zstrm = zcomp_strm_alloc(comp);
 		if (IS_ERR_OR_NULL(zstrm)) {
 			pr_err("Can't allocate a compression stream\n");
 			return NOTIFY_BAD;
