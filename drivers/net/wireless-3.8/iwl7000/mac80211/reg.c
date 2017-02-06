@@ -61,7 +61,7 @@ static struct cfg80211_registered_device *wiphy_to_rdev(struct wiphy *wiphy)
 	struct cfg80211_registered_device *rdev;
 	struct ieee80211_local *local;
 
-	ASSERT_RTNL();
+	/* must have RTNL or reg_requests_lock held */
 
 	list_for_each_entry(rdev, &cfg80211_rdev_list, list) {
 		local = container_of(rdev, struct ieee80211_local, rdev);
@@ -638,9 +638,13 @@ int regulatory_set_wiphy_regd(struct wiphy *wiphy,
 	if (IS_ERR(regd))
 		return PTR_ERR(regd);
 
-	rdev = wiphy_to_rdev(wiphy);
-
 	spin_lock(&reg_requests_lock);
+	rdev = wiphy_to_rdev(wiphy);
+	if (WARN_ON(!rdev)) {
+		spin_unlock(&reg_requests_lock);
+		return -ENODEV;
+	}
+
 	prev_regd = rdev->requested_regd;
 	rdev->requested_regd = regd;
 	spin_unlock(&reg_requests_lock);
@@ -681,9 +685,14 @@ void intel_regulatory_register(struct ieee80211_local *local)
 
 	/* self-managed devices ignore external hints */
 	if (wiphy->regulatory_flags & REGULATORY_WIPHY_SELF_MANAGED) {
+		unsigned long flags;
+
 		wiphy->regulatory_flags |= REGULATORY_DISABLE_BEACON_HINTS |
 					   REGULATORY_COUNTRY_IE_IGNORE;
+
+		spin_lock_irqsave(&reg_requests_lock, flags);
 		list_add(&local->rdev.list, &cfg80211_rdev_list);
+		spin_unlock_irqrestore(&reg_requests_lock, flags);
 		dev_info(&wiphy->dev, "LAR device registered\n");
 	}
 	rtnl_unlock();
@@ -693,6 +702,7 @@ void intel_regulatory_deregister(struct ieee80211_local *local)
 {
 	struct wiphy *wiphy = local->hw.wiphy;
 	struct cfg80211_registered_device *rdev;
+	unsigned long flags;
 
 	rtnl_lock();
 	rdev = wiphy_to_rdev(wiphy);
@@ -703,7 +713,9 @@ void intel_regulatory_deregister(struct ieee80211_local *local)
 		return;
 	}
 
+	spin_lock_irqsave(&reg_requests_lock, flags);
 	list_del(&rdev->list);
+	spin_unlock_irqrestore(&reg_requests_lock, flags);
 	kfree(rdev->requested_regd);
 	rdev->requested_regd = NULL;
 	rtnl_unlock();
