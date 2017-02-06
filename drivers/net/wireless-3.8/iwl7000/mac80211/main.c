@@ -669,6 +669,10 @@ struct ieee80211_hw *ieee80211_alloc_hw_nm(size_t priv_data_len,
 	local->hw.radiotap_timestamp.units_pos = -1;
 	local->hw.radiotap_timestamp.accuracy = -1;
 
+#if CFG80211_VERSION < KERNEL_VERSION(4,0,0)
+	intel_regulatory_register(local);
+#endif /* CFG80211_VERSION < KERNEL_VERSION(4,0,0) */
+
 	return &local->hw;
  err_free:
 	wiphy_free(wiphy);
@@ -1133,8 +1137,6 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 		goto fail_ifa6;
 #endif
 
-	intel_regulatory_register(local);
-
 	return 0;
 
 #if IS_ENABLED(CONFIG_IPV6)
@@ -1172,8 +1174,6 @@ void ieee80211_unregister_hw(struct ieee80211_hw *hw)
 
 	tasklet_kill(&local->tx_pending_tasklet);
 	tasklet_kill(&local->tasklet);
-
-	intel_regulatory_deregister(local);
 
 #ifdef CONFIG_INET
 	unregister_inetaddr_notifier(&local->ifa_notifier);
@@ -1244,6 +1244,10 @@ void ieee80211_free_hw(struct ieee80211_hw *hw)
 	ieee80211_free_led_names(local);
 
 	kfree(local->uapsd_black_list);
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,0,0)
+	intel_regulatory_deregister(local);
+#endif /* CFG80211_VERSION < KERNEL_VERSION(4,0,0) */
 
 	wiphy_free(local->hw.wiphy);
 }
