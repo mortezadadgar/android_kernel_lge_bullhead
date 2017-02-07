@@ -642,11 +642,14 @@ int __secure_computing(int this_syscall)
 		case SECCOMP_RET_KILL:
 		default: {
 			siginfo_t info;
-			/* Show the original registers in the dump. */
-			syscall_rollback(current, task_pt_regs(current));
-			/* Trigger a manual coredump since do_exit skips it. */
-			seccomp_init_siginfo(&info, this_syscall, data);
-			do_coredump(&info);
+			/* Dump core only if this is the last remaining thread. */
+			if (get_nr_threads(current) == 1) {
+				/* Show the original registers in the dump. */
+				syscall_rollback(current, task_pt_regs(current));
+				/* Trigger a manual coredump since do_exit skips it. */
+				seccomp_init_siginfo(&info, this_syscall, data);
+				do_coredump(&info);
+			}
 			break;
 		}
 		}
