@@ -66,10 +66,11 @@
 #ifndef __fw_api_h__
 #define __fw_api_h__
 
-#define IWL_XVT_DEFAULT_TX_QUEUE	0
-#define IWL_XVT_CMD_QUEUE	9
+#define IWL_XVT_DEFAULT_TX_QUEUE	1
+#define IWL_XVT_CMD_QUEUE		9
+#define IWL_XVT_DQA_CMD_QUEUE		0
 
-#define IWL_XVT_DEFAULT_TX_FIFO	0
+#define IWL_XVT_DEFAULT_TX_FIFO	3
 #define IWL_XVT_CMD_FIFO	7
 
 #define IWL_XVT_TX_STA_ID_DEFAULT	0
@@ -77,6 +78,7 @@
 /* command groups */
 enum {
 	PHY_OPS_GROUP = 0x4,
+	DATA_PATH_GROUP = 0x5,
 	CMD_GROUP_LOCATION = 0x8,
 };
 
@@ -135,6 +137,10 @@ enum {
 
 enum iwl_phy_ops_subcmd_ids {
 	DTS_MEASUREMENT_NOTIF_WIDE = WIDE_ID(PHY_OPS_GROUP, 0xFF),
+};
+
+enum iwl_data_path_subcmd_ids {
+	DQA_ENABLE_CMD = 0x0,
 };
 
 /*
@@ -391,6 +397,14 @@ struct iwl_nvm_access_resp {
 	__le16 status;
 	u8 data[];
 } __packed; /* NVM_ACCESS_CMD_RESP_API_S_VER_2 */
+
+/**
+ * struct iwl_dqa_enable_cmd
+ * @cmd_queue: the TXQ number of the command queue
+ */
+struct iwl_dqa_enable_cmd {
+	__le32 cmd_queue;
+} __packed; /* DQA_CONTROL_CMD_API_S_VER_1 */
 
 /* Available options for the SCD_QUEUE_CFG HCMD */
 enum iwl_scd_cfg_actions {

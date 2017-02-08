@@ -6,7 +6,7 @@
  * GPL LICENSE SUMMARY
  *
  * Copyright(c) 2007 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2017 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -73,6 +73,7 @@
 #include "iwl-config.h"
 #include "fw-api.h"
 #include "iwl-notif-wait.h"
+#include "constants.h"
 
 enum iwl_xvt_state {
 	IWL_XVT_STATE_UNINITIALIZED = 0,
@@ -335,4 +336,11 @@ void iwl_xvt_free_fw_paging(struct iwl_xvt *xvt);
 /* NVM */
 int iwl_xvt_nvm_init(struct iwl_xvt *xvt);
 
+static inline bool iwl_xvt_is_dqa_supported(struct iwl_xvt *xvt)
+{
+	/* Make sure DQA isn't allowed in driver until feature is complete */
+	return fw_has_capa(&xvt->fw->ucode_capa,
+			   IWL_UCODE_TLV_CAPA_DQA_SUPPORT) &&
+	       IWL_XVT_ENABLE_DQA;
+}
 #endif

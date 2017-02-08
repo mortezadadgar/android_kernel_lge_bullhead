@@ -32,6 +32,7 @@
  * BSD LICENSE
  *
  * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2017   Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -156,8 +157,12 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 	trans_cfg.n_no_reclaim_cmds = ARRAY_SIZE(no_reclaim_cmds);
 	trans_cfg.command_groups = iwl_xvt_cmd_groups;
 	trans_cfg.command_groups_size = ARRAY_SIZE(iwl_xvt_cmd_groups);
-
-	trans_cfg.cmd_queue = IWL_XVT_CMD_QUEUE;
+	if (iwl_xvt_is_dqa_supported(xvt)) {
+		trans_cfg.cmd_queue = IWL_XVT_DQA_CMD_QUEUE;
+		IWL_DEBUG_INFO(xvt, "dqa supported\n");
+	} else {
+		trans_cfg.cmd_queue = IWL_XVT_CMD_QUEUE;
+	}
 	trans_cfg.cmd_fifo = IWL_XVT_CMD_FIFO;
 	trans_cfg.bc_table_dword = true;
 	trans_cfg.scd_set_active = true;

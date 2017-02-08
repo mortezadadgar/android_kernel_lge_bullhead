@@ -77,6 +77,23 @@ struct iwl_xvt_alive_data {
 	u32 scd_base_addr;
 };
 
+static int iwl_xvt_send_dqa_cmd(struct iwl_xvt *xvt)
+{
+	struct iwl_dqa_enable_cmd dqa_cmd = {
+		.cmd_queue = cpu_to_le32(IWL_XVT_DQA_CMD_QUEUE),
+	};
+	u32 cmd_id = iwl_cmd_id(DQA_ENABLE_CMD, DATA_PATH_GROUP, 0);
+	int ret;
+
+	ret = iwl_xvt_send_cmd_pdu(xvt, cmd_id, 0, sizeof(dqa_cmd), &dqa_cmd);
+	if (ret)
+		IWL_ERR(xvt, "Failed to send DQA enabling command: %d\n", ret);
+	else
+		IWL_DEBUG_FW(xvt, "Working in DQA mode\n");
+
+	return ret;
+}
+
 void iwl_xvt_free_fw_paging(struct iwl_xvt *xvt)
 {
 	int i;
@@ -524,6 +541,13 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 	}
 
 	if (ucode_type == IWL_UCODE_REGULAR) {
+		/* Enable DQA-mode if required */
+		if (iwl_xvt_is_dqa_supported(xvt)) {
+			ret = iwl_xvt_send_dqa_cmd(xvt);
+			if (ret)
+				return ret;
+		}
+
 		iwl_trans_txq_enable_cfg(xvt->trans, IWL_XVT_DEFAULT_TX_QUEUE,
 					 0, NULL, 0);
 
