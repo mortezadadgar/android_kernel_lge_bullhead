@@ -669,10 +669,6 @@ struct ieee80211_hw *ieee80211_alloc_hw_nm(size_t priv_data_len,
 	local->hw.radiotap_timestamp.units_pos = -1;
 	local->hw.radiotap_timestamp.accuracy = -1;
 
-#if CFG80211_VERSION < KERNEL_VERSION(4,0,0)
-	intel_regulatory_register(local);
-#endif /* CFG80211_VERSION < KERNEL_VERSION(4,0,0) */
-
 	return &local->hw;
  err_free:
 	wiphy_free(wiphy);
@@ -1136,6 +1132,10 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 	if (result)
 		goto fail_ifa6;
 #endif
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,0,0)
+	intel_regulatory_register(local);
+#endif /* CFG80211_VERSION < KERNEL_VERSION(4,0,0) */
 
 	return 0;
 
