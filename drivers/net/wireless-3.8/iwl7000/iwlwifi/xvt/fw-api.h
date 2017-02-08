@@ -6,7 +6,7 @@
  * GPL LICENSE SUMMARY
  *
  * Copyright(c) 2007 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2017 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -32,7 +32,7 @@
  * BSD LICENSE
  *
  * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2017 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -72,6 +72,8 @@
 #define IWL_XVT_DEFAULT_TX_FIFO	0
 #define IWL_XVT_CMD_FIFO	7
 
+#define IWL_XVT_TX_STA_ID_DEFAULT	0
+
 /* command groups */
 enum {
 	PHY_OPS_GROUP = 0x4,
@@ -95,6 +97,9 @@ enum {
 
 	/* Tx */
 	TX_CMD = 0x1C,
+
+	/* scheduler config */
+	SCD_QUEUE_CFG = 0x1d,
 
 	/* Paging block to FW cpu2 */
 	FW_PAGING_BLOCK_CMD = 0x4f,
@@ -387,4 +392,36 @@ struct iwl_nvm_access_resp {
 	u8 data[];
 } __packed; /* NVM_ACCESS_CMD_RESP_API_S_VER_2 */
 
+/* Available options for the SCD_QUEUE_CFG HCMD */
+enum iwl_scd_cfg_actions {
+	SCD_CFG_DISABLE_QUEUE		= 0x0,
+	SCD_CFG_ENABLE_QUEUE		= 0x1,
+	SCD_CFG_UPDATE_QUEUE_TID	= 0x2,
+};
+
+/**
+ * struct iwl_scd_txq_cfg_cmd - New txq hw scheduler config command
+ * @token:
+ * @sta_id: station id
+ * @tid: traffic id
+ * @scd_queue: scheduler queue to config
+ * @action: 1 queue enable, 0 queue disable, 2 change txq's tid owner
+ *	Value is one of %iwl_scd_cfg_actions options
+ * @aggregate: 1 aggregated queue, 0 otherwise
+ * @tx_fifo: %enum iwl_mvm_tx_fifo
+ * @window: BA window size
+ * @ssn: SSN for the BA agreement
+ */
+struct iwl_scd_txq_cfg_cmd {
+	u8 token;
+	u8 sta_id;
+	u8 tid;
+	u8 scd_queue;
+	u8 action;
+	u8 aggregate;
+	u8 tx_fifo;
+	u8 window;
+	__le16 ssn;
+	__le16 reserved;
+} __packed; /* SCD_QUEUE_CFG_CMD_API_S_VER_1 */
 #endif /* __fw_api_h__ */

@@ -6,7 +6,7 @@
  * GPL LICENSE SUMMARY
  *
  * Copyright(c) 2007 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2017 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -32,7 +32,7 @@
  * BSD LICENSE
  *
  * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2017 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -436,6 +436,16 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 	int ret;
 	enum iwl_ucode_type old_type = xvt->cur_ucode;
 	static const u16 alive_cmd[] = { XVT_ALIVE };
+	struct iwl_scd_txq_cfg_cmd cmd = {
+				.scd_queue = IWL_XVT_DEFAULT_TX_QUEUE,
+				.action = SCD_CFG_ENABLE_QUEUE,
+				.window = IWL_FRAME_LIMIT,
+				.sta_id = IWL_XVT_TX_STA_ID_DEFAULT,
+				.ssn = 0,
+				.tx_fifo = IWL_XVT_DEFAULT_TX_FIFO,
+				.aggregate = false,
+				.tid = IWL_MAX_TID_COUNT,
+			};
 
 	xvt->cur_ucode = ucode_type;
 	fw = iwl_get_ucode_image(xvt->fw, ucode_type);
@@ -513,10 +523,15 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 		}
 	}
 
-	if (ucode_type == IWL_UCODE_REGULAR)
-		iwl_trans_ac_txq_enable(xvt->trans,
-					IWL_XVT_DEFAULT_TX_QUEUE,
-					IWL_XVT_DEFAULT_TX_FIFO, 0);
+	if (ucode_type == IWL_UCODE_REGULAR) {
+		iwl_trans_txq_enable_cfg(xvt->trans, IWL_XVT_DEFAULT_TX_QUEUE,
+					 0, NULL, 0);
+
+		WARN(iwl_xvt_send_cmd_pdu(xvt, SCD_QUEUE_CFG, 0, sizeof(cmd),
+					  &cmd),
+		     "Failed to configure queue %d on FIFO %d\n",
+		     IWL_XVT_DEFAULT_TX_QUEUE, IWL_XVT_DEFAULT_TX_FIFO);
+	}
 
 	xvt->fw_running = true;
 
