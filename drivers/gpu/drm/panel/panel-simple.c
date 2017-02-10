@@ -247,6 +247,7 @@ static void panel_simple_powerwash(struct panel_simple *p)
 {
 	int err;
 
+	dev_info(p->base.dev, "starting panel powerwash.\n");
 	if (p->backlight) {
 		p->backlight->props.power = FB_BLANK_POWERDOWN;
 		backlight_update_status(p->backlight);
@@ -340,7 +341,9 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 		goto free_ddc;
 	dev_set_drvdata(dev, panel);
 
-	panel_simple_powerwash(panel);
+	if (!of_find_property(dev->of_node, "no-powerwash", NULL))
+		panel_simple_powerwash(panel);
+
 	return 0;
 
 free_ddc:

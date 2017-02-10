@@ -40,6 +40,7 @@
 
 		panel: panel {
 			compatible = "auo,t215hvn01.0", "simple-panel";
+			no-powerwash;
 		};
 
 		dpaux: dpaux@545c0000 {
