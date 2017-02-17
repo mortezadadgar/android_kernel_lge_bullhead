@@ -635,7 +635,23 @@ static void tegra_gem_prime_kunmap(struct dma_buf *buf, unsigned long page,
 
 static int tegra_gem_prime_mmap(struct dma_buf *buf, struct vm_area_struct *vma)
 {
-	return -EINVAL;
+	struct tegra_gem_object *obj = buf->priv;
+	int ret;
+
+	if (obj->gem->size < vma->vm_end - vma->vm_start)
+		return -EINVAL;
+
+	if (!obj->gem->filp)
+		return -ENODEV;
+
+	ret = obj->gem->filp->f_op->mmap(obj->gem->filp, vma);
+	if (ret)
+		return ret;
+
+	fput(vma->vm_file);
+	vma->vm_file = get_file(obj->gem->filp);
+
+	return 0;
 }
 
 static void *tegra_gem_prime_vmap(struct dma_buf *buf)
