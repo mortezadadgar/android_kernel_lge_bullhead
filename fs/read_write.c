@@ -22,10 +22,6 @@
 #include <asm/uaccess.h>
 #include <asm/unistd.h>
 
-typedef ssize_t (*io_fn_t)(struct file *, char __user *, size_t, loff_t *);
-typedef ssize_t (*iov_fn_t)(struct kiocb *, const struct iovec *,
-		unsigned long, loff_t);
-
 const struct file_operations generic_ro_fops = {
 	.llseek		= generic_file_llseek,
 	.read		= do_sync_read,
@@ -581,7 +577,7 @@ unsigned long iov_shorten(struct iovec *iov, unsigned long nr_segs, size_t to)
 EXPORT_SYMBOL(iov_shorten);
 
 static ssize_t do_sync_readv_writev(struct file *filp, const struct iovec *iov,
-		unsigned long nr_segs, size_t len, loff_t *ppos, iov_fn_t fn)
+		unsigned long nr_segs, size_t len, loff_t *ppos, int type)
 {
 	struct kiocb kiocb;
 	ssize_t ret;
@@ -591,7 +587,14 @@ static ssize_t do_sync_readv_writev(struct file *filp, const struct iovec *iov,
 	kiocb.ki_left = len;
 	kiocb.ki_nbytes = len;
 
-	ret = fn(&kiocb, iov, nr_segs, kiocb.ki_pos);
+	if (type == READ) {
+		ret = filp->f_op->aio_read(&kiocb, iov,
+				nr_segs, kiocb.ki_pos);
+	} else {
+		ret = filp->f_op->aio_write(&kiocb, iov,
+				nr_segs, kiocb.ki_pos);
+	}
+
 	if (ret == -EIOCBQUEUED)
 		ret = wait_on_sync_kiocb(&kiocb);
 	*ppos = kiocb.ki_pos;
@@ -600,7 +603,7 @@ static ssize_t do_sync_readv_writev(struct file *filp, const struct iovec *iov,
 
 /* Do it by hand, with file-ops */
 static ssize_t do_loop_readv_writev(struct file *filp, struct iovec *iov,
-		unsigned long nr_segs, loff_t *ppos, io_fn_t fn)
+		unsigned long nr_segs, loff_t *ppos, int type)
 {
 	struct iovec *vector = iov;
 	ssize_t ret = 0;
@@ -615,7 +618,13 @@ static ssize_t do_loop_readv_writev(struct file *filp, struct iovec *iov,
 		vector++;
 		nr_segs--;
 
-		nr = fn(filp, base, len, ppos);
+		if (type == READ) {
+			nr = filp->f_op->read(filp, base,
+					      len, ppos);
+		} else {
+			nr = filp->f_op->write(filp, base,
+					       len, ppos);
+		}
 
 		if (nr < 0) {
 			if (!ret)
@@ -716,8 +725,6 @@ static ssize_t do_readv_writev(int type, struct file *file,
 	struct iovec iovstack[UIO_FASTIOV];
 	struct iovec *iov = iovstack;
 	ssize_t ret;
-	io_fn_t fn;
-	iov_fn_t fnv;
 
 	ret = rw_copy_check_uvector(type, uvector, nr_segs,
 				    ARRAY_SIZE(iovstack), iovstack, &iov);
@@ -729,21 +736,16 @@ static ssize_t do_readv_writev(int type, struct file *file,
 	if (ret < 0)
 		goto out;
 
-	fnv = NULL;
-	if (type == READ) {
-		fn = file->f_op->read;
-		fnv = file->f_op->aio_read;
-	} else {
-		fn = (io_fn_t)file->f_op->write;
-		fnv = file->f_op->aio_write;
+	if (type != READ) {
 		file_start_write(file);
 	}
 
-	if (fnv)
+	if ((type == READ && file->f_op->aio_read) ||
+	    (type == WRITE && file->f_op->aio_write))
 		ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
-						pos, fnv);
+						pos, type);
 	else
-		ret = do_loop_readv_writev(file, iov, nr_segs, pos, fn);
+		ret = do_loop_readv_writev(file, iov, nr_segs, pos, type);
 
 	if (type != READ)
 		file_end_write(file);
@@ -888,8 +890,6 @@ static ssize_t compat_do_readv_writev(int type, struct file *file,
 	struct iovec iovstack[UIO_FASTIOV];
 	struct iovec *iov = iovstack;
 	ssize_t ret;
-	io_fn_t fn;
-	iov_fn_t fnv;
 
 	ret = -EFAULT;
 	if (!access_ok(VERIFY_READ, uvector, nr_segs*sizeof(*uvector)))
@@ -905,21 +905,16 @@ static ssize_t compat_do_readv_writev(int type, struct file *file,
 	if (ret < 0)
 		goto out;
 
-	fnv = NULL;
-	if (type == READ) {
-		fn = file->f_op->read;
-		fnv = file->f_op->aio_read;
-	} else {
-		fn = (io_fn_t)file->f_op->write;
-		fnv = file->f_op->aio_write;
+	if (type != READ) {
 		file_start_write(file);
 	}
 
-	if (fnv)
+	if ((type == READ && file->f_op->aio_read) ||
+	    (type == WRITE && file->f_op->aio_write))
 		ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
-						pos, fnv);
+						pos, type);
 	else
-		ret = do_loop_readv_writev(file, iov, nr_segs, pos, fn);
+		ret = do_loop_readv_writev(file, iov, nr_segs, pos, type);
 
 	if (type != READ)
 		file_end_write(file);
