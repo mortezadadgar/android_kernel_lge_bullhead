@@ -1,6 +1,6 @@
 /*
  * ChromeOS backport definitions
- * Copyright (C) 2015-2016 Intel Deutschland GmbH
+ * Copyright (C) 2015-2017 Intel Deutschland GmbH
  */
 #include <linux/if_ether.h>
 #include <net/cfg80211.h>
@@ -1676,7 +1676,14 @@ void ieee80211_amsdu_to_8023s(struct sk_buff *skb, struct sk_buff_head *list,
 #define IEEE80211_RADIOTAP_TIMESTAMP_FLAG_ACCURACY		0x02
 #endif /* IEEE80211_RADIOTAP_TIMESTAMP_UNIT_MASK */
 
-#if CFG80211_VERSION < KERNEL_VERSION(4,10,0)
+#if CFG80211_VERSION < KERNEL_VERSION(4,4,0)
+/*
+ * NB: upstream this only landed in 4.10, but it was backported
+ * to almost every kernel, including 4.4 (at least in ChromeOS)
+ * If you see a compilation failure on this function you should
+ * backport the fix:
+ * e6f462df9acd ("cfg80211/mac80211: fix BSS leaks when abandoning assoc attempts")
+ */
 static inline void cfg80211_abandon_assoc(struct net_device *dev,
 					  struct cfg80211_bss *bss)
 {
