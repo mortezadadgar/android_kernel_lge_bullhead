@@ -2796,6 +2796,7 @@ unsigned long sum_capacity_reqs(unsigned long cfs_cap,
 	return total += scr->dl;
 }
 
+unsigned long boosted_cpu_util(int cpu);
 static void sched_freq_tick_pelt(int cpu)
 {
 	unsigned long cpu_utilization = capacity_max;
