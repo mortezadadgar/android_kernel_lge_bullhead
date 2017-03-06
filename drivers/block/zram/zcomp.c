@@ -75,7 +75,7 @@ ssize_t zcomp_available_show(const char *comp, char *buf)
 	int i = 0;
 
 	while (backends[i]) {
-		if (!sysfs_streq(comp, backends[i]))
+		if (sysfs_streq(comp, backends[i]))
 			sz += scnprintf(buf + sz, PAGE_SIZE - sz - 2,
 					"[%s] ", backends[i]);
 		else
