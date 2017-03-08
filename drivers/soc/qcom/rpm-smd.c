@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -340,48 +340,6 @@ int msm_rpm_smd_buffer_request(char *buf, uint32_t size, gfp_t flag)
 
 	return 0;
 }
-static void msm_rpm_print_sleep_buffer(struct slp_buf *s)
-{
-	char buf[DEBUG_PRINT_BUFFER_SIZE] = {0};
-	int pos;
-	int buflen = DEBUG_PRINT_BUFFER_SIZE;
-	char ch[5] = {0};
-	u32 type;
-	struct kvp *e;
-
-	if (!s)
-		return;
-
-	if (!s->valid)
-		return;
-
-	type = get_rsc_type(s->buf);
-	memcpy(ch, &type, sizeof(u32));
-
-	pos = scnprintf(buf, buflen,
-			"Sleep request type = 0x%08x(%s)",
-			get_rsc_type(s->buf), ch);
-	pos += scnprintf(buf + pos, buflen - pos, " id = 0%x",
-			get_rsc_id(s->buf));
-	for_each_kvp(s->buf, e) {
-		uint32_t i;
-		char *data = get_data(e);
-
-		memcpy(ch, &e->k, sizeof(u32));
-
-		pos += scnprintf(buf + pos, buflen - pos,
-				"\n\t\tkey = 0x%08x(%s)",
-				e->k, ch);
-		pos += scnprintf(buf + pos, buflen - pos,
-				" sz= %d data =", e->s);
-
-		for (i = 0; i < e->s; i++)
-			pos += scnprintf(buf + pos, buflen - pos,
-					" 0x%02X", data[i]);
-	}
-	pos += scnprintf(buf + pos, buflen - pos, "\n");
-	printk(buf);
-}
 
 static struct msm_rpm_driver_data msm_rpm_data = {
 	.smd_open = COMPLETION_INITIALIZER(msm_rpm_data.smd_open),
@@ -401,9 +359,6 @@ static int msm_rpm_flush_requests(bool print)
 
 		if (!s->valid)
 			continue;
-
-		if (print)
-			msm_rpm_print_sleep_buffer(s);
 
 		get_msg_id(s->buf) = msm_rpm_get_next_msg_id();
 		ret = msm_rpm_send_smd_buffer(s->buf,
