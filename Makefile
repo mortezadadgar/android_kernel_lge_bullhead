@@ -593,6 +593,10 @@ endif
 
 endif
 
+ifdef CONFIG_CC_WERROR
+KBUILD_CFLAGS	+= -Werror
+endif
+
 KBUILD_CFLAGS += $(call cc-disable-warning, format-truncation) \
 		 $(call cc-disable-warning, format-overflow) \
 		 $(call cc-disable-warning, int-in-bool-context) \
