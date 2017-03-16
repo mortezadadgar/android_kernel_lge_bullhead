@@ -114,16 +114,6 @@ static inline void bio_set_op_attrs(struct bio *bio, unsigned op,
 	bio->bi_rw = op | op_flags;
 }
 
-static inline struct inode *d_inode(const struct dentry *dentry)
-{
-	return dentry->d_inode;
-}
-
-static inline bool d_is_negative(const struct dentry *dentry)
-{
-	return (dentry->d_inode == NULL);
-}
-
 /* crypto.c */
 extern int fscrypt_initialize(unsigned int cop_flags);
 extern struct workqueue_struct *fscrypt_read_workqueue;
