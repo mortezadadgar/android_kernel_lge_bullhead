@@ -401,7 +401,7 @@ TRACE_EVENT(drv_bss_info_changed,
 		__field(u32, sync_device_ts)
 		__field(u8, sync_dtim_count)
 		__field(u32, basic_rates)
-		__array(int, mcast_rate, IEEE80211_NUM_BANDS)
+		__array(int, mcast_rate, NUM_NL80211_BANDS)
 		__field(u16, ht_operation_mode)
 		__field(s32, cqm_rssi_thold);
 		__field(s32, cqm_rssi_hyst);
@@ -984,6 +984,32 @@ TRACE_EVENT(drv_set_tsf,
 	)
 );
 
+TRACE_EVENT(drv_offset_tsf,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata,
+		 s64 offset),
+
+	TP_ARGS(local, sdata, offset),
+
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		VIF_ENTRY
+		__field(s64, tsf_offset)
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		VIF_ASSIGN;
+		__entry->tsf_offset = offset;
+	),
+
+	TP_printk(
+		LOCAL_PR_FMT  VIF_PR_FMT  " tsf offset:%lld",
+		LOCAL_PR_ARG, VIF_PR_ARG,
+		(unsigned long long)__entry->tsf_offset
+	)
+);
+
 DEFINE_EVENT(local_sdata_evt, drv_reset_tsf,
 	TP_PROTO(struct ieee80211_local *local,
 		 struct ieee80211_sub_if_data *sdata),
@@ -1265,8 +1291,8 @@ TRACE_EVENT(drv_set_bitrate_mask,
 	TP_fast_assign(
 		LOCAL_ASSIGN;
 		VIF_ASSIGN;
-		__entry->legacy_2g = mask->control[IEEE80211_BAND_2GHZ].legacy;
-		__entry->legacy_5g = mask->control[IEEE80211_BAND_5GHZ].legacy;
+		__entry->legacy_2g = mask->control[NL80211_BAND_2GHZ].legacy;
+		__entry->legacy_5g = mask->control[NL80211_BAND_5GHZ].legacy;
 	),
 
 	TP_printk(
@@ -1781,7 +1807,6 @@ TRACE_EVENT(drv_nan_change_conf,
 	)
 );
 
-/* TODO: record more fields */
 TRACE_EVENT(drv_add_nan_func,
 	TP_PROTO(struct ieee80211_local *local,
 		 struct ieee80211_sub_if_data *sdata,
@@ -1809,7 +1834,7 @@ TRACE_EVENT(drv_add_nan_func,
 	)
 );
 
-TRACE_EVENT(drv_rm_nan_func,
+TRACE_EVENT(drv_del_nan_func,
 	TP_PROTO(struct ieee80211_local *local,
 		 struct ieee80211_sub_if_data *sdata,
 		 u8 instance_id),

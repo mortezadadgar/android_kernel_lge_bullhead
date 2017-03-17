@@ -66,7 +66,6 @@
 #include <linux/types.h>
 #include <linux/spinlock.h>
 #include <linux/gfp.h>
-#include <net/mac80211.h>
 
 extern struct iwl_mod_params iwlwifi_mod_params;
 
@@ -87,9 +86,10 @@ enum iwl_disable_11n {
 };
 
 enum iwl_amsdu_size {
-	IWL_AMSDU_4K = 0,
-	IWL_AMSDU_8K = 1,
-	IWL_AMSDU_12K = 2,
+	IWL_AMSDU_DEF = 0,
+	IWL_AMSDU_4K = 1,
+	IWL_AMSDU_8K = 2,
+	IWL_AMSDU_12K = 3,
 };
 
 enum iwl_uapsd_disable {
@@ -105,7 +105,7 @@ enum iwl_uapsd_disable {
  * @sw_crypto: using hardware encryption, default = 0
  * @disable_11n: disable 11n capabilities, default = 0,
  *	use IWL_[DIS,EN]ABLE_HT_* constants
- * @amsdu_size: enable 8K amsdu size, default = 4K. enum iwl_amsdu_size.
+ * @amsdu_size: See &enum iwl_amsdu_size.
  * @restart_fw: restart firmware, default = 1
  * @bt_coex_active: enable bt coex, default = true
  * @led_mode: system default, default = 0
@@ -123,6 +123,7 @@ enum iwl_uapsd_disable {
  * @lar_disable: disable LAR (regulatory), default = 0
  * @fw_monitor: allow to use firmware monitor
  * @disable_11ac: disable VHT capabilities, default = false.
+ * @disable_msix: disable MSI-X and fall back to MSI on PCIe, default = false.
  */
 struct iwl_mod_params {
 	int sw_crypto;
@@ -147,6 +148,7 @@ struct iwl_mod_params {
 	bool lar_disable;
 	bool fw_monitor;
 	bool disable_11ac;
+	bool disable_msix;
 };
 
 #endif /* #__iwl_modparams_h__ */

@@ -8,6 +8,12 @@
 #define ieee80211_start_tx_ba_cb_irqsafe __iwl7000_ieee80211_start_tx_ba_cb_irqsafe
 #define ieee80211_stop_tx_ba_session __iwl7000_ieee80211_stop_tx_ba_session
 #define ieee80211_stop_tx_ba_cb_irqsafe __iwl7000_ieee80211_stop_tx_ba_cb_irqsafe
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,9,0)
+#define ieee80211_data_to_8023_exthdr __iwl7000_ieee80211_data_to_8023_exthdr
+#endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,7,0)
+#define dev_coredumpsg __iwl7000_dev_coredumpsg
+#endif /* < 4.7.0 */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,0)
 #ifdef CONFIG_DEBUG_FS
 #define iwl_debugfs_create_bool __iwl7000_iwl_debugfs_create_bool
@@ -17,9 +23,20 @@
 #define tso_build_data __iwl7000_tso_build_data
 #define tso_start __iwl7000_tso_start
 #endif /* < 4.4.0 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
+#define netdev_rss_key_fill __iwl7000_netdev_rss_key_fill
+#endif /* < 3.19.0 */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 #define memdup_user_nul __iwl7000_memdup_user_nul
 #endif /* < 4.5.0 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
+#define devm_kvasprintf __iwl7000_devm_kvasprintf
+#define devm_kasprintf __iwl7000_devm_kasprintf
+#endif /* < 3.17 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)
+#define sg_pcopy_from_buffer __iwl7000_sg_pcopy_from_buffer
+#define sg_pcopy_to_buffer __iwl7000_sg_pcopy_to_buffer
+#endif /* < 3.11 */
 #if CFG80211_VERSION < KERNEL_VERSION(4,1,0)
 #define ieee80211_ie_split_ric __iwl7000_ieee80211_ie_split_ric
 #define ieee80211_ie_split __iwl7000_ieee80211_ie_split
@@ -67,17 +84,19 @@
 #define lockdep_rht_bucket_is_held __iwl7000_lockdep_rht_bucket_is_held
 #else
 #endif
-#define rhashtable_insert_rehash __iwl7000_rhashtable_insert_rehash
 #define rhashtable_insert_slow __iwl7000_rhashtable_insert_slow
-#define rhashtable_walk_init __iwl7000_rhashtable_walk_init
+#define rhashtable_walk_enter __iwl7000_rhashtable_walk_enter
 #define rhashtable_walk_exit __iwl7000_rhashtable_walk_exit
 #define rhashtable_walk_start __iwl7000_rhashtable_walk_start
 #define rhashtable_walk_next __iwl7000_rhashtable_walk_next
 #define rhashtable_walk_stop __iwl7000_rhashtable_walk_stop
 #define rhashtable_init __iwl7000_rhashtable_init
+#define rhltable_init __iwl7000_rhltable_init
 #define rhashtable_free_and_destroy __iwl7000_rhashtable_free_and_destroy
 #define rhashtable_destroy __iwl7000_rhashtable_destroy
 #define ieee80211_sta_ps_transition __iwl7000_ieee80211_sta_ps_transition
+#define ieee80211_sta_pspoll __iwl7000_ieee80211_sta_pspoll
+#define ieee80211_sta_uapsd_trigger __iwl7000_ieee80211_sta_uapsd_trigger
 #define ieee80211_mark_rx_ba_filtered_frames __iwl7000_ieee80211_mark_rx_ba_filtered_frames
 #define ieee80211_rx_napi __iwl7000_ieee80211_rx_napi
 #define ieee80211_rx_irqsafe __iwl7000_ieee80211_rx_irqsafe
@@ -100,8 +119,8 @@
 #define ieee80211_get_tkip_p1k_iv __iwl7000_ieee80211_get_tkip_p1k_iv
 #define ieee80211_get_tkip_rx_p1k __iwl7000_ieee80211_get_tkip_rx_p1k
 #define ieee80211_get_tkip_p2k __iwl7000_ieee80211_get_tkip_p2k
-#define ieee80211_tx_dequeue __iwl7000_ieee80211_tx_dequeue
 #define ieee80211_tx_prepare_skb __iwl7000_ieee80211_tx_prepare_skb
+#define ieee80211_tx_dequeue __iwl7000_ieee80211_tx_dequeue
 #define ieee80211_csa_update_counter __iwl7000_ieee80211_csa_update_counter
 #define ieee80211_csa_is_complete __iwl7000_ieee80211_csa_is_complete
 #define ieee80211_beacon_get_template __iwl7000_ieee80211_beacon_get_template

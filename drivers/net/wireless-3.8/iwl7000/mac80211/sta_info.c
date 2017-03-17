@@ -71,7 +71,6 @@ static const struct rhashtable_params sta_rht_params = {
 	.head_offset = offsetof(struct sta_info, hash_node),
 	.key_offset = offsetof(struct sta_info, addr),
 	.key_len = ETH_ALEN,
-	.hashfn = sta_addr_hash,
 	.max_size = CPTCFG_MAC80211_STA_HASH_MAX_SIZE,
 };
 
@@ -79,8 +78,8 @@ static const struct rhashtable_params sta_rht_params = {
 static int sta_info_hash_del(struct ieee80211_local *local,
 			     struct sta_info *sta)
 {
-	return rhashtable_remove_fast(&local->sta_hash, &sta->hash_node,
-				      sta_rht_params);
+	return rhltable_remove(&local->sta_hash, &sta->hash_node,
+			       sta_rht_params);
 }
 
 static void __cleanup_single_sta(struct sta_info *sta)
@@ -89,6 +88,7 @@ static void __cleanup_single_sta(struct sta_info *sta)
 	struct tid_ampdu_tx *tid_tx;
 	struct ieee80211_sub_if_data *sdata = sta->sdata;
 	struct ieee80211_local *local = sdata->local;
+	struct fq *fq = &local->fq;
 	struct ps_data *ps;
 
 	if (test_sta_flag(sta, WLAN_STA_PS_STA) ||
@@ -112,11 +112,10 @@ static void __cleanup_single_sta(struct sta_info *sta)
 	if (sta->sta.txq[0]) {
 		for (i = 0; i < ARRAY_SIZE(sta->sta.txq); i++) {
 			struct txq_info *txqi = to_txq_info(sta->sta.txq[i]);
-			int n = skb_queue_len(&txqi->queue);
 
-			ieee80211_purge_tx_queue(&local->hw, &txqi->queue);
-			atomic_sub(n, &sdata->txqs_len[txqi->txq.ac]);
-			txqi->byte_cnt = 0;
+			spin_lock_bh(&fq->lock);
+			ieee80211_txq_purge(local, txqi);
+			spin_unlock_bh(&fq->lock);
 		}
 	}
 
@@ -156,19 +155,22 @@ static void cleanup_single_sta(struct sta_info *sta)
 	sta_info_free(local, sta);
 }
 
+struct rhlist_head *sta_info_hash_lookup(struct ieee80211_local *local,
+					 const u8 *addr)
+{
+	return rhltable_lookup(&local->sta_hash, addr, sta_rht_params);
+}
+
 /* protected by RCU */
 struct sta_info *sta_info_get(struct ieee80211_sub_if_data *sdata,
 			      const u8 *addr)
 {
 	struct ieee80211_local *local = sdata->local;
+	struct rhlist_head *tmp;
 	struct sta_info *sta;
-	struct rhash_head *tmp;
-	const struct bucket_table *tbl;
 
 	rcu_read_lock();
-	tbl = rht_dereference_rcu(local->sta_hash.tbl, &local->sta_hash);
-
-	for_each_sta_info(local, tbl, addr, sta, tmp) {
+	for_each_sta_info(local, addr, sta, tmp) {
 		if (sta->sdata == sdata) {
 			rcu_read_unlock();
 			/* this is safe as the caller must already hold
@@ -189,14 +191,11 @@ struct sta_info *sta_info_get_bss(struct ieee80211_sub_if_data *sdata,
 				  const u8 *addr)
 {
 	struct ieee80211_local *local = sdata->local;
+	struct rhlist_head *tmp;
 	struct sta_info *sta;
-	struct rhash_head *tmp;
-	const struct bucket_table *tbl;
 
 	rcu_read_lock();
-	tbl = rht_dereference_rcu(local->sta_hash.tbl, &local->sta_hash);
-
-	for_each_sta_info(local, tbl, addr, sta, tmp) {
+	for_each_sta_info(local, addr, sta, tmp) {
 		if (sta->sdata == sdata ||
 		    (sta->sdata->bss && sta->sdata->bss == sdata->bss)) {
 			rcu_read_unlock();
@@ -254,14 +253,15 @@ void sta_info_free(struct ieee80211_local *local, struct sta_info *sta)
 #ifdef CPTCFG_MAC80211_MESH
 	kfree(sta->mesh);
 #endif
+	free_percpu(sta->pcpu_rx_stats);
 	kfree(sta);
 }
 
 /* Caller must hold local->sta_mtx */
-static void sta_info_hash_add(struct ieee80211_local *local,
-			      struct sta_info *sta)
+static int sta_info_hash_add(struct ieee80211_local *local,
+			     struct sta_info *sta)
 {
-	rhashtable_insert_fast(&local->sta_hash, &sta->hash_node,
+	return rhltable_insert(&local->sta_hash, &sta->hash_node,
 			       sta_rht_params);
 }
 
@@ -311,6 +311,13 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 	if (!sta)
 		return NULL;
 
+	if (ieee80211_hw_check(hw, USES_RSS)) {
+		sta->pcpu_rx_stats =
+			alloc_percpu(struct ieee80211_sta_rx_stats);
+		if (!sta->pcpu_rx_stats)
+			goto free;
+	}
+
 	spin_lock_init(&sta->lock);
 	spin_lock_init(&sta->ps_lock);
 	INIT_WORK(&sta->drv_deliver_wk, sta_deliver_ps_frames);
@@ -331,9 +338,14 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 
 	memcpy(sta->addr, addr, ETH_ALEN);
 	memcpy(sta->sta.addr, addr, ETH_ALEN);
+	sta->sta.max_rx_aggregation_subframes =
+		local->hw.max_rx_aggregation_subframes;
+
 	sta->local = local;
 	sta->sdata = sdata;
 	sta->rx_stats.last_rx = jiffies;
+
+	u64_stats_init(&sta->rx_stats.syncp);
 
 	sta->sta_state = IEEE80211_STA_NONE;
 
@@ -341,9 +353,9 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 	sta->reserved_tid = IEEE80211_TID_UNRESERVED;
 
 	sta->last_connected = ktime_get_seconds();
-	ewma_signal_init(&sta->rx_stats.avg_signal);
-	for (i = 0; i < ARRAY_SIZE(sta->rx_stats.chain_signal_avg); i++)
-		ewma_signal_init(&sta->rx_stats.chain_signal_avg[i]);
+	ewma_signal_init(&sta->rx_stats_avg.signal);
+	for (i = 0; i < ARRAY_SIZE(sta->rx_stats_avg.chain_signal); i++)
+		ewma_signal_init(&sta->rx_stats_avg.chain_signal[i]);
 
 	if (local->ops->wake_tx_queue) {
 		void *txq_data;
@@ -357,7 +369,7 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 		for (i = 0; i < ARRAY_SIZE(sta->sta.txq); i++) {
 			struct txq_info *txq = txq_data + i * size;
 
-			ieee80211_init_tx_queue(sdata, sta, txq, i);
+			ieee80211_txq_init(sdata, sta, txq, i);
 		}
 	}
 
@@ -406,6 +418,8 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 		}
 	}
 
+	sta->sta.max_rc_amsdu_len = IEEE80211_MAX_MPDU_LEN_HT_BA;
+
 	sta_dbg(sdata, "Allocated STA %pM\n", sta->sta.addr);
 
 	return sta;
@@ -437,9 +451,9 @@ static int sta_info_insert_check(struct sta_info *sta)
 		    is_multicast_ether_addr(sta->sta.addr)))
 		return -EINVAL;
 
-	/* Strictly speaking this isn't necessary as we hold the mutex, but
-	 * the rhashtable code can't really deal with that distinction. We
-	 * do require the mutex for correctness though.
+	/* The RCU read lock is required by rhashtable due to
+	 * asynchronous resize/rehash.  We also require the mutex
+	 * for correctness.
 	 */
 	rcu_read_lock();
 	lockdep_assert_held(&sdata->local->sta_mtx);
@@ -524,7 +538,9 @@ static int sta_info_insert_finish(struct sta_info *sta) __acquires(RCU)
 	set_sta_flag(sta, WLAN_STA_BLOCK_BA);
 
 	/* make the station visible */
-	sta_info_hash_add(local, sta);
+	err = sta_info_hash_add(local, sta);
+	if (err)
+		goto out_drop_sta;
 
 	list_add_tail_rcu(&sta->list, &local->sta_list);
 
@@ -557,6 +573,7 @@ static int sta_info_insert_finish(struct sta_info *sta) __acquires(RCU)
  out_remove:
 	sta_info_hash_del(local, sta);
 	list_del_rcu(&sta->list);
+ out_drop_sta:
 	local->num_sta--;
 	synchronize_net();
 	__cleanup_single_sta(sta);
@@ -671,7 +688,7 @@ static void __sta_info_recalc_tim(struct sta_info *sta, bool ignore_pending)
 	}
 
 	/* No need to do anything if the driver does all */
-	if (ieee80211_hw_check(&local->hw, AP_LINK_PS))
+	if (!local->ops->set_tim)
 		return;
 
 	if (sta->dead)
@@ -692,7 +709,7 @@ static void __sta_info_recalc_tim(struct sta_info *sta, bool ignore_pending)
 	for (ac = 0; ac < IEEE80211_NUM_ACS; ac++) {
 		unsigned long tids;
 
-		if (ignore_for_tim & BIT(ac))
+		if (ignore_for_tim & ieee80211_ac_to_qos_mask[ac])
 			continue;
 
 		indicate_tim |= !skb_queue_empty(&sta->tx_filtered[ac]) ||
@@ -1024,16 +1041,11 @@ static void sta_info_cleanup(unsigned long data)
 		  round_jiffies(jiffies + STA_INFO_CLEANUP_INTERVAL));
 }
 
-u32 sta_addr_hash(const void *key, u32 length, u32 seed)
-{
-	return jhash(key, ETH_ALEN, seed);
-}
-
 int sta_info_init(struct ieee80211_local *local)
 {
 	int err;
 
-	err = rhashtable_init(&local->sta_hash, &sta_rht_params);
+	err = rhltable_init(&local->sta_hash, &sta_rht_params);
 	if (err)
 		return err;
 
@@ -1049,7 +1061,7 @@ int sta_info_init(struct ieee80211_local *local)
 void sta_info_stop(struct ieee80211_local *local)
 {
 	del_timer_sync(&local->sta_cleanup);
-	rhashtable_destroy(&local->sta_hash);
+	rhltable_destroy(&local->sta_hash);
 }
 
 
@@ -1094,10 +1106,12 @@ void ieee80211_sta_expire(struct ieee80211_sub_if_data *sdata,
 	mutex_lock(&local->sta_mtx);
 
 	list_for_each_entry_safe(sta, tmp, &local->sta_list, list) {
+		unsigned long last_active = ieee80211_sta_last_active(sta);
+
 		if (sdata != sta->sdata)
 			continue;
 
-		if (time_after(jiffies, sta->rx_stats.last_rx + exp_time)) {
+		if (time_is_before_jiffies(last_active + exp_time)) {
 			sta_dbg(sta->sdata, "expiring inactive STA %pM\n",
 				sta->sta.addr);
 
@@ -1117,17 +1131,14 @@ struct ieee80211_sta *ieee80211_find_sta_by_ifaddr(struct ieee80211_hw *hw,
 						   const u8 *localaddr)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
+	struct rhlist_head *tmp;
 	struct sta_info *sta;
-	struct rhash_head *tmp;
-	const struct bucket_table *tbl;
-
-	tbl = rht_dereference_rcu(local->sta_hash.tbl, &local->sta_hash);
 
 	/*
 	 * Just return a random station if localaddr is NULL
 	 * ... first in list.
 	 */
-	for_each_sta_info(local, tbl, addr, sta, tmp) {
+	for_each_sta_info(local, addr, sta, tmp) {
 		if (localaddr &&
 		    !ether_addr_equal(sta->sdata->vif.addr, localaddr))
 			continue;
@@ -1191,12 +1202,10 @@ void ieee80211_sta_ps_deliver_wakeup(struct sta_info *sta)
 
 	if (sta->sta.txq[0]) {
 		for (i = 0; i < ARRAY_SIZE(sta->sta.txq); i++) {
-			struct txq_info *txqi = to_txq_info(sta->sta.txq[i]);
-
-			if (!skb_queue_len(&txqi->queue))
+			if (!txq_has_queue(sta->sta.txq[i]))
 				continue;
 
-			drv_wake_tx_queue(local, txqi);
+			drv_wake_tx_queue(local, to_txq_info(sta->sta.txq[i]));
 		}
 	}
 
@@ -1380,7 +1389,7 @@ ieee80211_sta_ps_more_data(struct sta_info *sta, u8 ignored_acs,
 		return true;
 
 	for (ac = 0; ac < IEEE80211_NUM_ACS; ac++) {
-		if (ignored_acs & BIT(ac))
+		if (ignored_acs & ieee80211_ac_to_qos_mask[ac])
 			continue;
 
 		if (!skb_queue_empty(&sta->tx_filtered[ac]) ||
@@ -1405,7 +1414,7 @@ ieee80211_sta_ps_get_frames(struct sta_info *sta, int n_frames, u8 ignored_acs,
 	for (ac = 0; ac < IEEE80211_NUM_ACS; ac++) {
 		unsigned long tids;
 
-		if (ignored_acs & BIT(ac))
+		if (ignored_acs & ieee80211_ac_to_qos_mask[ac])
 			continue;
 
 		tids = ieee80211_tids_for_ac(ac);
@@ -1473,7 +1482,7 @@ ieee80211_sta_ps_deliver_response(struct sta_info *sta,
 			BIT(find_highest_prio_tid(driver_release_tids));
 
 	if (skb_queue_empty(&frames) && !driver_release_tids) {
-		int tid;
+		int tid, ac;
 
 		/*
 		 * For PS-Poll, this can only happen due to a race condition
@@ -1491,7 +1500,10 @@ ieee80211_sta_ps_deliver_response(struct sta_info *sta,
 		 */
 
 		/* This will evaluate to 1, 3, 5 or 7. */
-		tid = 7 - ((ffs(~ignored_acs) - 1) << 1);
+		for (ac = IEEE80211_AC_VO; ac < IEEE80211_NUM_ACS; ac++)
+			if (!(ignored_acs & ieee80211_ac_to_qos_mask[ac]))
+				break;
+		tid = 7 - 2 * ac;
 
 		ieee80211_send_null_response(sta, tid, reason, true, false);
 	} else if (!driver_release_tids) {
@@ -1598,7 +1610,6 @@ ieee80211_sta_ps_deliver_response(struct sta_info *sta,
 
 		sta_info_recalc_tim(sta);
 	} else {
-		unsigned long tids = sta->txq_buffered_tids & driver_release_tids;
 		int tid;
 
 		/*
@@ -1628,9 +1639,8 @@ ieee80211_sta_ps_deliver_response(struct sta_info *sta,
 			return;
 
 		for (tid = 0; tid < ARRAY_SIZE(sta->sta.txq); tid++) {
-			struct txq_info *txqi = to_txq_info(sta->sta.txq[tid]);
-
-			if (!(tids & BIT(tid)) || skb_queue_len(&txqi->queue))
+			if (!(driver_release_tids & BIT(tid)) ||
+			    txq_has_queue(sta->sta.txq[tid]))
 				continue;
 
 			sta_info_recalc_tim(sta);
@@ -1870,6 +1880,7 @@ int sta_info_move_state(struct sta_info *sta,
 				atomic_dec(&sta->sdata->bss->num_mcast_sta);
 			clear_bit(WLAN_STA_AUTHORIZED, &sta->_flags);
 			ieee80211_clear_fast_xmit(sta);
+			ieee80211_clear_fast_rx(sta);
 		}
 		break;
 	case IEEE80211_STA_AUTHORIZED:
@@ -1880,6 +1891,7 @@ int sta_info_move_state(struct sta_info *sta,
 				atomic_inc(&sta->sdata->bss->num_mcast_sta);
 			set_bit(WLAN_STA_AUTHORIZED, &sta->_flags);
 			ieee80211_check_fast_xmit(sta);
+			ieee80211_check_fast_rx(sta);
 		}
 		break;
 	default:
@@ -1926,52 +1938,142 @@ u8 sta_info_tx_streams(struct sta_info *sta)
 			>> IEEE80211_HT_MCS_TX_MAX_STREAMS_SHIFT) + 1;
 }
 
-static void sta_set_rate_info_rx(struct sta_info *sta, struct rate_info *rinfo)
+static struct ieee80211_sta_rx_stats *
+sta_get_last_rx_stats(struct sta_info *sta)
 {
-	rinfo->flags = 0;
+	struct ieee80211_sta_rx_stats *stats = &sta->rx_stats;
+	struct ieee80211_local *local = sta->local;
+	int cpu;
 
-	if (sta->rx_stats.last_rate_flag & RX_FLAG_HT) {
-		rinfo->flags |= RATE_INFO_FLAGS_MCS;
-		rinfo->mcs = sta->rx_stats.last_rate_idx;
-	} else if (sta->rx_stats.last_rate_flag & RX_FLAG_VHT) {
-		rinfo->flags |= RATE_INFO_FLAGS_VHT_MCS;
-		rinfo->nss = sta->rx_stats.last_rate_vht_nss;
-		rinfo->mcs = sta->rx_stats.last_rate_idx;
-	} else {
+	if (!ieee80211_hw_check(&local->hw, USES_RSS))
+		return stats;
+
+	for_each_possible_cpu(cpu) {
+		struct ieee80211_sta_rx_stats *cpustats;
+
+		cpustats = per_cpu_ptr(sta->pcpu_rx_stats, cpu);
+
+		if (time_after(cpustats->last_rx, stats->last_rx))
+			stats = cpustats;
+	}
+
+	return stats;
+}
+
+static void sta_stats_decode_rate(struct ieee80211_local *local, u16 rate,
+				  struct rate_info *rinfo)
+{
+#if CFG80211_VERSION >= KERNEL_VERSION(3,20,0)
+	rinfo->bw = (rate & STA_STATS_RATE_BW_MASK) >>
+		STA_STATS_RATE_BW_SHIFT;
+#endif
+
+	if (rate & STA_STATS_RATE_VHT) {
+		rinfo->flags = RATE_INFO_FLAGS_VHT_MCS;
+		rinfo->mcs = rate & 0xf;
+		rinfo->nss = (rate & 0xf0) >> 4;
+	} else if (rate & STA_STATS_RATE_HT) {
+		rinfo->flags = RATE_INFO_FLAGS_MCS;
+		rinfo->mcs = rate & 0xff;
+	} else if (rate & STA_STATS_RATE_LEGACY) {
 		struct ieee80211_supported_band *sband;
-		int shift = ieee80211_vif_get_shift(&sta->sdata->vif);
 		u16 brate;
+		unsigned int shift;
 
-		sband = sta->local->hw.wiphy->bands[
-				ieee80211_get_sdata_band(sta->sdata)];
-		brate = sband->bitrates[sta->rx_stats.last_rate_idx].bitrate;
+		sband = local->hw.wiphy->bands[(rate >> 4) & 0xf];
+		brate = sband->bitrates[rate & 0xf].bitrate;
+#if CFG80211_VERSION >= KERNEL_VERSION(3,20,0)
+		if (rinfo->bw == RATE_INFO_BW_5)
+			shift = 2;
+		else if (rinfo->bw == RATE_INFO_BW_10)
+			shift = 1;
+		else
+#endif
+			shift = 0;
 		rinfo->legacy = DIV_ROUND_UP(brate, 1 << shift);
 	}
 
-	if (sta->rx_stats.last_rate_flag & RX_FLAG_SHORT_GI)
-		rinfo->flags |= RATE_INFO_FLAGS_SHORT_GI;
-
 #if CFG80211_VERSION < KERNEL_VERSION(3,20,0)
-	if (sta->rx_stats.last_rate_flag & RX_FLAG_40MHZ)
+	switch ((rate & STA_STATS_RATE_BW_MASK) >> STA_STATS_RATE_BW_SHIFT) {
+	case RATE_INFO_BW_5:
+	case RATE_INFO_BW_10:
+		rinfo->flags = 0;
+		WARN_ON(1);
+		return;
+	case RATE_INFO_BW_20:
+		break;
+	case RATE_INFO_BW_40:
 		rinfo->flags |= RATE_INFO_FLAGS_40_MHZ_WIDTH;
-	if (sta->rx_stats.last_rate_vht_flag & RX_VHT_FLAG_80MHZ)
+		break;
+	case RATE_INFO_BW_80:
 		rinfo->flags |= RATE_INFO_FLAGS_80_MHZ_WIDTH;
-	if (sta->rx_stats.last_rate_vht_flag & RX_VHT_FLAG_160MHZ)
+		break;
+	case RATE_INFO_BW_160:
 		rinfo->flags |= RATE_INFO_FLAGS_160_MHZ_WIDTH;
-#else
-	if (sta->rx_stats.last_rate_flag & RX_FLAG_5MHZ)
-		rinfo->bw = RATE_INFO_BW_5;
-	else if (sta->rx_stats.last_rate_flag & RX_FLAG_10MHZ)
-		rinfo->bw = RATE_INFO_BW_10;
-	else if (sta->rx_stats.last_rate_flag & RX_FLAG_40MHZ)
-		rinfo->bw = RATE_INFO_BW_40;
-	else if (sta->rx_stats.last_rate_vht_flag & RX_VHT_FLAG_80MHZ)
-		rinfo->bw = RATE_INFO_BW_80;
-	else if (sta->rx_stats.last_rate_vht_flag & RX_VHT_FLAG_160MHZ)
-		rinfo->bw = RATE_INFO_BW_160;
-	else
-		rinfo->bw = RATE_INFO_BW_20;
+		break;
+	}
 #endif
+
+	if (rate & STA_STATS_RATE_SGI)
+		rinfo->flags |= RATE_INFO_FLAGS_SHORT_GI;
+}
+
+static void sta_set_rate_info_rx(struct sta_info *sta, struct rate_info *rinfo)
+{
+	u16 rate = ACCESS_ONCE(sta_get_last_rx_stats(sta)->last_rate);
+
+	if (rate == STA_STATS_RATE_INVALID)
+		rinfo->flags = 0;
+	else
+		sta_stats_decode_rate(sta->local, rate, rinfo);
+}
+
+static void sta_set_tidstats(struct sta_info *sta,
+			     struct cfg80211_tid_stats *tidstats,
+			     int tid)
+{
+	struct ieee80211_local *local = sta->local;
+
+	if (!(tidstats->filled & BIT(NL80211_TID_STATS_RX_MSDU))) {
+		unsigned int start;
+
+		do {
+			start = u64_stats_fetch_begin(&sta->rx_stats.syncp);
+			tidstats->rx_msdu = sta->rx_stats.msdu[tid];
+		} while (u64_stats_fetch_retry(&sta->rx_stats.syncp, start));
+
+		tidstats->filled |= BIT(NL80211_TID_STATS_RX_MSDU);
+	}
+
+	if (!(tidstats->filled & BIT(NL80211_TID_STATS_TX_MSDU))) {
+		tidstats->filled |= BIT(NL80211_TID_STATS_TX_MSDU);
+		tidstats->tx_msdu = sta->tx_stats.msdu[tid];
+	}
+
+	if (!(tidstats->filled & BIT(NL80211_TID_STATS_TX_MSDU_RETRIES)) &&
+	    ieee80211_hw_check(&local->hw, REPORTS_TX_ACK_STATUS)) {
+		tidstats->filled |= BIT(NL80211_TID_STATS_TX_MSDU_RETRIES);
+		tidstats->tx_msdu_retries = sta->status_stats.msdu_retries[tid];
+	}
+
+	if (!(tidstats->filled & BIT(NL80211_TID_STATS_TX_MSDU_FAILED)) &&
+	    ieee80211_hw_check(&local->hw, REPORTS_TX_ACK_STATUS)) {
+		tidstats->filled |= BIT(NL80211_TID_STATS_TX_MSDU_FAILED);
+		tidstats->tx_msdu_failed = sta->status_stats.msdu_failed[tid];
+	}
+}
+
+static inline u64 sta_get_stats_bytes(struct ieee80211_sta_rx_stats *rxstats)
+{
+	unsigned int start;
+	u64 value;
+
+	do {
+		start = u64_stats_fetch_begin(&rxstats->syncp);
+		value = rxstats->bytes;
+	} while (u64_stats_fetch_retry(&rxstats->syncp, start));
+
+	return value;
 }
 
 void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo)
@@ -1980,7 +2082,10 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo)
 	struct ieee80211_local *local = sdata->local;
 	struct rate_control_ref *ref = NULL;
 	u32 thr = 0;
-	int i, ac;
+	int i, ac, cpu;
+	struct ieee80211_sta_rx_stats *last_rxstats;
+
+	last_rxstats = sta_get_last_rx_stats(sta);
 
 	if (test_sta_flag(sta, WLAN_STA_RATE_CONTROL))
 		ref = local->rate_ctrl;
@@ -2009,7 +2114,7 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo)
 
 	sinfo->connected_time = ktime_get_seconds() - sta->last_connected;
 	sinfo->inactive_time =
-		jiffies_to_msecs(jiffies - sta->rx_stats.last_rx);
+		jiffies_to_msecs(jiffies - ieee80211_sta_last_active(sta));
 
 	if (!(sinfo->filled & (BIT(NL80211_STA_INFO_TX_BYTES64) |
 			       BIT(NL80211_STA_INFO_TX_BYTES)))) {
@@ -2028,12 +2133,30 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo)
 
 	if (!(sinfo->filled & (BIT(NL80211_STA_INFO_RX_BYTES64) |
 			       BIT(NL80211_STA_INFO_RX_BYTES)))) {
-		sinfo->rx_bytes = sta->rx_stats.bytes;
+		sinfo->rx_bytes += sta_get_stats_bytes(&sta->rx_stats);
+
+		if (sta->pcpu_rx_stats) {
+			for_each_possible_cpu(cpu) {
+				struct ieee80211_sta_rx_stats *cpurxs;
+
+				cpurxs = per_cpu_ptr(sta->pcpu_rx_stats, cpu);
+				sinfo->rx_bytes += sta_get_stats_bytes(cpurxs);
+			}
+		}
+
 		sinfo->filled |= BIT(NL80211_STA_INFO_RX_BYTES64);
 	}
 
 	if (!(sinfo->filled & BIT(NL80211_STA_INFO_RX_PACKETS))) {
 		sinfo->rx_packets = sta->rx_stats.packets;
+		if (sta->pcpu_rx_stats) {
+			for_each_possible_cpu(cpu) {
+				struct ieee80211_sta_rx_stats *cpurxs;
+
+				cpurxs = per_cpu_ptr(sta->pcpu_rx_stats, cpu);
+				sinfo->rx_packets += cpurxs->packets;
+			}
+		}
 		sinfo->filled |= BIT(NL80211_STA_INFO_RX_PACKETS);
 	}
 
@@ -2048,6 +2171,14 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo)
 	}
 
 	sinfo->rx_dropped_misc = sta->rx_stats.dropped;
+	if (sta->pcpu_rx_stats) {
+		for_each_possible_cpu(cpu) {
+			struct ieee80211_sta_rx_stats *cpurxs;
+
+			cpurxs = per_cpu_ptr(sta->pcpu_rx_stats, cpu);
+			sinfo->rx_packets += cpurxs->dropped;
+		}
+	}
 
 	if (sdata->vif.type == NL80211_IFTYPE_STATION &&
 	    !(sdata->vif.driver_flags & IEEE80211_VIF_BEACON_FILTER)) {
@@ -2059,29 +2190,36 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo)
 	if (ieee80211_hw_check(&sta->local->hw, SIGNAL_DBM) ||
 	    ieee80211_hw_check(&sta->local->hw, SIGNAL_UNSPEC)) {
 		if (!(sinfo->filled & BIT(NL80211_STA_INFO_SIGNAL))) {
-			sinfo->signal = (s8)sta->rx_stats.last_signal;
+			sinfo->signal = (s8)last_rxstats->last_signal;
 			sinfo->filled |= BIT(NL80211_STA_INFO_SIGNAL);
 		}
 
-		if (!(sinfo->filled & BIT(NL80211_STA_INFO_SIGNAL_AVG))) {
+		if (!sta->pcpu_rx_stats &&
+		    !(sinfo->filled & BIT(NL80211_STA_INFO_SIGNAL_AVG))) {
 			sinfo->signal_avg =
-				-ewma_signal_read(&sta->rx_stats.avg_signal);
+				-ewma_signal_read(&sta->rx_stats_avg.signal);
 			sinfo->filled |= BIT(NL80211_STA_INFO_SIGNAL_AVG);
 		}
 	}
 
-	if (sta->rx_stats.chains &&
+	/* for the average - if pcpu_rx_stats isn't set - rxstats must point to
+	 * the sta->rx_stats struct, so the check here is fine with and without
+	 * pcpu statistics
+	 */
+	if (last_rxstats->chains &&
 	    !(sinfo->filled & (BIT(NL80211_STA_INFO_CHAIN_SIGNAL) |
 			       BIT(NL80211_STA_INFO_CHAIN_SIGNAL_AVG)))) {
-		sinfo->filled |= BIT(NL80211_STA_INFO_CHAIN_SIGNAL) |
-				 BIT(NL80211_STA_INFO_CHAIN_SIGNAL_AVG);
+		sinfo->filled |= BIT(NL80211_STA_INFO_CHAIN_SIGNAL);
+		if (!sta->pcpu_rx_stats)
+			sinfo->filled |= BIT(NL80211_STA_INFO_CHAIN_SIGNAL_AVG);
 
-		sinfo->chains = sta->rx_stats.chains;
+		sinfo->chains = last_rxstats->chains;
+
 		for (i = 0; i < ARRAY_SIZE(sinfo->chain_signal); i++) {
 			sinfo->chain_signal[i] =
-				sta->rx_stats.chain_signal_last[i];
+				last_rxstats->chain_signal_last[i];
 			sinfo->chain_signal_avg[i] =
-				-ewma_signal_read(&sta->rx_stats.chain_signal_avg[i]);
+				-ewma_signal_read(&sta->rx_stats_avg.chain_signal[i]);
 		}
 	}
 
@@ -2100,33 +2238,7 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo)
 	for (i = 0; i < IEEE80211_NUM_TIDS + 1; i++) {
 		struct cfg80211_tid_stats *tidstats = &sinfo->pertid[i];
 
-		if (!(tidstats->filled & BIT(NL80211_TID_STATS_RX_MSDU))) {
-			tidstats->filled |= BIT(NL80211_TID_STATS_RX_MSDU);
-			tidstats->rx_msdu = sta->rx_stats.msdu[i];
-		}
-
-		if (!(tidstats->filled & BIT(NL80211_TID_STATS_TX_MSDU))) {
-			tidstats->filled |= BIT(NL80211_TID_STATS_TX_MSDU);
-			tidstats->tx_msdu = sta->tx_stats.msdu[i];
-		}
-
-		if (!(tidstats->filled &
-				BIT(NL80211_TID_STATS_TX_MSDU_RETRIES)) &&
-		    ieee80211_hw_check(&local->hw, REPORTS_TX_ACK_STATUS)) {
-			tidstats->filled |=
-				BIT(NL80211_TID_STATS_TX_MSDU_RETRIES);
-			tidstats->tx_msdu_retries =
-				sta->status_stats.msdu_retries[i];
-		}
-
-		if (!(tidstats->filled &
-				BIT(NL80211_TID_STATS_TX_MSDU_FAILED)) &&
-		    ieee80211_hw_check(&local->hw, REPORTS_TX_ACK_STATUS)) {
-			tidstats->filled |=
-				BIT(NL80211_TID_STATS_TX_MSDU_FAILED);
-			tidstats->tx_msdu_failed =
-				sta->status_stats.msdu_failed[i];
-		}
+		sta_set_tidstats(sta, tidstats, i);
 	}
 
 	if (ieee80211_vif_is_mesh(&sdata->vif)) {
@@ -2184,14 +2296,38 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo)
 	if (test_sta_flag(sta, WLAN_STA_TDLS_PEER))
 		sinfo->sta_flags.set |= BIT(NL80211_STA_FLAG_TDLS_PEER);
 
-	/* check if the driver has a SW RC implementation */
-	if (ref && ref->ops->get_expected_throughput)
-		thr = ref->ops->get_expected_throughput(sta->rate_ctrl_priv);
-	else
-		thr = drv_get_expected_throughput(local, &sta->sta);
+	thr = sta_get_expected_throughput(sta);
 
 	if (thr != 0) {
 		sinfo->filled |= BIT(NL80211_STA_INFO_EXPECTED_THROUGHPUT);
 		sinfo->expected_throughput = thr;
 	}
+}
+
+u32 sta_get_expected_throughput(struct sta_info *sta)
+{
+	struct ieee80211_sub_if_data *sdata = sta->sdata;
+	struct ieee80211_local *local = sdata->local;
+	struct rate_control_ref *ref = NULL;
+	u32 thr = 0;
+
+	if (test_sta_flag(sta, WLAN_STA_RATE_CONTROL))
+		ref = local->rate_ctrl;
+
+	/* check if the driver has a SW RC implementation */
+	if (ref && ref->ops->get_expected_throughput)
+		thr = ref->ops->get_expected_throughput(sta->rate_ctrl_priv);
+	else
+		thr = drv_get_expected_throughput(local, sta);
+
+	return thr;
+}
+
+unsigned long ieee80211_sta_last_active(struct sta_info *sta)
+{
+	struct ieee80211_sta_rx_stats *stats = sta_get_last_rx_stats(sta);
+
+	if (time_after(stats->last_rx, sta->status_stats.last_ack))
+		return stats->last_rx;
+	return sta->status_stats.last_ack;
 }

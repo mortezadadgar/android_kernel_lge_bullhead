@@ -162,8 +162,9 @@ static inline void drv_bss_info_changed(struct ieee80211_local *local,
 		return;
 
 	if (WARN_ON_ONCE(sdata->vif.type == NL80211_IFTYPE_P2P_DEVICE ||
-			 sdata->vif.type == NL80211_IFTYPE_MONITOR ||
-			 ieee80211_viftype_nan(sdata->vif.type)))
+			 ieee80211_viftype_nan(sdata->vif.type) ||
+			 (sdata->vif.type == NL80211_IFTYPE_MONITOR &&
+			  !sdata->vif.mu_mimo_owner)))
 		return;
 
 	if (!check_sdata_in_driver(sdata))
@@ -499,21 +500,6 @@ static inline void drv_sta_add_debugfs(struct ieee80211_local *local,
 		local->ops->sta_add_debugfs(&local->hw, &sdata->vif,
 					    sta, dir);
 }
-
-static inline void drv_sta_remove_debugfs(struct ieee80211_local *local,
-					  struct ieee80211_sub_if_data *sdata,
-					  struct ieee80211_sta *sta,
-					  struct dentry *dir)
-{
-	might_sleep();
-
-	sdata = get_bss_sdata(sdata);
-	check_sdata_in_driver(sdata);
-
-	if (local->ops->sta_remove_debugfs)
-		local->ops->sta_remove_debugfs(&local->hw, &sdata->vif,
-					       sta, dir);
-}
 #endif
 
 static inline void drv_sta_pre_rcu_remove(struct ieee80211_local *local,
@@ -583,6 +569,9 @@ u64 drv_get_tsf(struct ieee80211_local *local,
 void drv_set_tsf(struct ieee80211_local *local,
 		 struct ieee80211_sub_if_data *sdata,
 		 u64 tsf);
+void drv_offset_tsf(struct ieee80211_local *local,
+		    struct ieee80211_sub_if_data *sdata,
+		    s64 offset);
 void drv_reset_tsf(struct ieee80211_local *local,
 		   struct ieee80211_sub_if_data *sdata);
 
@@ -1089,13 +1078,13 @@ static inline void drv_leave_ibss(struct ieee80211_local *local,
 }
 
 static inline u32 drv_get_expected_throughput(struct ieee80211_local *local,
-					      struct ieee80211_sta *sta)
+					      struct sta_info *sta)
 {
 	u32 ret = 0;
 
-	trace_drv_get_expected_throughput(sta);
-	if (local->ops->get_expected_throughput)
-		ret = local->ops->get_expected_throughput(sta);
+	trace_drv_get_expected_throughput(&sta->sta);
+	if (local->ops->get_expected_throughput && sta->uploaded)
+		ret = local->ops->get_expected_throughput(&local->hw, &sta->sta);
 	trace_drv_return_u32(local, ret);
 
 	return ret;
@@ -1180,38 +1169,6 @@ static inline void drv_wake_tx_queue(struct ieee80211_local *local,
 	local->ops->wake_tx_queue(&local->hw, &txq->txq);
 }
 
-static inline int
-drv_start_ftm_responder(struct ieee80211_local *local,
-			struct ieee80211_sub_if_data *sdata,
-			struct cfg80211_ftm_responder_params *params)
-{
-	u32 ret = -EOPNOTSUPP;
-
-	trace_drv_start_ftm_responder(local, sdata);
-	if (local->ops->start_ftm_responder)
-		ret = local->ops->start_ftm_responder(&local->hw, &sdata->vif,
-						      params);
-	trace_drv_return_int(local, ret);
-
-	return ret;
-}
-
-static inline int
-drv_get_ftm_responder_stats(struct ieee80211_local *local,
-			    struct ieee80211_sub_if_data *sdata,
-			    struct cfg80211_ftm_responder_stats *ftm_stats)
-{
-	u32 ret = -EOPNOTSUPP;
-
-	if (local->ops->get_ftm_responder_stats)
-		ret = local->ops->get_ftm_responder_stats(&local->hw,
-							 &sdata->vif,
-							 ftm_stats);
-	trace_drv_get_ftm_responder_stats(local, sdata, ftm_stats);
-
-	return ret;
-}
-
 static inline int drv_start_nan(struct ieee80211_local *local,
 				struct ieee80211_sub_if_data *sdata,
 				struct cfg80211_nan_conf *conf)
@@ -1278,17 +1235,49 @@ static inline int drv_add_nan_func(struct ieee80211_local *local,
 	return ret;
 }
 
-static inline void drv_rm_nan_func(struct ieee80211_local *local,
+static inline void drv_del_nan_func(struct ieee80211_local *local,
 				   struct ieee80211_sub_if_data *sdata,
 				   u8 instance_id)
 {
 	might_sleep();
 	check_sdata_in_driver(sdata);
 
-	trace_drv_rm_nan_func(local, sdata, instance_id);
-	if (local->ops->rm_nan_func)
-		local->ops->rm_nan_func(&local->hw, &sdata->vif, instance_id);
+	trace_drv_del_nan_func(local, sdata, instance_id);
+	if (local->ops->del_nan_func)
+		local->ops->del_nan_func(&local->hw, &sdata->vif, instance_id);
 	trace_drv_return_void(local);
+}
+
+static inline int
+drv_start_ftm_responder(struct ieee80211_local *local,
+			struct ieee80211_sub_if_data *sdata,
+			struct cfg80211_ftm_responder_params *params)
+{
+	u32 ret = -EOPNOTSUPP;
+
+	trace_drv_start_ftm_responder(local, sdata);
+	if (local->ops->start_ftm_responder)
+		ret = local->ops->start_ftm_responder(&local->hw, &sdata->vif,
+						      params);
+	trace_drv_return_int(local, ret);
+
+	return ret;
+}
+
+static inline int
+drv_get_ftm_responder_stats(struct ieee80211_local *local,
+			    struct ieee80211_sub_if_data *sdata,
+			    struct cfg80211_ftm_responder_stats *ftm_stats)
+{
+	u32 ret = -EOPNOTSUPP;
+
+	if (local->ops->get_ftm_responder_stats)
+		ret = local->ops->get_ftm_responder_stats(&local->hw,
+							 &sdata->vif,
+							 ftm_stats);
+	trace_drv_get_ftm_responder_stats(local, sdata, ftm_stats);
+
+	return ret;
 }
 
 #endif /* __MAC80211_DRIVER_OPS */

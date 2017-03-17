@@ -117,6 +117,10 @@ module_param_named(tfd_q_hang_detect, iwlmvm_mod_params.tfd_q_hang_detect,
 		   bool, S_IRUGO);
 MODULE_PARM_DESC(tfd_q_hang_detect,
 		 "TFD queues hang detection (default: true");
+module_param_named(ftm_resp_asap, iwlmvm_mod_params.ftm_resp_asap, bool,
+		   S_IRUGO);
+MODULE_PARM_DESC(ftm_resp_asap,
+		 "FTM responder ASAP mode only (non ASAP mode is disabled), default: false");
 
 
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
@@ -315,12 +319,20 @@ static const struct iwl_rx_handlers iwl_mvm_rx_handlers[] = {
 		   RX_HANDLER_ASYNC_LOCKED),
 	RX_HANDLER(MFUART_LOAD_NOTIFICATION, iwl_mvm_rx_mfuart_notif,
 		   RX_HANDLER_SYNC),
-	RX_HANDLER(TOF_NOTIFICATION, iwl_mvm_tof_resp_handler,
-		   RX_HANDLER_ASYNC_LOCKED),
+	RX_HANDLER_GRP(TOF_GROUP, TOF_RANGE_RESPONSE_NOTIF,
+		       iwl_mvm_tof_range_resp, RX_HANDLER_ASYNC_LOCKED),
+	RX_HANDLER_GRP(TOF_GROUP, TOF_MCSI_DEBUG_NOTIF,
+		       iwl_mvm_tof_mcsi_notif, RX_HANDLER_ASYNC_LOCKED),
+	RX_HANDLER_GRP(TOF_GROUP, TOF_RESPONDER_STATS,
+		       iwl_mvm_tof_responder_stats, RX_HANDLER_ASYNC_LOCKED),
+	RX_HANDLER_GRP(TOF_GROUP, TOF_LC_NOTIF,
+		       iwl_mvm_tof_lc_notif, RX_HANDLER_ASYNC_LOCKED),
 	RX_HANDLER_GRP(PROT_OFFLOAD_GROUP, STORED_BEACON_NTF,
 		       iwl_mvm_rx_stored_beacon_notif, RX_HANDLER_SYNC),
 	RX_HANDLER_GRP(DATA_PATH_GROUP, MU_GROUP_MGMT_NOTIF,
 		       iwl_mvm_mu_mimo_grp_notif, RX_HANDLER_SYNC),
+	RX_HANDLER_GRP(DATA_PATH_GROUP, STA_PM_NOTIF,
+		       iwl_mvm_sta_pm_notif, RX_HANDLER_SYNC),
 #ifdef CPTCFG_IWLMVM_VENDOR_CMDS
 	RX_HANDLER_GRP(SCAN_GROUP, GSCAN_RESULTS_AVAILABLE_EVENT,
 		       iwl_mvm_rx_gscan_results_available,
@@ -337,6 +349,10 @@ static const struct iwl_rx_handlers iwl_mvm_rx_handlers[] = {
 		       iwl_mvm_nan_match, RX_HANDLER_SYNC),
 	RX_HANDLER_GRP(MAC_CONF_GROUP, LINK_QUALITY_MEASUREMENT_COMPLETE_NOTIF,
 		       iwl_mvm_vendor_lqm_notif, RX_HANDLER_SYNC),
+	RX_HANDLER_GRP(MAC_CONF_GROUP, CHANNEL_SWITCH_NOA_NOTIF,
+		       iwl_mvm_channel_switch_noa_notif,
+		       RX_HANDLER_SYNC),
+
 #endif
 
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
@@ -361,9 +377,7 @@ static const struct iwl_hcmd_names iwl_mvm_legacy_names[] = {
 	HCMD_NAME(SCAN_REQ_UMAC),
 	HCMD_NAME(SCAN_ABORT_UMAC),
 	HCMD_NAME(SCAN_COMPLETE_UMAC),
-	HCMD_NAME(TOF_CMD),
 	HCMD_NAME(CONTINUOUS_REC_CHUNK_NOTIF),
-	HCMD_NAME(TOF_NOTIFICATION),
 	HCMD_NAME(BA_WINDOW_STATUS_NOTIFICATION_ID),
 	HCMD_NAME(ADD_STA_KEY),
 	HCMD_NAME(ADD_STA),
@@ -396,6 +410,7 @@ static const struct iwl_hcmd_names iwl_mvm_legacy_names[] = {
 	HCMD_NAME(BT_COEX_CI),
 	HCMD_NAME(PHY_CONFIGURATION_CMD),
 	HCMD_NAME(CALIB_RES_NOTIF_PHY_DB),
+	HCMD_NAME(PHY_DB_CMD),
 	HCMD_NAME(SCAN_OFFLOAD_COMPLETE),
 	HCMD_NAME(SCAN_OFFLOAD_UPDATE_PROFILES_CMD),
 	HCMD_NAME(SCAN_OFFLOAD_CONFIG_CMD),
@@ -462,6 +477,7 @@ static const struct iwl_hcmd_names iwl_mvm_legacy_names[] = {
  */
 static const struct iwl_hcmd_names iwl_mvm_system_names[] = {
 	HCMD_NAME(SHARED_MEM_CFG_CMD),
+	HCMD_NAME(SOC_CONFIGURATION_CMD),
 };
 
 /* Please keep this array *SORTED* by hex value.
@@ -470,6 +486,7 @@ static const struct iwl_hcmd_names iwl_mvm_system_names[] = {
 static const struct iwl_hcmd_names iwl_mvm_mac_conf_names[] = {
 	HCMD_NAME(LINK_QUALITY_MEASUREMENT_CMD),
 	HCMD_NAME(LINK_QUALITY_MEASUREMENT_COMPLETE_NOTIF),
+	HCMD_NAME(CHANNEL_SWITCH_NOA_NOTIF),
 };
 
 /* Please keep this array *SORTED* by hex value.
@@ -479,6 +496,7 @@ static const struct iwl_hcmd_names iwl_mvm_phy_names[] = {
 	HCMD_NAME(CMD_DTS_MEASUREMENT_TRIGGER_WIDE),
 	HCMD_NAME(CTDP_CONFIG_CMD),
 	HCMD_NAME(TEMP_REPORTING_THRESHOLDS_CMD),
+	HCMD_NAME(GEO_TX_POWER_LIMIT),
 	HCMD_NAME(CT_KILL_NOTIFICATION),
 	HCMD_NAME(DTS_MEASUREMENT_NOTIF_WIDE),
 };
@@ -487,8 +505,10 @@ static const struct iwl_hcmd_names iwl_mvm_phy_names[] = {
  * Access is done through binary search
  */
 static const struct iwl_hcmd_names iwl_mvm_data_path_names[] = {
+	HCMD_NAME(DQA_ENABLE_CMD),
 	HCMD_NAME(UPDATE_MU_GROUPS_CMD),
 	HCMD_NAME(TRIGGER_RX_QUEUES_NOTIF_CMD),
+	HCMD_NAME(STA_PM_NOTIF),
 	HCMD_NAME(MU_GROUP_MGMT_NOTIF),
 	HCMD_NAME(RX_QUEUES_NOTIFICATION),
 };
@@ -523,6 +543,22 @@ static const struct iwl_hcmd_names iwl_mvm_nan_names[] = {
 /* Please keep this array *SORTED* by hex value.
  * Access is done through binary search
  */
+static const struct iwl_hcmd_names iwl_mvm_tof_names[] = {
+	HCMD_NAME(TOF_RANGE_REQ_CMD),
+	HCMD_NAME(TOF_CONFIG_CMD),
+	HCMD_NAME(TOF_RANGE_ABORT_CMD),
+	HCMD_NAME(TOF_RANGE_REQ_EXT_CMD),
+	HCMD_NAME(TOF_RESPONDER_CONFIG_CMD),
+	HCMD_NAME(TOF_RESPONDER_DYN_CONFIG_CMD),
+	HCMD_NAME(TOF_LC_NOTIF),
+	HCMD_NAME(TOF_RESPONDER_STATS),
+	HCMD_NAME(TOF_MCSI_DEBUG_NOTIF),
+	HCMD_NAME(TOF_RANGE_RESPONSE_NOTIF),
+};
+
+/* Please keep this array *SORTED* by hex value.
+ * Access is done through binary search
+ */
 static const struct iwl_hcmd_names iwl_mvm_prot_offload_names[] = {
 	HCMD_NAME(STORED_BEACON_NTF),
 };
@@ -536,6 +572,7 @@ static const struct iwl_hcmd_arr iwl_mvm_groups[] = {
 	[DATA_PATH_GROUP] = HCMD_ARR(iwl_mvm_data_path_names),
 	[SCAN_GROUP] = HCMD_ARR(iwl_mvm_scan_names),
 	[NAN_GROUP] = HCMD_ARR(iwl_mvm_nan_names),
+	[TOF_GROUP] = HCMD_ARR(iwl_mvm_tof_names),
 	[PROT_OFFLOAD_GROUP] = HCMD_ARR(iwl_mvm_prot_offload_names),
 };
 
@@ -561,6 +598,55 @@ static u32 calc_min_backoff(struct iwl_trans *trans, const struct iwl_cfg *cfg)
 }
 
 static void iwl_mvm_fw_error_dump_wk(struct work_struct *work);
+
+static void iwl_mvm_tx_unblock_dwork(struct work_struct *work)
+{
+	struct iwl_mvm *mvm =
+		container_of(work, struct iwl_mvm, cs_tx_unblock_dwork.work);
+	struct ieee80211_vif *tx_blocked_vif;
+	struct iwl_mvm_vif *mvmvif;
+
+	mutex_lock(&mvm->mutex);
+
+	tx_blocked_vif =
+		rcu_dereference_protected(mvm->csa_tx_blocked_vif,
+					  lockdep_is_held(&mvm->mutex));
+
+	if (!tx_blocked_vif)
+		goto unlock;
+
+	mvmvif = iwl_mvm_vif_from_mac80211(tx_blocked_vif);
+	iwl_mvm_modify_all_sta_disable_tx(mvm, mvmvif, false);
+	RCU_INIT_POINTER(mvm->csa_tx_blocked_vif, NULL);
+unlock:
+	mutex_unlock(&mvm->mutex);
+}
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+static void iwl_mvm_init_modparams(struct iwl_mvm *mvm)
+{
+#define IWL_DBG_CFG(t, n)			/* nothing */
+#define IWL_DBG_CFG_STR(n)			/* nothing */
+#define IWL_DBG_CFG_NODEF(t, n)			/* nothing */
+#define IWL_DBG_CFG_BIN(n)			/* nothing */
+#define IWL_DBG_CFG_BINA(n, max)		/* nothing */
+#define IWL_DBG_CFG_RANGE(t, n, min, max)	/* nothing */
+#define IWL_MOD_PARAM(t, n)			/* nothing */
+#define IWL_MVM_MOD_PARAM(t, n)				\
+	if (mvm->trans->dbg_cfg.__mvm_mod_param_##n)	\
+		iwlmvm_mod_params.n = mvm->trans->dbg_cfg.mvm_##n;
+#define DBG_CFG_REINCLUDE
+#include "iwl-dbg-cfg.h"
+#undef IWL_DBG_CFG
+#undef IWL_DBG_CFG_STR
+#undef IWL_DBG_CFG_NODEF
+#undef IWL_DBG_CFG_BIN
+#undef IWL_DBG_CFG_BINA
+#undef IWL_DBG_CFG_RANGE
+#undef IWL_MOD_PARAM
+#undef IWL_MVM_MOD_PARAM
+}
+#endif
 
 static struct iwl_op_mode *
 iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
@@ -621,12 +707,20 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 
 	mvm->restart_fw = iwlwifi_mod_params.restart_fw ? -1 : 0;
 
-	mvm->aux_queue = 15;
-	mvm->first_agg_queue = 16;
-	mvm->last_agg_queue = mvm->cfg->base_params->num_of_queues - 1;
-	if (mvm->cfg->base_params->num_of_queues == 16) {
-		mvm->aux_queue = 11;
-		mvm->first_agg_queue = 12;
+	if (!iwl_mvm_is_dqa_supported(mvm)) {
+		mvm->last_agg_queue = mvm->cfg->base_params->num_of_queues - 1;
+
+		if (mvm->cfg->base_params->num_of_queues == 16) {
+			mvm->aux_queue = 11;
+			mvm->first_agg_queue = 12;
+		} else {
+			mvm->aux_queue = 15;
+			mvm->first_agg_queue = 16;
+		}
+	} else {
+		mvm->aux_queue = IWL_MVM_DQA_AUX_QUEUE;
+		mvm->first_agg_queue = IWL_MVM_DQA_MIN_DATA_QUEUE;
+		mvm->last_agg_queue = IWL_MVM_DQA_MAX_DATA_QUEUE;
 	}
 	mvm->sf_state = SF_UNINIT;
 	mvm->cur_ucode = IWL_UCODE_INIT;
@@ -654,6 +748,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	spin_lock_init(&mvm->refs_lock);
 	skb_queue_head_init(&mvm->d0i3_tx);
 	init_waitqueue_head(&mvm->d0i3_exit_waitq);
+	init_waitqueue_head(&mvm->rx_sync_waitq);
 
 	atomic_set(&mvm->queue_sync_counter, 0);
 
@@ -661,8 +756,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 
 #ifdef CPTCFG_IWLMVM_TCM
 	spin_lock_init(&mvm->tcm.lock);
-	setup_timer(&mvm->tcm.timer, iwl_mvm_tcm_timer, (unsigned long)mvm);
-	INIT_WORK(&mvm->tcm.work, iwl_mvm_tcm_work);
+	INIT_DELAYED_WORK(&mvm->tcm.work, iwl_mvm_tcm_work);
 	mvm->tcm.ts = jiffies;
 	mvm->tcm.ll_ts = jiffies;
 	mvm->tcm.uapsd_nonagg_ts = jiffies;
@@ -679,6 +773,8 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	mvm->rx_filters = IWL_MVM_VENDOR_RXFILTER_EINVAL;
 #endif
 
+	INIT_DELAYED_WORK(&mvm->cs_tx_unblock_dwork, iwl_mvm_tx_unblock_dwork);
+
 	/*
 	 * Populate the state variables that the transport layer needs
 	 * to know about.
@@ -687,6 +783,7 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 	trans_cfg.no_reclaim_cmds = no_reclaim_cmds;
 	trans_cfg.n_no_reclaim_cmds = ARRAY_SIZE(no_reclaim_cmds);
 	switch (iwlwifi_mod_params.amsdu_size) {
+	case IWL_AMSDU_DEF:
 	case IWL_AMSDU_4K:
 		trans_cfg.rx_buf_size = IWL_AMSDU_4K;
 		break;
@@ -701,18 +798,26 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 		       iwlwifi_mod_params.amsdu_size);
 		trans_cfg.rx_buf_size = IWL_AMSDU_4K;
 	}
-	trans_cfg.wide_cmd_header = fw_has_api(&mvm->fw->ucode_capa,
-					       IWL_UCODE_TLV_API_WIDE_CMD_HDR);
 
-	if (mvm->fw->ucode_capa.flags & IWL_UCODE_TLV_FLAGS_DW_BC_TABLE)
-		trans_cfg.bc_table_dword = true;
+	/* the hardware splits the A-MSDU */
+	if (mvm->cfg->mq_rx_supported)
+		trans_cfg.rx_buf_size = IWL_AMSDU_4K;
+
+	trans->wide_cmd_header = true;
+	trans_cfg.bc_table_dword = true;
 
 	trans_cfg.command_groups = iwl_mvm_groups;
 	trans_cfg.command_groups_size = ARRAY_SIZE(iwl_mvm_groups);
 
-	trans_cfg.cmd_queue = IWL_MVM_CMD_QUEUE;
+	if (iwl_mvm_is_dqa_supported(mvm))
+		trans_cfg.cmd_queue = IWL_MVM_DQA_CMD_QUEUE;
+	else
+		trans_cfg.cmd_queue = IWL_MVM_CMD_QUEUE;
 	trans_cfg.cmd_fifo = IWL_MVM_TX_FIFO_CMD;
 	trans_cfg.scd_set_active = true;
+
+	trans_cfg.cb_data_offs = offsetof(struct ieee80211_tx_info,
+					  driver_data[2]);
 
 	trans_cfg.sdio_adma_addr = fw->sdio_adma_addr;
 	trans_cfg.sw_csum_tx = IWL_MVM_SW_TX_CSUM_OFFLOAD;
@@ -758,37 +863,21 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 		IWL_DEBUG_EEPROM(mvm->trans->dev,
 				 "working without external nvm file\n");
 
-	if (WARN(cfg->no_power_up_nic_in_init && !mvm->nvm_file_name,
-		 "not allowing power-up and not having nvm_file\n"))
+	err = iwl_trans_start_hw(mvm->trans);
+	if (err)
 		goto out_free;
 
-	/*
-	 * Even if nvm exists in the nvm_file driver should read again the nvm
-	 * from the nic because there might be entries that exist in the OTP
-	 * and not in the file.
-	 * for nics with no_power_up_nic_in_init: rely completley on nvm_file
-	 */
-	if (cfg->no_power_up_nic_in_init && mvm->nvm_file_name) {
-		err = iwl_nvm_init(mvm, false);
-		if (err)
-			goto out_free;
-	} else {
-		err = iwl_trans_start_hw(mvm->trans);
-		if (err)
-			goto out_free;
-
-		mutex_lock(&mvm->mutex);
-		iwl_mvm_ref(mvm, IWL_MVM_REF_INIT_UCODE);
-		err = iwl_run_init_mvm_ucode(mvm, true);
-		if (!err || !iwlmvm_mod_params.init_dbg)
-			iwl_mvm_stop_device(mvm);
-		iwl_mvm_unref(mvm, IWL_MVM_REF_INIT_UCODE);
-		mutex_unlock(&mvm->mutex);
-		/* returns 0 if successful, 1 if success but in rfkill */
-		if (err < 0 && !iwlmvm_mod_params.init_dbg) {
-			IWL_ERR(mvm, "Failed to run INIT ucode: %d\n", err);
-			goto out_free;
-		}
+	mutex_lock(&mvm->mutex);
+	iwl_mvm_ref(mvm, IWL_MVM_REF_INIT_UCODE);
+	err = iwl_run_init_mvm_ucode(mvm, true);
+	if (!err || !iwlmvm_mod_params.init_dbg)
+		iwl_mvm_stop_device(mvm);
+	iwl_mvm_unref(mvm, IWL_MVM_REF_INIT_UCODE);
+	mutex_unlock(&mvm->mutex);
+	/* returns 0 if successful, 1 if success but in rfkill */
+	if (err < 0 && !iwlmvm_mod_params.init_dbg) {
+		IWL_ERR(mvm, "Failed to run INIT ucode: %d\n", err);
+		goto out_free;
 	}
 
 	scan_size = iwl_mvm_scan_size(mvm);
@@ -820,6 +909,10 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 
 	iwl_mvm_tof_init(mvm);
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	iwl_mvm_init_modparams(mvm);
+#endif
+
 	return op_mode;
 
  out_unregister:
@@ -833,8 +926,8 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 #endif
 	iwl_phy_db_free(mvm->phy_db);
 	kfree(mvm->scan_cmd);
-	if (!cfg->no_power_up_nic_in_init || !mvm->nvm_file_name)
-		iwl_trans_op_mode_leave(trans);
+	iwl_trans_op_mode_leave(trans);
+
 	ieee80211_free_hw(mvm->hw);
 	return NULL;
 }
@@ -883,8 +976,7 @@ static void iwl_op_mode_mvm_stop(struct iwl_op_mode *op_mode)
 		kfree(mvm->nvm_sections[i].data);
 
 #ifdef CPTCFG_IWLMVM_TCM
-	del_timer_sync(&mvm->tcm.timer);
-	cancel_work_sync(&mvm->tcm.work);
+	cancel_delayed_work_sync(&mvm->tcm.work);
 #endif
 
 #ifdef CPTCFG_IWLMVM_TDLS_PEER_CACHE
@@ -924,9 +1016,7 @@ static void iwl_mvm_async_handlers_wk(struct work_struct *wk)
 	struct iwl_mvm *mvm =
 		container_of(wk, struct iwl_mvm, async_handlers_wk);
 	struct iwl_async_handler_entry *entry, *tmp;
-	struct list_head local_list;
-
-	INIT_LIST_HEAD(&local_list);
+	LIST_HEAD(local_list);
 
 	/* Ensure that we are not in stop flow (check iwl_mvm_mac_stop) */
 
@@ -1033,6 +1123,7 @@ static void iwl_mvm_rx(struct iwl_op_mode *op_mode,
 {
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
+	u16 cmd = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
 
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	/*
@@ -1044,11 +1135,9 @@ static void iwl_mvm_rx(struct iwl_op_mode *op_mode,
 	iwl_tm_mvm_send_rx(mvm, rxb);
 #endif
 
-	if (likely(pkt->hdr.cmd == REPLY_RX_MPDU_CMD))
+	if (likely(cmd == WIDE_ID(LEGACY_GROUP, REPLY_RX_MPDU_CMD)))
 		iwl_mvm_rx_rx_mpdu(mvm, napi, rxb);
-	else if (pkt->hdr.cmd == FRAME_RELEASE)
-		iwl_mvm_rx_frame_release(mvm, rxb, 0);
-	else if (pkt->hdr.cmd == REPLY_RX_PHY_CMD)
+	else if (cmd == WIDE_ID(LEGACY_GROUP, REPLY_RX_PHY_CMD))
 		iwl_mvm_rx_rx_phy_cmd(mvm, rxb);
 	else
 		iwl_mvm_rx_common(mvm, rxb, pkt);
@@ -1060,6 +1149,7 @@ static void iwl_mvm_rx_mq(struct iwl_op_mode *op_mode,
 {
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
+	u16 cmd = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
 
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	/*
@@ -1071,13 +1161,13 @@ static void iwl_mvm_rx_mq(struct iwl_op_mode *op_mode,
 	iwl_tm_mvm_send_rx(mvm, rxb);
 #endif
 
-	if (likely(pkt->hdr.cmd == REPLY_RX_MPDU_CMD))
+	if (likely(cmd == WIDE_ID(LEGACY_GROUP, REPLY_RX_MPDU_CMD)))
 		iwl_mvm_rx_mpdu_mq(mvm, napi, rxb, 0);
-	else if (pkt->hdr.cmd == REPLY_RX_PHY_CMD)
-		iwl_mvm_rx_phy_cmd_mq(mvm, rxb);
-	else if (unlikely(pkt->hdr.group_id == DATA_PATH_GROUP &&
-			  pkt->hdr.cmd == RX_QUEUES_NOTIFICATION))
+	else if (unlikely(cmd == WIDE_ID(DATA_PATH_GROUP,
+					 RX_QUEUES_NOTIFICATION)))
 		iwl_mvm_rx_queue_notif(mvm, rxb, 0);
+	else if (cmd == WIDE_ID(LEGACY_GROUP, FRAME_RELEASE))
+		iwl_mvm_rx_frame_release(mvm, napi, rxb, 0);
 	else
 		iwl_mvm_rx_common(mvm, rxb, pkt);
 }
@@ -1335,7 +1425,6 @@ static bool iwl_mvm_disallow_offloading(struct iwl_mvm *mvm,
 					struct iwl_d0i3_iter_data *iter_data)
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
-	struct ieee80211_sta *ap_sta;
 	struct iwl_mvm_sta *mvmsta;
 	u32 available_tids = 0;
 	u8 tid;
@@ -1344,11 +1433,10 @@ static bool iwl_mvm_disallow_offloading(struct iwl_mvm *mvm,
 		    mvmvif->ap_sta_id == IWL_MVM_STATION_COUNT))
 		return false;
 
-	ap_sta = rcu_dereference(mvm->fw_id_to_mac_id[mvmvif->ap_sta_id]);
-	if (IS_ERR_OR_NULL(ap_sta))
+	mvmsta = iwl_mvm_sta_from_staid_rcu(mvm, mvmvif->ap_sta_id);
+	if (!mvmsta)
 		return false;
 
-	mvmsta = iwl_mvm_sta_from_mac80211(ap_sta);
 	spin_lock_bh(&mvmsta->lock);
 	for (tid = 0; tid < IWL_MAX_TID_COUNT; tid++) {
 		struct iwl_mvm_tid_data *tid_data = &mvmsta->tid_data[tid];
@@ -1504,6 +1592,9 @@ int iwl_mvm_enter_d0i3(struct iwl_op_mode *op_mode)
 		mvm->d0i3_offloading = false;
 	}
 
+#ifdef CPTCFG_IWLMVM_TCM
+	iwl_mvm_pause_tcm(mvm);
+#endif
 	/* make sure we have no running tx while configuring the seqno */
 	synchronize_net();
 
@@ -1684,6 +1775,9 @@ out:
 	/* the FW might have updated the regdomain */
 	iwl_mvm_update_changed_regdom(mvm);
 
+#ifdef CPTCFG_IWLMVM_TCM
+	iwl_mvm_resume_tcm(mvm);
+#endif
 	iwl_mvm_unref(mvm, IWL_MVM_REF_EXIT_WORK);
 	mutex_unlock(&mvm->mutex);
 }
@@ -1770,13 +1864,14 @@ static void iwl_mvm_rx_mq_rss(struct iwl_op_mode *op_mode,
 {
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	u16 cmd = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
 
-	if (unlikely(pkt->hdr.cmd == FRAME_RELEASE))
-		iwl_mvm_rx_frame_release(mvm, rxb, queue);
-	else if (unlikely(pkt->hdr.cmd == RX_QUEUES_NOTIFICATION &&
-			  pkt->hdr.group_id == DATA_PATH_GROUP))
+	if (unlikely(cmd == WIDE_ID(LEGACY_GROUP, FRAME_RELEASE)))
+		iwl_mvm_rx_frame_release(mvm, napi, rxb, queue);
+	else if (unlikely(cmd == WIDE_ID(DATA_PATH_GROUP,
+					 RX_QUEUES_NOTIFICATION)))
 		iwl_mvm_rx_queue_notif(mvm, rxb, queue);
-	else
+	else if (likely(cmd == WIDE_ID(LEGACY_GROUP, REPLY_RX_MPDU_CMD)))
 		iwl_mvm_rx_mpdu_mq(mvm, napi, rxb, queue);
 }
 

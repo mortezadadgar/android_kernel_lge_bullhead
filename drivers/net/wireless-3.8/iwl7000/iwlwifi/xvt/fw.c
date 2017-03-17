@@ -77,15 +77,6 @@ struct iwl_xvt_alive_data {
 	u32 scd_base_addr;
 };
 
-static inline const struct fw_img *
-iwl_get_ucode_image(struct iwl_xvt *xvt, enum iwl_ucode_type ucode_type)
-{
-	if (ucode_type >= IWL_UCODE_TYPE_MAX)
-		return NULL;
-
-	return &xvt->fw->img[ucode_type];
-}
-
 void iwl_xvt_free_fw_paging(struct iwl_xvt *xvt)
 {
 	int i;
@@ -150,6 +141,10 @@ static int iwl_xvt_fill_paging_mem(struct iwl_xvt *xvt,
 	memcpy(page_address(xvt->fw_paging_db[0].fw_paging_block),
 	       image->sec[sec_idx].data,
 	       xvt->fw_paging_db[0].fw_paging_size);
+	dma_sync_single_for_device(xvt->trans->dev,
+				   xvt->fw_paging_db[0].fw_paging_phys,
+				   xvt->fw_paging_db[0].fw_paging_size,
+				   DMA_BIDIRECTIONAL);
 
 	IWL_DEBUG_FW(xvt,
 		     "Paging: copied %d CSS bytes to first block\n",
@@ -164,9 +159,15 @@ static int iwl_xvt_fill_paging_mem(struct iwl_xvt *xvt,
 	 * loop stop at num_of_paging_blk since that last block is not full.
 	 */
 	for (idx = 1; idx < xvt->num_of_paging_blk; idx++) {
-		memcpy(page_address(xvt->fw_paging_db[idx].fw_paging_block),
+		struct iwl_fw_paging *block = &xvt->fw_paging_db[idx];
+
+		memcpy(page_address(block->fw_paging_block),
 		       image->sec[sec_idx].data + offset,
-		       xvt->fw_paging_db[idx].fw_paging_size);
+		       block->fw_paging_size);
+		dma_sync_single_for_device(xvt->trans->dev,
+					   block->fw_paging_phys,
+					   block->fw_paging_size,
+					   DMA_BIDIRECTIONAL);
 
 		IWL_DEBUG_FW(xvt,
 			     "Paging: copied %d paging bytes to block %d\n",
@@ -178,9 +179,15 @@ static int iwl_xvt_fill_paging_mem(struct iwl_xvt *xvt,
 
 	/* copy the last paging block */
 	if (xvt->num_of_pages_in_last_blk > 0) {
-		memcpy(page_address(xvt->fw_paging_db[idx].fw_paging_block),
+		struct iwl_fw_paging *block = &xvt->fw_paging_db[idx];
+
+		memcpy(page_address(block->fw_paging_block),
 		       image->sec[sec_idx].data + offset,
 		       FW_PAGING_SIZE * xvt->num_of_pages_in_last_blk);
+		dma_sync_single_for_device(xvt->trans->dev,
+					   block->fw_paging_phys,
+					   block->fw_paging_size,
+					   DMA_BIDIRECTIONAL);
 
 		IWL_DEBUG_FW(xvt,
 			     "Paging: copied %d pages in the last block %d\n",
@@ -431,7 +438,7 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 	static const u16 alive_cmd[] = { XVT_ALIVE };
 
 	xvt->cur_ucode = ucode_type;
-	fw = iwl_get_ucode_image(xvt, ucode_type);
+	fw = iwl_get_ucode_image(xvt->fw, ucode_type);
 
 	if (!fw)
 		return -EINVAL;

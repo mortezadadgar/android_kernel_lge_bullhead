@@ -103,15 +103,6 @@ static void iwl_dnt_dev_if_configure_mipi(struct iwl_trans *trans)
 
 	/* enable WLAN arbiter */
 	iowrite32(0x80000006, (void __force __iomem *)0xe6700140);
-
-#ifdef IWL_MIPI_IDI
-	/* enable IDI arbiter for all channels - this code is
-	 * needed in case we'd like to look on IDI bus logs
-	 * via MIPI
-	 */
-	iowrite32(0xB0000004, (void __force __iomem *)0xe6700124);
-	iowrite32(0xC0000000, (void __force __iomem *)0xe6700128);
-#endif
 }
 
 static void iwl_dnt_dev_if_configure_marbh(struct iwl_trans *trans)

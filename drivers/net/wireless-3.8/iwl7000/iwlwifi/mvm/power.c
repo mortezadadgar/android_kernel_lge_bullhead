@@ -174,6 +174,20 @@ static void iwl_mvm_power_configure_uapsd(struct iwl_mvm *mvm,
 	enum ieee80211_ac_numbers ac;
 	bool tid_found = false;
 
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
+	/* set advanced pm flag with no uapsd ACs to enable ps-poll */
+	if (mvmvif->dbgfs_pm.use_ps_poll) {
+		cmd->flags |= cpu_to_le16(POWER_FLAGS_ADVANCE_PM_ENA_MSK);
+		return;
+	}
+#endif
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (mvm->trans->dbg_cfg.MVM_USE_PS_POLL) {
+		cmd->flags |= cpu_to_le16(POWER_FLAGS_ADVANCE_PM_ENA_MSK);
+		return;
+	}
+#endif
+
 	for (ac = IEEE80211_AC_VO; ac <= IEEE80211_AC_BK; ac++) {
 		if (!mvmvif->queue_params[ac].uapsd)
 			continue;
@@ -202,21 +216,6 @@ static void iwl_mvm_power_configure_uapsd(struct iwl_mvm *mvm,
 				break;
 			}
 		}
-	}
-
-	if (!(cmd->flags & cpu_to_le16(POWER_FLAGS_ADVANCE_PM_ENA_MSK))) {
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
-		/* set advanced pm flag with no uapsd ACs to enable ps-poll */
-		if (mvmvif->dbgfs_pm.use_ps_poll)
-			cmd->flags |=
-				cpu_to_le16(POWER_FLAGS_ADVANCE_PM_ENA_MSK);
-#endif
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-		if (mvm->trans->dbg_cfg.MVM_USE_PS_POLL)
-			cmd->flags |=
-				cpu_to_le16(POWER_FLAGS_ADVANCE_PM_ENA_MSK);
-#endif
-		return;
 	}
 
 	cmd->flags |= cpu_to_le16(POWER_FLAGS_UAPSD_MISBEHAVING_ENA_MSK);
@@ -284,7 +283,7 @@ static void iwl_mvm_allow_uapsd_iterator(void *_data, u8 *mac,
 	switch (vif->type) {
 	case NL80211_IFTYPE_AP:
 	case NL80211_IFTYPE_ADHOC:
-#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 	case NL80211_IFTYPE_NAN:
 		/* keep code in case of fall-through (spatch generated) */
 #endif
@@ -327,7 +326,7 @@ static bool iwl_mvm_power_allow_uapsd(struct iwl_mvm *mvm,
 	    IEEE80211_P2P_OPPPS_ENABLE_BIT))
 		return false;
 
-	if (vif->p2p && !iwl_mvm_is_p2p_standalone_uapsd_supported(mvm))
+	if (vif->p2p && !iwl_mvm_is_p2p_scm_uapsd_supported(mvm))
 		return false;
 
 	ieee80211_iterate_active_interfaces_atomic(mvm->hw,
@@ -629,7 +628,7 @@ static void iwl_mvm_power_get_vifs_iterator(void *_data, u8 *mac,
 
 	switch (ieee80211_vif_type_p2p(vif)) {
 	case NL80211_IFTYPE_P2P_DEVICE:
-#if CFG80211_VERSION >= KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION >= KERNEL_VERSION(4,9,0)
 	case NL80211_IFTYPE_NAN:
 		/* keep code in case of fall-through (spatch generated) */
 #endif
@@ -713,8 +712,7 @@ static void iwl_mvm_power_set_pm(struct iwl_mvm *mvm,
 
 	/* enable PM on p2p if p2p stand alone */
 	if (vifs->p2p_active && !vifs->bss_active && !vifs->ap_active) {
-		if (mvm->fw->ucode_capa.flags & IWL_UCODE_TLV_FLAGS_P2P_PM)
-			p2p_mvmvif->pm_enabled = true;
+		p2p_mvmvif->pm_enabled = true;
 		return;
 	}
 
@@ -726,12 +724,10 @@ static void iwl_mvm_power_set_pm(struct iwl_mvm *mvm,
 				   ap_mvmvif->phy_ctxt->id);
 
 	/* clients are not stand alone: enable PM if DCM */
-	if (!(client_same_channel || ap_same_channel) &&
-	    (mvm->fw->ucode_capa.flags & IWL_UCODE_TLV_FLAGS_BSS_P2P_PS_DCM)) {
+	if (!(client_same_channel || ap_same_channel)) {
 		if (vifs->bss_active)
 			bss_mvmvif->pm_enabled = true;
-		if (vifs->p2p_active &&
-		    (mvm->fw->ucode_capa.flags & IWL_UCODE_TLV_FLAGS_P2P_PM))
+		if (vifs->p2p_active)
 			p2p_mvmvif->pm_enabled = true;
 		return;
 	}
@@ -740,12 +736,10 @@ static void iwl_mvm_power_set_pm(struct iwl_mvm *mvm,
 	 * There is only one channel in the system and there are only
 	 * bss and p2p clients that share it
 	 */
-	if (client_same_channel && !vifs->ap_active &&
-	    (mvm->fw->ucode_capa.flags & IWL_UCODE_TLV_FLAGS_BSS_P2P_PS_SCM)) {
+	if (client_same_channel && !vifs->ap_active) {
 		/* share same channel*/
 		bss_mvmvif->pm_enabled = true;
-		if (mvm->fw->ucode_capa.flags & IWL_UCODE_TLV_FLAGS_P2P_PM)
-			p2p_mvmvif->pm_enabled = true;
+		p2p_mvmvif->pm_enabled = true;
 	}
 }
 

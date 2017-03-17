@@ -144,6 +144,7 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 	xvt->dev = trans->dev;
 
 	mutex_init(&xvt->mutex);
+	mutex_init(&xvt->notif_mtx);
 
 	/*
 	 * Populate the state variables that the
@@ -157,11 +158,31 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 
 	trans_cfg.cmd_queue = IWL_XVT_CMD_QUEUE;
 	trans_cfg.cmd_fifo = IWL_XVT_CMD_FIFO;
-	if (xvt->fw->ucode_capa.flags & IWL_UCODE_TLV_FLAGS_DW_BC_TABLE)
-		trans_cfg.bc_table_dword = true;
+	trans_cfg.bc_table_dword = true;
 	trans_cfg.scd_set_active = true;
-	trans_cfg.wide_cmd_header = fw_has_api(&xvt->fw->ucode_capa,
-					       IWL_UCODE_TLV_API_WIDE_CMD_HDR);
+	trans->wide_cmd_header = true;
+
+	switch (iwlwifi_mod_params.amsdu_size) {
+	case IWL_AMSDU_DEF:
+	case IWL_AMSDU_4K:
+		trans_cfg.rx_buf_size = IWL_AMSDU_4K;
+		break;
+	case IWL_AMSDU_8K:
+		trans_cfg.rx_buf_size = IWL_AMSDU_8K;
+		break;
+	case IWL_AMSDU_12K:
+		trans_cfg.rx_buf_size = IWL_AMSDU_12K;
+		break;
+	default:
+		pr_err("%s: Unsupported amsdu_size: %d\n", KBUILD_MODNAME,
+		       iwlwifi_mod_params.amsdu_size);
+		trans_cfg.rx_buf_size = IWL_AMSDU_4K;
+	}
+	/* the hardware splits the A-MSDU */
+	if (xvt->trans->cfg->mq_rx_supported)
+		trans_cfg.rx_buf_size = IWL_AMSDU_4K;
+
+	trans_cfg.cb_data_offs = 0;
 
 	/* Configure transport layer */
 	iwl_trans_configure(xvt->trans, &trans_cfg);
@@ -230,7 +251,8 @@ static void iwl_xvt_rx_tx_cmd_handler(struct iwl_xvt *xvt,
 		skb = __skb_dequeue(&skbs);
 		cb_dev_cmd = (void *)skb->cb;
 		xvt->tx_counter++;
-		iwl_trans_free_tx_cmd(xvt->trans, *cb_dev_cmd);
+		if (cb_dev_cmd && *cb_dev_cmd)
+			iwl_trans_free_tx_cmd(xvt->trans, *cb_dev_cmd);
 		kfree_skb(skb);
 	}
 	if (xvt->tot_tx == xvt->tx_counter)
@@ -244,12 +266,15 @@ static void iwl_xvt_rx_dispatch(struct iwl_op_mode *op_mode,
 	struct iwl_xvt *xvt = IWL_OP_MODE_GET_XVT(op_mode);
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 
+	mutex_lock(&xvt->notif_mtx);
 	iwl_notification_wait_notify(&xvt->notif_wait, pkt);
+	IWL_DEBUG_INFO(xvt, "rx dispatch got notification\n");
 
 	if (pkt->hdr.cmd == TX_CMD)
 		iwl_xvt_rx_tx_cmd_handler(xvt, pkt);
 
 	iwl_xvt_send_user_rx_notif(xvt, rxb);
+	mutex_unlock(&xvt->notif_mtx);
 }
 
 static void iwl_xvt_nic_config(struct iwl_op_mode *op_mode)

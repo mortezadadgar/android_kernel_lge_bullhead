@@ -1,6 +1,10 @@
 #ifndef __IWL_CHROME
 #define __IWL_CHROME
-/* This file is pre-included from the Makefile (cc command line) */
+/* This file is pre-included from the Makefile (cc command line)
+ *
+ * ChromeOS backport definitions
+ * Copyright (C) 2016 Intel Deutschland GmbH
+ */
 
 #include <linux/version.h>
 #include <linux/types.h>
@@ -15,6 +19,18 @@
 #include <crypto/algapi.h>
 #include <linux/pci.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,17,0)
+static inline u64 ktime_get_ns(void)
+{
+	return ktime_to_ns(ktime_get());
+}
+
+static inline u64 ktime_get_real_ns(void)
+{
+	return ktime_to_ns(ktime_get_real());
+}
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,17,0) */
+
 /* get the CPTCFG_* preprocessor symbols */
 #include <hdrs/config.h>
 
@@ -24,6 +40,12 @@
 #else
 #define CFG80211_VERSION LINUX_VERSION_CODE
 #endif
+
+#include <hdrs/net/codel.h>
+#include <hdrs/net/codel_impl.h>
+
+#include <hdrs/net/fq.h>
+#include <hdrs/net/fq_impl.h>
 
 /* mac80211 & backport */
 #include <hdrs/mac80211-exp.h>
@@ -114,6 +136,11 @@ static inline bool pm_runtime_active(struct device *dev) { return true; }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0)
 #define netdev_notifier_info_to_dev(ndev)	ndev
+
+size_t sg_pcopy_from_buffer(struct scatterlist *sgl, unsigned int nents,
+			    const void *buf, size_t buflen, off_t skip);
+size_t sg_pcopy_to_buffer(struct scatterlist *sgl, unsigned int nents,
+			  void *buf, size_t buflen, off_t skip);
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
@@ -210,6 +237,10 @@ backport_alloc_netdev(int sizeof_priv, const char *name,
 					 setup, 1, 1);
 }
 #define alloc_netdev backport_alloc_netdev
+
+char *devm_kvasprintf(struct device *dev, gfp_t gfp, const char *fmt,
+		      va_list ap);
+char *devm_kasprintf(struct device *dev, gfp_t gfp, const char *fmt, ...);
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,17,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0)
@@ -375,6 +406,10 @@ pci_enable_msix_range(struct pci_dev *dev, struct msix_entry *entries,
 }
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
+void netdev_rss_key_fill(void *buffer, size_t len);
+#endif
+
 #if CFG80211_VERSION < KERNEL_VERSION(4, 1, 0) && \
 	CFG80211_VERSION >= KERNEL_VERSION(3, 14, 0)
 static inline struct sk_buff *
@@ -387,5 +422,25 @@ backport_cfg80211_vendor_event_alloc(struct wiphy *wiphy,
 
 #define cfg80211_vendor_event_alloc backport_cfg80211_vendor_event_alloc
 #endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0)
+static inline void page_ref_inc(struct page *page)
+{
+	atomic_inc(&page->_count);
+}
+#endif /* < 4.6 */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,7,0)
+/* We don't really care much about alignment, since nl80211 isn't using
+ * this for hot paths. So just implement it using nla_put_u64().
+ */
+static inline int nla_put_u64_64bit(struct sk_buff *skb, int attrtype,
+				    u64 value, int padattr)
+{
+	return nla_put_u64(skb, attrtype, value);
+}
+void dev_coredumpsg(struct device *dev, struct scatterlist *table,
+		    size_t datalen, gfp_t gfp);
+#endif /* < 4.7 */
 
 #endif /* __IWL_CHROME */

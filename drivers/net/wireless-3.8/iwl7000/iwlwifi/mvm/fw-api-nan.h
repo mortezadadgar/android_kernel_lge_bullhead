@@ -76,6 +76,17 @@ enum iwl_nan_subcmd_ids {
 };
 
 /**
+ * struct iwl_fw_chan_avail - Defines per op. class channel availability
+ *
+ * @op_class: operating class
+ * @chan_bitmap: channel bitmap
+ */
+struct iwl_fw_chan_avail {
+	u8 op_class;
+	__le16 chan_bitmap;
+} __packed;
+
+/**
  * NAN configuration command. This command starts/stops/modifies NAN
  * sync engine.
  *
@@ -96,6 +107,10 @@ enum iwl_nan_subcmd_ids {
  * @warmup_timer: warmup_timer in us (DEBUG)
  * @custom_tsf: fake tsf value (DEBUG)
  * @action_delay: usecs to delay SDFs (DEBUG)
+ * @cdw: committed DW interval as defined in NAN2 spec (NAN2)
+ * @op_mode: operation mode as defined in NAN2 spec (NAN2)
+ * @pot_avail_len: length of pot_avail array (NAN2)
+ * @pot_avail: potential availability per op. class (NAN2)
  */
 struct iwl_nan_cfg_cmd {
 	__le32 action;
@@ -119,6 +134,12 @@ struct iwl_nan_cfg_cmd {
 	__le32 warmup_timer;
 	__le64 custom_tsf;
 	__le32 action_delay;
+
+	/* NAN 2 specific configuration */
+	__le16 cdw;
+	u8 op_mode;
+	u8 pot_avail_len;
+	struct iwl_fw_chan_avail pot_avail[20];
 } __packed; /* NAN_CONFIG_CMD_API_S_VER_1 */
 
 /* NAN DE function type */
@@ -161,6 +182,7 @@ enum iwl_fw_nan_func_flags {
  * @srf_len: length of the srf
  * @rx_filter_len: length of rx filter
  * @tx_filter_len: length of tx filter
+ * @dw_interval: awake dw interval
  * data[0]: dw aligned fields -service_info, srf, rxFilter, txFilter
  */
 struct iwl_nan_add_func_cmd {
@@ -180,7 +202,8 @@ struct iwl_nan_add_func_cmd {
 	u8 srf_len;
 	u8 rx_filter_len;
 	u8 tx_filter_len;
-	u8 reserved[3];
+	u8 dw_interval;
+	u8 reserved[2];
 	u8 data[0];
 } __packed; /* NAN_DISCO_FUNC_FIXED_CMD_API_S_VER_1 */
 
@@ -212,7 +235,8 @@ struct iwl_nan_add_func_res {
  * @instance_id: local matching instance id
  * @peer_instance: peer matching instance id
  * @service_info_len: service specific information length
- * @service_info: service specific information
+ * @attrs_len: additional peer attributes length
+ * @buf: service specific information followed by attributes
  */
 struct iwl_nan_disc_evt_notify {
 	u8 peer_mac_addr[6];
@@ -221,7 +245,8 @@ struct iwl_nan_disc_evt_notify {
 	u8 instance_id;
 	u8 peer_instance;
 	u8 service_info_len;
-	u8 service_info[0];
+	u32 attrs_len;
+	u8 buf[0];
 } __packed; /* NAN_DISCO_EVENT_NTFY_API_S_VER_1 */
 
 /* NAN function termination reasons */

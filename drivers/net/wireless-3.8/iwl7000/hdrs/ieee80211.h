@@ -19,6 +19,7 @@
 
 #include <linux/types.h>
 #include <linux/if_ether.h>
+#include <linux/etherdevice.h>
 #include <asm/byteorder.h>
 #include <asm/unaligned.h>
 
@@ -163,6 +164,9 @@ static inline u16 ieee80211_sn_sub(u16 sn1, u16 sn2)
 #define IEEE80211_MAX_DATA_LEN_DMG	7920
 /* 30 byte 4 addr hdr, 2 byte QoS, 2304 byte MSDU, 12 byte crypt, 4 byte FCS */
 #define IEEE80211_MAX_FRAME_LEN		2352
+
+/* Maximal size of an A-MSDU that can be transported in a HT BA session */
+#define IEEE80211_MAX_MPDU_LEN_HT_BA		4095
 
 /* Maximal size of an A-MSDU */
 #define IEEE80211_MAX_MPDU_LEN_HT_3839		3839
@@ -636,6 +640,16 @@ static inline bool ieee80211_is_bufferable_mmpdu(__le16 fc)
 static inline bool ieee80211_is_first_frag(__le16 seq_ctrl)
 {
 	return (seq_ctrl & cpu_to_le16(IEEE80211_SCTL_FRAG)) == 0;
+}
+
+/**
+ * ieee80211_is_frag - check if a frame is a fragment
+ * @hdr: 802.11 header of the frame
+ */
+static inline bool ieee80211_is_frag(struct ieee80211_hdr *hdr)
+{
+	return ieee80211_has_morefrags(hdr->frame_control) ||
+	       hdr->seq_ctrl & cpu_to_le16(IEEE80211_SCTL_FRAG);
 }
 
 struct ieee80211s_hdr {
@@ -2112,12 +2126,6 @@ enum ieee80211_tdls_actioncode {
 #define WLAN_EXT_CAPA8_MAX_MSDU_IN_AMSDU_LSB	BIT(7)
 #define WLAN_EXT_CAPA9_MAX_MSDU_IN_AMSDU_MSB	BIT(0)
 
-/*
- * Fine Timing Measurement Initiator - bit 71 of @WLAN_EID_EXT_CAPABILITY
- * information element
- */
-#define WLAN_EXT_CAPA9_FTM_INITIATOR	BIT(7)
-
 /* TDLS specific payload type in the LLC/SNAP header */
 #define WLAN_TDLS_SNAP_RFTYPE	0x2
 
@@ -2311,8 +2319,12 @@ enum ieee80211_sa_query_action {
 #define WLAN_AKM_SUITE_FT_OVER_SAE	0x000FAC09
 
 #define WLAN_MAX_KEY_LEN		32
+#define WLAN_PSK_LEN			32
 
 #define WLAN_PMKID_LEN			16
+#define WLAN_PMK_LEN_EAP_LEAP		16
+#define WLAN_PMK_LEN			32
+#define WLAN_PMK_LEN_SUITE_B_192	48
 
 #define WLAN_OUI_WFA			0x506f9a
 #define WLAN_OUI_TYPE_WFA_P2P		9
@@ -2532,7 +2544,7 @@ static inline bool _ieee80211_is_robust_mgmt_frame(struct ieee80211_hdr *hdr)
  */
 static inline bool ieee80211_is_robust_mgmt_frame(struct sk_buff *skb)
 {
-	if (skb->len < 25)
+	if (skb->len < IEEE80211_MIN_ACTION_SIZE)
 		return false;
 	return _ieee80211_is_robust_mgmt_frame((void *)skb->data);
 }
@@ -2552,6 +2564,35 @@ static inline bool ieee80211_is_public_action(struct ieee80211_hdr *hdr,
 	if (!ieee80211_is_action(hdr->frame_control))
 		return false;
 	return mgmt->u.action.category == WLAN_CATEGORY_PUBLIC;
+}
+
+/**
+ * _ieee80211_is_group_privacy_action - check if frame is a group addressed
+ * privacy action frame
+ * @hdr: the frame
+ */
+static inline bool _ieee80211_is_group_privacy_action(struct ieee80211_hdr *hdr)
+{
+	struct ieee80211_mgmt *mgmt = (void *)hdr;
+
+	if (!ieee80211_is_action(hdr->frame_control) ||
+	    !is_multicast_ether_addr(hdr->addr1))
+		return false;
+
+	return mgmt->u.action.category == WLAN_CATEGORY_MESH_ACTION ||
+	       mgmt->u.action.category == WLAN_CATEGORY_MULTIHOP_ACTION;
+}
+
+/**
+ * ieee80211_is_group_privacy_action - check if frame is a group addressed
+ * privacy action frame
+ * @skb: the skb containing the frame, length will be checked
+ */
+static inline bool ieee80211_is_group_privacy_action(struct sk_buff *skb)
+{
+	if (skb->len < IEEE80211_MIN_ACTION_SIZE)
+		return false;
+	return _ieee80211_is_group_privacy_action((void *)skb->data);
 }
 
 /**

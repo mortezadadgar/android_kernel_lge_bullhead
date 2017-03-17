@@ -7,7 +7,7 @@
  *
  * Copyright(c) 2010 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -34,7 +34,7 @@
  *
  * Copyright(c) 2010 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2013 - 2015 Intel Mobile Communications GmbH
- * Copyright(c) 2015 Intel Deutschland GmbH
+ * Copyright(c) 2015 - 2016 Intel Deutschland GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -117,6 +117,7 @@ enum {
 	IWL_TM_USER_CMD_GET_FW_INFO,
 	IWL_TM_USER_CMD_BUS_DATA_ACCESS,
 	IWL_TM_USER_CMD_GET_SIL_TYPE,
+	IWL_TM_USER_CMD_GET_RFID,
 
 	IWL_TM_USER_CMD_NOTIF_UCODE_RX_PKT = TM_CMD_NOTIF_BASE,
 	IWL_TM_USER_CMD_NOTIF_DRIVER,
@@ -329,6 +330,20 @@ struct iwl_sil_step {
  */
 struct iwl_tm_sil_type {
 	__u32 silicon_type;
+} __packed __aligned(4);
+
+/**
+ * struct iwl_tm_rfid - Currently connected RF device info
+ * @flavor:	- RFID flavor
+ * @dash:	- RFID dash
+ * @step:	- RFID step
+ * @type:	- RFID type
+ */
+struct iwl_tm_rfid {
+	__u32 flavor;
+	__u32 dash;
+	__u32 step;
+	__u32 type;
 } __packed __aligned(4);
 
 #define MAX_DRIVER_VERSION_LEN	256

@@ -92,25 +92,16 @@ void iwl_mvm_tof_init(struct iwl_mvm *mvm)
 
 	memset(tof_data, 0, sizeof(*tof_data));
 
-	tof_data->tof_cfg.sub_grp_cmd_id = cpu_to_le32(TOF_CONFIG_CMD);
-
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
 	if (IWL_MVM_TOF_IS_RESPONDER) {
-		tof_data->responder_cfg.sub_grp_cmd_id =
-			cpu_to_le32(TOF_RESPONDER_CONFIG_CMD);
 		tof_data->responder_cfg.sta_id = IWL_MVM_STATION_COUNT;
-		tof_data->responder_dyn_cfg.sub_grp_cmd_id =
-			cpu_to_le32(TOF_RESPONDER_DYN_CONFIG_CMD);
 	}
 #endif
 
-	tof_data->range_req.sub_grp_cmd_id = cpu_to_le32(TOF_RANGE_REQ_CMD);
 	tof_data->range_req.req_timeout = 1;
 	tof_data->range_req.initiator = 1;
 	tof_data->range_req.report_policy = IWL_MVM_TOF_RESPONSE_COMPLETE;
 
-	tof_data->range_req_ext.sub_grp_cmd_id =
-		cpu_to_le32(TOF_RANGE_REQ_EXT_CMD);
 	tof_data->range_req_ext.tsf_timer_offset_msec =
 		cpu_to_le16(IWL_MVM_FTM_REQ_EXT_TSF_TIMER_OFFSET_MSEC_DFLT);
 	tof_data->range_req_ext.min_delta_ftm =
@@ -282,15 +273,14 @@ int iwl_mvm_tof_config_cmd(struct iwl_mvm *mvm)
 
 	mvm->tof_data.active_request_id = IWL_MVM_TOF_RANGE_REQ_MAX_ID;
 	mvm->tof_data.active_cookie = 0;
-	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CMD,
-						    IWL_ALWAYS_LONG_GROUP, 0),
+	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CONFIG_CMD,
+						    TOF_GROUP, 0),
 				    0, sizeof(*cmd), cmd);
 }
 
 int iwl_mvm_tof_range_abort_cmd(struct iwl_mvm *mvm, u8 id)
 {
 	struct iwl_tof_range_abort_cmd cmd = {
-		.sub_grp_cmd_id = cpu_to_le32(TOF_RANGE_ABORT_CMD),
 		.request_id = id,
 	};
 
@@ -313,11 +303,12 @@ int iwl_mvm_tof_range_abort_cmd(struct iwl_mvm *mvm, u8 id)
 	/* after abort is sent there's no active request anymore */
 	iwl_mvm_tof_reset_active(mvm);
 
-	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CMD,
-						    IWL_ALWAYS_LONG_GROUP, 0),
+	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_RANGE_ABORT_CMD,
+						    TOF_GROUP, 0),
 				    0, sizeof(cmd), &cmd);
 }
 
+/* Initializes responder_cfg command. (TOF_RESPONDER_CONFIG_CMD_API in FW) */
 static void
 iwl_mvm_tof_set_responder(struct iwl_mvm *mvm,
 			  struct ieee80211_vif *vif,
@@ -327,9 +318,6 @@ iwl_mvm_tof_set_responder(struct iwl_mvm *mvm,
 	struct iwl_tof_responder_config_cmd *cmd = &mvm->tof_data.responder_cfg;
 
 	memset(cmd, 0, sizeof(*cmd));
-
-	cmd->sub_grp_cmd_id = cpu_to_le32(TOF_RESPONDER_CONFIG_CMD);
-	cmd->abort_responder = 0;
 
 	cmd->channel_num = def->chan->hw_value;
 
@@ -357,8 +345,17 @@ iwl_mvm_tof_set_responder(struct iwl_mvm *mvm,
 		WARN_ON(1);
 	}
 
-	/* By default it's 0 - IWL_TOF_ALGO_TYPE_MAX_LIKE */
-	cmd->algo_type = mvm->tof_data.tof_algo_type;
+	cmd->cmd_valid_fields =
+		cpu_to_le32(IWL_TOF_RESPONDER_CMD_VALID_CHAN_INFO |
+			   /* ftm_resp_asap == true means asap ONLY mode,
+			    * meaning non-ASAP not supported.
+			    */
+			   (iwlmvm_mod_params.ftm_resp_asap ?
+			    0 : IWL_TOF_RESPONDER_CMD_VALID_NON_ASAP_SUPPORT));
+
+	cmd->responder_cfg_flags =
+		cpu_to_le32(iwlmvm_mod_params.ftm_resp_asap ?
+			    0 : IWL_TOF_RESPONDER_FLAGS_NON_ASAP_SUPPORT);
 }
 
 int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
@@ -378,12 +375,16 @@ int iwl_mvm_tof_responder_cmd(struct iwl_mvm *mvm,
 		return -EIO;
 	}
 
+	/* sta_id and mac address are always present in the responder
+	 * configuration cmd
+	 */
 	cmd->sta_id = mvmvif->bcast_sta.sta_id;
-	cmd->toa_offset = cpu_to_le16(mvm->tof_data.toa_offset);
-
 	memcpy(cmd->bssid, vif->addr, ETH_ALEN);
-	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CMD,
-						    IWL_ALWAYS_LONG_GROUP, 0),
+	cmd->cmd_valid_fields |= cpu_to_le32(
+					IWL_TOF_RESPONDER_CMD_VALID_BSSID |
+					IWL_TOF_RESPONDER_CMD_VALID_STA_ID);
+	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_RESPONDER_CONFIG_CMD,
+						    TOF_GROUP, 0),
 				    0, sizeof(*cmd), cmd);
 }
 
@@ -401,8 +402,6 @@ iwl_mvm_tof_set_responder_dyn(struct iwl_mvm *mvm,
 
 	memset(cmd, 0, sizeof(*cmd));
 
-	cmd->sub_grp_cmd_id = cpu_to_le32(TOF_RESPONDER_DYN_CONFIG_CMD);
-
 	cmd->lci_len = cpu_to_le32(params->lci_len + 2);
 	cmd->civic_len = cpu_to_le32(params->civic_len + 2);
 
@@ -416,7 +415,7 @@ iwl_mvm_tof_set_responder_dyn(struct iwl_mvm *mvm,
 }
 
 int iwl_mvm_tof_responder_dyn_cfg_cmd(struct iwl_mvm *mvm,
-				      struct ieee80211_vif *vif)
+				struct ieee80211_vif *vif)
 {
 	struct iwl_tof_responder_dyn_config_cmd *cmd =
 		&mvm->tof_data.responder_dyn_cfg;
@@ -435,8 +434,9 @@ int iwl_mvm_tof_responder_dyn_cfg_cmd(struct iwl_mvm *mvm,
 		return -EIO;
 	}
 
-	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CMD,
-						    IWL_ALWAYS_LONG_GROUP, 0),
+	return iwl_mvm_send_cmd_pdu(mvm,
+				    iwl_cmd_id(TOF_RESPONDER_DYN_CONFIG_CMD,
+					       TOF_GROUP, 0),
 				    0, sizeof(*cmd) + actual_lci_len +
 				    actual_civic_len, cmd);
 }
@@ -577,14 +577,22 @@ int iwl_mvm_tof_perform_ftm(struct iwl_mvm *mvm, u64 cookie,
 
 		/* By default it's 0 - IWL_TOF_ALGO_TYPE_MAX_LIKE */
 		cmd_target->algo_type = mvm->tof_data.tof_algo_type;
+		cmd_target->notify_mcsi = IWL_TOF_MCSI_ENABLED;
 	}
 
 	mvm->tof_data.active_cookie = cookie;
 	memcpy(&mvm->tof_data.active_request, req,
 	       sizeof(struct cfg80211_ftm_request));
+	mvm->tof_data.active_request.targets =
+		kmemdup(req->targets, sizeof(struct cfg80211_ftm_target) *
+			req->num_of_targets, GFP_KERNEL);
+	if (!mvm->tof_data.active_request.targets) {
+		ret = -ENOMEM;
+		goto err;
+	}
 	if (vif->bss_conf.assoc && req->report_tsf)
-		memcpy(&mvm->tof_data.active_bssid_for_tsf,
-		       &vif->bss_conf.bssid, ETH_ALEN);
+		memcpy(mvm->tof_data.active_bssid_for_tsf, vif->bss_conf.bssid,
+		       ETH_ALEN);
 
 	if (vif->bss_conf.assoc)
 		memcpy(cmd->range_req_bssid, vif->bss_conf.bssid, ETH_ALEN);
@@ -614,37 +622,44 @@ static void iwl_mvm_debug_range_req(struct iwl_mvm *mvm)
 	struct iwl_tof_range_req_cmd *req = &mvm->tof_data.range_req;
 	int i;
 
-	IWL_DEBUG_INFO(mvm,
-		       "Sending FTM request, params:\n  request id: %hhu\n"
-		       "  initiator: %hhu\n  OSLD: %hhu\n  TO: %hhu\n"
-		       "  report policy: %hhu\n  LDD: %hhu\n"
-		       "  num of aps: %hhu\n  mac rand: %hhu\n"
-		       "  mac temp: %pM\n  mac mask: %pM\n",
-		       req->request_id, req->initiator,
-		       req->one_sided_los_disable, req->req_timeout,
-		       req->report_policy, req->los_det_disable, req->num_of_ap,
-		       req->macaddr_random, req->macaddr_template,
-		       req->macaddr_mask);
+	IWL_DEBUG_INFO(mvm, "Sending FTM request, params:\n");
+	IWL_DEBUG_INFO(mvm, "\trequest id: %hhu\n", req->request_id);
+	IWL_DEBUG_INFO(mvm, "\tinitiator: %hhu\n", req->initiator);
+	IWL_DEBUG_INFO(mvm, "\tOSLD: %hhu\n", req->one_sided_los_disable);
+	IWL_DEBUG_INFO(mvm, "\tTO: %hhu\n", req->req_timeout);
+	IWL_DEBUG_INFO(mvm, "\treport policy: %hhu\n", req->report_policy);
+	IWL_DEBUG_INFO(mvm, "\tnum of aps: %hhu\n", req->num_of_ap);
+	IWL_DEBUG_INFO(mvm, "\tmac rand: %hhu\n", req->macaddr_random);
+	IWL_DEBUG_INFO(mvm, "\tmac temp: %pM\n", req->macaddr_template);
+	IWL_DEBUG_INFO(mvm, "\tmac mask: %pM\n", req->macaddr_mask);
 
 	for (i = 0; i < req->num_of_ap; i++) {
 		struct iwl_tof_range_req_ap_entry ap = req->ap[i];
 
-		IWL_DEBUG_INFO(mvm,
-			       "  ap[%d]:\n    channel: %hhu\n    bw: %hhu\n"
-			       "    tsf delta direction: %hhu\n"
-			       "    ctrl channel: %hhu\n    bssid: %pM\n"
-			       "    one sided: %hhu\n    num of bursts: %hhu\n"
-			       "    burst period: %hu\n"
-			       "    samples/burst: %hhu\n"
-			       "    retries/sample: %hhu\n    tsf delta: %u\n"
-			       "    location: %hhu\n    asap: %hhu\n"
-			       "    dyn ack: %hhu\n    rssi: %hhd\n",
-			       i, ap.channel_num, ap.bandwidth, ap.tsf_delta,
-			       ap.ctrl_ch_position, ap.bssid, ap.measure_type,
-			       ap.num_of_bursts, le16_to_cpu(ap.burst_period),
-			       ap.samples_per_burst, ap.retries_per_sample,
-			       le32_to_cpu(ap.tsf_delta), ap.location_req,
-			       ap.asap_mode, ap.enable_dyn_ack, ap.rssi);
+		IWL_DEBUG_INFO(mvm, "ap[%d]:\n", i);
+		IWL_DEBUG_INFO(mvm, "\tchannel: %hhu\n", ap.channel_num);
+		IWL_DEBUG_INFO(mvm, "\tbw: %hhu\n", ap.bandwidth);
+		IWL_DEBUG_INFO(mvm, "\ttsf delta direction: %hhu\n",
+			       ap.tsf_delta);
+		IWL_DEBUG_INFO(mvm, "\tctrl channel: %hhu\n",
+			       ap.ctrl_ch_position);
+		IWL_DEBUG_INFO(mvm, "\tbssid: %pM\n", ap.bssid);
+		IWL_DEBUG_INFO(mvm, "\tone sided: %hhu\n", ap.measure_type);
+		IWL_DEBUG_INFO(mvm, "\tnum of bursts: %hhu\n",
+			       ap.num_of_bursts);
+		IWL_DEBUG_INFO(mvm, "\tburst period: %hu\n",
+			       le16_to_cpu(ap.burst_period));
+		IWL_DEBUG_INFO(mvm, "\tsamples/burst: %hhu\n",
+			       ap.samples_per_burst);
+		IWL_DEBUG_INFO(mvm, "\tretries/sample: %hhu\n",
+			       ap.retries_per_sample);
+		IWL_DEBUG_INFO(mvm, "\ttsf delta: %u\n",
+			       le32_to_cpu(ap.tsf_delta));
+		IWL_DEBUG_INFO(mvm, "\tlocation: %hhu\n", ap.location_req);
+		IWL_DEBUG_INFO(mvm, "\tasap: %hhu\n", ap.asap_mode);
+		IWL_DEBUG_INFO(mvm, "\tdyn ack: %hhu\n", ap.enable_dyn_ack);
+		IWL_DEBUG_INFO(mvm, "\trssi: %hhd\n", ap.rssi);
+		IWL_DEBUG_INFO(mvm, "\tnotify MCSI: %hhu\n", ap.notify_mcsi);
 	}
 }
 
@@ -652,7 +667,7 @@ int iwl_mvm_tof_range_request_cmd(struct iwl_mvm *mvm)
 {
 	int err;
 	struct iwl_host_cmd cmd = {
-		.id = iwl_cmd_id(TOF_CMD, IWL_ALWAYS_LONG_GROUP, 0),
+		.id = iwl_cmd_id(TOF_RANGE_REQ_CMD, TOF_GROUP, 0),
 		.len = { sizeof(mvm->tof_data.range_req), },
 		/* no copy because of the command size */
 		.dataflags = { IWL_HCMD_DFL_NOCOPY, },
@@ -691,8 +706,8 @@ int iwl_mvm_tof_range_request_ext_cmd(struct iwl_mvm *mvm)
 		return -EINVAL;
 	}
 
-	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_CMD,
-						    IWL_ALWAYS_LONG_GROUP, 0),
+	return iwl_mvm_send_cmd_pdu(mvm, iwl_cmd_id(TOF_RANGE_REQ_EXT_CMD,
+						    TOF_GROUP, 0),
 				    0, sizeof(mvm->tof_data.range_req_ext),
 				    &mvm->tof_data.range_req_ext);
 }
@@ -800,35 +815,43 @@ static void iwl_mvm_debug_range_resp(struct iwl_mvm *mvm,
 	u8 num_of_entries = resp->u.ftm.num_of_entries;
 	int i;
 
-	IWL_DEBUG_INFO(mvm,
-		       "Range response received. status: %d, cookie: %lld, num of entries: %hhx\n",
+	IWL_DEBUG_INFO(mvm, "Range response received\n");
+	IWL_DEBUG_INFO(mvm, "status: %d, cookie: %lld, num of entries: %hhx\n",
 		       resp->status, resp->cookie, num_of_entries);
 
 	for (i = 0; i < num_of_entries; i++) {
 		struct cfg80211_ftm_result *res = &resp->u.ftm.entries[i];
 
-		IWL_DEBUG_INFO(mvm,
-			       "  entry %d\n  status: %d\n  complete: %s\n"
-			       "  BSSID: %pM\n  host time: %llu\n  tsf: %llu\n"
-			       "  burst index: %hhu\n  measurement num: %u\n"
-			       "  success num: %u\n  num per burst: %hhu\n"
-			       "  retry after duration: %u\n"
-			       "  burst duration: %u\n  negotiated burst: %u\n"
-			       "  rssi: %hhd\n  rssi spread: %hhu\n"
-			       "  rtt: %lld\n  rtt var: %llu\n"
-			       "  rtt spread: %llu\n  distance: %lld\n"
-			       "  distance variance: %llu\n"
-			       "  distance spread: %llu\n  filled: %x\n\n",
-			       i, res->status, res->complete ? "true" : "false",
-			       res->target->bssid, res->host_time, res->tsf,
-			       res->burst_index, res->measurement_num,
-			       res->success_num, res->num_per_burst,
-			       res->retry_after_duration, res->burst_duration,
-			       res->negotiated_burst_num, res->rssi,
-			       res->rssi_spread, res->rtt, res->rtt_variance,
-			       res->rtt_spread, res->distance,
-			       res->distance_variance, res->distance_spread,
-			       res->filled);
+		IWL_DEBUG_INFO(mvm, "entry %d\n", i);
+		IWL_DEBUG_INFO(mvm, "\tstatus: %d\n", res->status);
+		IWL_DEBUG_INFO(mvm, "\tcomplete: %s\n",
+			       res->complete ? "true" : "false");
+		IWL_DEBUG_INFO(mvm, "\tBSSID: %pM\n", res->target->bssid);
+		IWL_DEBUG_INFO(mvm, "\thost time: %llu\n", res->host_time);
+		IWL_DEBUG_INFO(mvm, "\ttsf: %llu\n", res->tsf);
+		IWL_DEBUG_INFO(mvm, "\tburst index: %hhu\n", res->burst_index);
+		IWL_DEBUG_INFO(mvm, "\tmeasurement num: %u\n",
+			       res->measurement_num);
+		IWL_DEBUG_INFO(mvm, "\tsuccess num: %u\n", res->success_num);
+		IWL_DEBUG_INFO(mvm, "\tnum per burst: %hhu\n",
+			       res->num_per_burst);
+		IWL_DEBUG_INFO(mvm, "\tretry after duration: %u\n",
+			       res->retry_after_duration);
+		IWL_DEBUG_INFO(mvm, "\tburst duration: %u\n",
+			       res->burst_duration);
+		IWL_DEBUG_INFO(mvm, "\tnegotiated burst: %u\n",
+			       res->negotiated_burst_num);
+		IWL_DEBUG_INFO(mvm, "\trssi: %hhd\n", res->rssi);
+		IWL_DEBUG_INFO(mvm, "\trssi spread: %hhu\n", res->rssi_spread);
+		IWL_DEBUG_INFO(mvm, "\trtt: %lld\n", res->rtt);
+		IWL_DEBUG_INFO(mvm, "\trtt var: %llu\n", res->rtt_variance);
+		IWL_DEBUG_INFO(mvm, "\trtt spread: %llu\n", res->rtt_spread);
+		IWL_DEBUG_INFO(mvm, "\tdistance: %lld\n", res->distance);
+		IWL_DEBUG_INFO(mvm, "\tdistance variance: %llu\n",
+			       res->distance_variance);
+		IWL_DEBUG_INFO(mvm, "\tdistance spread: %llu\n",
+			       res->distance_spread);
+		IWL_DEBUG_INFO(mvm, "\tfilled: %x\n", res->filled);
 	}
 }
 
@@ -852,13 +875,10 @@ iwl_mvm_get_target_status(enum iwl_tof_entry_status status)
 	switch (status) {
 	case IWL_TOF_ENTRY_SUCCESS:
 		return NL80211_FTM_RESP_SUCCESS;
-	case IWL_TOF_ENTRY_NOT_MEASURED:
+	case IWL_TOF_ENTRY_TIMING_MEASURE_TIMEOUT:
 		return NL80211_FTM_RESP_NOT_MEASURED;
-	case IWL_TOF_ENTRY_UNAVAILABLE:
+	case IWL_TOF_ENTRY_NO_RESPONSE:
 		return NL80211_FTM_RESP_TARGET_UNAVAILABLE;
-	case IWL_TOF_ENTRY_PROTOCOL_ERR:
-	case IWL_TOF_ENTRY_INTERNAL_ERR:
-	case IWL_TOF_ENTRY_INVALID:
 	default:
 		return NL80211_FTM_RESP_FAIL;
 	}
@@ -898,9 +918,11 @@ static void iwl_mvm_get_lci_civic(struct iwl_mvm_tof_data *data,
  */
 #define SOL_CM_NSEC 30
 
-static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
+void iwl_mvm_tof_range_resp(struct iwl_mvm *mvm,
+			    struct iwl_rx_cmd_buffer *rxb)
 {
-	struct iwl_tof_range_rsp_ntfy *fw_resp = (void *)data;
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_tof_range_rsp_ntfy *fw_resp = (void *)pkt->data;
 	struct cfg80211_msrment_response user_resp = {0};
 	int i;
 
@@ -910,12 +932,12 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 		IWL_ERR(mvm, "Request id mismatch, got %d, active %d\n",
 			fw_resp->request_id,
 			mvm->tof_data.active_request_id);
-		return -EIO;
+		return;
 	}
 
 	if (fw_resp->num_of_aps > mvm->tof_data.active_request.num_of_targets) {
 		IWL_ERR(mvm, "FTM range response invalid\n");
-		return -EINVAL;
+		return;
 	}
 
 	user_resp.cookie = mvm->tof_data.active_cookie;
@@ -926,7 +948,7 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 					  fw_resp->num_of_aps, GFP_KERNEL);
 	if (!user_resp.u.ftm.entries) {
 		iwl_mvm_tof_reset_active(mvm);
-		return -ENOMEM;
+		return;
 	}
 
 	for (i = 0; i < fw_resp->num_of_aps && i < IWL_MVM_TOF_MAX_APS; i++) {
@@ -1018,20 +1040,25 @@ static int iwl_mvm_tof_range_resp(struct iwl_mvm *mvm, void *data)
 	if (fw_resp->last_in_batch)
 		iwl_mvm_tof_reset_active(mvm);
 
-	return 0;
+	return;
 }
 
-static int iwl_mvm_tof_mcsi_notif(struct iwl_mvm *mvm, void *data)
+void iwl_mvm_tof_mcsi_notif(struct iwl_mvm *mvm,
+			    struct iwl_rx_cmd_buffer *rxb)
+
 {
-	struct iwl_tof_mcsi_notif *resp = (struct iwl_tof_mcsi_notif *)data;
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_tof_mcsi_notif *resp = (void *)pkt->data;
 
 	IWL_DEBUG_INFO(mvm, "MCSI notification, token %d\n", resp->token);
-	return 0;
+	return;
 }
 
-static int iwl_mvm_tof_responder_stats(struct iwl_mvm *mvm, void *data)
+void iwl_mvm_tof_responder_stats(struct iwl_mvm *mvm,
+				 struct iwl_rx_cmd_buffer *rxb)
 {
-	struct iwl_tof_responder_stats *resp = (void *)data;
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	struct iwl_tof_responder_stats *resp = (void *)pkt->data;
 	struct cfg80211_ftm_responder_stats *stats = &mvm->tof_data.resp_stats;
 	unsigned flags = le32_to_cpu(resp->flags);
 
@@ -1062,27 +1089,22 @@ static int iwl_mvm_tof_responder_stats(struct iwl_mvm *mvm, void *data)
 	if (flags & FTM_RESP_STAT_NON_ASAP_OUT_WIN)
 		stats->out_of_window_triggers_num++;
 
-	return 0;
+	return;
 }
 
-static int iwl_mvm_tof_nb_report_notif(struct iwl_mvm *mvm, void *data)
+void iwl_mvm_tof_lc_notif(struct iwl_mvm *mvm,
+			  struct iwl_rx_cmd_buffer *rxb)
 {
-	struct iwl_tof_neighbor_report *report =
-		(struct iwl_tof_neighbor_report *)data;
-
-	IWL_DEBUG_INFO(mvm, "NB report, bssid %pM, token %d, status 0x%x\n",
-		       report->bssid, report->request_token, report->status);
-	return 0;
-}
-
-static void iwl_mvm_tof_lc_notif(struct iwl_mvm *mvm, void *data, size_t len)
-{
-	const struct ieee80211_mgmt *mgmt = (void *)data;
+	struct iwl_rx_packet *pkt = rxb_addr(rxb);
+	const struct ieee80211_mgmt *mgmt = (void *)pkt->data;
+	size_t len = iwl_rx_packet_payload_len(pkt);
 	struct lci_civic_entry *lci_civic;
-	const u8 *ies, *lci, *civic;
+	const u8 *ies, *lci, *civic, *msr_ie;
 	size_t ies_len, lci_len = 0, civic_len = 0;
 	size_t baselen = IEEE80211_MIN_ACTION_SIZE +
-		sizeof(mgmt->u.action.u.ftm);
+			 sizeof(mgmt->u.action.u.ftm);
+	static const u8 rprt_type_lci = IEEE80211_SPCT_MSR_RPRT_TYPE_LCI;
+	static const u8 rprt_type_civic = IEEE80211_SPCT_MSR_RPRT_TYPE_CIVIC;
 
 	if (len <= baselen)
 		return;
@@ -1090,31 +1112,18 @@ static void iwl_mvm_tof_lc_notif(struct iwl_mvm *mvm, void *data, size_t len)
 	ies = mgmt->u.action.u.ftm.variable;
 	ies_len = len - baselen;
 
-	while (ies && ies_len) {
-		const u8 *msr_ie = cfg80211_find_ie(WLAN_EID_MEASURE_REPORT,
-						    ies, ies_len);
-		if (!msr_ie)
-			break;
+	msr_ie = cfg80211_find_ie_match(WLAN_EID_MEASURE_REPORT, ies, ies_len,
+					&rprt_type_lci, 1, 4);
+	if (msr_ie) {
+		lci = msr_ie + 2;
+		lci_len = msr_ie[1];
+	}
 
-		if (msr_ie[1] > 3) {
-			switch (msr_ie[4]) {
-			case IEEE80211_SPCT_MSR_RPRT_TYPE_LCI:
-				lci = msr_ie + 2;
-				lci_len = msr_ie[1];
-				break;
-			case IEEE80211_SPCT_MSR_RPRT_TYPE_CIVIC:
-				civic = msr_ie + 2;
-				civic_len = msr_ie[1];
-				break;
-			}
-		}
-
-		if (lci_len && civic_len)
-			break;
-
-		/* process next measurement report element */
-		ies_len -= (msr_ie - ies) + msr_ie[1] + 2;
-		ies = msr_ie + msr_ie[1] + 2;
+	msr_ie = cfg80211_find_ie_match(WLAN_EID_MEASURE_REPORT, ies, ies_len,
+					&rprt_type_civic, 1, 4);
+	if (msr_ie) {
+		civic = msr_ie + 2;
+		civic_len = msr_ie[1];
 	}
 
 	lci_civic = kmalloc(sizeof(*lci_civic) + lci_len + civic_len,
@@ -1133,36 +1142,4 @@ static void iwl_mvm_tof_lc_notif(struct iwl_mvm *mvm, void *data, size_t len)
 		memcpy(lci_civic->buf + lci_len, civic, civic_len);
 
 	list_add_tail(&lci_civic->list, &mvm->tof_data.lci_civic_info);
-}
-
-void iwl_mvm_tof_resp_handler(struct iwl_mvm *mvm,
-			      struct iwl_rx_cmd_buffer *rxb)
-{
-	struct iwl_rx_packet *pkt = rxb_addr(rxb);
-	struct iwl_tof_gen_resp_cmd *resp = (void *)pkt->data;
-
-	lockdep_assert_held(&mvm->mutex);
-
-	switch (le32_to_cpu(resp->sub_grp_cmd_id)) {
-	case TOF_RANGE_RESPONSE_NOTIF:
-		iwl_mvm_tof_range_resp(mvm, resp->data);
-		break;
-	case TOF_MCSI_DEBUG_NOTIF:
-		iwl_mvm_tof_mcsi_notif(mvm, resp->data);
-		break;
-	case TOF_RESPONDER_STATS:
-		iwl_mvm_tof_responder_stats(mvm, resp->data);
-		break;
-	case TOF_NEIGHBOR_REPORT_RSP_NOTIF:
-		iwl_mvm_tof_nb_report_notif(mvm, resp->data);
-		break;
-	case TOF_LC_NOTIF:
-		iwl_mvm_tof_lc_notif(mvm, resp->data,
-				     iwl_rx_packet_payload_len(pkt));
-		break;
-	default:
-	       IWL_ERR(mvm, "Unknown sub-group command 0x%x\n",
-		       resp->sub_grp_cmd_id);
-	       break;
-	}
 }

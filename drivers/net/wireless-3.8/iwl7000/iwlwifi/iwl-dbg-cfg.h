@@ -91,6 +91,8 @@ struct iwl_dbg_cfg {
 					int n_ ## name;
 #define IWL_DBG_CFG_RANGE(type, name, min, max)	IWL_DBG_CFG(type, name)
 #define IWL_MOD_PARAM(type, name)	/* do nothing */
+#define IWL_MVM_MOD_PARAM(type, name)	type mvm_##name; \
+					bool __mvm_mod_param_##name;
 
 #endif /* DBG_CFG_REINCLUDE */
 #if IS_ENABLED(CPTCFG_IWLXVT)
@@ -99,6 +101,8 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG(u32, XVT_DEFAULT_DBGM_PRPH_MASK)
 	IWL_MOD_PARAM(bool, xvt_default_mode)
 #endif
+	IWL_DBG_CFG_NODEF(bool, disable_52GHz)
+	IWL_DBG_CFG_NODEF(bool, disable_24GHz)
 #if IS_ENABLED(CPTCFG_IWLMVM)
 	IWL_DBG_CFG(u32, MVM_DEFAULT_PS_TX_DATA_TIMEOUT)
 	IWL_DBG_CFG(u32, MVM_DEFAULT_PS_RX_DATA_TIMEOUT)
@@ -142,6 +146,7 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG(bool, MVM_TOF_IS_RESPONDER)
 	IWL_DBG_CFG(bool, MVM_P2P_LOWLATENCY_PS_ENABLE)
 	IWL_DBG_CFG(bool, MVM_SW_TX_CSUM_OFFLOAD)
+	IWL_DBG_CFG(bool, MVM_HW_CSUM_DISABLE)
 	IWL_DBG_CFG(bool, MVM_COLLECT_FW_ERR_DUMP)
 #ifdef CPTCFG_IWLMVM_TCM
 	IWL_DBG_CFG(u32, MVM_TCM_LOAD_MEDIUM_THRESH)
@@ -183,6 +188,11 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG(u16, MVM_RS_TPC_SR_FORCE_INCREASE)
 	IWL_DBG_CFG(u16, MVM_RS_TPC_SR_NO_INCREASE)
 	IWL_DBG_CFG(u8, MVM_RS_TPC_TX_POWER_STEP)
+	IWL_DBG_CFG(u8, MVM_ENABLE_DQA)
+	IWL_MVM_MOD_PARAM(int, power_scheme)
+	IWL_MVM_MOD_PARAM(bool, init_dbg)
+	IWL_MVM_MOD_PARAM(bool, tfd_q_hang_detect)
+	IWL_MVM_MOD_PARAM(bool, ftm_resp_asap)
 #endif /* CPTCFG_IWLMVM */
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	IWL_DBG_CFG_NODEF(u32, dnt_out_mode)
@@ -193,6 +203,7 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(u32, dbgm_mem_power)
 	IWL_DBG_CFG_NODEF(u32, dbg_flags)
 	IWL_DBG_CFG_NODEF(bool, d0_is_usniffer)
+	IWL_DBG_CFG_NODEF(bool, use_upload_ucode)
 	IWL_DBG_CFG_NODEF(u32, dbg_mon_sample_ctl_addr)
 	IWL_DBG_CFG_NODEF(u32, dbg_mon_sample_ctl_val)
 	IWL_DBG_CFG_NODEF(u32, dbg_mon_buff_base_addr_reg_addr)
@@ -269,6 +280,7 @@ struct iwl_dbg_cfg {
 #undef IWL_DBG_CFG_BINA
 #undef IWL_DBG_CFG_RANGE
 #undef IWL_MOD_PARAM
+#undef IWL_MVM_MOD_PARAM
 #ifndef DBG_CFG_REINCLUDE
 };
 

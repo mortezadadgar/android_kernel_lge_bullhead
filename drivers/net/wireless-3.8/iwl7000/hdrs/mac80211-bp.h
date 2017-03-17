@@ -1,6 +1,6 @@
 /*
  * ChromeOS backport definitions
- * Copyright (C) 2015-2016 Intel Deutschland GmbH
+ * Copyright (C) 2015-2017 Intel Deutschland GmbH
  */
 #include <linux/if_ether.h>
 #include <net/cfg80211.h>
@@ -98,33 +98,6 @@ struct cfg80211_wowlan_tcp {
 #endif /* CFG80211_VERSION < KERNEL_VERSION(3,9,0) */
 
 #if CFG80211_VERSION < KERNEL_VERSION(3,10,0)
-static inline bool
-ieee80211_operating_class_to_band(u8 operating_class,
-				  enum ieee80211_band *band)
-{
-	switch (operating_class) {
-	case 112:
-	case 115 ... 127:
-	case 128 ... 130:
-		*band = IEEE80211_BAND_5GHZ;
-		return true;
-	case 81:
-	case 82:
-	case 83:
-	case 84:
-		*band = IEEE80211_BAND_2GHZ;
-		return true;
-	case 180:
-		*band = IEEE80211_BAND_60GHZ;
-		return true;
-	}
-
-	/* stupid compiler */
-	*band = IEEE80211_BAND_2GHZ;
-
-	return false;
-}
-
 #define NL80211_FEATURE_USERSPACE_MPM 0
 
 enum cfg80211_station_type {
@@ -290,7 +263,7 @@ ieee80211_mandatory_rates(struct ieee80211_supported_band *sband)
 	if (WARN_ON(!sband))
 		return 1;
 
-	if (sband->band == IEEE80211_BAND_2GHZ)
+	if (sband->band == NL80211_BAND_2GHZ)
 		mandatory_flag = IEEE80211_RATE_MANDATORY_B;
 	else
 		mandatory_flag = IEEE80211_RATE_MANDATORY_A;
@@ -1270,7 +1243,7 @@ cfg80211_inform_bss_frame_data(struct wiphy *wiphy,
 }
 #endif /* CFG80211_VERSION < KERNEL_VERSION(4,4,0) */
 
-#if CFG80211_VERSION < KERNEL_VERSION(4,5,0)
+#if CFG80211_VERSION < KERNEL_VERSION(4,10,0)
 struct cfg80211_ftm_target {
 	u64 cookie;
 	struct cfg80211_chan_def chan_def;
@@ -1457,14 +1430,9 @@ static inline bool ieee80211_viftype_nan(unsigned int iftype)
 #define ieee80211_has_nan_iftype(x)	0
 
 enum nl80211_nan_dual_band_conf {
-	NL80211_NAN_BAND_DEFAULT,
-	NL80211_NAN_BAND_SINGLE,
-	NL80211_NAN_BAND_DUAL,
-
-	/* keep last */
-	__NL80211_NAN_BAND_AFTER_LAST,
-	NL80211_NAN_BAND_MAX =
-	__NL80211_NAN_BAND_AFTER_LAST - 1,
+	NL80211_NAN_BAND_DEFAULT	= 1 << 0,
+	NL80211_NAN_BAND_2GHZ		= 1 << 1,
+	NL80211_NAN_BAND_5GHZ		= 1 << 2,
 };
 
 struct cfg80211_nan_conf {
@@ -1522,7 +1490,7 @@ struct cfg80211_nan_func {
 	u64 cookie;
 };
 
-static inline void cfg80211_free_nan_func_members(struct cfg80211_nan_func *f)
+static inline void cfg80211_free_nan_func(struct cfg80211_nan_func *f)
 {
 }
 
@@ -1546,7 +1514,7 @@ enum nl80211_nan_publish_type {
 	NL80211_NAN_UNSOLICITED_PUBLISH = 1 << 1,
 };
 
-#endif /* CFG80211_VERSION < KERNEL_VERSION(4,5,0) */
+#endif /* CFG80211_VERSION < KERNEL_VERSION(4,8,0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0)
 static inline long ktime_get_seconds(void)
@@ -1584,4 +1552,149 @@ cfg80211_sta_support_p2p_ps(struct station_parameters *params, bool p2p_go)
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,5,0)
 void *memdup_user_nul(const void __user *src, size_t len);
+#endif
+
+static inline u8*
+cfg80211_scan_req_bssid(struct cfg80211_scan_request *scan_req)
+{
+#if CFG80211_VERSION >= KERNEL_VERSION(4,7,0)
+	return scan_req->bssid;
+#endif
+	return NULL;
+}
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,7,0)
+/* this was originally in 3.10, but causes nasty warnings
+ * due to the enum ieee80211_band removal - use the inline
+ * to avoid that.
+ */
+#define ieee80211_operating_class_to_band iwl7000_ieee80211_operating_class_to_band
+static inline bool
+ieee80211_operating_class_to_band(u8 operating_class,
+				  enum nl80211_band *band)
+{
+	switch (operating_class) {
+	case 112:
+	case 115 ... 127:
+	case 128 ... 130:
+		*band = NL80211_BAND_5GHZ;
+		return true;
+	case 81:
+	case 82:
+	case 83:
+	case 84:
+		*band = NL80211_BAND_2GHZ;
+		return true;
+	case 180:
+		*band = NL80211_BAND_60GHZ;
+		return true;
+	}
+
+	/* stupid compiler */
+	*band = NL80211_BAND_2GHZ;
+
+	return false;
+}
+
+#define NUM_NL80211_BANDS ((enum nl80211_band)IEEE80211_NUM_BANDS)
+#endif
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,8,0)
+struct cfg80211_scan_info {
+	u64 scan_start_tsf;
+	u8 tsf_bssid[ETH_ALEN] __aligned(2);
+	bool aborted;
+};
+
+static inline void
+backport_cfg80211_scan_done(struct cfg80211_scan_request *request,
+			    struct cfg80211_scan_info *info)
+{
+	cfg80211_scan_done(request, info->aborted);
+}
+#define cfg80211_scan_done backport_cfg80211_scan_done
+
+#define NL80211_EXT_FEATURE_SCAN_START_TIME -1
+#define NL80211_EXT_FEATURE_BSS_PARENT_TSF -1
+#define NL80211_EXT_FEATURE_SET_SCAN_DWELL -1
+#endif
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,9,0)
+static inline
+const u8 *bp_cfg80211_find_ie_match(u8 eid, const u8 *ies, int len,
+				    const u8 *match, int match_len,
+				    int match_offset)
+{
+	/* match_offset can't be smaller than 2, unless match_len is
+	 * zero, in which case match_offset must be zero as well.
+	 */
+	if (WARN_ON((match_len && match_offset < 2) ||
+		    (!match_len && match_offset)))
+		return NULL;
+
+	while (len >= 2 && len >= ies[1] + 2) {
+		if ((ies[0] == eid) &&
+		    (ies[1] + 2 >= match_offset + match_len) &&
+		    !memcmp(ies + match_offset, match, match_len))
+			return ies;
+
+		len -= ies[1] + 2;
+		ies += ies[1] + 2;
+	}
+
+	return NULL;
+}
+
+#define cfg80211_find_ie_match bp_cfg80211_find_ie_match
+
+#define NL80211_EXT_FEATURE_MU_MIMO_AIR_SNIFFER -1
+
+int ieee80211_data_to_8023_exthdr(struct sk_buff *skb, struct ethhdr *ehdr,
+				  const u8 *addr, enum nl80211_iftype iftype);
+/* manually renamed to avoid symbol issues with cfg80211 */
+#define ieee80211_amsdu_to_8023s iwl7000_ieee80211_amsdu_to_8023s
+void ieee80211_amsdu_to_8023s(struct sk_buff *skb, struct sk_buff_head *list,
+			      const u8 *addr, enum nl80211_iftype iftype,
+			      const unsigned int extra_headroom,
+			      const u8 *check_da, const u8 *check_sa);
+#endif /* CFG80211_VERSION < KERNEL_VERSION(4,9,0) */
+
+#ifndef IEEE80211_RADIOTAP_TIMESTAMP_UNIT_MASK
+#define IEEE80211_RADIOTAP_TIMESTAMP 22
+#define IEEE80211_RADIOTAP_TIMESTAMP_UNIT_MASK			0x000F
+#define IEEE80211_RADIOTAP_TIMESTAMP_UNIT_MS			0x0000
+#define IEEE80211_RADIOTAP_TIMESTAMP_UNIT_US			0x0001
+#define IEEE80211_RADIOTAP_TIMESTAMP_UNIT_NS			0x0003
+#define IEEE80211_RADIOTAP_TIMESTAMP_SPOS_MASK			0x00F0
+#define IEEE80211_RADIOTAP_TIMESTAMP_SPOS_BEGIN_MDPU		0x0000
+#define IEEE80211_RADIOTAP_TIMESTAMP_SPOS_PLCP_SIG_ACQ		0x0010
+#define IEEE80211_RADIOTAP_TIMESTAMP_SPOS_EO_PPDU		0x0020
+#define IEEE80211_RADIOTAP_TIMESTAMP_SPOS_EO_MPDU		0x0030
+#define IEEE80211_RADIOTAP_TIMESTAMP_SPOS_UNKNOWN		0x00F0
+#define IEEE80211_RADIOTAP_TIMESTAMP_FLAG_64BIT			0x00
+#define IEEE80211_RADIOTAP_TIMESTAMP_FLAG_32BIT			0x01
+#define IEEE80211_RADIOTAP_TIMESTAMP_FLAG_ACCURACY		0x02
+#endif /* IEEE80211_RADIOTAP_TIMESTAMP_UNIT_MASK */
+
+#if CFG80211_VERSION < KERNEL_VERSION(4,4,0)
+/*
+ * NB: upstream this only landed in 4.10, but it was backported
+ * to almost every kernel, including 4.4 (at least in ChromeOS)
+ * If you see a compilation failure on this function you should
+ * backport the fix:
+ * e6f462df9acd ("cfg80211/mac80211: fix BSS leaks when abandoning assoc attempts")
+ */
+static inline void cfg80211_abandon_assoc(struct net_device *dev,
+					  struct cfg80211_bss *bss)
+{
+	/*
+	 * We can't really do anything better - we used to leak in
+	 * this scenario forever, and we can't backport the cfg80211
+	 * function since it needs access to the *internal* BSS to
+	 * remove the pinning (internal_bss->hold).
+	 * Just warn, and hope that ChromeOS will pick up the fix
+	 * from upstream at which point we can remove this inline.
+	 */
+	WARN_ONCE(1, "BSS entry for %pM leaked\n", bss->bssid);
+}
 #endif

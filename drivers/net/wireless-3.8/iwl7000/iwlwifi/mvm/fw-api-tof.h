@@ -65,22 +65,18 @@
 
 #include "fw-api.h"
 
-/* ToF sub-group command IDs */
-enum iwl_mvm_tof_sub_grp_ids {
-	TOF_RANGE_REQ_CMD = 0x1,
-	TOF_CONFIG_CMD = 0x2,
-	TOF_RANGE_ABORT_CMD = 0x3,
-	TOF_RANGE_REQ_EXT_CMD = 0x4,
-	TOF_RESPONDER_CONFIG_CMD = 0x5,
-	TOF_NW_INITIATED_RES_SEND_CMD = 0x6,
-	TOF_NEIGHBOR_REPORT_REQ_CMD = 0x7,
-	TOF_RESPONDER_DYN_CONFIG_CMD = 0x8,
-	TOF_RESPONDER_STATS = 0x9,
-	TOF_LC_NOTIF = 0xF9,
-	TOF_NEIGHBOR_REPORT_RSP_NOTIF = 0xFC,
-	TOF_NW_INITIATED_REQ_RCVD_NOTIF = 0xFD,
-	TOF_RANGE_RESPONSE_NOTIF = 0xFE,
-	TOF_MCSI_DEBUG_NOTIF = 0xFB,
+/* TOF commands */
+enum iwl_tof_subcmd_ids {
+	TOF_RANGE_REQ_CMD = 0x0,
+	TOF_CONFIG_CMD = 0x1,
+	TOF_RANGE_ABORT_CMD = 0x2,
+	TOF_RANGE_REQ_EXT_CMD = 0x3,
+	TOF_RESPONDER_CONFIG_CMD = 0x4,
+	TOF_RESPONDER_DYN_CONFIG_CMD = 0x5,
+	TOF_LC_NOTIF = 0xFC,
+	TOF_RESPONDER_STATS = 0xFD,
+	TOF_MCSI_DEBUG_NOTIF = 0xFE,
+	TOF_RANGE_RESPONSE_NOTIF = 0xFF,
 };
 
 /**
@@ -91,7 +87,6 @@ enum iwl_mvm_tof_sub_grp_ids {
  * @is_buf_required: 1 channel estimation buffer required, 0 - otherwise
  */
 struct iwl_tof_config_cmd {
-	__le32 sub_grp_cmd_id;
 	u8 tof_disabled;
 	u8 one_sided_disabled;
 	u8 is_debug_mode;
@@ -114,75 +109,92 @@ enum iwl_tof_bandwidth {
 enum iwl_tof_algo_type {
 	IWL_TOF_ALGO_TYPE_MAX_LIKE	= 0,
 	IWL_TOF_ALGO_TYPE_LINEAR_REG	= 1,
+	IWL_TOF_ALGO_TYPE_FFT		= 2,
 
 	/* Keep last */
 	IWL_TOF_ALGO_TYPE_INVALID,
 }; /* ALGO_TYPE_E */
 
+/*
+ * enum iwl_tof_mcsi_ntfy - Enable/Disable MCSI notifications
+ */
+enum iwl_tof_mcsi_ntfy {
+	IWL_TOF_MCSI_DISABLED = 0,
+	IWL_TOF_MCSI_ENABLED = 1,
+};
+
+/**
+ * enum iwl_tof_responder_cmd_valid_field -
+ * valid fields in the responder cfg cmd
+ */
+enum iwl_tof_responder_cmd_valid_field {
+	IWL_TOF_RESPONDER_CMD_VALID_CHAN_INFO = BIT(0),
+	IWL_TOF_RESPONDER_CMD_VALID_TOA_OFFSET = BIT(1),
+	IWL_TOF_RESPONDER_CMD_VALID_COMMON_CALIB = BIT(2),
+	IWL_TOF_RESPONDER_CMD_VALID_SPECIFIC_CALIB = BIT(3),
+	IWL_TOF_RESPONDER_CMD_VALID_BSSID = BIT(4),
+	IWL_TOF_RESPONDER_CMD_VALID_TX_ANT = BIT(5),
+	IWL_TOF_RESPONDER_CMD_VALID_ALGO_TYPE = BIT(6),
+	IWL_TOF_RESPONDER_CMD_VALID_NON_ASAP_SUPPORT = BIT(7),
+	IWL_TOF_RESPONDER_CMD_VALID_STATISTICS_REPORT_SUPPORT = BIT(8),
+	IWL_TOF_RESPONDER_CMD_VALID_MCSI_NOTIF_SUPPORT = BIT(9),
+	IWL_TOF_RESPONDER_CMD_VALID_FAST_ALGO_SUPPORT = BIT(10),
+	IWL_TOF_RESPONDER_CMD_VALID_RETRY_ON_ALGO_FAIL = BIT(11),
+	IWL_TOF_RESPONDER_CMD_VALID_STA_ID = BIT(12),
+};
+
+/**
+ * enum iwl_tof_responder_cfg_flags - responder configuration flags
+ */
+enum iwl_tof_responder_cfg_flags {
+	IWL_TOF_RESPONDER_FLAGS_NON_ASAP_SUPPORT = BIT(0),
+	IWL_TOF_RESPONDER_FLAGS_REPORT_STATISTICS = BIT(1),
+	IWL_TOF_RESPONDER_FLAGS_REPORT_MCSI = BIT(2),
+	IWL_TOF_RESPONDER_FLAGS_ALGO_TYPE = BIT(3) | BIT(4) | BIT(5),
+	IWL_TOF_RESPONDER_FLAGS_TOA_OFFSET_MODE = BIT(6),
+	IWL_TOF_RESPONDER_FLAGS_COMMON_CALIB_MODE = BIT(7),
+	IWL_TOF_RESPONDER_FLAGS_SPECIFIC_CALIB_MODE = BIT(8),
+	IWL_TOF_RESPONDER_FLAGS_FAST_ALGO_SUPPORT = BIT(9),
+	IWL_TOF_RESPONDER_FLAGS_RETRY_ON_ALGO_FAIL = BIT(10),
+	IWL_TOF_RESPONDER_FLAGS_FTM_TX_ANT = RATE_MCS_ANT_ABC_MSK,
+};
+
 /**
  * struct iwl_tof_responder_config_cmd - ToF AP mode (for debug)
- * @burst_period: future use: (currently hard coded in the LMAC)
- *		  The interval between two sequential bursts.
- * @min_delta_ftm: future use: (currently hard coded in the LMAC)
- *		   The minimum delay between two sequential FTM Responses
- *		   in the same burst.
- * @burst_duration: future use: (currently hard coded in the LMAC)
- *		   The total time for all FTMs handshake in the same burst.
- *		   Affect the time events duration in the LMAC.
- * @num_of_burst_exp: future use: (currently hard coded in the LMAC)
- *		   The number of bursts for the current ToF request. Affect
- *		   the number of events allocations in the current iteration.
- * @get_ch_est: for xVT only, NA for driver
- * @abort_responder: when set to '1' - Responder will terminate its activity
- *		     (all other fields in the command are ignored)
- * @recv_sta_req_params: 1 - Responder will ignore the other Responder's
- *			 params and use the recomended Initiator params.
- *			 0 - otherwise
- * @channel_num: current AP Channel
+ * @cmd_valid_fields: &iwl_tof_responder_cmd_valid_field
+ * @responder_cfg_flags: &iwl_tof_responder_cfg_flags
  * @bandwidth: current AP Bandwidth: &enum iwl_tof_bandwidth
  * @rate: current AP rate
+ * @channel_num: current AP Channel
  * @ctrl_ch_position: coding of the control channel position relative to
  *	     the center frequency.
  *	     40MHz  0 below center, 1 above center
  *	     80MHz  bits [0..1]: 0  the near 20MHz to the center,
  *				 1  the far  20MHz to the center
  *		    bit[2]  as above 40MHz
- * @ftm_per_burst: FTMs per Burst
- * @ftm_resp_ts_avail: '0' - we don't measure over the Initial FTM Response,
- *		  '1' - we measure over the Initial FTM Response
- * @asap_mode: ASAP / Non ASAP mode for the current WLS station
  * @sta_id: index of the AP STA when in AP mode
- * @tsf_timer_offset_msecs: The dictated time offset (mSec) from the AP's TSF
  * @toa_offset: Artificial addition [pSec] for the ToA - to be used for debug
  *		purposes, simulating station movement by adding various values
  *		to this field
+ * @common_calib - XVT: common calibration value
+ * @specific_calib - XVT: specific calibration value
  * @bssid: Current AP BSSID
- * @algo_type: &enum iwl_tof_algo_type
- * @reserved: For alignment and future use
  */
 struct iwl_tof_responder_config_cmd {
-	__le32 sub_grp_cmd_id;
-	__le16 burst_period;
-	u8 min_delta_ftm;
-	u8 burst_duration;
-	u8 num_of_burst_exp;
-	u8 get_ch_est;
-	u8 abort_responder;
-	u8 recv_sta_req_params;
-	u8 channel_num;
+	__le32 cmd_valid_fields;
+	__le32 responder_cfg_flags;
 	u8 bandwidth;
 	u8 rate;
+	u8 channel_num;
 	u8 ctrl_ch_position;
-	u8 ftm_per_burst;
-	u8 ftm_resp_ts_avail;
-	u8 asap_mode;
 	u8 sta_id;
-	__le16 tsf_timer_offset_msecs;
+	u8 reserved1;
 	__le16 toa_offset;
+	__le16 common_calib;
+	__le16 specific_calib;
 	u8 bssid[ETH_ALEN];
-	u8 algo_type;
-	u8 reserved;
-} __packed; /* TOF_RESPONDER_CONFIG_CMD_API_S_VER_4 */
+	__le16 reserved2;
+} __packed; /* TOF_RESPONDER_CONFIG_CMD_API_S_VER_5 */
 
 /**
  * struct iwl_tof_responder_dyn_config_cmd - Dynamic responder settings
@@ -194,7 +206,6 @@ struct iwl_tof_responder_config_cmd {
  *	4-multiple long buffer.
  */
 struct iwl_tof_responder_dyn_config_cmd {
-	__le32 sub_grp_cmd_id;
 	__le32 lci_len;
 	__le32 civic_len;
 	u8 lci_civic[];
@@ -213,7 +224,6 @@ struct iwl_tof_responder_dyn_config_cmd {
  *			value to be sent to the AP
  */
 struct iwl_tof_range_req_ext_cmd {
-	__le32 sub_grp_cmd_id;
 	__le16 tsf_timer_offset_msec;
 	__le16 reserved;
 	u8 min_delta_ftm;
@@ -268,6 +278,7 @@ enum iwl_tof_location_query {
  * @rssi: Last received value
  *	  leagal values: -128-0 (0x7f). above 0x0 indicating an invalid value.
  * @algo_type: &enum iwl_tof_algo_type
+ * @notify_mcsi: &enum iwl_tof_mcsi_ntfy.
  * @reserved: For alignment and future use
  */
 struct iwl_tof_range_req_ap_entry {
@@ -287,8 +298,9 @@ struct iwl_tof_range_req_ap_entry {
 	u8 enable_dyn_ack;
 	s8 rssi;
 	u8 algo_type;
-	u8 reserved[3];
-} __packed; /* LOCATION_RANGE_REQ_AP_ENTRY_CMD_API_S_VER_2 */
+	u8 notify_mcsi;
+	u16 reserved;
+} __packed; /* LOCATION_RANGE_REQ_AP_ENTRY_CMD_API_S_VER_3 */
 
 /**
  * enum iwl_tof_response_mode
@@ -307,7 +319,39 @@ enum iwl_tof_response_mode {
 };
 
 /**
+ * enum iwl_tof_initiator_flags
+ * @IWL_TOF_INITIATOR_FLAGS_DYNAMIC_ACK: send ack on all band (1)
+ *					 os send duplicated ack on 20 band
+ * @IWL_TOF_INITIATOR_FLAGS_REQ_MODE: ASAP or NON ASAP measurement mode
+ * @IWL_TOF_INITIATOR_FLAGS_REPORT_MCSI: report MCSI notification to host
+ * @IWL_TOF_INITIATOR_FLAGS_ALGO_TYPE: location Algorithm to execute
+ * @IWL_TOF_INITIATOR_FLAGS_PAPD_CALIB: run calib PAPD mode
+ * @IWL_TOF_INITIATOR_FLAGS_COMMON_CALIB_OVERRIDE: force common calib.
+ *						   field 'common_calib' shall
+ *						   be used.
+ * @IWL_TOF_INITIATOR_FLAGS_SPECIFIC_CALIB_OVERRIDE: force specific calib
+ *						     field 'specific_calib'
+ *						     shall be used.
+ * @IWL_TOF_INITIATOR_FLAGS_FAST_ALGO_SUPPORT: support fast algo, meaning run
+ *					       the algo on ant A or B only,
+ *					       instead of A+B.
+ * @IWL_TOF_INITIATOR_FLAGS_FTM_RX_ANT: force rx ant
+ */
+enum iwl_tof_initiator_flags {
+	IWL_TOF_INITIATOR_FLAGS_DYNAMIC_ACK = BIT(0),
+	IWL_TOF_INITIATOR_FLAGS_REQ_MODE = BIT(1),
+	IWL_TOF_INITIATOR_FLAGS_REPORT_MCSI = BIT(2),
+	IWL_TOF_INITIATOR_FLAGS_ALGO_TYPE = BIT(3) | BIT(4) | BIT(5),
+	IWL_TOF_INITIATOR_FLAGS_PAPD_CALIB = BIT(6),
+	IWL_TOF_INITIATOR_FLAGS_COMMON_CALIB_OVERRIDE = BIT(7),
+	IWL_TOF_INITIATOR_FLAGS_SPECIFIC_CALIB_OVERRIDE = BIT(8),
+	IWL_TOF_INITIATOR_FLAGS_FAST_ALGO_SUPPORT = BIT(9),
+	IWL_TOF_INITIATOR_FLAGS_FTM_RX_ANT = RATE_MCS_ANT_ABC_MSK,
+};
+
+/**
  * struct iwl_tof_range_req_cmd - start measurement cmd
+ * @initiator_flags: see flags @ iwl_tof_initiator_flags
  * @request_id: A Token incremented per request. The same Token will be
  *		sent back in the range response
  * @initiator: 0- NW initiated,  1 - Client Initiated
@@ -325,50 +369,76 @@ enum iwl_tof_response_mode {
  *	            '1' Use MAC Address randomization according to the below
  * @macaddr_mask: Bits set to 0 shall be copied from the MAC address template.
  *		  Bits set to 1 shall be randomized by the UMAC
+ * @ftm_rx_chains: Rx chain to open to receive Responder's FTMs (XVT)
+ * @ftm_tx_chains: Tx chain to send the ack to the Responder FTM (XVT)
+ * @common_calib: The common calib value to inject to this measurement calc
+ * @specific_calib: The specific calib value to inject to this measurement calc
  */
 struct iwl_tof_range_req_cmd {
-	__le32 sub_grp_cmd_id;
+	__le32 initiator_flags;
 	u8 request_id;
 	u8 initiator;
 	u8 one_sided_los_disable;
 	u8 req_timeout;
 	u8 report_policy;
-	u8 los_det_disable;
+	u8 reserved0;
 	u8 num_of_ap;
 	u8 macaddr_random;
 	u8 range_req_bssid[ETH_ALEN];
 	u8 macaddr_template[ETH_ALEN];
 	u8 macaddr_mask[ETH_ALEN];
-	u16 reserved;
+	u8 ftm_rx_chains;
+	u8 ftm_tx_chains;
+	__le16 common_calib;
+	__le16 specific_calib;
 	struct iwl_tof_range_req_ap_entry ap[IWL_MVM_TOF_MAX_APS];
-} __packed;
-
-/**
- * struct iwl_tof_gen_resp_cmd - generic ToF response
- */
-struct iwl_tof_gen_resp_cmd {
-	__le32 sub_grp_cmd_id;
-	u8 data[];
 } __packed;
 
 /**
  * enum iwl_tof_entry_status
  *
  * @IWL_TOF_ENTRY_SUCCESS: successful measurement.
- * @IWL_TOF_ENTRY_NOT_MEASURED: not measured due to timeout/abort.
- * @IWL_TOF_ENTRY_UNAVAILABLE: peer is unavailable.
- * @IWL_TOF_ENTRY_PROTOCOL_ERR: fail due to protocol error.
- * @IWL_TOF_ENTRY_INTERNAL_ERR: fail due to internal error.
- * @IWL_TOF_ENTRY_INVALID: request received in an invalid state.
+ * @IWL_TOF_ENTRY_GENERAL_FAILURE: General failure.
+ * @IWL_TOF_ENTRY_NO_RESPONSE: Responder didn't reply to the request.
+ * @IWL_TOF_ENTRY_REQUEST_REJECTED: Responder rejected the request.
+ * @IWL_TOF_ENTRY_NOT_SCHEDULED: Time event was scheduled but not called yet.
+ * @IWL_TOF_ENTRY_TIMING_MEASURE_TIMEOUT: Time event triggered but no
+ *	measurement was completed.
+ * @IWL_TOF_ENTRY_TARGET_DIFF_CH_CANNOT_CHANGE: No range due inability to switch
+ *	from the primary channel.
+ * @IWL_TOF_ENTRY_RANGE_NOT_SUPPORTED: Device doesn't support FTM.
+ * @IWL_TOF_ENTRY_REQUEST_ABORT_UNKNOWN_REASON: Request aborted due to unknown
+ *	reason.
+ * @IWL_TOF_ENTRY_LOCATION_INVALID_T1_T4_TIME_STAMP: Failure due to invalid
+ *	T1/T4.
+ * @IWL_TOF_ENTRY_11MC_PROTOCOL_FAILURE: Failure due to invalid FTM frame
+ *	structure.
+ * @IWL_TOF_ENTRY_REQUEST_CANNOT_SCHED: Request cannot be scheduled.
+ * @IWL_TOF_ENTRY_RESPONDER_CANNOT_COLABORATE: Responder cannot serve the
+ *	initiator for some period, period supplied in @refusal_period.
+ * @IWL_TOF_ENTRY_BAD_REQUEST_ARGS: Bad request arguments.
+ * @IWL_TOF_ENTRY_WIFI_NOT_ENABLED: Wifi not enabled.
+ * @IWL_TOF_ENTRY_RESPONDER_OVERRIDE_PARAMS: Responder override the original
+ *	parameters within the current session.
  */
 enum iwl_tof_entry_status {
-	IWL_TOF_ENTRY_SUCCESS,
-	IWL_TOF_ENTRY_NOT_MEASURED,
-	IWL_TOF_ENTRY_UNAVAILABLE,
-	IWL_TOF_ENTRY_PROTOCOL_ERR,
-	IWL_TOF_ENTRY_INTERNAL_ERR,
-	IWL_TOF_ENTRY_INVALID = 0xff,
-}; /* LOCATION_MEASUREMENT_STATUS */
+	IWL_TOF_ENTRY_SUCCESS = 0,
+	IWL_TOF_ENTRY_GENERAL_FAILURE = 1,
+	IWL_TOF_ENTRY_NO_RESPONSE = 2,
+	IWL_TOF_ENTRY_REQUEST_REJECTED = 3,
+	IWL_TOF_ENTRY_NOT_SCHEDULED = 4,
+	IWL_TOF_ENTRY_TIMING_MEASURE_TIMEOUT = 5,
+	IWL_TOF_ENTRY_TARGET_DIFF_CH_CANNOT_CHANGE = 6,
+	IWL_TOF_ENTRY_RANGE_NOT_SUPPORTED = 7,
+	IWL_TOF_ENTRY_REQUEST_ABORT_UNKNOWN_REASON = 8,
+	IWL_TOF_ENTRY_LOCATION_INVALID_T1_T4_TIME_STAMP = 9,
+	IWL_TOF_ENTRY_11MC_PROTOCOL_FAILURE = 10,
+	IWL_TOF_ENTRY_REQUEST_CANNOT_SCHED = 11,
+	IWL_TOF_ENTRY_RESPONDER_CANNOT_COLABORATE = 12,
+	IWL_TOF_ENTRY_BAD_REQUEST_ARGS = 13,
+	IWL_TOF_ENTRY_WIFI_NOT_ENABLED = 14,
+	IWL_TOF_ENTRY_RESPONDER_OVERRIDE_PARAMS = 15,
+}; /* LOCATION_RANGE_RSP_AP_ENTRY_NTFY_API_S_VER_2 */
 
 /**
  * struct iwl_tof_range_rsp_ap_entry_ntfy - AP parameters (response)
@@ -383,10 +453,18 @@ enum iwl_tof_entry_status {
  * @rssi: RSSI as uploaded in the Channel Estimation notification
  * @rssi_spread: The Difference between the maximum and the minimum RSSI values
  *	        measured for current AP in the current session
+ * @refusal_period: refusal period in case of
+ *	@IWL_TOF_ENTRY_RESPONDER_CANNOT_COLABORATE [sec]
  * @range: Measured range [cm]
  * @range_variance: Measured range variance [cm]
  * @timestamp: The GP2 Clock [usec] where Channel Estimation notification was
  *	       uploaded by the LMAC
+ * @t2t3_initiator: as calculated from the algo in the initiator
+ * @t1t4_responder: as calculated from the algo in the responder
+ * @common_calib: Calib val that was used in for this AP measurement
+ * @specific_calib: val that was used in for this AP measurement
+ * @papd_calib_output: The result of the tof papd calibration that was injected
+ *                     into the algorithm.
  */
 struct iwl_tof_range_rsp_ap_entry_ntfy {
 	u8 bssid[ETH_ALEN];
@@ -397,26 +475,32 @@ struct iwl_tof_range_rsp_ap_entry_ntfy {
 	__le32 rtt_spread;
 	s8 rssi;
 	u8 rssi_spread;
-	__le16 reserved;
+	u8 reserved;
+	u8 refusal_period;
 	__le32 range;
 	__le32 range_variance;
 	__le32 timestamp;
-} __packed;
+	__le32 t2t3_initiator;
+	__le32 t1t4_responder;
+	__le16 common_calib;
+	__le16 specific_calib;
+	__le32 papd_calib_output;
+} __packed; /* LOCATION_RANGE_RSP_AP_ETRY_NTFY_API_S_VER_3 */
 
 /**
  * enum iwl_tof_response_status - tof response status
  *
- * @IWL_TOF_RESPONSE_SUCCESS: successful response.
+ * @IWL_TOF_RESPONSE_SUCCESS: successful range.
  * @IWL_TOF_RESPONSE_TIMEOUT: request aborted due to timeout expiration.
  *	partial result of ranges done so far is included in the response.
- * @IWL_TOF_RESPONSE_ABORTED: Aborted due to tof service unavailable.
- *	In case of one-sided, this also the status in case a nested request was
- *	sent.
+ * @IWL_TOF_RESPONSE_ABORTED: Measurement aborted by command.
+ * @IWL_TOF_RESPONSE_FAILED: Measurement request command failed.
  */
 enum iwl_tof_response_status {
-	IWL_TOF_RESPONSE_SUCCESS,
-	IWL_TOF_RESPONSE_TIMEOUT,
-	IWL_TOF_RESPONSE_ABORTED,
+	IWL_TOF_RESPONSE_SUCCESS = 0,
+	IWL_TOF_RESPONSE_TIMEOUT = 1,
+	IWL_TOF_RESPONSE_ABORTED = 4,
+	IWL_TOF_RESPONSE_FAILED  = 5,
 }; /* LOCATION_RNG_RSP_STATUS */
 
 /**
@@ -474,7 +558,6 @@ struct iwl_tof_neighbor_report {
  * @request_id: corresponds to a range request
  */
 struct iwl_tof_range_abort_cmd {
-	__le32 sub_grp_cmd_id;
 	u8 request_id;
 	u8 reserved[3];
 } __packed;

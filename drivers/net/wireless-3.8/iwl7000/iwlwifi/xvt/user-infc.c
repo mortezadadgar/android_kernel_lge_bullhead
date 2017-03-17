@@ -145,16 +145,15 @@ void iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
 	case DEBUG_LOG_MSG:
 		iwl_dnt_dispatch_collect_ucode_message(xvt->trans, rxb);
 		break;
-	case LOCATION_GROUP_NOTIFICATION:
-		if (le32_to_cpu(*(__le32 *)data) == LOCATION_MCSI_NOTIFICATION)
-			iwl_xvt_user_send_notif(xvt,
-						IWL_TM_USER_CMD_NOTIF_LOC_MCSI,
-						data, size, GFP_ATOMIC);
-		else if (le32_to_cpu(*(__le32 *)data) ==
-			 LOCATION_RANGE_RESPONSE_NOTIFICATION)
-			iwl_xvt_user_send_notif(xvt,
-						IWL_TM_USER_CMD_NOTIF_LOC_RANGE,
-						data, size, GFP_ATOMIC);
+	case LOCATION_MCSI_NOTIFICATION_WITH_GRP:
+		iwl_xvt_user_send_notif(xvt,
+					IWL_TM_USER_CMD_NOTIF_LOC_MCSI,
+					data, size, GFP_ATOMIC);
+		break;
+	case LOCATION_RANGE_RESPONSE_NOTIFICATION_WITH_GRP:
+		iwl_xvt_user_send_notif(xvt,
+					IWL_TM_USER_CMD_NOTIF_LOC_RANGE,
+					data, size, GFP_ATOMIC);
 		break;
 	case REPLY_RX_PHY_CMD:
 		IWL_DEBUG_INFO(xvt,
@@ -653,7 +652,7 @@ static bool iwl_xvt_wait_phy_db_entry(struct iwl_notif_wait_data *notif_wait,
 		return true;
 	}
 
-	WARN_ON(iwl_phy_db_set_section(phy_db, pkt, GFP_ATOMIC));
+	WARN_ON(iwl_phy_db_set_section(phy_db, pkt));
 
 	return false;
 }
@@ -881,8 +880,6 @@ static int iwl_xvt_modulated_tx(struct iwl_xvt *xvt,
 	xvt->tot_tx = tx_req->times;
 	xvt->tx_counter = 0;
 	for (tx_count = 0; tx_count < tx_req->times; tx_count++) {
-		struct ieee80211_tx_info *info;
-
 		if (xvt->fw_error) {
 			IWL_ERR(xvt, "FW Error while sending Tx\n");
 			return -ENODEV;
@@ -893,7 +890,6 @@ static int iwl_xvt_modulated_tx(struct iwl_xvt *xvt,
 			return -ENOMEM;
 		}
 		memcpy(skb_put(skb, tx_req->len), tx_req->data, tx_req->len);
-		info = IEEE80211_SKB_CB(skb);
 
 		dev_cmd = iwl_xvt_set_mod_tx_params(xvt, skb,
 						    tx_req->sta_id,
@@ -935,7 +931,6 @@ static int iwl_xvt_modulated_tx(struct iwl_xvt *xvt,
 
 		local_bh_disable();
 
-		memset(info->driver_data, 0, sizeof(info->driver_data));
 		err = iwl_trans_tx(xvt->trans, skb, dev_cmd,
 				   IWL_XVT_DEFAULT_TX_QUEUE);
 
