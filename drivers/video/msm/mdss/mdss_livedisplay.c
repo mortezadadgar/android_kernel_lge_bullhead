@@ -270,6 +270,8 @@ static void mdss_livedisplay_worker(struct work_struct *work)
 	ret = parse_dsi_cmds(&dsi_cmds, mlc->cmd_buf, len);
 	if (ret == 0) {
 		mdss_dsi_panel_cmds_send(ctrl_pdata, &dsi_cmds, CMD_REQ_COMMIT);
+		kfree(dsi_cmds.buf);
+		kfree(dsi_cmds.cmds);
 	} else {
 		pr_err("%s: error parsing DSI command! ret=%d", __func__, ret);
 	}
