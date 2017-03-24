@@ -1203,7 +1203,9 @@ static int iwl_mvm_sar_get_wrds_table(struct iwl_mvm *mvm)
 	/* position of the actual table */
 	table = &wifi_pkg->package.elements[2];
 
-	/* The profile from WRDS is profile 0 */
+	/* The profile from WRDS is officially profile 1, but goes
+	 * into sar_profiles[0] (because we don't have a profile 0).
+	 */
 	ret = iwl_mvm_sar_set_profile(mvm, table, &mvm->sar_profiles[0],
 				      enabled);
 
@@ -1270,6 +1272,10 @@ static int iwl_mvm_sar_get_ewrd_table(struct iwl_mvm *mvm)
 		/* the tables start at element 3 */
 		static int pos = 3;
 
+		/* The EWRD profiles officially go from 2 to 4, but we
+		 * save them in sar_profiles[1-3] (because we don't
+		 * have profile 0).  So in the array we start from 1.
+		 */
 		ret = iwl_mvm_sar_set_profile(mvm,
 					      &wifi_pkg->package.elements[pos],
 					      &mvm->sar_profiles[i + 1],
@@ -1378,10 +1384,16 @@ int iwl_mvm_sar_select_profile(struct iwl_mvm *mvm, int prof_a, int prof_b)
 	for (i = 0; i < IWL_NUM_CHAIN_LIMITS; i++) {
 		struct iwl_mvm_sar_profile *prof;
 
-		if (profs[i] >= IWL_MVM_SAR_PROFILE_NUM)
+		/* don't allow SAR to be disabled (profile 0 means disable) */
+		if (profs[i] == 0)
+			return -EPERM;
+
+		/* we are off by one, so allow up to IWL_MVM_SAR_PROFILE_NUM */
+		if (profs[i] > IWL_MVM_SAR_PROFILE_NUM)
 			return -EINVAL;
 
-		prof = &mvm->sar_profiles[profs[i]];
+		/* profiles go from 1 to 4, so decrement to access the array */
+		prof = &mvm->sar_profiles[profs[i] - 1];
 
 		/* if the profile is disabled, do nothing */
 		if (!prof->enabled) {
@@ -1473,8 +1485,8 @@ static int iwl_mvm_sar_init(struct iwl_mvm *mvm)
 				"EWRD SAR BIOS table invalid or unavailable. (%d)\n",
 				ret);
 
-	/* choose profile 0 as default for both chains */
-	ret = iwl_mvm_sar_select_profile(mvm, 0, 0);
+	/* choose profile 1 (WRDS) as default for both chains */
+	ret = iwl_mvm_sar_select_profile(mvm, 1, 1);
 
 	/* if we don't have profile 0 from BIOS, just skip it */
 	if (ret == -ENOENT)

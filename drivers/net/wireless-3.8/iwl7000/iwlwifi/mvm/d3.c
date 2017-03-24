@@ -2118,7 +2118,7 @@ static int __iwl_mvm_resume(struct iwl_mvm *mvm, bool test)
 
 	if (!unified_image)
 		/*  Re-configure default SAR profile */
-		iwl_mvm_sar_select_profile(mvm, 0, 0);
+		iwl_mvm_sar_select_profile(mvm, 1, 1);
 
 	if (mvm->net_detect) {
 		/* If this is a non-unified image, we restart the FW,
