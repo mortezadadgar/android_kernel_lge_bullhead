@@ -6286,6 +6286,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	pr_smb(PR_MISC, "setting usb psy present = %d\n", chip->usb_present);
 	power_supply_set_present(chip->usb_psy, chip->usb_present);
 
+	update_usb_status(chip, is_usb_present(chip), false);
 	dump_regs(chip);
 	create_debugfs_entries(chip);
 	dev_info(chip->dev, "SMBCHG successfully probed batt=%d dc = %d usb = %d\n",
