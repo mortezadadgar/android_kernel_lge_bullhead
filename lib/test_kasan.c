@@ -16,6 +16,7 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/module.h>
+#include <linux/kasan.h>
 
 static noinline void __init kmalloc_oob_right(void)
 {
@@ -321,6 +322,12 @@ static noinline void __init kasan_stack_oob(void)
 
 static int __init kmalloc_tests_init(void)
 {
+	/*
+	 * Temporarily enable multi-shot mode. Otherwise, we'd only get a
+	 * report for the first case.
+	 */
+	bool multishot = kasan_save_enable_multi_shot();
+
 	kmalloc_oob_right();
 	kmalloc_oob_left();
 	kmalloc_node_oob_right();
@@ -339,6 +346,9 @@ static int __init kmalloc_tests_init(void)
 	kmem_cache_oob();
 	kasan_stack_oob();
 	kasan_global_oob();
+
+	kasan_restore_multi_shot(multishot);
+
 	return -EAGAIN;
 }
 

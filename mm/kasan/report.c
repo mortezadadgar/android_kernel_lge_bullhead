@@ -13,6 +13,8 @@
  *
  */
 
+#include <linux/bitops.h>
+#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/mm.h>
 #include <linux/printk.h>
@@ -242,6 +244,40 @@ static void kasan_report_error(struct kasan_access_info *info)
 	spin_unlock_irqrestore(&report_lock, flags);
 	BUG_ON(1);
 	kasan_enable_current();
+}
+
+static unsigned long kasan_flags;
+
+#define KASAN_BIT_REPORTED	0
+#define KASAN_BIT_MULTI_SHOT	1
+
+bool kasan_save_enable_multi_shot(void)
+{
+	return test_and_set_bit(KASAN_BIT_MULTI_SHOT, &kasan_flags);
+}
+EXPORT_SYMBOL_GPL(kasan_save_enable_multi_shot);
+
+void kasan_restore_multi_shot(bool enabled)
+{
+	if (!enabled)
+		clear_bit(KASAN_BIT_MULTI_SHOT, &kasan_flags);
+}
+EXPORT_SYMBOL_GPL(kasan_restore_multi_shot);
+
+static int __init kasan_set_multi_shot(char *str)
+{
+	set_bit(KASAN_BIT_MULTI_SHOT, &kasan_flags);
+	return 1;
+}
+__setup("kasan_multi_shot", kasan_set_multi_shot);
+
+static inline bool kasan_report_enabled(void)
+{
+	if (current->kasan_depth)
+		return false;
+	if (test_bit(KASAN_BIT_MULTI_SHOT, &kasan_flags))
+		return true;
+	return !test_and_set_bit(KASAN_BIT_REPORTED, &kasan_flags);
 }
 
 void kasan_report(unsigned long addr, size_t size,
