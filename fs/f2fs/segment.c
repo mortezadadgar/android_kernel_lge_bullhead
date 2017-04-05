@@ -777,8 +777,8 @@ static void f2fs_submit_discard_endio(struct bio *bio, int err)
 	struct discard_cmd *dc = (struct discard_cmd *)bio->bi_private;
 
 	dc->error = err;
-	complete(&dc->wait);
 	dc->state = D_DONE;
+	complete(&dc->wait);
 }
 
 /* copied from block/blk-lib.c in 4.10-rc1 */
@@ -944,8 +944,7 @@ void f2fs_wait_discard_bio(struct f2fs_sb_info *sbi, block_t blkaddr)
 
 	list_for_each_entry_safe(dc, tmp, wait_list, list) {
 		if (dc->lstart <= blkaddr && blkaddr < dc->lstart + dc->len) {
-			if (dc->state == D_SUBMIT)
-				wait_for_completion_io(&dc->wait);
+			wait_for_completion_io(&dc->wait);
 			__punch_discard_cmd(sbi, dc, blkaddr);
 		}
 	}
@@ -1005,8 +1004,10 @@ repeat:
 	}
 
 	list_for_each_entry_safe(dc, tmp, wait_list, list) {
-		if (dc->state == D_DONE)
+		if (dc->state == D_DONE) {
+			wait_for_completion_io(&dc->wait);
 			__remove_discard_cmd(sbi, dc);
+		}
 	}
 	mutex_unlock(&dcc->cmd_lock);
 
