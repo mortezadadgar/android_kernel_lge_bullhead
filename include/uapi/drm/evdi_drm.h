@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 - 2016 DisplayLink (UK) Ltd.
+ * Copyright (c) 2015 - 2017 DisplayLink (UK) Ltd.
  *
  * This file is subject to the terms and conditions of the GNU General Public
  * License v2. See the file COPYING in the main directory of this archive for
@@ -44,10 +44,6 @@ struct drm_evdi_connect {
 	const unsigned char * __user edid;
 	uint32_t edid_length;
 	uint32_t sku_area_limit;
-};
-
-struct drm_evdi_mapfifo {
-	int32_t reserved;
 };
 
 struct drm_evdi_request_update {

@@ -22,32 +22,36 @@ static void evdi_enc_destroy(struct drm_encoder *encoder)
 	kfree(encoder);
 }
 
-static void evdi_encoder_disable(struct drm_encoder *encoder)
+static void evdi_encoder_disable(__always_unused struct drm_encoder *encoder)
 {
 }
 
-static bool evdi_mode_fixup(struct drm_encoder *encoder,
-			    const struct drm_display_mode *mode,
-			    struct drm_display_mode *adjusted_mode)
+static bool evdi_mode_fixup(
+			__always_unused struct drm_encoder *encoder,
+			__always_unused const struct drm_display_mode *mode,
+			__always_unused struct drm_display_mode *adjusted_mode)
 {
 	return true;
 }
 
-static void evdi_encoder_prepare(struct drm_encoder *encoder)
+static void evdi_encoder_prepare(__always_unused struct drm_encoder *encoder)
 {
 }
 
-static void evdi_encoder_commit(struct drm_encoder *encoder)
+static void evdi_encoder_commit(__always_unused struct drm_encoder *encoder)
 {
 }
 
-static void evdi_encoder_mode_set(struct drm_encoder *encoder,
-				  struct drm_display_mode *mode,
-				  struct drm_display_mode *adjusted_mode)
+static void evdi_encoder_mode_set(
+			__always_unused struct drm_encoder *encoder,
+			__always_unused struct drm_display_mode *mode,
+			__always_unused struct drm_display_mode *adjusted_mode)
 {
 }
 
-static void evdi_encoder_dpms(struct drm_encoder *encoder, int mode)
+static void evdi_encoder_dpms(
+			__always_unused struct drm_encoder *encoder,
+			__always_unused int mode)
 {
 }
 
@@ -79,6 +83,7 @@ struct drm_encoder *evdi_encoder_init(struct drm_device *dev)
 		EVDI_ERROR("Failed to initialize encoder: %d\n", ret);
 		goto err_encoder;
 	}
+
 	drm_encoder_helper_add(encoder, &evdi_helper_funcs);
 	encoder->possible_crtcs = 1;
 	return encoder;

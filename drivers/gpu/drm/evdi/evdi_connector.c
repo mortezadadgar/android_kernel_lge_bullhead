@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Red Hat
- * Copyright (c) 2015 - 2016 DisplayLink (UK) Ltd.
+ * Copyright (c) 2015 - 2017 DisplayLink (UK) Ltd.
  *
  * Based on parts on udlfb.c:
  * Copyright (C) 2009 its respective authors
@@ -16,8 +16,10 @@
 #include <drm/drm_crtc_helper.h>
 #include "evdi_drv.h"
 
-/* dummy connector to just get EDID,
-   all EVDI appear to have a DVI-D */
+/*
+ * dummy connector to just get EDID,
+ * all EVDI appear to have a DVI-D
+ */
 
 static int evdi_get_modes(struct drm_connector *connector)
 {
@@ -63,7 +65,7 @@ static int evdi_mode_valid(struct drm_connector *connector,
 }
 
 static enum drm_connector_status
-evdi_detect(struct drm_connector *connector, bool force)
+evdi_detect(struct drm_connector *connector, __always_unused bool force)
 {
 	struct evdi_device *evdi = connector->dev->dev_private;
 
@@ -93,9 +95,10 @@ static struct drm_encoder *evdi_best_single_encoder(struct drm_connector
 	return encoder;
 }
 
-static int evdi_connector_set_property(struct drm_connector *connector,
-				       struct drm_property *property,
-				       uint64_t val)
+static int evdi_connector_set_property(
+			__always_unused struct drm_connector *connector,
+			__always_unused struct drm_property *property,
+			__always_unused uint64_t val)
 {
 	return 0;
 }
@@ -113,7 +116,7 @@ static struct drm_connector_helper_funcs evdi_connector_helper_funcs = {
 	.best_encoder = evdi_best_single_encoder,
 };
 
-static struct drm_connector_funcs evdi_connector_funcs = {
+static const struct drm_connector_funcs evdi_connector_funcs = {
 	.dpms = drm_helper_connector_dpms,
 	.detect = evdi_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
@@ -140,5 +143,6 @@ int evdi_connector_init(struct drm_device *dev, struct drm_encoder *encoder)
 
 	drm_object_attach_property(&connector->base,
 				   dev->mode_config.dirty_info_property, 1);
+
 	return 0;
 }

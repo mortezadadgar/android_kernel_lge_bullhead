@@ -38,9 +38,10 @@ static void evdi_crtc_dpms(struct drm_crtc *crtc, int mode)
 	evdi_painter_dpms_notify(evdi, mode);
 }
 
-static bool evdi_crtc_mode_fixup(struct drm_crtc *crtc,
-				 const struct drm_display_mode *mode,
-				 struct drm_display_mode *adjusted_mode)
+static bool evdi_crtc_mode_fixup(
+			__always_unused struct drm_crtc *crtc,
+			__always_unused const struct drm_display_mode *mode,
+			__always_unused struct drm_display_mode *adjusted_mode)
 {
 	return true;
 }
@@ -49,13 +50,20 @@ static bool evdi_crtc_mode_fixup(struct drm_crtc *crtc,
 static int evdi_crtc_mode_set(struct drm_crtc *crtc,
 			      struct drm_display_mode *mode,
 			      struct drm_display_mode *adjusted_mode,
-			      int x, int y, struct drm_framebuffer *old_fb)
+			     __always_unused int x,
+			     __always_unused int y,
+			     struct drm_framebuffer *old_fb)
 {
 	struct drm_device *dev = NULL;
 	struct evdi_device *evdi = NULL;
 	struct evdi_framebuffer *efb = NULL;
 	struct evdi_flip_queue *flip_queue = NULL;
 	struct drm_clip_rect rect;
+
+	if (crtc->primary == NULL) {
+		EVDI_DEBUG("evdi_crtc_mode_set primary plane is NULL");
+		return 0;
+	}
 
 	EVDI_ENTER();
 
@@ -75,7 +83,7 @@ static int evdi_crtc_mode_set(struct drm_crtc *crtc,
 	flip_queue = evdi->flip_queue;
 	if (flip_queue) {
 		mutex_lock(&flip_queue->lock);
-		flip_queue->vblank_interval = HZ / mode->vrefresh;
+		flip_queue->vblank_interval = HZ / drm_mode_vrefresh(mode);
 		mutex_unlock(&flip_queue->lock);
 	}
 
@@ -146,7 +154,7 @@ static void evdi_sched_page_flip(struct work_struct *work)
 static int evdi_crtc_page_flip(struct drm_crtc *crtc,
 			       struct drm_framebuffer *fb,
 			       struct drm_pending_vblank_event *event,
-			       uint32_t page_flip_flags)
+			       __always_unused uint32_t page_flip_flags)
 {
 	struct drm_device *dev = crtc->dev;
 	struct evdi_device *evdi = dev->dev_private;
@@ -219,8 +227,10 @@ static int evdi_crtc_cursor_set(struct drm_crtc *crtc,
 		return ret;
 	}
 
-	/* For now we don't care whether the application wanted the mouse set,
-	   or not. */
+	/*
+	 * For now we don't care whether the application wanted the mouse set,
+	 * or not.
+	 */
 	return evdi_crtc_page_flip(crtc, NULL, NULL, 0);
 }
 
@@ -233,11 +243,11 @@ static int evdi_crtc_cursor_move(struct drm_crtc *crtc, int x, int y)
 	mutex_lock(&dev->struct_mutex);
 	if (!evdi_cursor_enabled(evdi->cursor))
 		goto error;
-		ret = evdi_cursor_move(crtc, x, y, evdi->cursor);
-		if (ret) {
-			DRM_ERROR("Failed to move evdi cursor\n");
-			goto error;
-		}
+	ret = evdi_cursor_move(crtc, x, y, evdi->cursor);
+	if (ret) {
+		DRM_ERROR("Failed to move evdi cursor\n");
+		goto error;
+	}
 	mutex_unlock(&dev->struct_mutex);
 	return evdi_crtc_page_flip(crtc, NULL, NULL, 0);
 error:
@@ -245,7 +255,7 @@ error:
 	return ret;
 }
 
-static void evdi_crtc_prepare(struct drm_crtc *crtc)
+static void evdi_crtc_prepare(__always_unused struct drm_crtc *crtc)
 {
 }
 
@@ -291,21 +301,28 @@ static int evdi_crtc_init(struct drm_device *dev)
 	return 0;
 }
 
-static void evdi_flip_workqueue_init(struct drm_device *dev)
+static int evdi_flip_workqueue_init(struct drm_device *dev)
 {
 	struct evdi_device *evdi = dev->dev_private;
 	struct evdi_flip_queue *flip_queue =
 		kzalloc(sizeof(struct evdi_flip_queue), GFP_KERNEL);
 
 	EVDI_CHECKPT();
-	BUG_ON(!flip_queue);
+	if (WARN_ON(!flip_queue))
+		return -ENOMEM;
 	mutex_init(&flip_queue->lock);
 	flip_queue->wq = create_singlethread_workqueue("flip");
-	BUG_ON(!flip_queue->wq);
+	if (WARN_ON(!flip_queue->wq)) {
+		mutex_destroy(&flip_queue->lock);
+		kfree(flip_queue);
+		return -ENOMEM;
+	}
 	INIT_DELAYED_WORK(&flip_queue->work, evdi_sched_page_flip);
 	flip_queue->flip_time = jiffies;
 	flip_queue->vblank_interval = HZ / 60;
 	evdi->flip_queue = flip_queue;
+
+	return 0;
 }
 
 static void evdi_flip_workqueue_cleanup(struct drm_device *dev)
@@ -356,9 +373,7 @@ int evdi_modeset_init(struct drm_device *dev)
 
 	evdi_connector_init(dev, encoder);
 
-	evdi_flip_workqueue_init(dev);
-
-	return 0;
+	return evdi_flip_workqueue_init(dev);
 }
 
 void evdi_modeset_cleanup(struct drm_device *dev)

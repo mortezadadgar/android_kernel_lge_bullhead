@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 - 2016 DisplayLink (UK) Ltd.
+ * Copyright (c) 2013 - 2017 DisplayLink (UK) Ltd.
  *
  * This file is subject to the terms and conditions of the GNU General Public
  * License v2. See the file COPYING in the main directory of this archive for
@@ -154,17 +154,17 @@ static int copy_pixels(struct evdi_framebuffer *ufb,
 				       max_x, max_y);
 }
 
-static void painter_lock(struct evdi_painter *painter)
-{
-	EVDI_CHECKPT();
-	mutex_lock(&painter->lock);
-}
+#define painter_lock(painter)                           \
+	do {                                            \
+		EVDI_VERBOSE("Painter lock\n");         \
+		mutex_lock(&painter->lock);             \
+	} while (0)
 
-static void painter_unlock(struct evdi_painter *painter)
-{
-	EVDI_CHECKPT();
-	mutex_unlock(&painter->lock);
-}
+#define painter_unlock(painter)                         \
+	do {                                            \
+		EVDI_VERBOSE("Painter unlock\n");       \
+		mutex_unlock(&painter->lock);           \
+	} while (0)
 
 bool evdi_painter_is_connected(struct evdi_device *evdi)
 {
@@ -360,17 +360,23 @@ void evdi_painter_mode_changed_notify(struct evdi_device *evdi,
 				      struct drm_display_mode *new_mode)
 {
 	struct evdi_painter *painter = evdi->painter;
-	EVDI_DEBUG("(dev=%d) Notifying mode changed: %dx%d@%d; bpp %d; ",
+
+	int bits_per_pixel = fb->bits_per_pixel;
+	uint32_t pixel_format = fb->pixel_format;
+
+	EVDI_DEBUG(
+		"(dev=%d) Notifying mode changed: %dx%d@%d; bpp %d; ",
 		evdi->dev_index, new_mode->hdisplay, new_mode->vdisplay,
-		drm_mode_vrefresh(new_mode), fb->bits_per_pixel);
-	EVDI_DEBUG("pixel format %d\n", fb->pixel_format);
+		drm_mode_vrefresh(new_mode), bits_per_pixel);
+	EVDI_DEBUG("pixel format %d\n", pixel_format);
+
 	evdi_painter_send_mode_changed(painter,
 				       new_mode,
-				       fb->bits_per_pixel,
-				       fb->pixel_format);
+				       bits_per_pixel,
+				       pixel_format);
 }
 
-int
+static int
 evdi_painter_connect(struct evdi_device *evdi,
 		     void const __user *edid_data, unsigned int edid_length,
 		     uint32_t sku_area_limit,
@@ -397,7 +403,7 @@ evdi_painter_connect(struct evdi_device *evdi,
 		return -ENOMEM;
 
 	if (copy_from_user(new_edid, edid_data, edid_length)) {
-		EVDI_ERROR("(dev=%d) LSP Failed to read edid\n", dev_index);
+		EVDI_ERROR("(dev=%d) Failed to read edid\n", dev_index);
 		kfree(new_edid);
 		return -EFAULT;
 	}
@@ -415,9 +421,6 @@ evdi_painter_connect(struct evdi_device *evdi,
 		EVDI_WARN("(dev=%d) Double connect - replacing %p with %p\n",
 			  dev_index, painter->drm_filp, file);
 
-	EVDI_DEBUG("(dev=%d) Connected with %p\n", evdi->dev_index,
-		   painter->drm_filp);
-
 	painter_lock(painter);
 
 	evdi->dev_index = dev_index;
@@ -430,13 +433,18 @@ evdi_painter_connect(struct evdi_device *evdi,
 
 	painter_unlock(painter);
 
+	EVDI_DEBUG("(dev=%d) Connected with %p\n", evdi->dev_index,
+		   painter->drm_filp);
+
 	drm_helper_hpd_irq_event(evdi->ddev);
+
 	drm_helper_resume_force_mode(evdi->ddev);
 
 	return 0;
 }
 
-void evdi_painter_disconnect(struct evdi_device *evdi, struct drm_file *file)
+static void evdi_painter_disconnect(struct evdi_device *evdi,
+	struct drm_file *file)
 {
 	struct evdi_painter *painter = evdi->painter;
 
@@ -512,7 +520,7 @@ int evdi_painter_connect_ioctl(struct drm_device *drm_dev, void *data,
 }
 
 int evdi_painter_grabpix_ioctl(struct drm_device *drm_dev, void *data,
-			       struct drm_file *file)
+			       __always_unused struct drm_file *file)
 {
 	struct evdi_device *evdi = drm_dev->dev_private;
 	struct evdi_painter *painter = evdi->painter;
@@ -611,8 +619,9 @@ unlock:
 	return err;
 }
 
-int evdi_painter_request_update_ioctl(struct drm_device *drm_dev, void *data,
-				      struct drm_file *file)
+int evdi_painter_request_update_ioctl(struct drm_device *drm_dev,
+				      __always_unused void *data,
+				      __always_unused struct drm_file *file)
 {
 	struct evdi_device *evdi = drm_dev->dev_private;
 	struct evdi_painter *painter = evdi->painter;

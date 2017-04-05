@@ -2,6 +2,7 @@
  * evdi_cursor.c
  *
  * Copyright (c) 2016 The Chromium OS Authors
+ * Copyright (c) 2016 - 2017 DisplayLink (UK) Ltd.
  *
  * This program is free software; you can redistribute  it and/or modify it
  * under  the terms of  the GNU General  Public License as published by the
@@ -50,7 +51,8 @@ int evdi_cursor_alloc(struct evdi_cursor **cursor)
 
 void evdi_cursor_free(struct evdi_cursor *cursor)
 {
-	BUG_ON(!cursor);
+	if (WARN_ON(!cursor))
+		return;
 	kfree(cursor);
 }
 
@@ -84,7 +86,7 @@ static int evdi_cursor_download(struct evdi_cursor *cursor,
 	return 0;
 }
 
-int evdi_cursor_set(struct drm_crtc *crtc, struct drm_file *file,
+int evdi_cursor_set(__maybe_unused struct drm_crtc *crtc, struct drm_file *file,
 		uint32_t handle, uint32_t width, uint32_t height,
 		struct evdi_cursor *cursor)
 {
@@ -116,8 +118,8 @@ int evdi_cursor_set(struct drm_crtc *crtc, struct drm_file *file,
 	return 0;
 }
 
-int evdi_cursor_move(struct drm_crtc *crtc, int x, int y,
-		struct evdi_cursor *cursor)
+int evdi_cursor_move(__always_unused struct drm_crtc *crtc,
+		     int x, int y, struct evdi_cursor *cursor)
 {
 	cursor->x = x;
 	cursor->y = y;
@@ -160,8 +162,8 @@ int evdi_cursor_composing_and_copy(struct evdi_cursor *cursor,
 				   struct evdi_framebuffer *ufb,
 				   char __user *buffer,
 				   int buf_byte_stride,
-				   int const max_x,
-				   int const max_y)
+				   __always_unused int const max_x,
+				   __always_unused int const max_y)
 {
 	int x, y;
 	struct drm_framebuffer *fb = &ufb->base;
