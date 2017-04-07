@@ -30,7 +30,7 @@ int evdi_driver_load(struct drm_device *dev,
 	evdi->ddev = dev;
 	dev->dev_private = evdi;
 
-	ret =  evdi_cursor_alloc(&evdi->cursor);
+	ret =  evdi_cursor_init(&evdi->cursor);
 	if (ret)
 		goto err;
 
