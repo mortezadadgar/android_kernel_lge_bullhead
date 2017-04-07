@@ -118,11 +118,11 @@ static void collapse_dirty_rects(struct drm_clip_rect *rects, int *count)
 }
 
 static int copy_primary_pixels(struct evdi_framebuffer *ufb,
-			char __user *buffer,
-			int buf_byte_stride,
-			int num_rects, struct drm_clip_rect *rects,
-			int const max_x,
-			int const max_y)
+			       char __user *buffer,
+			       int buf_byte_stride,
+			       int num_rects, struct drm_clip_rect *rects,
+			       int const max_x,
+			       int const max_y)
 {
 	struct drm_framebuffer *fb = &ufb->base;
 	struct drm_clip_rect *r;
@@ -159,22 +159,21 @@ static int copy_primary_pixels(struct evdi_framebuffer *ufb,
 	return 0;
 }
 
-static int copy_cursor_pixels(struct evdi_framebuffer *ufb,
-			char __user *buffer,
-			int buf_byte_stride,
-			struct evdi_cursor *cursor)
+static void copy_cursor_pixels(struct evdi_framebuffer *efb,
+			      char __user *buffer,
+			      int buf_byte_stride,
+			      struct evdi_cursor *cursor)
 {
-	int ret = 0;
-
 	if (evdi_enable_cursor_blending) {
 		evdi_cursor_lock(cursor);
-		ret = evdi_cursor_compose_and_copy(cursor,
-				       ufb,
-				       buffer,
-				       buf_byte_stride);
+		if (evdi_cursor_compose_and_copy(cursor,
+						   efb,
+						   buffer,
+						   buf_byte_stride))
+			EVDI_ERROR("Failed to blend cursor\n");
+
 		evdi_cursor_unlock(cursor);
 	}
-	return ret;
 }
 
 #define painter_lock(painter)                           \
@@ -301,7 +300,6 @@ void evdi_painter_send_cursor_set(struct evdi_painter *painter,
 		}
 		evdi_cursor_unlock(cursor);
 
-
 		event->base.event = &event->cursor_set.base;
 		event->base.file_priv = painter->drm_filp;
 		event->base.destroy =
@@ -418,7 +416,8 @@ void evdi_painter_mark_dirty(struct evdi_device *evdi,
 	painter_lock(evdi->painter);
 	efb = evdi->painter->scanout_fb;
 	if (!efb) {
-		EVDI_WARN("Skip clip rect. Scanout buffer not set.\n");
+		EVDI_WARN("(dev=%d) Skip clip rect. Scanout buffer not set.\n",
+			  evdi->dev_index);
 		goto unlock;
 	}
 
@@ -716,17 +715,17 @@ int evdi_painter_grabpix_ioctl(struct drm_device *drm_dev, void *data,
 			err = -EFAULT;
 		if (err == 0)
 			err = copy_primary_pixels(efb,
-					cmd->buffer,
-					cmd->buf_byte_stride,
-					painter->num_dirts,
-					painter->dirty_rects,
-					cmd->buf_width,
-					cmd->buf_height);
+						  cmd->buffer,
+						  cmd->buf_byte_stride,
+						  painter->num_dirts,
+						  painter->dirty_rects,
+						  cmd->buf_width,
+						  cmd->buf_height);
 		if (err == 0)
-			err = copy_cursor_pixels(efb,
-					cmd->buffer,
-					cmd->buf_byte_stride,
-					evdi->cursor);
+			copy_cursor_pixels(efb,
+					   cmd->buffer,
+					   cmd->buf_byte_stride,
+					   evdi->cursor);
 
 		painter->num_dirts = 0;
 	}

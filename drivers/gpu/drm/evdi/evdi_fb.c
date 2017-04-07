@@ -264,8 +264,6 @@ static void evdi_user_framebuffer_destroy(struct drm_framebuffer *fb)
 	struct evdi_framebuffer *ufb = to_evdi_fb(fb);
 
 	EVDI_CHECKPT();
-	if (ufb->obj->vmapping)
-		evdi_gem_vunmap(ufb->obj);
 
 	if (ufb->obj)
 		drm_gem_object_unreference_unlocked(&ufb->obj->base);
@@ -463,6 +461,15 @@ void evdi_fbdev_unplug(struct drm_device *dev)
 	}
 }
 
+int evdi_fb_get_bpp(uint32_t format)
+{
+	unsigned int depth;
+	int bpp;
+
+	drm_fb_get_bpp_depth(format, &depth, &bpp);
+	return bpp;
+}
+
 struct drm_framebuffer *evdi_fb_user_fb_create(
 					struct drm_device *dev,
 					struct drm_file *file,
@@ -473,10 +480,7 @@ struct drm_framebuffer *evdi_fb_user_fb_create(
 	int ret;
 	uint32_t size;
 
-	unsigned int depth;
-	int bpp;
-
-	drm_fb_get_bpp_depth(mode_cmd->pixel_format, &depth, &bpp);
+	int bpp = evdi_fb_get_bpp(mode_cmd->pixel_format);
 	if (bpp != 32) {
 		EVDI_ERROR("Unsupported bpp (%d)\n", bpp);
 		return ERR_PTR(-EINVAL);
