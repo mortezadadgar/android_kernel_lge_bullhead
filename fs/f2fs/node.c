@@ -22,7 +22,7 @@
 #include "trace.h"
 #include <trace/events/f2fs.h>
 
-#define on_build_free_nids(nmi) mutex_is_locked(&nm_i->build_lock)
+#define on_build_free_nids(nmi) mutex_is_locked(&(nm_i)->build_lock)
 
 #ifndef PTR_ERR_OR_ZERO
 static inline int __must_check PTR_ERR_OR_ZERO(__force const void *ptr)
