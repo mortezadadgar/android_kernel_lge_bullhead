@@ -371,7 +371,7 @@ static int btmrvl_sdio_verify_fw_download(struct btmrvl_sdio_card *card,
 		if (firmwarestat == FIRMWARE_READY)
 			return 0;
 
-		msleep(100);
+		msleep(10);
 	}
 
 	return -ETIMEDOUT;
