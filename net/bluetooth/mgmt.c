@@ -4195,8 +4195,6 @@ static int set_advertising_intervals(struct sock *sk, struct hci_dev *hdev,
 {
 	struct mgmt_cp_set_advertising_intervals *cp = data;
 	int err;
-	/* If both min_interval and max_interval are 0, use default values. */
-	bool use_default = cp->min_interval == 0 && cp->max_interval == 0;
 
 	BT_DBG("%s", hdev->name);
 
@@ -4207,9 +4205,9 @@ static int set_advertising_intervals(struct sock *sk, struct hci_dev *hdev,
 				       MGMT_STATUS_REJECTED);
 
 	/* Check the validity of the intervals. */
-	if (!use_default && (cp->min_interval < HCI_VALID_LE_ADV_MIN_INTERVAL ||
-			     cp->max_interval > HCI_VALID_LE_ADV_MAX_INTERVAL ||
-			     cp->min_interval > cp->max_interval)) {
+	if (cp->min_interval < HCI_VALID_LE_ADV_MIN_INTERVAL ||
+	    cp->max_interval > HCI_VALID_LE_ADV_MAX_INTERVAL ||
+	    cp->min_interval > cp->max_interval) {
 		return mgmt_cmd_status(sk, hdev->id,
 				       MGMT_OP_SET_ADVERTISING_INTERVALS,
 				       MGMT_STATUS_INVALID_PARAMS);
@@ -4217,15 +4215,9 @@ static int set_advertising_intervals(struct sock *sk, struct hci_dev *hdev,
 
 	hci_dev_lock(hdev);
 
-	if (use_default) {
-		hci_dev_clear_flag(hdev, HCI_ADVERTISING_INTERVALS);
-		hdev->le_adv_min_interval = HCI_DEFAULT_LE_ADV_MIN_INTERVAL;
-		hdev->le_adv_max_interval = HCI_DEFAULT_LE_ADV_MAX_INTERVAL;
-	} else {
-		hci_dev_set_flag(hdev, HCI_ADVERTISING_INTERVALS);
-		hdev->le_adv_min_interval = cp->min_interval;
-		hdev->le_adv_max_interval = cp->max_interval;
-	}
+	hci_dev_set_flag(hdev, HCI_ADVERTISING_INTERVALS);
+	hdev->le_adv_min_interval = cp->min_interval;
+	hdev->le_adv_max_interval = cp->max_interval;
 
 	/* Re-enable advertising only when it is already on. */
 	if (hci_dev_test_flag(hdev, HCI_LE_ADV)) {
