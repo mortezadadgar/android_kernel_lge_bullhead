@@ -736,8 +736,12 @@ static struct discard_cmd *__create_discard_cmd(struct f2fs_sb_info *sbi,
 		block_t start, block_t len)
 {
 	struct discard_cmd_control *dcc = SM_I(sbi)->dcc_info;
-	struct list_head *pend_list = &(dcc->pend_list);
+	struct list_head *pend_list;
 	struct discard_cmd *dc;
+
+	f2fs_bug_on(sbi, !len);
+
+	pend_list = &dcc->pend_list[plist_idx(len)];
 
 	dc = f2fs_kmem_cache_alloc(discard_cmd_slab, GFP_NOFS);
 	INIT_LIST_HEAD(&dc->list);
@@ -943,9 +947,16 @@ do_insert:
 	return dc;
 }
 
+static void __relocate_discard_cmd(struct discard_cmd_control *dcc,
+						struct discard_cmd *dc)
+{
+	list_move_tail(&dc->list, &dcc->pend_list[plist_idx(dc->len)]);
+}
+
 static void __punch_discard_cmd(struct f2fs_sb_info *sbi,
 				struct discard_cmd *dc, block_t blkaddr)
 {
+	struct discard_cmd_control *dcc = SM_I(sbi)->dcc_info;
 	struct discard_info di = dc->di;
 	bool modified = false;
 
@@ -956,6 +967,7 @@ static void __punch_discard_cmd(struct f2fs_sb_info *sbi,
 
 	if (blkaddr > di.lstart) {
 		dc->len = blkaddr - dc->lstart;
+		__relocate_discard_cmd(dcc, dc);
 		modified = true;
 	}
 
@@ -969,6 +981,7 @@ static void __punch_discard_cmd(struct f2fs_sb_info *sbi,
 			dc->lstart++;
 			dc->len--;
 			dc->start++;
+			__relocate_discard_cmd(dcc, dc);
 		}
 	}
 }
@@ -1027,6 +1040,7 @@ static void __update_discard_tree_range(struct f2fs_sb_info *sbi,
 			prev_dc->bdev == bdev &&
 			__is_discard_back_mergeable(&di, &prev_dc->di)) {
 			prev_dc->di.len += di.len;
+			__relocate_discard_cmd(dcc, prev_dc);
 			di = prev_dc->di;
 			tdc = prev_dc;
 			merged = true;
@@ -1038,6 +1052,7 @@ static void __update_discard_tree_range(struct f2fs_sb_info *sbi,
 			next_dc->di.lstart = di.lstart;
 			next_dc->di.len += di.len;
 			next_dc->di.start = di.start;
+			__relocate_discard_cmd(dcc, next_dc);
 			if (tdc)
 				__remove_discard_cmd(sbi, tdc);
 
@@ -1098,16 +1113,20 @@ void f2fs_wait_discard_bio(struct f2fs_sb_info *sbi, block_t blkaddr)
 void f2fs_wait_discard_bios(struct f2fs_sb_info *sbi)
 {
 	struct discard_cmd_control *dcc = SM_I(sbi)->dcc_info;
-	struct list_head *pend_list = &(dcc->pend_list);
+	struct list_head *pend_list;
 	struct list_head *wait_list = &(dcc->wait_list);
 	struct discard_cmd *dc, *tmp;
 	struct blk_plug plug;
+	int i;
 
 	mutex_lock(&dcc->cmd_lock);
 
 	blk_start_plug(&plug);
-	list_for_each_entry_safe(dc, tmp, pend_list, list)
-		__submit_discard_cmd(sbi, dc);
+	for (i = 0; i < MAX_PLIST_NUM; i++) {
+		pend_list = &dcc->pend_list[i];
+		list_for_each_entry_safe(dc, tmp, pend_list, list)
+			__submit_discard_cmd(sbi, dc);
+	}
 	blk_finish_plug(&plug);
 
 	list_for_each_entry_safe(dc, tmp, wait_list, list) {
@@ -1123,26 +1142,30 @@ static int issue_discard_thread(void *data)
 	struct f2fs_sb_info *sbi = data;
 	struct discard_cmd_control *dcc = SM_I(sbi)->dcc_info;
 	wait_queue_head_t *q = &dcc->discard_wait_queue;
-	struct list_head *pend_list = &dcc->pend_list;
+	struct list_head *pend_list;
 	struct list_head *wait_list = &dcc->wait_list;
 	struct discard_cmd *dc, *tmp;
 	struct blk_plug plug;
-	int iter = 0;
+	int iter = 0, i;
 repeat:
 	if (kthread_should_stop())
 		return 0;
 
 	mutex_lock(&dcc->cmd_lock);
 	blk_start_plug(&plug);
-	list_for_each_entry_safe(dc, tmp, pend_list, list) {
-		f2fs_bug_on(sbi, dc->state != D_PREP);
+	for (i = MAX_PLIST_NUM - 1; i >= 0; i--) {
+		pend_list = &dcc->pend_list[i];
+		list_for_each_entry_safe(dc, tmp, pend_list, list) {
+			f2fs_bug_on(sbi, dc->state != D_PREP);
 
-		if (is_idle(sbi))
-			__submit_discard_cmd(sbi, dc);
+			if (is_idle(sbi))
+				__submit_discard_cmd(sbi, dc);
 
-		if (iter++ > DISCARD_ISSUE_RATE)
-			break;
+			if (iter++ > DISCARD_ISSUE_RATE)
+				goto next_step;
+		}
 	}
+next_step:
 	blk_finish_plug(&plug);
 
 	list_for_each_entry_safe(dc, tmp, wait_list, list) {
@@ -1157,7 +1180,7 @@ repeat:
 	congestion_wait(BLK_RW_SYNC, HZ/50);
 
 	wait_event_interruptible(*q, kthread_should_stop() ||
-			!list_empty(pend_list) || !list_empty(wait_list));
+				atomic_read(&dcc->discard_cmd_cnt));
 	goto repeat;
 }
 
@@ -1437,7 +1460,7 @@ static int create_discard_cmd_control(struct f2fs_sb_info *sbi)
 {
 	dev_t dev = sbi->sb->s_bdev->bd_dev;
 	struct discard_cmd_control *dcc;
-	int err = 0;
+	int err = 0, i;
 
 	if (SM_I(sbi)->dcc_info) {
 		dcc = SM_I(sbi)->dcc_info;
@@ -1449,7 +1472,8 @@ static int create_discard_cmd_control(struct f2fs_sb_info *sbi)
 		return -ENOMEM;
 
 	INIT_LIST_HEAD(&dcc->entry_list);
-	INIT_LIST_HEAD(&dcc->pend_list);
+	for (i = 0; i < MAX_PLIST_NUM; i++)
+		INIT_LIST_HEAD(&dcc->pend_list[i]);
 	INIT_LIST_HEAD(&dcc->wait_list);
 	mutex_init(&dcc->cmd_lock);
 	atomic_set(&dcc->issued_discard, 0);
