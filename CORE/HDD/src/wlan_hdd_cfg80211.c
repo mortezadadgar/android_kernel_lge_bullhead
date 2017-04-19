@@ -12672,6 +12672,8 @@ static int wlan_hdd_cfg80211_sap_configuration_set(struct wiphy *wiphy,
 	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_RX_STBC
 #define REMOTE_CH_WIDTH\
 	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_CH_WIDTH
+#define REMOTE_SGI_ENABLE\
+	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_SGI_ENABLE
 
 /**
  * hdd_get_peer_txrx_rate_cb() - get station's txrx rate callback
@@ -12681,11 +12683,11 @@ static int wlan_hdd_cfg80211_sap_configuration_set(struct wiphy *wiphy,
  * This function fill txrx rate information to aStaInfo[staid] of hostapd
  * adapter
  */
-static void hdd_get_peer_txrx_rate_cb(struct sir_peer_info_resp *peer_info,
+static void hdd_get_peer_txrx_rate_cb(struct sir_peer_info_ext_resp *peer_info,
 		void *context)
 {
 	struct statsContext *get_txrx_rate_context;
-	struct sir_peer_info *txrx_rate = NULL;
+	struct sir_peer_info_ext *txrx_rate = NULL;
 	hdd_adapter_t *adapter;
 	uint8_t staid;
 
@@ -12720,22 +12722,32 @@ static void hdd_get_peer_txrx_rate_cb(struct sir_peer_info_resp *peer_info,
 		return;
 	}
 
-	if (peer_info->count) {
-		adapter = get_txrx_rate_context->pAdapter;
-		txrx_rate = peer_info->info;
-		if (VOS_STATUS_SUCCESS != hdd_softap_GetStaId(adapter,
-					(v_MACADDR_t *)txrx_rate->peer_macaddr,
-					&staid)) {
-			spin_unlock(&hdd_context_lock);
-			hddLog(VOS_TRACE_LEVEL_ERROR,
-					"%s: Station MAC address does not matching",
-					__func__);
-			return;
-		}
-
-		adapter->aStaInfo[staid].tx_rate = txrx_rate->tx_rate;
-		adapter->aStaInfo[staid].rx_rate = txrx_rate->rx_rate;
+	if (!peer_info->count) {
+		spin_unlock(&hdd_context_lock);
+		hddLog(VOS_TRACE_LEVEL_ERROR,
+				FL("Fail to get remote peer info"));
+		return;
 	}
+
+	adapter = get_txrx_rate_context->pAdapter;
+	txrx_rate = peer_info->info;
+	if (VOS_STATUS_SUCCESS != hdd_softap_GetStaId(adapter,
+				(v_MACADDR_t *)txrx_rate->peer_macaddr,
+				&staid)) {
+		spin_unlock(&hdd_context_lock);
+		hddLog(VOS_TRACE_LEVEL_ERROR,
+				"%s: Station MAC address does not matching",
+				__func__);
+		return;
+	}
+
+	adapter->aStaInfo[staid].tx_rate = txrx_rate->tx_rate;
+	adapter->aStaInfo[staid].rx_rate = txrx_rate->rx_rate;
+	hddLog(VOS_TRACE_LEVEL_INFO, "%s txrate %x rxrate %x\n",
+			__func__,
+			adapter->aStaInfo[staid].tx_rate,
+			adapter->aStaInfo[staid].rx_rate);
+
 	get_txrx_rate_context->magic = 0;
 
 	/* notify the caller */
@@ -12757,7 +12769,7 @@ static void hdd_get_peer_txrx_rate_cb(struct sir_peer_info_resp *peer_info,
  * @adapter: hostapd interface
  * @macaddress: mac address of requested peer
  *
- * This function call sme_get_peer_info to get txrx rate
+ * This function call sme_get_peer_info_ext to get txrx rate
  *
  * Return: 0 on success, otherwise error value
  */
@@ -12767,7 +12779,7 @@ static int wlan_hdd_get_txrx_rate(hdd_adapter_t *adapter,
 	eHalStatus hstatus;
 	int ret;
 	struct statsContext context;
-	struct sir_peer_info_req txrx_rate_req;
+	struct sir_peer_info_ext_req txrx_rate_req;
 
 	if (NULL == adapter) {
 		hddLog(VOS_TRACE_LEVEL_ERROR, "%s: pAdapter is NULL",
@@ -12782,8 +12794,9 @@ static int wlan_hdd_get_txrx_rate(hdd_adapter_t *adapter,
 	vos_mem_copy(&(txrx_rate_req.peer_macaddr), &macaddress,
 				VOS_MAC_ADDR_SIZE);
 	txrx_rate_req.sessionid = adapter->sessionId;
-	hstatus = sme_get_peer_info(WLAN_HDD_GET_HAL_CTX(adapter),
-				txrx_rate_req,
+	txrx_rate_req.reset_after_request = 0;
+	hstatus = sme_get_peer_info_ext(WLAN_HDD_GET_HAL_CTX(adapter),
+				&txrx_rate_req,
 				&context,
 				hdd_get_peer_txrx_rate_cb);
 	if (eHAL_STATUS_SUCCESS != hstatus) {
@@ -12880,7 +12893,8 @@ static int hdd_get_station_remote(hdd_context_t *hdd_ctx,
 		(sizeof(stainfo->isQosEnabled) + NLA_HDRLEN) +
 		(sizeof(stainfo->mode) + NLA_HDRLEN);
 
-	if (wlan_hdd_get_txrx_rate(adapter, mac_addr)) {
+	if (!hdd_ctx->cfg_ini->sap_get_peer_info ||
+			wlan_hdd_get_txrx_rate(adapter, mac_addr)) {
 		hddLog(LOGE, FL("fail to get tx/rx rate"));
 		txrx_rate = false;
 	} else {
@@ -12893,7 +12907,8 @@ static int hdd_get_station_remote(hdd_context_t *hdd_ctx,
 		nl_buf_len += (sizeof(stainfo->ampdu) + NLA_HDRLEN) +
 			(sizeof(stainfo->tx_stbc) + NLA_HDRLEN) +
 			(sizeof(stainfo->rx_stbc) + NLA_HDRLEN) +
-			(sizeof(stainfo->ch_width) + NLA_HDRLEN);
+			(sizeof(stainfo->ch_width) + NLA_HDRLEN) +
+			(sizeof(stainfo->sgi_enable) + NLA_HDRLEN);
 
 	hddLog(VOS_TRACE_LEVEL_INFO, FL("buflen %d hdrlen %d"),
 			nl_buf_len, NLMSG_HDRLEN);
@@ -12921,9 +12936,10 @@ static int hdd_get_station_remote(hdd_context_t *hdd_ctx,
 				stainfo->ampdu, stainfo->tx_stbc,
 				stainfo->rx_stbc);
 		hddLog(VOS_TRACE_LEVEL_INFO,
-				FL("wmm %d chwidth %d"),
+				FL("wmm %d chwidth %d sgi %d"),
 				stainfo->isQosEnabled,
-				stainfo->ch_width);
+				stainfo->ch_width,
+				stainfo->sgi_enable);
 	}
 
 	if (nla_put_u32(skb, REMOTE_MAX_PHY_RATE, stainfo->max_phy_rate) ||
@@ -12953,7 +12969,8 @@ static int hdd_get_station_remote(hdd_context_t *hdd_ctx,
 		if (nla_put_u8(skb, REMOTE_AMPDU, stainfo->ampdu) ||
 		    nla_put_u8(skb, REMOTE_TX_STBC, stainfo->tx_stbc) ||
 		    nla_put_u8(skb, REMOTE_RX_STBC, stainfo->rx_stbc) ||
-		    nla_put_u8(skb, REMOTE_CH_WIDTH, stainfo->ch_width)) {
+		    nla_put_u8(skb, REMOTE_CH_WIDTH, stainfo->ch_width) ||
+		    nla_put_u8(skb, REMOTE_SGI_ENABLE, stainfo->sgi_enable)) {
 			hddLog(LOGE, FL("put fail"));
 			goto fail;
 		}
@@ -13106,6 +13123,7 @@ hdd_cfg80211_get_station_cmd(struct wiphy *wiphy,
 #undef REMOTE_TX_STBC
 #undef REMOTE_RX_STBC
 #undef REMOTE_CH_WIDTH
+#undef REMOTE_SGI_ENABLE
 
 static const struct
 nla_policy qca_wlan_vendor_attr[QCA_WLAN_VENDOR_ATTR_MAX+1] = {
@@ -23835,7 +23853,9 @@ static void hdd_fill_bw_mcs(struct station_info *sinfo,
 		bool vht)
 {
 	if (vht) {
+		sinfo->txrate.nss = nss;
 		sinfo->txrate.mcs = mcsidx;
+		sinfo->txrate.flags |= RATE_INFO_FLAGS_VHT_MCS;
 		if (rate_flags & eHAL_TX_RATE_VHT80)
 			sinfo->txrate.bw = RATE_INFO_BW_80;
 		else if (rate_flags & eHAL_TX_RATE_VHT40)
@@ -23870,7 +23890,9 @@ static void hdd_fill_bw_mcs(struct station_info *sinfo,
 		bool vht)
 {
 	if (vht) {
+		sinfo->txrate.nss = nss;
 		sinfo->txrate.mcs = mcsidx;
+		sinfo->txrate.flags |= RATE_INFO_FLAGS_VHT_MCS;
 		if (rate_flags & eHAL_TX_RATE_VHT80)
 			sinfo->txrate.flags |= RATE_INFO_FLAGS_80_MHZ_WIDTH;
 		else if (rate_flags & eHAL_TX_RATE_VHT40)
@@ -23936,9 +23958,15 @@ static void hdd_fill_sinfo_rate_info(struct station_info *sinfo,
 		sinfo->txrate.legacy = maxrate;
 	} else {
 		/* must be MCS */
-		sinfo->txrate.nss = nss;
-		hdd_fill_bw_mcs_vht(sinfo, rate_flags, mcsidx, nss);
-		hdd_fill_bw_mcs(sinfo, rate_flags, mcsidx, nss, FALSE);
+		if (rate_flags &
+				(eHAL_TX_RATE_VHT80 |
+				 eHAL_TX_RATE_VHT40 |
+				 eHAL_TX_RATE_VHT20))
+			hdd_fill_bw_mcs_vht(sinfo, rate_flags, mcsidx, nss);
+
+		if (rate_flags & (eHAL_TX_RATE_HT20 | eHAL_TX_RATE_HT40))
+			hdd_fill_bw_mcs(sinfo, rate_flags, mcsidx, nss, FALSE);
+
 		if (rate_flags & eHAL_TX_RATE_SGI) {
 			if (!(sinfo->txrate.flags & RATE_INFO_FLAGS_VHT_MCS))
 				sinfo->txrate.flags |= RATE_INFO_FLAGS_MCS;
@@ -24029,7 +24057,7 @@ static void hdd_fill_rate_info(struct station_info *sinfo,
 			cfg->reportMaxLinkSpeed);
 
 	/* convert to 100kbps expected in rate table */
-	myrate = stats->last_tx_rate/100;
+	myrate = stats->tx_rate.rate/100;
 	rate_flags = stainfo->rate_flags;
 	if (!(rate_flags & eHAL_TX_RATE_LEGACY)) {
 		nss = stainfo->nss;
