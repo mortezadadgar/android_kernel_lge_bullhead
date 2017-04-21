@@ -41,6 +41,10 @@ head-y		:= arch/arm64/kernel/head.o
 # The byte offset of the kernel image in RAM from the start of RAM.
 TEXT_OFFSET := 0x00080000
 
+ifeq ($(cc-name),clang)
+KBUILD_CFLAGS += $(call cc-disable-warning, asm-operand-widths)
+endif
+
 export	TEXT_OFFSET GZFLAGS
 
 core-y		+= arch/arm64/kernel/ arch/arm64/mm/
