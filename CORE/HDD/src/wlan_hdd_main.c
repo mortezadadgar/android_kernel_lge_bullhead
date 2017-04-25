@@ -10737,6 +10737,11 @@ void hdd_deinit_adapter(hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
       case WLAN_HDD_SOFTAP:
       case WLAN_HDD_P2P_GO:
       {
+         if(test_bit(INIT_TX_RX_SUCCESS, &pAdapter->event_flags))
+         {
+            hdd_softap_deinit_tx_rx(pAdapter);
+            clear_bit(INIT_TX_RX_SUCCESS, &pAdapter->event_flags);
+         }
 
          if (test_bit(WMM_INIT_DONE, &pAdapter->event_flags))
          {
