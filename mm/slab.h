@@ -244,7 +244,11 @@ static inline struct kmem_cache *cache_from_obj(struct kmem_cache *s, void *x)
 
 	pr_err("%s: Wrong slab cache. %s but object is from %s\n",
 		__FUNCTION__, cachep->name, s->name);
+#ifdef CONFIG_PANIC_ON_DATA_CORRUPTION
+	BUG_ON(1);
+#else
 	WARN_ON_ONCE(1);
+#endif
 	return s;
 }
 #endif
