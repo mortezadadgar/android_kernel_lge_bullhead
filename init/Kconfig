@@ -1593,6 +1593,14 @@ config SLOB
 
 endchoice
 
+config SLAB_HARDENED
+	default y
+	depends on SLUB
+	bool "Hardened SLAB infrastructure"
+	help
+          Make minor performance sacrifices to harden the kernel slab
+          allocator.
+
 config MMAP_ALLOW_UNINITIALIZED
 	bool "Allow mmapped anonymous memory to be uninitialized"
 	depends on EXPERT && !MMU
