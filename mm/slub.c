@@ -131,6 +131,11 @@ static inline void *fixup_red_left(struct kmem_cache *s, void *p)
 	return p;
 }
 
+static inline bool has_sanitize(struct kmem_cache *s)
+{
+	return IS_ENABLED(CONFIG_SLAB_SANITIZE) && !(s->flags & (SLAB_DESTROY_BY_RCU | SLAB_POISON));
+}
+
 /*
  * Issues still to be resolved:
  *
@@ -2671,6 +2676,20 @@ static __always_inline void slab_free(struct kmem_cache *s,
 	void **object = (void *)x;
 	struct kmem_cache_cpu *c;
 	unsigned long tid;
+
+	if (has_sanitize(s)) {
+		int offset = s->offset ? 0 : sizeof(void *);
+		void *x = head;
+
+		while (1) {
+			memset(x + offset, 0, s->object_size - offset);
+			if (s->ctor)
+				s->ctor(x);
+			if (x == tail_obj)
+				break;
+			x = get_freepointer(s, x);
+		}
+	}
 
 	slab_free_hook(s, x);
 

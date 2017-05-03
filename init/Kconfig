@@ -1608,6 +1608,16 @@ config SLAB_HARDENED
           Make minor performance sacrifices to harden the kernel slab
           allocator.
 
+config SLAB_SANITIZE
+	bool "Sanitize SLAB allocations"
+	depends on SLUB
+	default y
+	help
+	  Zero fill slab allocations on free, reducing the lifetime of
+	  sensitive data and helping to mitigate use-after-free bugs.
+
+	  For slabs with debug poisoning enabling, this has no impact.
+
 config MMAP_ALLOW_UNINITIALIZED
 	bool "Allow mmapped anonymous memory to be uninitialized"
 	depends on EXPERT && !MMU
