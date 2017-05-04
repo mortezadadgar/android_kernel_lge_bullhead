@@ -136,6 +136,11 @@ static inline bool has_sanitize(struct kmem_cache *s)
 	return IS_ENABLED(CONFIG_SLAB_SANITIZE) && !(s->flags & (SLAB_DESTROY_BY_RCU | SLAB_POISON));
 }
 
+static inline bool has_sanitize_verify(struct kmem_cache *s)
+{
+	return IS_ENABLED(CONFIG_SLAB_SANITIZE_VERIFY) && has_sanitize(s);
+}
+
 /*
  * Issues still to be resolved:
  *
@@ -1344,7 +1349,7 @@ static void setup_object(struct kmem_cache *s, struct page *page,
 				void *object)
 {
 	setup_object_debug(s, page, object);
-	if (unlikely(s->ctor))
+	if (unlikely(s->ctor) && !has_sanitize_verify(s))
 		s->ctor(object);
 }
 
@@ -2473,7 +2478,14 @@ redo:
 		stat(s, ALLOC_FASTPATH);
 	}
 
-	if (unlikely(gfpflags & __GFP_ZERO) && object)
+	if (has_sanitize_verify(s) && object) {
+		size_t offset = s->offset ? 0 : sizeof(void *);
+		BUG_ON(memchr_inv(object + offset, 0, s->object_size - offset));
+		if (s->ctor)
+			s->ctor(object);
+		if (unlikely(gfpflags & __GFP_ZERO) && offset)
+			memset(object, 0, sizeof(void *));
+	} else if (unlikely(gfpflags & __GFP_ZERO) && object)
 		memset(object, 0, s->object_size);
 
 	slab_post_alloc_hook(s, gfpflags, object);
@@ -2683,7 +2695,7 @@ static __always_inline void slab_free(struct kmem_cache *s,
 
 		while (1) {
 			memset(x + offset, 0, s->object_size - offset);
-			if (s->ctor)
+			if (!IS_ENABLED(CONFIG_SLAB_SANITIZE_VERIFY) && s->ctor)
 				s->ctor(x);
 			if (x == tail_obj)
 				break;
@@ -2720,7 +2732,6 @@ redo:
 		stat(s, FREE_FASTPATH);
 	} else
 		__slab_free(s, page, x, addr);
-
 }
 
 void kmem_cache_free(struct kmem_cache *s, void *x)
