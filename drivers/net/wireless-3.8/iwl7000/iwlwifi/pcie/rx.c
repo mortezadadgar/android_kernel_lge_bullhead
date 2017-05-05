@@ -1396,11 +1396,9 @@ static void iwl_pcie_irq_handle_error(struct iwl_trans *trans)
 	iwl_pcie_dump_csr(trans);
 	iwl_dump_fh(trans, NULL);
 
-	local_bh_disable();
 	/* The STATUS_FW_ERROR bit is set in this function. This must happen
 	 * before we wake up the command caller, to ensure a proper cleanup. */
 	iwl_trans_fw_error(trans);
-	local_bh_enable();
 
 	for (i = 0; i < trans->cfg->base_params->num_of_queues; i++)
 		del_timer(&trans_pcie->txq[i].stuck_timer);
