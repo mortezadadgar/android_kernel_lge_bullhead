@@ -1135,6 +1135,10 @@ static void iwl_mvm_remove_inactive_tids(struct iwl_mvm *mvm,
 		/* If some TFDs are still queued - don't mark TID as inactive */
 		if (iwl_mvm_tid_queued(&mvmsta->tid_data[tid]))
 			tid_bitmap &= ~BIT(tid);
+
+		/* Don't mark as inactive any TID that has an active BA */
+		if (mvmsta->tid_data[tid].state != IWL_AGG_OFF)
+			tid_bitmap &= ~BIT(tid);
 	}
 
 	/* If all TIDs in the queue are inactive - mark queue as inactive. */
