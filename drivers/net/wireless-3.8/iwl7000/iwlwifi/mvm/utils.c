@@ -673,11 +673,12 @@ int iwl_mvm_reconfig_scd(struct iwl_mvm *mvm, int queue, int fifo, int sta_id,
 	return ret;
 }
 
-void iwl_mvm_enable_txq(struct iwl_mvm *mvm, int queue, int mac80211_queue,
+bool iwl_mvm_enable_txq(struct iwl_mvm *mvm, int queue, int mac80211_queue,
 			u16 ssn, const struct iwl_trans_txq_scd_cfg *cfg,
 			unsigned int wdg_timeout)
 {
 	bool enable_queue = true;
+	bool inc_ssn = false;
 
 	spin_lock_bh(&mvm->queue_info_lock);
 
@@ -686,7 +687,7 @@ void iwl_mvm_enable_txq(struct iwl_mvm *mvm, int queue, int mac80211_queue,
 		spin_unlock_bh(&mvm->queue_info_lock);
 		IWL_ERR(mvm, "Trying to enable TXQ %d with existing TID %d\n",
 			queue, cfg->tid);
-		return;
+		return false;
 	}
 
 	/* Update mappings and refcounts */
@@ -732,13 +733,19 @@ void iwl_mvm_enable_txq(struct iwl_mvm *mvm, int queue, int mac80211_queue,
 		if (iwl_mvm_is_dqa_supported(mvm))
 			cmd.sta_id = cfg->sta_id;
 
-		iwl_trans_txq_enable_cfg(mvm->trans, queue, ssn, NULL,
-					 wdg_timeout);
+		inc_ssn = iwl_trans_txq_enable_cfg(mvm->trans, queue, ssn,
+						   NULL, wdg_timeout);
+
+		if (inc_ssn)
+			le16_add_cpu(&cmd.ssn, 1);
+
 		WARN(iwl_mvm_send_cmd_pdu(mvm, SCD_QUEUE_CFG, 0, sizeof(cmd),
 					  &cmd),
 		     "Failed to configure queue %d on FIFO %d\n", queue,
 		     cfg->fifo);
 	}
+
+	return inc_ssn;
 }
 
 void iwl_mvm_disable_txq(struct iwl_mvm *mvm, int queue, int mac80211_queue,
