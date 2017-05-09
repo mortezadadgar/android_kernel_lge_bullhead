@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -87,6 +87,8 @@ static DEFINE_SPINLOCK(irq_lock);
 
 static LIST_HEAD(hwmon_list);
 static DEFINE_MUTEX(list_lock);
+static DEFINE_MUTEX(sync_lock);
+
 
 static int use_cnt;
 static DEFINE_MUTEX(state_lock);
@@ -778,6 +780,7 @@ static int devfreq_bw_hwmon_ev_handler(struct devfreq *df,
 		break;
 
 	case DEVFREQ_GOV_INTERVAL:
+		mutex_lock(&sync_lock);
 		sample_ms = *(unsigned int *)data;
 		sample_ms = max(MIN_MS, sample_ms);
 		sample_ms = min(MAX_MS, sample_ms);
@@ -798,6 +801,7 @@ static int devfreq_bw_hwmon_ev_handler(struct devfreq *df,
 			mutex_unlock(&sync_lock);
 			return ret;
 		}
+		mutex_unlock(&sync_lock);
 		break;
 
 	case DEVFREQ_GOV_SUSPEND:
