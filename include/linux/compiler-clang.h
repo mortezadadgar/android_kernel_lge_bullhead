@@ -15,3 +15,5 @@
  * with any version that can compile the kernel
  */
 #define __UNIQUE_ID(prefix) __PASTE(__PASTE(__UNIQUE_ID_, prefix), __COUNTER__)
+
+#define __nocfi		__attribute__((no_sanitize("cfi")))

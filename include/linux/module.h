@@ -17,6 +17,7 @@
 #include <linux/moduleparam.h>
 #include <linux/tracepoint.h>
 #include <linux/export.h>
+#include <linux/cfi.h>
 
 #include <linux/percpu.h>
 #include <asm/module.h>
@@ -247,6 +248,10 @@ struct module
 	const struct kernel_symbol *syms;
 	const unsigned long *crcs;
 	unsigned int num_syms;
+
+#ifdef CONFIG_CFI_CLANG
+	cfi_check_fn cfi_check;
+#endif
 
 	/* Kernel parameters. */
 	struct kernel_param *kp;
