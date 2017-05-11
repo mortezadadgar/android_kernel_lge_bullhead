@@ -206,6 +206,7 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
 	int rc;
 	struct task_struct *task, *me = current;
 	int init_pids = thread_group_leader(me) ? 1 : 2;
+	unsigned long timeout;
 	bool printed = false;
 
 	/* Don't allow any more processes into the pid namespace */
@@ -254,6 +255,7 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
 	 * sys_wait4() above can't reap the TASK_DEAD children.
 	 * Make sure they all go away, see free_pid().
 	 */
+	timeout = jiffies + msecs_to_jiffies(10000);
 	for (;;) {
 		set_current_state(TASK_UNINTERRUPTIBLE);
 		if (pid_ns->nr_hashed == init_pids)
@@ -261,12 +263,13 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
 		WARN_ONCE(pid_ns->nr_hashed < init_pids,
 			  "nr_hashed=%d, init_pids=%d\n",
 			  pid_ns->nr_hashed, init_pids);
-		if (schedule_timeout(HZ * 10) == 0 && !printed) {
+		if (time_after(jiffies, timeout) && !printed) {
 			pr_info("Threads still running after 10 seconds: nr_hashed=%d, init_pids=%d\n",
 				pid_ns->nr_hashed, init_pids);
 			printed = true;
 			print_pidns_threads(pid_ns);
 		}
+		schedule();
 	}
 	__set_current_state(TASK_RUNNING);
 
