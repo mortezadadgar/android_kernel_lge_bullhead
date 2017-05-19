@@ -811,6 +811,7 @@ static void f2fs_submit_discard_endio(struct bio *bio, int err)
 	dc->error = err;
 	dc->state = D_DONE;
 	complete(&dc->wait);
+	bio_put(bio);
 }
 
 /* copied from block/blk-lib.c in 4.10-rc1 */
