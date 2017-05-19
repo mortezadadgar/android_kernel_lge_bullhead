@@ -657,6 +657,7 @@ static int intel_pstate_cpu_init(struct cpufreq_policy *policy)
 
 	policy->min = cpu->pstate.min_pstate * 100000;
 	policy->max = cpu->pstate.turbo_pstate * 100000;
+	policy->iowait_boost_enable = true;
 
 	/* cpuinfo and default policy values */
 	policy->cpuinfo.min_freq = cpu->pstate.min_pstate * 100000;
