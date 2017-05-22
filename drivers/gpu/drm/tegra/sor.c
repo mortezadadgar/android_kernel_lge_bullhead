@@ -34,6 +34,7 @@ struct tegra_sor {
 	struct clk *clk;
 
 	struct tegra_dpaux *dpaux;
+	struct drm_dp_link link;
 
 	struct mutex lock;
 	bool enabled;
@@ -484,6 +485,173 @@ static int tegra_sor_calc_config(struct tegra_sor *sor,
 	return 0;
 }
 
+static int tegra_sor_power_up_lanes(struct tegra_sor *sor, unsigned int lanes)
+{
+	unsigned long timeout;
+	u32 value;
+
+	/*
+	 * Clear or set the PD_TXD bit corresponding to each lane, depending
+	 * on whether it is used or not.
+	 */
+	value = tegra_sor_readl(sor, SOR_DP_PADCTL_0);
+
+	if (sor->link.num_lanes <= 2)
+		value &= ~(SOR_DP_PADCTL_PD_TXD_3 | SOR_DP_PADCTL_PD_TXD_2);
+	else
+		value |= SOR_DP_PADCTL_PD_TXD_3 | SOR_DP_PADCTL_PD_TXD_2;
+
+	if (sor->link.num_lanes <= 1)
+		value &= ~SOR_DP_PADCTL_PD_TXD_1;
+	else
+		value |= SOR_DP_PADCTL_PD_TXD_1;
+
+	if (sor->link.num_lanes == 0)
+		value &= ~SOR_DP_PADCTL_PD_TXD_0;
+	else
+		value |= SOR_DP_PADCTL_PD_TXD_0;
+
+	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
+
+	/* start lane sequencer */
+	value = SOR_LANE_SEQ_CTL_TRIGGER | SOR_LANE_SEQ_CTL_SEQUENCE_DOWN |
+		SOR_LANE_SEQ_CTL_POWER_STATE_UP;
+	tegra_sor_writel(sor, value, SOR_LANE_SEQ_CTL);
+
+	timeout = jiffies + msecs_to_jiffies(250);
+
+	while (time_before(jiffies, timeout)) {
+		value = tegra_sor_readl(sor, SOR_LANE_SEQ_CTL);
+		if ((value & SOR_LANE_SEQ_CTL_TRIGGER) == 0)
+			break;
+
+		usleep_range(250, 1000);
+	}
+
+	if ((value & SOR_LANE_SEQ_CTL_TRIGGER) != 0)
+		return -ETIMEDOUT;
+
+	return 0;
+}
+
+static int tegra_sor_power_down_lanes(struct tegra_sor *sor)
+{
+	unsigned long timeout;
+	u32 value;
+
+	/* power down all lanes */
+	value = tegra_sor_readl(sor, SOR_DP_PADCTL_0);
+	value &= ~(SOR_DP_PADCTL_PD_TXD_3 | SOR_DP_PADCTL_PD_TXD_0 |
+		   SOR_DP_PADCTL_PD_TXD_1 | SOR_DP_PADCTL_PD_TXD_2);
+	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
+
+	/* start lane sequencer */
+	value = SOR_LANE_SEQ_CTL_TRIGGER | SOR_LANE_SEQ_CTL_SEQUENCE_UP |
+		SOR_LANE_SEQ_CTL_POWER_STATE_DOWN;
+	tegra_sor_writel(sor, value, SOR_LANE_SEQ_CTL);
+
+	timeout = jiffies + msecs_to_jiffies(250);
+
+	while (time_before(jiffies, timeout)) {
+		value = tegra_sor_readl(sor, SOR_LANE_SEQ_CTL);
+		if ((value & SOR_LANE_SEQ_CTL_TRIGGER) == 0)
+			break;
+
+		usleep_range(25, 100);
+	}
+
+	if ((value & SOR_LANE_SEQ_CTL_TRIGGER) != 0)
+		return -ETIMEDOUT;
+
+	return 0;
+}
+
+static void tegra_sor_dp_precharge(struct tegra_sor *sor, unsigned int lanes)
+{
+	u32 value;
+
+	/* pre-charge all used lanes */
+	value = tegra_sor_readl(sor, SOR_DP_PADCTL_0);
+
+	if (sor->link.num_lanes <= 2)
+		value &= ~(SOR_DP_PADCTL_PD_TXD_3 | SOR_DP_PADCTL_PD_TXD_2);
+	else
+		value |= SOR_DP_PADCTL_PD_TXD_3 | SOR_DP_PADCTL_PD_TXD_2;
+
+	if (sor->link.num_lanes <= 1)
+		value &= ~SOR_DP_PADCTL_PD_TXD_1;
+	else
+		value |= SOR_DP_PADCTL_PD_TXD_1;
+
+	if (sor->link.num_lanes == 0)
+		value &= ~SOR_DP_PADCTL_PD_TXD_0;
+	else
+		value |= SOR_DP_PADCTL_PD_TXD_0;
+
+	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
+
+	usleep_range(15, 100);
+
+	value = tegra_sor_readl(sor, SOR_DP_PADCTL_0);
+	value &= ~(SOR_DP_PADCTL_CM_TXD_3 | SOR_DP_PADCTL_CM_TXD_2 |
+		   SOR_DP_PADCTL_CM_TXD_1 | SOR_DP_PADCTL_CM_TXD_0);
+	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
+}
+
+static int tegra_sor_dp_link_configure(struct drm_dp_link *link)
+{
+	struct tegra_sor *sor = container_of(link, struct tegra_sor, link);
+	u8 rate, lanes;
+	u32 value;
+	int err, i;
+
+	rate = drm_dp_link_rate_to_bw_code(link->rate);
+	lanes = link->num_lanes;
+
+	value = tegra_sor_readl(sor, SOR_CLK_CNTRL);
+	value &= ~SOR_CLK_CNTRL_DP_LINK_SPEED_MASK;
+	value |= SOR_CLK_CNTRL_DP_LINK_SPEED(rate);
+	tegra_sor_writel(sor, value, SOR_CLK_CNTRL);
+
+	value = tegra_sor_readl(sor, SOR_DP_LINKCTL_0);
+	value &= ~SOR_DP_LINKCTL_LANE_COUNT_MASK;
+	value |= SOR_DP_LINKCTL_LANE_COUNT(lanes);
+
+	if (link->capabilities & DP_LINK_CAP_ENHANCED_FRAMING)
+		value |= SOR_DP_LINKCTL_ENHANCED_FRAME;
+
+	tegra_sor_writel(sor, value, SOR_DP_LINKCTL_0);
+
+	usleep_range(400, 1000);
+
+	/* disable training pattern generator */
+	for (i = 0; i < lanes; i++) {
+		unsigned long lane = SOR_DP_TPG_CHANNEL_CODING |
+				     SOR_DP_TPG_SCRAMBLER_GALIOS |
+				     SOR_DP_TPG_PATTERN_NONE;
+		value = (value << 8) | lane;
+	}
+	tegra_sor_writel(sor, value, SOR_DP_TPG);
+
+	err = tegra_sor_power_down_lanes(sor);
+	if (err < 0) {
+		dev_err(sor->dev, "failed to power down lanes: %d\n", err);
+		return err;
+	}
+
+	/* power up and pre-charge lanes */
+	err = tegra_sor_power_up_lanes(sor, lanes);
+	if (err < 0) {
+		dev_err(sor->dev, "failed to power up %u lane%s: %d\n",
+			lanes, (lanes != 1) ? "s" : "", err);
+		return err;
+	}
+
+	tegra_sor_dp_precharge(sor, lanes);
+
+	return 0;
+}
+
 static int tegra_output_sor_enable(struct tegra_output *output)
 {
 	struct tegra_dc *dc = to_tegra_dc(output->encoder.crtc);
@@ -491,7 +659,6 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	unsigned int vbe, vse, hbe, hse, vbs, hbs, i;
 	struct tegra_sor *sor = to_sor(output);
 	struct tegra_sor_config config;
-	struct drm_dp_link link;
 	struct drm_dp_aux *aux;
 	unsigned long value;
 	int err = 0;
@@ -516,7 +683,7 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 		if (err < 0)
 			dev_err(sor->dev, "failed to enable DP: %d\n", err);
 
-		err = drm_dp_link_probe(aux, &link);
+		err = drm_dp_link_probe(aux, &sor->link);
 		if (err < 0) {
 			dev_err(sor->dev, "failed to probe eDP link: %d\n",
 				err);
@@ -533,7 +700,7 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	/* Our DT doesn't have that information, and DC harcodes 18 as well */
 	config.bits_per_pixel = 18;
 
-	err = tegra_sor_calc_config(sor, mode, &config, &link);
+	err = tegra_sor_calc_config(sor, mode, &config, &sor->link);
 	if (err < 0)
 		dev_err(sor->dev, "failed to compute link configuration: %d\n",
 			err);
@@ -640,48 +807,14 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	if (err < 0)
 		dev_err(sor->dev, "failed to set DP parent clock: %d\n", err);
 
-	/* power DP lanes */
-	value = tegra_sor_readl(sor, SOR_DP_PADCTL_0);
-
-	if (link.num_lanes <= 2)
-		value &= ~(SOR_DP_PADCTL_PD_TXD_3 | SOR_DP_PADCTL_PD_TXD_2);
-	else
-		value |= SOR_DP_PADCTL_PD_TXD_3 | SOR_DP_PADCTL_PD_TXD_2;
-
-	if (link.num_lanes <= 1)
-		value &= ~SOR_DP_PADCTL_PD_TXD_1;
-	else
-		value |= SOR_DP_PADCTL_PD_TXD_1;
-
-	if (link.num_lanes == 0)
-		value &= ~SOR_DP_PADCTL_PD_TXD_0;
-	else
-		value |= SOR_DP_PADCTL_PD_TXD_0;
-
-	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
-
-	value = tegra_sor_readl(sor, SOR_DP_LINKCTL_0);
-	value &= ~SOR_DP_LINKCTL_LANE_COUNT_MASK;
-	value |= SOR_DP_LINKCTL_LANE_COUNT(link.num_lanes);
-	tegra_sor_writel(sor, value, SOR_DP_LINKCTL_0);
-
-	/* start lane sequencer */
-	value = SOR_LANE_SEQ_CTL_TRIGGER | SOR_LANE_SEQ_CTL_SEQUENCE_DOWN |
-		SOR_LANE_SEQ_CTL_POWER_STATE_UP;
-	tegra_sor_writel(sor, value, SOR_LANE_SEQ_CTL);
-
-	while (true) {
-		value = tegra_sor_readl(sor, SOR_LANE_SEQ_CTL);
-		if ((value & SOR_LANE_SEQ_CTL_TRIGGER) == 0)
-			break;
-
-		usleep_range(250, 1000);
-	}
+	err = tegra_sor_power_up_lanes(sor, sor->link.num_lanes);
+	if (err < 0)
+		dev_err(sor->dev, "failed to power up lanes %d\n", err);
 
 	/* set link bandwidth */
 	value = tegra_sor_readl(sor, SOR_CLK_CNTRL);
 	value &= ~SOR_CLK_CNTRL_DP_LINK_SPEED_MASK;
-	value |= drm_dp_link_rate_to_bw_code(link.rate) << 2;
+	value |= drm_dp_link_rate_to_bw_code(sor->link.rate) << 2;
 	tegra_sor_writel(sor, value, SOR_CLK_CNTRL);
 
 	/* set linkctl */
@@ -738,58 +871,34 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
 
 	if (sor->dpaux) {
-		u8 rate, lanes;
-
-		err = drm_dp_link_probe(aux, &link);
+		err = drm_dp_link_probe(aux, &sor->link);
 		if (err < 0) {
 			dev_err(sor->dev, "failed to probe eDP link: %d\n",
 				err);
 			goto unlock;
 		}
 
-		err = drm_dp_link_power_up(aux, &link);
+		err = drm_dp_link_power_up(aux, &sor->link);
 		if (err < 0) {
 			dev_err(sor->dev, "failed to power up eDP link: %d\n",
 				err);
 			goto unlock;
 		}
 
-		err = drm_dp_link_configure(aux, &link);
+		err = tegra_sor_dp_link_configure(&sor->link);
+		if (err < 0) {
+			dev_err(sor->dev, "DP configure failed: %d\n", err);
+			goto unlock;
+		}
+
+		err = drm_dp_link_configure(aux, &sor->link);
 		if (err < 0) {
 			dev_err(sor->dev, "failed to configure eDP link: %d\n",
 				err);
 			goto unlock;
 		}
 
-		rate = drm_dp_link_rate_to_bw_code(link.rate);
-		lanes = link.num_lanes;
-
-		value = tegra_sor_readl(sor, SOR_CLK_CNTRL);
-		value &= ~SOR_CLK_CNTRL_DP_LINK_SPEED_MASK;
-		value |= SOR_CLK_CNTRL_DP_LINK_SPEED(rate);
-		tegra_sor_writel(sor, value, SOR_CLK_CNTRL);
-
-		value = tegra_sor_readl(sor, SOR_DP_LINKCTL_0);
-		value &= ~SOR_DP_LINKCTL_LANE_COUNT_MASK;
-		value |= SOR_DP_LINKCTL_LANE_COUNT(lanes);
-
-		if (link.capabilities & DP_LINK_CAP_ENHANCED_FRAMING)
-			value |= SOR_DP_LINKCTL_ENHANCED_FRAME;
-
-		tegra_sor_writel(sor, value, SOR_DP_LINKCTL_0);
-
-		/* disable training pattern generator */
-
-		for (i = 0; i < link.num_lanes; i++) {
-			unsigned long lane = SOR_DP_TPG_CHANNEL_CODING |
-					     SOR_DP_TPG_SCRAMBLER_GALIOS |
-					     SOR_DP_TPG_PATTERN_NONE;
-			value = (value << 8) | lane;
-		}
-
-		tegra_sor_writel(sor, value, SOR_DP_TPG);
-
-		err = tegra_sor_dp_train_fast(sor, &link);
+		err = tegra_sor_dp_train_fast(sor, &sor->link);
 		if (err < 0) {
 			dev_err(sor->dev, "DP fast link training failed: %d\n",
 				err);
