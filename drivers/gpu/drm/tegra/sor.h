@@ -27,17 +27,23 @@
 #define  SOR_STATE_ASY_PIXELDEPTH_MASK		(0xf << 17)
 #define  SOR_STATE_ASY_PIXELDEPTH_BPP_18_444	(0x2 << 17)
 #define  SOR_STATE_ASY_PIXELDEPTH_BPP_24_444	(0x5 << 17)
+#define  SOR_STATE_ASY_PIXELDEPTH_BPP_30_444	(0x6 << 17)
+#define  SOR_STATE_ASY_PIXELDEPTH_BPP_36_444	(0x8 << 17)
+#define  SOR_STATE_ASY_PIXELDEPTH_BPP_48_444	(0x9 << 17)
 #define  SOR_STATE_ASY_VSYNCPOL			(1 << 13)
 #define  SOR_STATE_ASY_HSYNCPOL			(1 << 12)
 #define  SOR_STATE_ASY_PROTOCOL_MASK		(0xf << 8)
 #define  SOR_STATE_ASY_PROTOCOL_CUSTOM		(0xf << 8)
 #define  SOR_STATE_ASY_PROTOCOL_DP_A		(0x8 << 8)
 #define  SOR_STATE_ASY_PROTOCOL_DP_B		(0x9 << 8)
+#define  SOR_STATE_ASY_PROTOCOL_SINGLE_TMDS_A	(0x1 << 8)
 #define  SOR_STATE_ASY_PROTOCOL_LVDS		(0x0 << 8)
 #define  SOR_STATE_ASY_CRC_MODE_MASK		(0x3 << 6)
 #define  SOR_STATE_ASY_CRC_MODE_NON_ACTIVE	(0x2 << 6)
 #define  SOR_STATE_ASY_CRC_MODE_COMPLETE	(0x1 << 6)
 #define  SOR_STATE_ASY_CRC_MODE_ACTIVE		(0x0 << 6)
+#define  SOR_STATE_ASY_SUBOWNER_MASK		(0x3 << 4)
+#define  SOR_STATE_ASY_OWNER_MASK		0xf
 #define  SOR_STATE_ASY_OWNER(x)			(((x) & 0xf) << 0)
 
 #define SOR_HEAD_STATE_0(x) (0x05 + (x))
@@ -94,7 +100,11 @@
 
 #define SOR_PLL_1 0x18
 /* XXX: read-only bit? */
+#define  SOR_PLL1_LOADADJ_MASK			(0xf << 20)
+#define  SOR_PLL1_LOADADJ(x)			(((x) & 0xf) << 20)
 #define  SOR_PLL_1_TERM_COMPOUT			(1 << 15)
+#define  SOR_PLL_1_TMDS_TERMADJ_MASK		(0xf << 9)
+#define  SOR_PLL_1_TMDS_TERMADJ(x)		(((x) & 0xf) << 9)
 #define  SOR_PLL_1_TMDS_TERM			(1 << 8)
 
 #define SOR_PLL_2 0x19

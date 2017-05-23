@@ -102,6 +102,8 @@
 # define DP_I2C_SPEED_1M		    0x20
 
 #define DP_EDP_CONFIGURATION_CAP            0x00d   /* XXX 1.2? */
+# define DP_ALTERNATE_SCRAMBLER_RESET_CAPABLE 0x01
+
 #define DP_TRAINING_AUX_RD_INTERVAL         0x00e   /* XXX 1.2? */
 
 /* Multiple stream transport */

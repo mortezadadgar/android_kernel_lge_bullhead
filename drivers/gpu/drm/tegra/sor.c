@@ -57,6 +57,111 @@ struct tegra_sor_config {
 	u32 vblank_symbols;
 };
 
+/* Tegra124 and Tegra132 have lanes 0 and 2 swapped. */
+static const u8 tegra124_sor_lane_map[4] = {
+	2, 1, 0, 3,
+};
+
+static const u8 tegra124_sor_xbar_cfg[5] = {
+	0, 1, 2, 3, 4
+};
+
+static const u8 tegra124_sor_voltage_swing[4][4][4] = {
+	{
+		{ 0x13, 0x19, 0x1e, 0x28 },
+		{ 0x1e, 0x25, 0x2d, },
+		{ 0x28, 0x32, },
+		{ 0x3c, },
+	}, {
+		{ 0x12, 0x17, 0x1b, 0x25 },
+		{ 0x1c, 0x23, 0x2a, },
+		{ 0x25, 0x2f, },
+		{ 0x39, }
+	}, {
+		{ 0x12, 0x16, 0x1a, 0x22 },
+		{ 0x1b, 0x20, 0x27, },
+		{ 0x24, 0x2d, },
+		{ 0x36, },
+	}, {
+		{ 0x11, 0x14, 0x17, 0x1f },
+		{ 0x19, 0x1e, 0x24, },
+		{ 0x22, 0x2a, },
+		{ 0x32, },
+	},
+};
+
+static const u8 tegra124_sor_pre_emphasis[4][4][4] = {
+	{
+		{ 0x00, 0x09, 0x13, 0x25 },
+		{ 0x00, 0x0f, 0x1e, },
+		{ 0x00, 0x14, },
+		{ 0x00, },
+	}, {
+		{ 0x00, 0x0a, 0x14, 0x28 },
+		{ 0x00, 0x0f, 0x1e, },
+		{ 0x00, 0x14, },
+		{ 0x00 },
+	}, {
+		{ 0x00, 0x0a, 0x14, 0x28 },
+		{ 0x00, 0x0f, 0x1e, },
+		{ 0x00, 0x14, },
+		{ 0x00, },
+	}, {
+		{ 0x00, 0x0a, 0x14, 0x28 },
+		{ 0x00, 0x0f, 0x1e, },
+		{ 0x00, 0x14, },
+		{ 0x00, },
+	},
+};
+
+static const u8 tegra124_sor_post_cursor[4][4][4] = {
+	{
+		{ 0x00, 0x00, 0x00, 0x00 },
+		{ 0x00, 0x00, 0x00, },
+		{ 0x00, 0x00, },
+		{ 0x00, },
+	}, {
+		{ 0x02, 0x02, 0x04, 0x05 },
+		{ 0x02, 0x04, 0x05, },
+		{ 0x04, 0x05, },
+		{ 0x05, },
+	}, {
+		{ 0x04, 0x05, 0x08, 0x0b },
+		{ 0x05, 0x09, 0x0b, },
+		{ 0x08, 0x0a, },
+		{ 0x0b, },
+	}, {
+		{ 0x05, 0x09, 0x0b, 0x12 },
+		{ 0x09, 0x0d, 0x12, },
+		{ 0x0b, 0x0f, },
+		{ 0x12, },
+	},
+};
+
+static const u8 tegra124_sor_tx_pu[4][4][4] = {
+	{
+		{ 0x20, 0x30, 0x40, 0x60 },
+		{ 0x30, 0x40, 0x60, },
+		{ 0x40, 0x60, },
+		{ 0x60, },
+	}, {
+		{ 0x20, 0x20, 0x30, 0x50 },
+		{ 0x30, 0x40, 0x50, },
+		{ 0x40, 0x50, },
+		{ 0x60, },
+	}, {
+		{ 0x20, 0x20, 0x30, 0x40, },
+		{ 0x30, 0x30, 0x40, },
+		{ 0x40, 0x50, },
+		{ 0x60, },
+	}, {
+		{ 0x20, 0x20, 0x20, 0x40, },
+		{ 0x30, 0x30, 0x40, },
+		{ 0x40, 0x40, },
+		{ 0x60, },
+	},
+};
+
 static inline struct tegra_sor *
 host1x_client_to_sor(struct host1x_client *client)
 {
@@ -78,112 +183,6 @@ static inline void tegra_sor_writel(struct tegra_sor *sor, unsigned long value,
 				    unsigned long offset)
 {
 	writel(value, sor->regs + (offset << 2));
-}
-
-static int tegra_sor_dp_train_fast(struct tegra_sor *sor,
-				   struct drm_dp_link *link)
-{
-	unsigned long value;
-	unsigned int i;
-	u8 pattern;
-	int err;
-
-	/* setup lane parameters */
-	value = SOR_LANE_DRIVE_CURRENT_LANE3(0x40) |
-		SOR_LANE_DRIVE_CURRENT_LANE2(0x40) |
-		SOR_LANE_DRIVE_CURRENT_LANE1(0x40) |
-		SOR_LANE_DRIVE_CURRENT_LANE0(0x40);
-	tegra_sor_writel(sor, value, SOR_LANE_DRIVE_CURRENT_0);
-
-	value = SOR_LANE_PREEMPHASIS_LANE3(0x0f) |
-		SOR_LANE_PREEMPHASIS_LANE2(0x0f) |
-		SOR_LANE_PREEMPHASIS_LANE1(0x0f) |
-		SOR_LANE_PREEMPHASIS_LANE0(0x0f);
-	tegra_sor_writel(sor, value, SOR_LANE_PREEMPHASIS_0);
-
-	value = SOR_LANE_POST_CURSOR_LANE3(0x00) |
-		SOR_LANE_POST_CURSOR_LANE2(0x00) |
-		SOR_LANE_POST_CURSOR_LANE1(0x00) |
-		SOR_LANE_POST_CURSOR_LANE0(0x00);
-	tegra_sor_writel(sor, value, SOR_LANE_POST_CURSOR_0);
-
-	/* disable LVDS mode */
-	tegra_sor_writel(sor, 0, SOR_LVDS);
-
-	value = tegra_sor_readl(sor, SOR_DP_PADCTL_0);
-	value |= SOR_DP_PADCTL_TX_PU_ENABLE;
-	value &= ~SOR_DP_PADCTL_TX_PU_MASK;
-	value |= SOR_DP_PADCTL_TX_PU(2); /* XXX: don't hardcode? */
-	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
-
-	value = tegra_sor_readl(sor, SOR_DP_PADCTL_0);
-	value |= SOR_DP_PADCTL_CM_TXD_3 | SOR_DP_PADCTL_CM_TXD_2 |
-		 SOR_DP_PADCTL_CM_TXD_1 | SOR_DP_PADCTL_CM_TXD_0;
-	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
-
-	usleep_range(10, 100);
-
-	value = tegra_sor_readl(sor, SOR_DP_PADCTL_0);
-	value &= ~(SOR_DP_PADCTL_CM_TXD_3 | SOR_DP_PADCTL_CM_TXD_2 |
-		   SOR_DP_PADCTL_CM_TXD_1 | SOR_DP_PADCTL_CM_TXD_0);
-	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
-
-	err = tegra_dpaux_prepare(sor->dpaux, DP_SET_ANSI_8B10B);
-	if (err < 0)
-		return err;
-
-	for (i = 0, value = 0; i < link->num_lanes; i++) {
-		unsigned long lane = SOR_DP_TPG_CHANNEL_CODING |
-				     SOR_DP_TPG_SCRAMBLER_NONE |
-				     SOR_DP_TPG_PATTERN_TRAIN1;
-		value = (value << 8) | lane;
-	}
-
-	tegra_sor_writel(sor, value, SOR_DP_TPG);
-
-	pattern = DP_TRAINING_PATTERN_1;
-
-	err = tegra_dpaux_train(sor->dpaux, link, pattern);
-	if (err < 0)
-		return err;
-
-	value = tegra_sor_readl(sor, SOR_DP_SPARE_0);
-	value |= SOR_DP_SPARE_SEQ_ENABLE;
-	value &= ~SOR_DP_SPARE_PANEL_INTERNAL;
-	value |= SOR_DP_SPARE_MACRO_SOR_CLK;
-	tegra_sor_writel(sor, value, SOR_DP_SPARE_0);
-
-	for (i = 0, value = 0; i < link->num_lanes; i++) {
-		unsigned long lane = SOR_DP_TPG_CHANNEL_CODING |
-				     SOR_DP_TPG_SCRAMBLER_NONE |
-				     SOR_DP_TPG_PATTERN_TRAIN2;
-		value = (value << 8) | lane;
-	}
-
-	tegra_sor_writel(sor, value, SOR_DP_TPG);
-
-	pattern = DP_LINK_SCRAMBLING_DISABLE | DP_TRAINING_PATTERN_2;
-
-	err = tegra_dpaux_train(sor->dpaux, link, pattern);
-	if (err < 0)
-		return err;
-
-	for (i = 0, value = 0; i < link->num_lanes; i++) {
-		unsigned long lane = SOR_DP_TPG_CHANNEL_CODING |
-				     SOR_DP_TPG_SCRAMBLER_GALIOS |
-				     SOR_DP_TPG_PATTERN_NONE;
-		value = (value << 8) | lane;
-	}
-
-	tegra_sor_writel(sor, value, SOR_DP_TPG);
-
-	pattern = DP_TRAINING_PATTERN_DISABLE;
-
-	err = tegra_dpaux_train(sor->dpaux, link, pattern);
-	if (err < 0)
-		return err;
-
-	return 0;
 }
 
 static void tegra_sor_super_update(struct tegra_sor *sor)
@@ -598,12 +597,123 @@ static void tegra_sor_dp_precharge(struct tegra_sor *sor, unsigned int lanes)
 	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
 }
 
+static void tegra_sor_dp_term_calibrate(struct tegra_sor *sor)
+{
+	u32 mask = 0x08, adj = 0, value;
+
+	/* enable pad calibration logic */
+	value = tegra_sor_readl(sor, SOR_DP_PADCTL_0);
+	value &= ~SOR_DP_PADCTL_PAD_CAL_PD;
+	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
+
+	value = tegra_sor_readl(sor, SOR_PLL_1);
+	value |= SOR_PLL_1_TMDS_TERM;
+	tegra_sor_writel(sor, value, SOR_PLL_1);
+
+	while (mask) {
+		adj |= mask;
+
+		value = tegra_sor_readl(sor, SOR_PLL_1);
+		value &= ~SOR_PLL_1_TMDS_TERMADJ_MASK;
+		value |= SOR_PLL_1_TMDS_TERMADJ(adj);
+		tegra_sor_writel(sor, value, SOR_PLL_1);
+
+		usleep_range(100, 200);
+
+		value = tegra_sor_readl(sor, SOR_PLL_1);
+		if (value & SOR_PLL_1_TERM_COMPOUT)
+			adj &= ~mask;
+
+		mask >>= 1;
+	}
+
+	value = tegra_sor_readl(sor, SOR_PLL_1);
+	value &= ~SOR_PLL_1_TMDS_TERMADJ_MASK;
+	value |= SOR_PLL_1_TMDS_TERMADJ(adj);
+	tegra_sor_writel(sor, value, SOR_PLL_1);
+
+	/* disable pad calibration logic */
+	value = tegra_sor_readl(sor, SOR_DP_PADCTL_0);
+	value |= SOR_DP_PADCTL_PAD_CAL_PD;
+	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
+}
+
+static int tegra_sor_dp_link_apply_training(struct drm_dp_link *link)
+{
+	struct tegra_sor *sor = container_of(link, struct tegra_sor, link);
+	u32 voltage_swing = 0, pre_emphasis = 0, post_cursor = 0;
+	u32 pattern = 0, tx_pu = 0, value;
+	unsigned int i;
+
+	for (value = 0, i = 0; i < link->num_lanes; i++) {
+		u8 vs = link->train.request.voltage_swing[i];
+		u8 pe = link->train.request.pre_emphasis[i];
+		u8 pc = link->train.request.post_cursor[i];
+		u8 shift = tegra124_sor_lane_map[i] << 3;
+
+		voltage_swing |= tegra124_sor_voltage_swing[pc][vs][pe] << shift;
+		pre_emphasis |= tegra124_sor_pre_emphasis[pc][vs][pe] << shift;
+		post_cursor |= tegra124_sor_post_cursor[pc][vs][pe] << shift;
+
+		if (tegra124_sor_tx_pu[pc][vs][pe] > tx_pu)
+			tx_pu = tegra124_sor_tx_pu[pc][vs][pe];
+
+		switch (link->train.pattern) {
+		case DP_TRAINING_PATTERN_DISABLE:
+			value = SOR_DP_TPG_SCRAMBLER_GALIOS |
+				SOR_DP_TPG_PATTERN_NONE;
+			break;
+
+		case DP_TRAINING_PATTERN_1:
+			value = SOR_DP_TPG_SCRAMBLER_NONE |
+				SOR_DP_TPG_PATTERN_TRAIN1;
+			break;
+
+		case DP_TRAINING_PATTERN_2:
+			value = SOR_DP_TPG_SCRAMBLER_NONE |
+				SOR_DP_TPG_PATTERN_TRAIN2;
+			break;
+
+		case DP_TRAINING_PATTERN_3:
+			value = SOR_DP_TPG_SCRAMBLER_NONE |
+				SOR_DP_TPG_PATTERN_TRAIN3;
+			break;
+
+		default:
+			return -EINVAL;
+		}
+
+		if (link->capabilities & DP_LINK_CAP_ANSI_8B10B)
+			value |= SOR_DP_TPG_CHANNEL_CODING;
+		pattern = pattern << 8 | value;
+	}
+
+	tegra_sor_writel(sor, voltage_swing, SOR_LANE_DRIVE_CURRENT_0);
+	tegra_sor_writel(sor, pre_emphasis, SOR_LANE_PREEMPHASIS_0);
+
+	if (link->capabilities & DP_LINK_CAP_TPS3)
+		tegra_sor_writel(sor, post_cursor, SOR_LANE_POST_CURSOR_0);
+
+	tegra_sor_writel(sor, pattern, SOR_DP_TPG);
+
+	value = tegra_sor_readl(sor, SOR_DP_PADCTL_0);
+	value &= ~SOR_DP_PADCTL_TX_PU_MASK;
+	value |= SOR_DP_PADCTL_TX_PU_ENABLE;
+	value |= SOR_DP_PADCTL_TX_PU(tx_pu);
+
+	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
+
+	usleep_range(20, 100);
+
+	return 0;
+}
+
 static int tegra_sor_dp_link_configure(struct drm_dp_link *link)
 {
 	struct tegra_sor *sor = container_of(link, struct tegra_sor, link);
 	u8 rate, lanes;
 	u32 value;
-	int err, i;
+	int err;
 
 	rate = drm_dp_link_rate_to_bw_code(link->rate);
 	lanes = link->num_lanes;
@@ -624,14 +734,25 @@ static int tegra_sor_dp_link_configure(struct drm_dp_link *link)
 
 	usleep_range(400, 1000);
 
-	/* disable training pattern generator */
-	for (i = 0; i < lanes; i++) {
-		unsigned long lane = SOR_DP_TPG_CHANNEL_CODING |
-				     SOR_DP_TPG_SCRAMBLER_GALIOS |
-				     SOR_DP_TPG_PATTERN_NONE;
-		value = (value << 8) | lane;
+	/* configure load pulse position adjustment */
+	value = tegra_sor_readl(sor, SOR_PLL_1);
+	value &= ~SOR_PLL1_LOADADJ_MASK;
+
+	switch (rate) {
+	case DP_LINK_BW_1_62:
+		value |= SOR_PLL1_LOADADJ(0x3);
+		break;
+
+	case DP_LINK_BW_2_7:
+		value |= SOR_PLL1_LOADADJ(0x4);
+		break;
+
+	case DP_LINK_BW_5_4:
+		value |= SOR_PLL1_LOADADJ(0x6);
+		break;
 	}
-	tegra_sor_writel(sor, value, SOR_DP_TPG);
+
+	tegra_sor_writel(sor, value, SOR_PLL_1);
 
 	err = tegra_sor_power_down_lanes(sor);
 	if (err < 0) {
@@ -652,17 +773,154 @@ static int tegra_sor_dp_link_configure(struct drm_dp_link *link)
 	return 0;
 }
 
+static const struct drm_dp_link_ops tegra_sor_dp_link_ops = {
+	.apply_training = tegra_sor_dp_link_apply_training,
+	.configure = tegra_sor_dp_link_configure,
+};
+
+static void tegra_sor_apply_config(struct tegra_sor *sor,
+				   const struct tegra_sor_config *config)
+{
+	u32 value;
+
+	/* set linkctl */
+	value = tegra_sor_readl(sor, SOR_DP_LINKCTL_0);
+	value &= ~SOR_DP_LINKCTL_TU_SIZE_MASK;
+	value |= SOR_DP_LINKCTL_TU_SIZE(config->tu_size);
+	tegra_sor_writel(sor, value, SOR_DP_LINKCTL_0);
+
+	value = tegra_sor_readl(sor, SOR_DP_CONFIG_0);
+	value &= ~SOR_DP_CONFIG_WATERMARK_MASK;
+	value |= SOR_DP_CONFIG_WATERMARK(config->watermark);
+
+	value &= ~SOR_DP_CONFIG_ACTIVE_SYM_COUNT_MASK;
+	value |= SOR_DP_CONFIG_ACTIVE_SYM_COUNT(config->active_count);
+
+	value &= ~SOR_DP_CONFIG_ACTIVE_SYM_FRAC_MASK;
+	value |= SOR_DP_CONFIG_ACTIVE_SYM_FRAC(config->active_frac);
+
+	if (config->active_polarity)
+		value |= SOR_DP_CONFIG_ACTIVE_SYM_POLARITY;
+	else
+		value &= ~SOR_DP_CONFIG_ACTIVE_SYM_POLARITY;
+
+	value |= SOR_DP_CONFIG_ACTIVE_SYM_ENABLE;
+	value |= SOR_DP_CONFIG_DISPARITY_NEGATIVE;
+	tegra_sor_writel(sor, value, SOR_DP_CONFIG_0);
+
+	value = tegra_sor_readl(sor, SOR_DP_AUDIO_HBLANK_SYMBOLS);
+	value &= ~SOR_DP_AUDIO_HBLANK_SYMBOLS_MASK;
+	value |= config->hblank_symbols & 0xffff;
+	tegra_sor_writel(sor, value, SOR_DP_AUDIO_HBLANK_SYMBOLS);
+
+	value = tegra_sor_readl(sor, SOR_DP_AUDIO_VBLANK_SYMBOLS);
+	value &= ~SOR_DP_AUDIO_VBLANK_SYMBOLS_MASK;
+	value |= config->vblank_symbols & 0xffff;
+	tegra_sor_writel(sor, value, SOR_DP_AUDIO_VBLANK_SYMBOLS);
+}
+
+static void tegra_sor_mode_set(struct tegra_sor *sor,
+			       const struct drm_display_mode *mode,
+			       struct drm_display_info *info)
+{
+	struct tegra_dc *dc = to_tegra_dc(sor->output.encoder.crtc);
+	unsigned int vbe, vse, hbe, hse, vbs, hbs;
+	u32 value;
+
+	value = tegra_sor_readl(sor, SOR_STATE_1);
+	value &= ~SOR_STATE_ASY_PIXELDEPTH_MASK;
+	value &= ~SOR_STATE_ASY_CRC_MODE_MASK;
+	value &= ~SOR_STATE_ASY_OWNER_MASK;
+
+	value |= SOR_STATE_ASY_CRC_MODE_COMPLETE |
+		 SOR_STATE_ASY_OWNER(dc->pipe + 1);
+
+	if (mode->flags & DRM_MODE_FLAG_PHSYNC)
+		value &= ~SOR_STATE_ASY_HSYNCPOL;
+
+	if (mode->flags & DRM_MODE_FLAG_NHSYNC)
+		value |= SOR_STATE_ASY_HSYNCPOL;
+
+	if (mode->flags & DRM_MODE_FLAG_PVSYNC)
+		value &= ~SOR_STATE_ASY_VSYNCPOL;
+
+	if (mode->flags & DRM_MODE_FLAG_NVSYNC)
+		value |= SOR_STATE_ASY_VSYNCPOL;
+
+	switch (info->bpc) {
+	case 16:
+		value |= SOR_STATE_ASY_PIXELDEPTH_BPP_48_444;
+		break;
+
+	case 12:
+		value |= SOR_STATE_ASY_PIXELDEPTH_BPP_36_444;
+		break;
+
+	case 10:
+		value |= SOR_STATE_ASY_PIXELDEPTH_BPP_30_444;
+		break;
+
+	case 8:
+		value |= SOR_STATE_ASY_PIXELDEPTH_BPP_24_444;
+		break;
+
+	case 6:
+		value |= SOR_STATE_ASY_PIXELDEPTH_BPP_18_444;
+		break;
+
+	default:
+		value |= SOR_STATE_ASY_PIXELDEPTH_BPP_24_444;
+		break;
+	}
+
+	tegra_sor_writel(sor, value, SOR_STATE_1);
+
+	/*
+	 * TODO: The video timing programming below doesn't seem to match the
+	 * register definitions.
+	 */
+
+	value = ((mode->vtotal & 0x7fff) << 16) | (mode->htotal & 0x7fff);
+	tegra_sor_writel(sor, value, SOR_HEAD_STATE_1(dc->pipe));
+
+	/* sync end = sync width - 1 */
+	vse = mode->vsync_end - mode->vsync_start - 1;
+	hse = mode->hsync_end - mode->hsync_start - 1;
+
+	value = ((vse & 0x7fff) << 16) | (hse & 0x7fff);
+	tegra_sor_writel(sor, value, SOR_HEAD_STATE_2(dc->pipe));
+
+	/* blank end = sync end + back porch */
+	vbe = vse + (mode->vtotal - mode->vsync_end);
+	hbe = hse + (mode->htotal - mode->hsync_end);
+
+	value = ((vbe & 0x7fff) << 16) | (hbe & 0x7fff);
+	tegra_sor_writel(sor, value, SOR_HEAD_STATE_3(dc->pipe));
+
+	/* blank start = blank end + active */
+	vbs = vbe + mode->vdisplay;
+	hbs = hbe + mode->hdisplay;
+
+	value = ((vbs & 0x7fff) << 16) | (hbs & 0x7fff);
+	tegra_sor_writel(sor, value, SOR_HEAD_STATE_4(dc->pipe));
+
+	/* XXX interlacing support */
+	tegra_sor_writel(sor, 0x001, SOR_HEAD_STATE_5(dc->pipe));
+}
+
 static int tegra_output_sor_enable(struct tegra_output *output)
 {
 	struct tegra_dc *dc = to_tegra_dc(output->encoder.crtc);
 	struct drm_display_mode *mode = &dc->base.mode;
-	unsigned int vbe, vse, hbe, hse, vbs, hbs, i;
+	struct drm_display_info info;
+	unsigned int i;
 	struct tegra_sor *sor = to_sor(output);
 	struct tegra_sor_config config;
 	struct drm_dp_aux *aux;
 	unsigned long value;
 	int err = 0;
 	bool write_active = false;
+	u8 config_cap = 0, config_set = 0;
 
 	mutex_lock(&sor->lock);
 
@@ -673,6 +931,10 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	if (err < 0)
 		goto unlock;
 
+	/* Make a copy of the display info and sub in our hardcoded bpc */
+	memcpy(&info, &output->connector.display_info, sizeof(info));
+	info.bpc = 8; /* FIXME: don't hardcode */
+
 	reset_control_deassert(sor->rst);
 
 	/* FIXME: properly convert to struct drm_dp_aux */
@@ -682,28 +944,11 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 		err = tegra_dpaux_enable(sor->dpaux);
 		if (err < 0)
 			dev_err(sor->dev, "failed to enable DP: %d\n", err);
-
-		err = drm_dp_link_probe(aux, &sor->link);
-		if (err < 0) {
-			dev_err(sor->dev, "failed to probe eDP link: %d\n",
-				err);
-			goto unlock;
-		}
 	}
 
 	err = clk_set_parent(sor->clk, sor->clk_safe);
 	if (err < 0)
 		dev_err(sor->dev, "failed to set safe parent clock: %d\n", err);
-
-	memset(&config, 0, sizeof(config));
-
-	/* Our DT doesn't have that information, and DC harcodes 18 as well */
-	config.bits_per_pixel = 18;
-
-	err = tegra_sor_calc_config(sor, mode, &config, &sor->link);
-	if (err < 0)
-		dev_err(sor->dev, "failed to compute link configuration: %d\n",
-			err);
 
 	value = tegra_sor_readl(sor, SOR_CLK_CNTRL);
 	value &= ~SOR_CLK_CNTRL_DP_CLK_SEL_MASK;
@@ -718,6 +963,37 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	value = tegra_sor_readl(sor, SOR_PLL_3);
 	value |= SOR_PLL_3_PLL_VDD_MODE_V3_3;
 	tegra_sor_writel(sor, value, SOR_PLL_3);
+
+	if (sor->dpaux) {
+		err = drm_dp_dpcd_readb(aux, DP_EDP_CONFIGURATION_CAP,
+				       &config_cap);
+		if (err < 0)
+			dev_err(sor->dev,
+				"failed to read eDP capabilites: %d\n", err);
+
+		err = drm_dp_dpcd_readb(aux, DP_EDP_CONFIGURATION_SET,
+				       &config_set);
+		if (err < 0)
+			dev_err(sor->dev,
+				"failed to read eDP capabilites: %d\n", err);
+	}
+
+	/*
+	 * Use Alternative Scrambler Seed Reset (ASSR) iff the panel supports it
+	 * and is currently configured to use it.
+	 */
+	value = tegra_sor_readl(sor, SOR_DP_SPARE_0);
+	value |= SOR_DP_SPARE_SEQ_ENABLE;
+	if ((config_cap & DP_ALTERNATE_SCRAMBLER_RESET_CAPABLE) &&
+	    (config_set & DP_ALTERNATE_SCRAMBLER_RESET_ENABLE))
+		value |= SOR_DP_SPARE_PANEL_INTERNAL;
+	else
+		value &= ~SOR_DP_SPARE_PANEL_INTERNAL;
+	value |= SOR_DP_SPARE_MACRO_SOR_CLK;
+	tegra_sor_writel(sor, value, SOR_DP_SPARE_0);
+
+	/* disable LVDS mode */
+	tegra_sor_writel(sor, 0, SOR_LVDS);
 
 	value = SOR_PLL_0_ICHPMP(0xf) | SOR_PLL_0_VCOCAP_RST |
 		SOR_PLL_0_PLLREG_LEVEL_V45 | SOR_PLL_0_RESISTOR_EXT;
@@ -817,16 +1093,6 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 	value |= drm_dp_link_rate_to_bw_code(sor->link.rate) << 2;
 	tegra_sor_writel(sor, value, SOR_CLK_CNTRL);
 
-	/* set linkctl */
-	value = tegra_sor_readl(sor, SOR_DP_LINKCTL_0);
-	value |= SOR_DP_LINKCTL_ENABLE;
-
-	value &= ~SOR_DP_LINKCTL_TU_SIZE_MASK;
-	value |= SOR_DP_LINKCTL_TU_SIZE(config.tu_size);
-
-	value |= SOR_DP_LINKCTL_ENHANCED_FRAME;
-	tegra_sor_writel(sor, value, SOR_DP_LINKCTL_0);
-
 	for (i = 0, value = 0; i < 4; i++) {
 		unsigned long lane = SOR_DP_TPG_CHANNEL_CODING |
 				     SOR_DP_TPG_SCRAMBLER_GALIOS |
@@ -836,45 +1102,34 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 
 	tegra_sor_writel(sor, value, SOR_DP_TPG);
 
-	value = tegra_sor_readl(sor, SOR_DP_CONFIG_0);
-	value &= ~SOR_DP_CONFIG_WATERMARK_MASK;
-	value |= SOR_DP_CONFIG_WATERMARK(config.watermark);
-
-	value &= ~SOR_DP_CONFIG_ACTIVE_SYM_COUNT_MASK;
-	value |= SOR_DP_CONFIG_ACTIVE_SYM_COUNT(config.active_count);
-
-	value &= ~SOR_DP_CONFIG_ACTIVE_SYM_FRAC_MASK;
-	value |= SOR_DP_CONFIG_ACTIVE_SYM_FRAC(config.active_frac);
-
-	if (config.active_polarity)
-		value |= SOR_DP_CONFIG_ACTIVE_SYM_POLARITY;
-	else
-		value &= ~SOR_DP_CONFIG_ACTIVE_SYM_POLARITY;
-
-	value |= SOR_DP_CONFIG_ACTIVE_SYM_ENABLE;
-	value |= SOR_DP_CONFIG_DISPARITY_NEGATIVE;
-	tegra_sor_writel(sor, value, SOR_DP_CONFIG_0);
-
-	value = tegra_sor_readl(sor, SOR_DP_AUDIO_HBLANK_SYMBOLS);
-	value &= ~SOR_DP_AUDIO_HBLANK_SYMBOLS_MASK;
-	value |= config.hblank_symbols & 0xffff;
-	tegra_sor_writel(sor, value, SOR_DP_AUDIO_HBLANK_SYMBOLS);
-
-	value = tegra_sor_readl(sor, SOR_DP_AUDIO_VBLANK_SYMBOLS);
-	value &= ~SOR_DP_AUDIO_VBLANK_SYMBOLS_MASK;
-	value |= config.vblank_symbols & 0xffff;
-	tegra_sor_writel(sor, value, SOR_DP_AUDIO_VBLANK_SYMBOLS);
-
 	/* enable pad calibration logic */
 	value = tegra_sor_readl(sor, SOR_DP_PADCTL_0);
 	value |= SOR_DP_PADCTL_PAD_CAL_PD;
 	tegra_sor_writel(sor, value, SOR_DP_PADCTL_0);
+
+	/* use DP-A protocol */
+	value = tegra_sor_readl(sor, SOR_STATE_1);
+	value &= ~SOR_STATE_ASY_PROTOCOL_MASK;
+	value |= SOR_STATE_ASY_PROTOCOL_DP_A;
+	tegra_sor_writel(sor, value, SOR_STATE_1);
+
+	/* enable port */
+	value = tegra_sor_readl(sor, SOR_DP_LINKCTL_0);
+	value |= SOR_DP_LINKCTL_ENABLE;
+	tegra_sor_writel(sor, value, SOR_DP_LINKCTL_0);
 
 	if (sor->dpaux) {
 		err = drm_dp_link_probe(aux, &sor->link);
 		if (err < 0) {
 			dev_err(sor->dev, "failed to probe eDP link: %d\n",
 				err);
+			goto unlock;
+		}
+		sor->link.capabilities |= DP_LINK_CAP_ANSI_8B10B;
+
+		err = drm_dp_link_choose(&sor->link, mode, &info);
+		if (err < 0) {
+			dev_err(sor->dev, "failed to choose link: %d\n", err);
 			goto unlock;
 		}
 
@@ -885,28 +1140,28 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 			goto unlock;
 		}
 
-		err = tegra_sor_dp_link_configure(&sor->link);
+		tegra_sor_dp_term_calibrate(sor);
+		drm_dp_link_train_init(&sor->link.train);
+		err = drm_dp_link_train(&sor->link);
 		if (err < 0) {
-			dev_err(sor->dev, "DP configure failed: %d\n", err);
+			dev_err(sor->dev, "DP link training failed: %d\n", err);
 			goto unlock;
+		} else {
+			dev_dbg(sor->dev, "DP link training succeeded\n");
 		}
-
-		err = drm_dp_link_configure(aux, &sor->link);
-		if (err < 0) {
-			dev_err(sor->dev, "failed to configure eDP link: %d\n",
-				err);
-			goto unlock;
-		}
-
-		err = tegra_sor_dp_train_fast(sor, &sor->link);
-		if (err < 0) {
-			dev_err(sor->dev, "DP fast link training failed: %d\n",
-				err);
-			goto unlock;
-		}
-
-		dev_dbg(sor->dev, "fast link training succeeded\n");
 	}
+
+	/* compute configuration */
+	memset(&config, 0, sizeof(config));
+	config.bits_per_pixel = info.bpc * 3;
+
+	err = tegra_sor_calc_config(sor, mode, &config, &sor->link);
+	if (err < 0)
+		dev_err(sor->dev, "failed to compute link configuration: %d\n",
+			err);
+
+	tegra_sor_apply_config(sor, &config);
+	tegra_sor_mode_set(sor, mode, &info);
 
 	err = tegra_sor_power_up(sor, 250);
 	if (err < 0) {
@@ -922,68 +1177,6 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 
 	tegra_dc_writel(dc, VSYNC_H_POSITION(1), DC_DISP_DISP_TIMING_OPTIONS);
 	tegra_dc_writel(dc, DISP_CTRL_MODE_C_DISPLAY, DC_CMD_DISPLAY_COMMAND);
-
-	/*
-	 * configure panel (24bpp, vsync-, hsync-, DP-A protocol, complete
-	 * raster, associate with display controller)
-	 */
-	value = SOR_STATE_ASY_PROTOCOL_DP_A |
-		SOR_STATE_ASY_CRC_MODE_COMPLETE |
-		SOR_STATE_ASY_OWNER(dc->pipe + 1);
-
-	if (mode->flags & DRM_MODE_FLAG_PHSYNC)
-		value &= ~SOR_STATE_ASY_HSYNCPOL;
-
-	if (mode->flags & DRM_MODE_FLAG_NHSYNC)
-		value |= SOR_STATE_ASY_HSYNCPOL;
-
-	if (mode->flags & DRM_MODE_FLAG_PVSYNC)
-		value &= ~SOR_STATE_ASY_VSYNCPOL;
-
-	if (mode->flags & DRM_MODE_FLAG_NVSYNC)
-		value |= SOR_STATE_ASY_VSYNCPOL;
-
-	switch (config.bits_per_pixel) {
-	case 24:
-		value |= SOR_STATE_ASY_PIXELDEPTH_BPP_24_444;
-		break;
-
-	case 18:
-		value |= SOR_STATE_ASY_PIXELDEPTH_BPP_18_444;
-		break;
-
-	default:
-		BUG();
-		break;
-	}
-
-	tegra_sor_writel(sor, value, SOR_STATE_1);
-
-	/*
-	 * TODO: The video timing programming below doesn't seem to match the
-	 * register definitions.
-	 */
-
-	value = ((mode->vtotal & 0x7fff) << 16) | (mode->htotal & 0x7fff);
-	tegra_sor_writel(sor, value, SOR_HEAD_STATE_1(0));
-
-	vse = mode->vsync_end - mode->vsync_start - 1;
-	hse = mode->hsync_end - mode->hsync_start - 1;
-
-	value = ((vse & 0x7fff) << 16) | (hse & 0x7fff);
-	tegra_sor_writel(sor, value, SOR_HEAD_STATE_2(0));
-
-	vbe = vse + (mode->vsync_start - mode->vdisplay);
-	hbe = hse + (mode->hsync_start - mode->hdisplay);
-
-	value = ((vbe & 0x7fff) << 16) | (hbe & 0x7fff);
-	tegra_sor_writel(sor, value, SOR_HEAD_STATE_3(0));
-
-	vbs = vbe + mode->vdisplay;
-	hbs = hbe + mode->hdisplay;
-
-	value = ((vbs & 0x7fff) << 16) | (hbs & 0x7fff);
-	tegra_sor_writel(sor, value, SOR_HEAD_STATE_4(0));
 
 	/* CSTM (LVDS, link A/B, upper) */
 	value = SOR_CSTM_LVDS | SOR_CSTM_LINK_ACT_A | SOR_CSTM_LINK_ACT_B |
@@ -1599,6 +1792,9 @@ static int tegra_sor_init(struct host1x_client *client)
 			return err;
 		}
 	}
+
+	sor->link.ops = &tegra_sor_dp_link_ops;
+	sor->link.aux = (struct drm_dp_aux *)sor->dpaux;
 
 	return 0;
 }
