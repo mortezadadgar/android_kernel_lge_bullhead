@@ -200,10 +200,14 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 	if (event != FB_EARLY_EVENT_BLANK)
 		return 0;
 
-	if (*blank == FB_BLANK_UNBLANK) {
-		fpc1020->screen_state = 1;
-	} else if (*blank == FB_BLANK_POWERDOWN) {
-		fpc1020->screen_state = 0;
+	switch (*blank) {
+		case FB_BLANK_UNBLANK:
+		case FB_BLANK_VSYNC_SUSPEND:
+			fpc1020->screen_state = 1;
+			break;
+		case FB_BLANK_POWERDOWN:
+			fpc1020->screen_state = 0;
+			break;
 	}
 
 	return 0;
