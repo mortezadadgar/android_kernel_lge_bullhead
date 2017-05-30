@@ -443,7 +443,7 @@ int alarm_start_relative(struct alarm *alarm, ktime_t start)
 {
 	struct alarm_base *base = &alarm_bases[alarm->type];
 
-	start = ktime_add(start, base->gettime());
+	start = ktime_add_safe(start, base->gettime());
 	return alarm_start(alarm, start);
 }
 
@@ -525,7 +525,7 @@ u64 alarm_forward(struct alarm *alarm, ktime_t now, ktime_t interval)
 		overrun++;
 	}
 
-	alarm->node.expires = ktime_add(alarm->node.expires, interval);
+	alarm->node.expires = ktime_add_safe(alarm->node.expires, interval);
 	return overrun;
 }
 
@@ -712,7 +712,7 @@ static int alarm_timer_set(struct k_itimer *timr, int flags,
 		ktime_t now;
 
 		now = alarm_bases[timr->it.alarm.alarmtimer.type].gettime();
-		exp = ktime_add(now, exp);
+		exp = ktime_add_safe(now, exp);
 	}
 
 	alarm_start(&timr->it.alarm.alarmtimer, exp);
