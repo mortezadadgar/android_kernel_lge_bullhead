@@ -897,9 +897,18 @@ static void tegra_crtc_disable(struct drm_crtc *crtc)
 	struct drm_plane *plane;
 	struct dirty_fb *loop_fb;
 	struct dirty_fb *temp_fb;
+	unsigned long flags;
 
 	if (!dc->enabled)
 		return;
+
+	spin_lock_irqsave(&drm->event_lock, flags);
+	if (dc->event) {
+		drm_send_vblank_event(drm, dc->pipe, dc->event);
+		drm_vblank_put(drm, dc->pipe);
+		dc->event = NULL;
+	}
+	spin_unlock_irqrestore(&drm->event_lock, flags);
 
 	drm_for_each_legacy_plane(plane, &drm->mode_config.plane_list) {
 		if (plane->crtc == crtc) {
