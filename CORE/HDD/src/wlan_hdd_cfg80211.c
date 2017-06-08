@@ -4521,6 +4521,10 @@ static int hdd_extscan_epno_fill_network_list(
 
 	expected_networks = req_msg->num_networks;
 	index = 0;
+	if (!tb[QCA_WLAN_VENDOR_ATTR_PNO_SET_LIST_PARAM_EPNO_NETWORKS_LIST]) {
+		hddLog(LOGE, FL("attr networks list failed"));
+		return -EINVAL;
+	}
 	nla_for_each_nested(networks,
 			    tb[QCA_WLAN_VENDOR_ATTR_PNO_SET_LIST_PARAM_EPNO_NETWORKS_LIST],
 			    rem1) {
@@ -4817,6 +4821,11 @@ static int hdd_extscan_passpoint_fill_network_list(
 
 	expected_networks = req_msg->num_networks;
 	index = 0;
+
+	if (!tb[QCA_WLAN_VENDOR_ATTR_PNO_PASSPOINT_LIST_PARAM_NETWORK_ARRAY]) {
+		hddLog(LOGE, FL("attr network array failed"));
+		return -EINVAL;
+	}
 	nla_for_each_nested(networks,
 		tb[QCA_WLAN_VENDOR_ATTR_PNO_PASSPOINT_LIST_PARAM_NETWORK_ARRAY],
 		rem1) {
