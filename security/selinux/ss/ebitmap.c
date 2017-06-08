@@ -24,6 +24,8 @@
 
 #define BITS_PER_U64	(sizeof(u64) * 8)
 
+static struct kmem_cache *ebitmap_node_cachep;
+
 int ebitmap_cmp(struct ebitmap *e1, struct ebitmap *e2)
 {
 	struct ebitmap_node *n1, *n2;
@@ -54,7 +56,7 @@ int ebitmap_cpy(struct ebitmap *dst, struct ebitmap *src)
 	n = src->node;
 	prev = NULL;
 	while (n) {
-		new = kzalloc(sizeof(*new), GFP_ATOMIC);
+		new = kmem_cache_zalloc(ebitmap_node_cachep, GFP_ATOMIC);
 		if (!new) {
 			ebitmap_destroy(dst);
 			return -ENOMEM;
@@ -179,7 +181,7 @@ int ebitmap_netlbl_import(struct ebitmap *ebmap,
 				+ c_idx * NETLBL_CATMAP_MAPSIZE;
 			if (!e_iter
 			    || c_pos >= e_iter->startbit + EBITMAP_SIZE) {
-				e_iter = kzalloc(sizeof(*e_iter), GFP_ATOMIC);
+				e_iter = kmem_cache_zalloc(ebitmap_node_cachep, GFP_ATOMIC);
 				if (!e_iter)
 					goto netlbl_import_failure;
 				e_iter->startbit
@@ -311,7 +313,7 @@ int ebitmap_set_bit(struct ebitmap *e, unsigned long bit, int value)
 					prev->next = n->next;
 				else
 					e->node = n->next;
-				kfree(n);
+				kmem_cache_free(ebitmap_node_cachep, n);
 			}
 			return 0;
 		}
@@ -322,7 +324,7 @@ int ebitmap_set_bit(struct ebitmap *e, unsigned long bit, int value)
 	if (!value)
 		return 0;
 
-	new = kzalloc(sizeof(*new), GFP_ATOMIC);
+	new = kmem_cache_zalloc(ebitmap_node_cachep, GFP_ATOMIC);
 	if (!new)
 		return -ENOMEM;
 
@@ -355,7 +357,7 @@ void ebitmap_destroy(struct ebitmap *e)
 	while (n) {
 		temp = n;
 		n = n->next;
-		kfree(temp);
+		kmem_cache_free(ebitmap_node_cachep, temp);
 	}
 
 	e->highbit = 0;
@@ -420,7 +422,7 @@ int ebitmap_read(struct ebitmap *e, void *fp)
 
 		if (!n || startbit >= n->startbit + EBITMAP_SIZE) {
 			struct ebitmap_node *tmp;
-			tmp = kzalloc(sizeof(*tmp), GFP_KERNEL);
+			tmp = kmem_cache_zalloc(ebitmap_node_cachep, GFP_KERNEL);
 			if (!tmp) {
 				printk(KERN_ERR
 				       "SELinux: ebitmap: out of memory\n");
@@ -539,3 +541,16 @@ int ebitmap_write(struct ebitmap *e, void *fp)
 	}
 	return 0;
 }
+
+void ebitmap_cache_init(void)
+{
+	ebitmap_node_cachep = kmem_cache_create("ebitmap_node",
+							sizeof(struct ebitmap_node),
+							0, SLAB_PANIC, NULL);
+}
+
+void ebitmap_cache_destroy(void)
+{
+	kmem_cache_destroy(ebitmap_node_cachep);
+}
+
