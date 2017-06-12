@@ -168,6 +168,7 @@ struct sbs_info {
 	int				poll_time;
 	struct delayed_work		work;
 	int				ignore_changes;
+	struct mutex			mode_lock;
 };
 
 static char model_name[I2C_SMBUS_BLOCK_MAX + 1];
@@ -590,7 +591,13 @@ static int sbs_get_property(struct power_supply *psy,
 		if (ret < 0)
 			break;
 
+		/* sbs_get_battery_capacity() will change the battery mode
+		 * temporarily to read the requested attribute. Ensure we stay
+		 * in the desired mode for the duration of the attribute read.
+		 */
+		mutex_lock(&chip->mode_lock);
 		ret = sbs_get_battery_capacity(client, ret, psp, val);
+		mutex_unlock(&chip->mode_lock);
 		break;
 
 	case POWER_SUPPLY_PROP_SERIAL_NUMBER:
@@ -839,6 +846,7 @@ static int sbs_probe(struct i2c_client *client,
 	chip->ignore_changes = 1;
 	chip->last_state = POWER_SUPPLY_STATUS_UNKNOWN;
 	chip->power_supply.external_power_changed = sbs_external_power_changed;
+	mutex_init(&chip->mode_lock);
 
 	pdata = sbs_of_populate_pdata(client);
 
