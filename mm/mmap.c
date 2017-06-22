@@ -1702,8 +1702,7 @@ check_current:
 		/* Check if current node has a suitable gap */
 		if (gap_start > high_limit)
 			return -ENOMEM;
-		if (gap_end >= low_limit &&
-		    gap_end > gap_start && gap_end - gap_start >= length)
+		if (gap_end >= low_limit && gap_end - gap_start >= length)
 			goto found;
 
 		/* Visit right subtree if it looks promising */
@@ -1806,8 +1805,7 @@ check_current:
 		gap_end = vm_start_gap(vma);
 		if (gap_end < low_limit)
 			return -ENOMEM;
-		if (gap_start <= high_limit &&
-		    gap_end > gap_start && gap_end - gap_start >= length)
+		if (gap_start <= high_limit && gap_end - gap_start >= length)
 			goto found;
 
 		/* Visit left subtree if it looks promising */
