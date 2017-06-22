@@ -1746,8 +1746,6 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 		dev_dbg(mdwc->dev, "defer suspend with %d(msecs)\n",
 					mdwc->lpm_to_suspend_delay);
 		pm_wakeup_event(mdwc->dev, mdwc->lpm_to_suspend_delay);
-	} else {
-		pm_relax(mdwc->dev);
 	}
 
 	if (mdwc->hs_phy_irq) {
@@ -1784,8 +1782,6 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 		dev_dbg(mdwc->dev, "%s: Already resumed\n", __func__);
 		return 0;
 	}
-
-	pm_stay_awake(mdwc->dev);
 
 	if (mdwc->bus_perf_client) {
 		ret = msm_bus_scale_client_update_request(
@@ -3395,7 +3391,6 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		register_cpu_notifier(&mdwc->dwc3_cpu_notifier);
 
 	device_init_wakeup(mdwc->dev, 1);
-	pm_stay_awake(mdwc->dev);
 	dwc3_msm_debugfs_init(mdwc);
 
 	pm_runtime_set_active(mdwc->dev);
