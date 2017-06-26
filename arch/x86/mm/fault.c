@@ -1159,8 +1159,14 @@ retry:
 		 * The large cushion allows instructions like enter
 		 * and pusha to work. ("enter $65535, $31" pushes
 		 * 32 pointers and then decrements %sp by 65535.)
+		 *
+		 * However accesses within one page of the lowest
+		 * stack address are exempt from this check, since
+		 * historically userspace has been able to expand
+		 * the stack by touching the stack guard page.
 		 */
-		if (unlikely(address + 65536 + 32 * sizeof(unsigned long) < regs->sp)) {
+		if (unlikely(address + 65536 + 32 * sizeof(unsigned long) < regs->sp) &&
+				address < vma->vm_start - PAGE_SIZE) {
 			bad_area(regs, error_code, address);
 			return;
 		}
