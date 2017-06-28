@@ -2308,6 +2308,7 @@ extern void sched_set_cpu_cstate(int cpu, int cstate,
 extern void sched_set_cluster_dstate(const cpumask_t *cluster_cpus, int dstate,
 				int wakeup_energy, int wakeup_latency);
 extern int sched_set_wake_up_idle(struct task_struct *p, int wake_up_idle);
+extern bool cpupri_check_rt(void);
 #else
 static inline void do_set_cpus_allowed(struct task_struct *p,
 				      const struct cpumask *new_mask)
@@ -2325,7 +2326,10 @@ sched_set_cpu_cstate(int cpu, int cstate, struct cpuidle *cpuidle,
 		     int wakeup_energy, int wakeup_latency)
 {
 }
-
+static inline bool cpupri_check_rt(void)
+{
+	return false;
+}
 static inline void sched_set_cluster_dstate(const cpumask_t *cluster_cpus,
 			int dstate, int wakeup_energy, int wakeup_latency)
 {
