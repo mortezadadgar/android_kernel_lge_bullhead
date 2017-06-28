@@ -1981,6 +1981,7 @@ extern int set_cpus_allowed_ptr(struct task_struct *p,
 				const struct cpumask *new_mask);
 extern void sched_set_cpu_cstate(int cpu, int cstate,
 			 int wakeup_energy, int wakeup_latency);
+extern bool cpupri_check_rt(void);
 #else
 static inline void do_set_cpus_allowed(struct task_struct *p,
 				      const struct cpumask *new_mask)
@@ -1996,6 +1997,11 @@ static inline int set_cpus_allowed_ptr(struct task_struct *p,
 static inline void
 sched_set_cpu_cstate(int cpu, int cstate, int wakeup_energy, int wakeup_latency)
 {
+}
+
+static inline bool cpupri_check_rt(void)
+{
+	return false;
 }
 #endif
 
