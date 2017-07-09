@@ -514,7 +514,7 @@ static void rmnet_usb_setup(struct net_device *dev)
 	dev->needed_headroom = RMNET_HEADROOM;
 
 	random_ether_addr(dev->dev_addr);
-	dev->watchdog_timeo = 1000; /* 10 seconds? */
+	dev->watchdog_timeo = 0; /* Disable watchdog */
 }
 
 static int rmnet_usb_data_status(struct seq_file *s, void *unused)

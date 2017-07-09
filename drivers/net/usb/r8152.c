@@ -1650,7 +1650,7 @@ static int rtl8152_probe(struct usb_interface *intf,
 	tp->udev = udev;
 	tp->netdev = netdev;
 	netdev->netdev_ops = &rtl8152_netdev_ops;
-	netdev->watchdog_timeo = RTL8152_TX_TIMEOUT;
+	netdev->watchdog_timeo = 0;
 	netdev->features &= ~NETIF_F_IP_CSUM;
 	SET_ETHTOOL_OPS(netdev, &ops);
 	tp->speed = 0;

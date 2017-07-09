@@ -898,7 +898,7 @@ static int rtl8150_probe(struct usb_interface *intf,
 	dev->udev = udev;
 	dev->netdev = netdev;
 	netdev->netdev_ops = &rtl8150_netdev_ops;
-	netdev->watchdog_timeo = RTL8150_TX_TIMEOUT;
+	netdev->watchdog_timeo = 0;
 	SET_ETHTOOL_OPS(netdev, &ops);
 	dev->intr_interval = 100;	/* 100ms */
 

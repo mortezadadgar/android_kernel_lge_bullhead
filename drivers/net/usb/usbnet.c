@@ -1556,7 +1556,7 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 #endif
 
 	net->netdev_ops = &usbnet_netdev_ops;
-	net->watchdog_timeo = TX_TIMEOUT_JIFFIES;
+	net->watchdog_timeo = 0;
 	net->ethtool_ops = &usbnet_ethtool_ops;
 
 	// allow device-specific bind/init procedures
