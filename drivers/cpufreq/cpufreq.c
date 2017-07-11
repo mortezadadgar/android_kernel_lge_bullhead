@@ -1370,8 +1370,10 @@ static int __cpufreq_remove_dev_finish(struct device *dev,
 		list_del(&policy->policy_list);
 		write_unlock_irqrestore(&cpufreq_driver_lock, flags);
 
-		if (!frozen)
+		if (!frozen) {
+			flush_work(&policy->update);
 			cpufreq_policy_free(policy);
+		}
 	} else {
 		if (has_target()) {
 			if ((ret = __cpufreq_governor(policy, CPUFREQ_GOV_START)) ||
