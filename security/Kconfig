@@ -192,6 +192,13 @@ config PAGE_SANITIZE_VERIFY
 	  Verify that newly allocated pages are zeroed to detect
 	  write-after-free bugs.
 
+config FORTIFY_SOURCE
+	bool "Harden common str/mem functions against buffer overflows"
+	depends on ARCH_HAS_FORTIFY_SOURCE
+	help
+	  Detect overflows of buffers in common string and memory functions
+	  where the compiler can determine and validate the buffer sizes.
+
 source security/selinux/Kconfig
 source security/smack/Kconfig
 source security/tomoyo/Kconfig
