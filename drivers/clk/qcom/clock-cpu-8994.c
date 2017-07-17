@@ -795,6 +795,7 @@ static struct mux_clk a57_hf_mux_v2 = {
 	.base = &vbases[ALIAS1_GLB_BASE],
 	.c = {
 		.dbg_name = "a57_hf_mux_v2",
+		.flags = CLKFLAG_NO_RATE_CACHE,
 		.ops = &clk_ops_gen_mux,
 		CLK_INIT(a57_hf_mux_v2.c),
 	},
