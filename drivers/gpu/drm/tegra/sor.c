@@ -1142,6 +1142,19 @@ static int tegra_output_sor_enable(struct tegra_output *output)
 
 		tegra_sor_dp_term_calibrate(sor);
 		drm_dp_link_train_init(&sor->link.train);
+
+		/*
+		 * Workaround for some Nyan panels that train just
+		 * fine, but don't report successful status. The fbdev
+		 * driver had a bug where it didn't check status for
+		 * single lane configs, which is how they used to
+		 * work.
+		 *
+		 * https://bugs.chromium.org/p/chromium/issues/detail?id=737618
+		 */
+		sor->link.train.clock_recovered = true;
+		sor->link.train.channel_equalized = true;
+
 		err = drm_dp_link_train(&sor->link);
 		if (err < 0) {
 			dev_err(sor->dev, "DP link training failed: %d\n", err);
