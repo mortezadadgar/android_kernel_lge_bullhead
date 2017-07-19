@@ -814,7 +814,7 @@ static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	}
 
 	down_write(&F2FS_I(old_inode)->i_sem);
-	if (!old_dir_entry || whiteout)
+	if (!old_dir_entry)
 		file_lost_pino(old_inode);
 	else
 		F2FS_I(old_inode)->i_pino = new_dir->i_ino;
