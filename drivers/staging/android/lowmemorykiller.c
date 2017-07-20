@@ -68,11 +68,10 @@ static unsigned long lowmem_deathpending_timeout;
 			pr_info(x);			\
 	} while (0)
 
-
 #ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
-static struct task_struct *pick_next_from_adj_tree(struct task_struct *task);
-static struct task_struct *pick_first_task(void);
-static struct task_struct *pick_last_task(void);
+static inline struct task_struct *pick_next_from_adj_tree(struct task_struct *task);
+static inline struct task_struct *pick_first_task(void);
+static inline struct task_struct *pick_last_task(void);
 #endif
 
 static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
@@ -340,7 +339,7 @@ void delete_from_adj_tree(struct task_struct *task)
 	spin_unlock(&lmk_lock);
 }
 
-static struct task_struct *pick_next_from_adj_tree(struct task_struct *task)
+static inline struct task_struct *pick_next_from_adj_tree(struct task_struct *task)
 {
 	struct rb_node *next;
 	struct signal_struct *next_tsk_sig;
@@ -356,7 +355,7 @@ static struct task_struct *pick_next_from_adj_tree(struct task_struct *task)
 	return next_tsk_sig->curr_target->group_leader;
 }
 
-static struct task_struct *pick_first_task(void)
+static inline struct task_struct *pick_first_task(void)
 {
 	struct rb_node *left;
 	struct signal_struct *first_tsk_sig;
@@ -371,7 +370,7 @@ static struct task_struct *pick_first_task(void)
 	first_tsk_sig = rb_entry(left, struct signal_struct, adj_node);
 	return first_tsk_sig->curr_target->group_leader;
 }
-static struct task_struct *pick_last_task(void)
+static inline struct task_struct *pick_last_task(void)
 {
 	struct rb_node *right;
 	struct signal_struct *last_tsk_sig;
