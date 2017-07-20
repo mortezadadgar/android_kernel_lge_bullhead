@@ -69,12 +69,12 @@ static unsigned long lowmem_deathpending_timeout;
 	} while (0)
 
 #ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
-static struct task_struct *pick_next_from_adj_tree(struct task_struct *task);
-static struct task_struct *pick_first_task(void);
-static struct task_struct *pick_last_task(void);
+static inline struct task_struct *pick_next_from_adj_tree(struct task_struct *task);
+static inline struct task_struct *pick_first_task(void);
+static inline struct task_struct *pick_last_task(void);
 #endif
 
-static int test_task_flag(struct task_struct *p, int flag)
+static inline int test_task_flag(struct task_struct *p, int flag)
 {
 	struct task_struct *t;
 
