@@ -354,8 +354,8 @@ static int __power_supply_populate_supplied_from(struct device *dev,
 		if (np == epsy->of_node) {
 			dev_info(psy->dev, "%s: Found supply : %s\n",
 				psy->name, epsy->name);
-			psy->supplied_from[i-1] = (char *)epsy->name;
-			psy->num_supplies++;
+			psy->supplied_from[psy->num_supplies++] =
+			        (char *)epsy->name;
 			break;
 		}
 	} while (np);
