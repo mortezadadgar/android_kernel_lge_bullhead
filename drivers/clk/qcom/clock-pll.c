@@ -313,7 +313,7 @@ static int variable_rate_pll_clk_enable(struct clk *c)
 	 * higher delay, we avoid running into those transients.
 	 */
 	mb();
-	udelay(200);
+	udelay(2000);
 
 	/* Clear test control bits */
 	if (pll->test_ctl_lo_reg && pll->vals.test_ctl_lo_val &&
