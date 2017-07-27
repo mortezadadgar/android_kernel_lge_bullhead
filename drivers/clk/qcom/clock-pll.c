@@ -269,7 +269,9 @@ static int variable_rate_pll_clk_enable(struct clk *c)
 
 	spin_lock_irqsave(&pll_reg_lock, flags);
 
-	if (unlikely(!to_pll_clk(c)->inited))
+	if (!strcmp(c->dbg_name, "a57_pll0") ||
+	    !strcmp(c->dbg_name, "a57_pll1") ||
+	    unlikely(!to_pll_clk(c)->inited))
 		__variable_rate_pll_init(c);
 
 	mode = readl_relaxed(PLL_MODE_REG(pll));
