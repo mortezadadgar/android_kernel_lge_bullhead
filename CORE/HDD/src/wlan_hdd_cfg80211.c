@@ -905,6 +905,9 @@ wlan_hdd_pno_config_policy[QCA_WLAN_VENDOR_ATTR_PNO_MAX + 1] = {
     [QCA_WLAN_VENDOR_ATTR_EPNO_BAND5GHZ_BONUS] = {
         .type = NLA_U32
     },
+    [QCA_WLAN_VENDOR_ATTR_PNO_CONFIG_REQUEST_ID] = {
+         .type = NLA_U32
+    },
 };
 
 static const struct nla_policy
@@ -4769,12 +4772,12 @@ static int __wlan_hdd_cfg80211_set_epno_list(struct wiphy *wiphy,
 	req_msg->num_networks = num_networks;
 
 	/* Parse and fetch request Id */
-	if (!tb[QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_REQUEST_ID]) {
+	if (!tb[QCA_WLAN_VENDOR_ATTR_PNO_CONFIG_REQUEST_ID]) {
 		hddLog(LOGE, FL("attr request id failed"));
 		goto fail;
 	}
 	req_msg->request_id = nla_get_u32(
-	    tb[QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_REQUEST_ID]);
+	    tb[QCA_WLAN_VENDOR_ATTR_PNO_CONFIG_REQUEST_ID]);
 
 	req_msg->session_id = adapter->sessionId;
 	hddLog(LOG1, FL("Req Id %u Session Id %d"),
@@ -13580,8 +13583,10 @@ static int __wlan_hdd_cfg80211_get_chain_rssi(struct wiphy *wiphy,
 	struct hdd_chain_rssi_context *context;
 	struct nlattr *tb[QCA_WLAN_VENDOR_ATTR_MAX + 1];
 	eHalStatus status;
-	int retval = 0;
+	int retval;
 	unsigned long rc;
+	const int mac_len = sizeof(req_msg.peer_macaddr);
+	int msg_len;
 
 	ENTER();
 
@@ -13589,9 +13594,11 @@ static int __wlan_hdd_cfg80211_get_chain_rssi(struct wiphy *wiphy,
 	if (0 != retval)
 		return retval;
 
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_MAX, data, data_len, NULL)) {
+	/* nla validation doesn't do exact lengths, do the validation later */
+	retval = nla_parse(tb, QCA_WLAN_VENDOR_ATTR_MAX, data, data_len, NULL);
+	if (retval) {
 		hddLog(LOGE, FL("Invalid ATTR"));
-		return -EINVAL;
+		return retval;
 	}
 
 	if (!tb[QCA_WLAN_VENDOR_ATTR_MAC_ADDR]) {
@@ -13599,9 +13606,15 @@ static int __wlan_hdd_cfg80211_get_chain_rssi(struct wiphy *wiphy,
 		return -EINVAL;
 	}
 
+	msg_len = nla_len(tb[QCA_WLAN_VENDOR_ATTR_MAC_ADDR]);
+	if (msg_len != mac_len) {
+		hddLog(LOGE, FL("Invalid mac address length: %d, expected %d"),
+			msg_len, mac_len);
+		return -ERANGE;
+	}
+
 	memcpy(&req_msg.peer_macaddr,
-		nla_data(tb[QCA_WLAN_VENDOR_ATTR_MAC_ADDR]),
-		sizeof(req_msg.peer_macaddr));
+		nla_data(tb[QCA_WLAN_VENDOR_ATTR_MAC_ADDR]), mac_len);
 
 	spin_lock(&hdd_context_lock);
 	context = &hdd_ctx->chain_rssi_context;
