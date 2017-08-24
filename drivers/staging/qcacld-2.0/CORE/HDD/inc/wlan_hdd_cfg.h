@@ -177,7 +177,7 @@
 #define CFG_BMPS_MODERATE_LI_NAME              "gBmpsModListenInterval"
 #define CFG_BMPS_MODERATE_LI_MIN               ( 1 )
 #define CFG_BMPS_MODERATE_LI_MAX               ( 65535 )
-#define CFG_BMPS_MODERATE_LI_DEFAULT           ( 1 )
+#define CFG_BMPS_MODERATE_LI_DEFAULT           ( 8 )
 
 #define CFG_BMPS_MAXIMUM_LI_NAME               "gBmpsMaxListenInterval"
 #define CFG_BMPS_MAXIMUM_LI_MIN                ( 1 )
