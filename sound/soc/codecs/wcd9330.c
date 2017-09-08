@@ -82,6 +82,8 @@ enum {
 #define SLIM_BW_CLK_GEAR_9 6200000
 #define SLIM_BW_UNVOTE 0
 
+static bool force_uhqa_mode = 1; /// Force enable High performance mode when frequency is not 192KHz/24-bit
+
 static int cpe_debug_mode;
 module_param(cpe_debug_mode, int,
 	     S_IRUGO | S_IWUSR | S_IWGRP);
@@ -89,7 +91,7 @@ MODULE_PARM_DESC(cpe_debug_mode, "boot cpe in debug mode");
 
 static atomic_t kp_tomtom_priv;
 
-static int high_perf_mode;
+static int high_perf_mode = 1;
 module_param(high_perf_mode, int,
 			S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(high_perf_mode, "enable/disable class AB config for hph");
@@ -725,6 +727,10 @@ static int tomtom_update_uhqa_mode(struct snd_soc_codec *codec, int path)
 	} else {
 		tomtom_p->uhqa_mode = 0;
 	}
+        
+        if (force_uhqa_mode)
+                tomtom_p->uhqa_mode = 1;
+
 	dev_dbg(codec->dev, "%s: uhqa_mode=%d", __func__, tomtom_p->uhqa_mode);
 	return ret;
 }
