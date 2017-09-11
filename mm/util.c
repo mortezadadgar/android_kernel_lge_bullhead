@@ -407,6 +407,7 @@ struct address_space *page_mapping(struct page *page)
 		mapping = NULL;
 	return mapping;
 }
+EXPORT_SYMBOL(page_mapping);
 
 /* Tracepoints definitions. */
 EXPORT_TRACEPOINT_SYMBOL(kmalloc);
