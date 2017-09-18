@@ -2914,7 +2914,7 @@ htt_rx_hash_list_insert(struct htt_pdev_t *pdev, u_int32_t paddr,
     htt_list_add_tail(&pdev->rx_ring.hash_table[i]->listhead,
                        &hash_element->listnode);
 
-    RX_HASH_LOG(adf_os_print("rx hash: %s: paddr 0x%x netbuf %p bucket %d\n",
+    RX_HASH_LOG(adf_os_print("rx hash: %s: paddr 0x%x netbuf %pK bucket %d\n",
                              __FUNCTION__, paddr, netbuf,(int)i));
 
     HTT_RX_HASH_COUNT_INCR(pdev->rx_ring.hash_table[i]);
@@ -2971,7 +2971,7 @@ htt_rx_hash_list_lookup(struct htt_pdev_t *pdev, u_int32_t paddr)
         }
     }
 
-    RX_HASH_LOG(adf_os_print("rx hash: %s: paddr 0x%x, netbuf %p, bucket %d\n",
+    RX_HASH_LOG(adf_os_print("rx hash: %s: paddr 0x%x, netbuf %pK, bucket %d\n",
                               __FUNCTION__, paddr, netbuf,(int)i));
     HTT_RX_HASH_COUNT_PRINT(pdev->rx_ring.hash_table[i]);
 
@@ -3109,7 +3109,7 @@ htt_rx_hash_dump_table(struct htt_pdev_t *pdev)
             hash_entry =
                  (struct htt_rx_hash_entry *)((char *)list_iter -
                                                pdev->rx_ring.listnode_offset);
-            adf_os_print("hash_table[%d]: netbuf %p paddr 0x%x\n",
+            adf_os_print("hash_table[%d]: netbuf %pK paddr 0x%x\n",
                           i, hash_entry->netbuf, hash_entry->paddr);
         }
     }
