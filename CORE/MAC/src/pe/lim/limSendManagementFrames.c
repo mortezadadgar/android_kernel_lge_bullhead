@@ -3789,7 +3789,7 @@ eHalStatus limSendDeauthCnf(tpAniSirGlobal pMac)
 #endif
                  (psessionEntry->is11Rconnection ))) {
             PELOGE(limLog(pMac, LOGE,
-                   FL("FT Preauth Session (%p,%d) Cleanup"
+                   FL("FT Preauth Session (%pK,%d) Cleanup"
                       " Deauth reason %d Trigger = %d"),
                    psessionEntry, psessionEntry->peSessionId,
                    pMlmDeauthReq->reasonCode,
@@ -3889,7 +3889,7 @@ eHalStatus limSendDisassocCnf(tpAniSirGlobal pMac)
                  eSIR_MAC_DISASSOC_DUE_TO_FTHANDOFF_REASON))
         {
             PELOGE(limLog(pMac, LOG1,
-                   FL("FT Preauth Session (%p,%d) Clean up"
+                   FL("FT Preauth Session (%pK,%d) Clean up"
 
 #ifdef FEATURE_WLAN_ESE
                    " isESE %d"
