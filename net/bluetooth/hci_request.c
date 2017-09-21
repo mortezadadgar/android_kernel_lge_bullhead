@@ -824,7 +824,11 @@ void hci_req_add_le_passive_scan(struct hci_request *req)
 
 	memset(&enable_cp, 0, sizeof(enable_cp));
 	enable_cp.enable = LE_SCAN_ENABLE;
+#ifdef CONFIG_BT_EVE_HACKS
+	enable_cp.filter_dup = LE_SCAN_FILTER_DUP_DISABLE;
+#else
 	enable_cp.filter_dup = LE_SCAN_FILTER_DUP_ENABLE;
+#endif
 	hci_req_add(req, HCI_OP_LE_SET_SCAN_ENABLE, sizeof(enable_cp),
 		    &enable_cp);
 }
@@ -1930,7 +1934,11 @@ static int le_scan_restart(struct hci_request *req, unsigned long opt)
 
 	memset(&cp, 0, sizeof(cp));
 	cp.enable = LE_SCAN_ENABLE;
+#ifdef CONFIG_BT_EVE_HACKS
+	cp.filter_dup = LE_SCAN_FILTER_DUP_DISABLE;
+#else
 	cp.filter_dup = LE_SCAN_FILTER_DUP_ENABLE;
+#endif
 	hci_req_add(req, HCI_OP_LE_SET_SCAN_ENABLE, sizeof(cp), &cp);
 
 	return 0;
@@ -2047,7 +2055,11 @@ static int active_scan(struct hci_request *req, unsigned long opt)
 
 	memset(&enable_cp, 0, sizeof(enable_cp));
 	enable_cp.enable = LE_SCAN_ENABLE;
+#ifdef CONFIG_BT_EVE_HACKS
+	enable_cp.filter_dup = LE_SCAN_FILTER_DUP_DISABLE;
+#else
 	enable_cp.filter_dup = LE_SCAN_FILTER_DUP_ENABLE;
+#endif
 
 	hci_req_add(req, HCI_OP_LE_SET_SCAN_ENABLE, sizeof(enable_cp),
 		    &enable_cp);
