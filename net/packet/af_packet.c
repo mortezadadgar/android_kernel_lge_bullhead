@@ -2249,6 +2249,7 @@ static int packet_snd(struct socket *sock,
 	int vnet_hdr_len;
 	struct packet_sock *po = pkt_sk(sk);
 	unsigned short gso_type = 0;
+	bool has_vnet_hdr = false;
 	int hlen, tlen, linear;
 	int extra_len = 0;
 
@@ -2326,6 +2327,7 @@ static int packet_snd(struct socket *sock,
 				goto out_unlock;
 
 		}
+		has_vnet_hdr = true;
 	}
 
 	if (unlikely(sock_flag(sk, SOCK_NOFCS))) {
@@ -2383,7 +2385,7 @@ static int packet_snd(struct socket *sock,
 	skb->priority = sk->sk_priority;
 	skb->mark = sk->sk_mark;
 
-	if (po->has_vnet_hdr) {
+	if (has_vnet_hdr) {
 		if (vnet_hdr.flags & VIRTIO_NET_HDR_F_NEEDS_CSUM) {
 			if (!skb_partial_csum_set(skb, vnet_hdr.csum_start,
 						  vnet_hdr.csum_offset)) {
