@@ -2582,7 +2582,7 @@ free_meta:
 	 * followed by write_checkpoint() through f2fs_write_node_pages(), which
 	 * falls into an infinite loop in sync_meta_pages().
 	 */
-	truncate_inode_pages_final(META_MAPPING(sbi), 0);
+	truncate_inode_pages_final(META_MAPPING(sbi));
 free_sysfs:
 	f2fs_unregister_sysfs(sbi);
 free_root_inode:

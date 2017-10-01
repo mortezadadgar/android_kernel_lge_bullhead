@@ -436,7 +436,7 @@ static int iostat_info_seq_show(struct seq_file *seq, void *offset)
 {
 	struct super_block *sb = seq->private;
 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
-	time64_t now = get_seconds();
+	__s64 now = get_seconds();
 
 	if (!sbi->iostat_enable)
 		return 0;
