@@ -223,6 +223,10 @@ static int msm_ipc_router_extract_msg(struct msghdr *m,
 	hdr = &(pkt->hdr);
 	if (addr && (hdr->type == IPC_ROUTER_CTRL_CMD_RESUME_TX)) {
 		temp = skb_peek(pkt->pkt_fragment_q);
+		if (!temp || !temp->data) {
+			IPC_RTR_ERR("%s: Invalid skb\n", __func__);
+			return -EINVAL;
+		}
 		ctl_msg = (union rr_control_msg *)(temp->data);
 		memset(addr, 0x0, sizeof(*addr));
 		addr->family = AF_MSM_IPC;
