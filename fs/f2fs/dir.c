@@ -880,7 +880,7 @@ static int f2fs_readdir(struct file *file, void *dirent, filldir_t filldir)
 	bit_pos = (pos % NR_DENTRY_IN_BLOCK);
 	n = (pos / NR_DENTRY_IN_BLOCK);
 
-	for (; n < npages; n++) {
+	for (; n < npages; n++, file->f_pos = n * NR_DENTRY_IN_BLOCK) {
 
 		/* allow readdir() to be interrupted */
 		if (fatal_signal_pending(current)) {
@@ -918,7 +918,6 @@ static int f2fs_readdir(struct file *file, void *dirent, filldir_t filldir)
 		}
 
 		bit_pos = 0;
-		file->f_pos = (n + 1) * NR_DENTRY_IN_BLOCK;
 		kunmap(dentry_page);
 		f2fs_put_page(dentry_page, 1);
 	}
