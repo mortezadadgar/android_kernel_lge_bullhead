@@ -221,6 +221,8 @@ static int f2fs_set_acl(struct inode *inode, int type,
 	int error;
 	umode_t mode = inode->i_mode;
 
+	if (unlikely(f2fs_cp_error(F2FS_I_SB(inode))))
+		return -EIO;
 	if (!test_opt(sbi, POSIX_ACL))
 		return 0;
 	if (S_ISLNK(inode->i_mode))
