@@ -1574,6 +1574,7 @@ struct task_struct {
 #ifdef CONFIG_TASK_CPUFREQ_STATS
 	struct task_cpufreq_stats cpufreq_stats[NR_CPUS];
 #endif
+	atomic64_t *concurrent_active_time;
 };
 
 /* Future-safe accessor for struct task_struct's cpus_allowed. */
