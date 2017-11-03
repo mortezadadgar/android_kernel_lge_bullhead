@@ -7,3 +7,11 @@ config SECURITY_CHROMIUMOS
 	  required by Chromium OS. Currently: the mount operation is
 	  restricted by requiring a mount point path without symbolic links,
 	  and loading modules is limited to only the root filesystem.
+
+config SECURITY_CHROMIUMOS_READONLY_PROC_SELF_MEM
+	bool "Force /proc/<pid>/mem paths to be read-only"
+	default y
+	help
+	  When enabled, attempts to open /proc/self/mem for write access
+	  will always fail.  Write access to this file allows bypassing
+	  of memory map permissions (such as modifying read-only code).
