@@ -1065,13 +1065,18 @@ static int tegra_output_hdmi_check_mode(struct tegra_output *output,
 	struct clk *parent;
 	long err;
 
-	parent = clk_get_parent(hdmi->clk_parent);
+	// Maximum clock frequency for tegra is 165 MHz
+	if (mode->clock > 165000) {
+		*status = MODE_CLOCK_HIGH;
+	} else {
+		parent = clk_get_parent(hdmi->clk_parent);
 
-	err = clk_round_rate(parent, pclk * 4);
-	if (err <= 0)
-		*status = MODE_NOCLOCK;
-	else
-		*status = MODE_OK;
+		err = clk_round_rate(parent, pclk * 4);
+		if (err <= 0)
+			*status = MODE_NOCLOCK;
+		else
+			*status = MODE_OK;
+	}
 
 	return 0;
 }
