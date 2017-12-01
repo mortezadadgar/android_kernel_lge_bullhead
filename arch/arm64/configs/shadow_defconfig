@@ -31,6 +31,7 @@ CONFIG_CRYPTO_LZO=y
 CONFIG_CRYPTO_LZ4=y
 # CONFIG_CRYPTO_LZ4HC is not set
 CONFIG_WAKE_GESTURES=y
+CONFIG_SOUND_CONTROL_HAX_3_GPL=y
 
 ##################
 #                #
