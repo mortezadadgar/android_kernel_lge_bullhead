@@ -937,8 +937,31 @@ mapped:
 
 	set_bit(usage->type, input->evbit);
 
-	while (usage->code <= max && test_and_set_bit(usage->code, bit))
-		usage->code = find_next_zero_bit(bit, max + 1, usage->code);
+	/*
+	 * This part is *really* controversial:
+	 * - HID aims at being generic so we should do our best to export
+	 *   all incoming events
+	 * - HID describes what events are, so there is no reason for ABS_X
+	 *   to be mapped to ABS_Y
+	 * - HID is using *_MISC+N as a default value, but nothing prevents
+	 *   *_MISC+N to overwrite a legitimate even, which confuses userspace
+	 *   (for instance ABS_MISC + 7 is ABS_MT_SLOT, which has a different
+	 *   processing)
+	 *
+	 * If devices still want to use this (at their own risk), they will
+	 * have to use the quirk HID_QUIRK_INCREMENT_USAGE_ON_DUPLICATE, but
+	 * the default should be a reliable mapping.
+	 */
+	while (usage->code <= max && test_and_set_bit(usage->code, bit)) {
+		if (device->quirks & HID_QUIRK_INCREMENT_USAGE_ON_DUPLICATE) {
+			usage->code = find_next_zero_bit(bit,
+							 max + 1,
+							 usage->code);
+		} else {
+			device->status |= HID_STAT_DUP_DETECTED;
+			goto ignore;
+		}
+	}
 
 	if (usage->code > max)
 		goto ignore;
@@ -1325,6 +1348,8 @@ int hidinput_connect(struct hid_device *hid, unsigned int force)
 
 	INIT_LIST_HEAD(&hid->inputs);
 
+	hid->status &= ~HID_STAT_DUP_DETECTED;
+
 	if (!force) {
 		for (i = 0; i < hid->maxcollection; i++) {
 			struct hid_collection *col = &hid->collection[i];
@@ -1399,6 +1424,10 @@ int hidinput_connect(struct hid_device *hid, unsigned int force)
 		if (input_register_device(hidinput->input))
 			goto out_cleanup;
 	}
+
+	if (hid->status & HID_STAT_DUP_DETECTED)
+		hid_dbg(hid,
+			"Some usages could not be mapped, please use HID_QUIRK_INCREMENT_USAGE_ON_DUPLICATE if this is legitimate.\n");
 
 	return 0;
 
