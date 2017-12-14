@@ -290,8 +290,9 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
             goto free;
         }
 
-        if (frameLen < LIM_ENCR_AUTH_BODY_LEN_SAP)
-        {
+	if ((frameLen < LIM_ENCR_AUTH_BODY_LEN_SAP) ||
+	    (frameLen > LIM_ENCR_AUTH_BODY_LEN))
+	{
             // Log error
             limLog(pMac, LOGE,
                    FL("Not enough size [%d] to decrypt received Auth frame"),
