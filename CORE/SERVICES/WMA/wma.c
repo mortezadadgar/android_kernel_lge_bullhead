@@ -9008,7 +9008,10 @@ wma_action_frame_filter_mac_event_handler(void *handle, u_int8_t *event_buf,
 		WMA_LOGA(FL("Invalid fixed param"));
 		return -EINVAL;
 	}
-
+	if (event->vdev_id >= wma_handle->max_bssid) {
+		WMA_LOGA(FL("Invalid vdev id"));
+		return -EINVAL;
+	}
 	intr = &wma_handle->interfaces[event->vdev_id];
 	/* command is in progess */
 	if(!intr->action_frame_filter) {
@@ -23701,7 +23704,15 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 	}
 
 	vos_event_set(&wma->wma_resume_event);
-
+	if (param_buf->wow_packet_buffer) {
+		wow_buf_pkt_len = *(uint32_t *)param_buf->wow_packet_buffer;
+		if (wow_buf_pkt_len > (param_buf->num_wow_packet_buffer - 4)) {
+			WMA_LOGE("Invalid wow buf pkt len from firmware, wow_buf_pkt_len: %u, num_wow_packet_buffer: %u",
+					wow_buf_pkt_len,
+					param_buf->num_wow_packet_buffer);
+			return -EINVAL;
+		}
+	}
 	switch (wake_info->wake_reason) {
 	case WOW_REASON_AUTH_REQ_RECV:
 	case WOW_REASON_ASSOC_REQ_RECV:
@@ -23715,9 +23726,6 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 		wake_lock_duration =
 			wma_wow_get_wakelock_duration(wake_info->wake_reason);
 		if (param_buf->wow_packet_buffer) {
-			/* First 4-bytes of wow_packet_buffer is the length */
-			vos_mem_copy((uint8_t *) &wow_buf_pkt_len,
-				param_buf->wow_packet_buffer, 4);
 			if (wow_buf_pkt_len)
 				wma_wow_dump_mgmt_buffer(
 					param_buf->wow_packet_buffer,
@@ -23805,9 +23813,6 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 	case WOW_REASON_PATTERN_MATCH_FOUND:
 		WMA_LOGD("Wake up for Rx packet, dump starting from ethernet hdr");
 		if (param_buf->wow_packet_buffer) {
-		    /* First 4-bytes of wow_packet_buffer is the length */
-		    vos_mem_copy((u_int8_t *) &wow_buf_pkt_len,
-			param_buf->wow_packet_buffer, 4);
 			if (wow_buf_pkt_len) {
 				uint8_t *data;
 
@@ -23844,8 +23849,6 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 		if (param_buf->wow_packet_buffer) {
 		    /* Roam event is embedded in wow_packet_buffer */
 		    WMA_LOGD("Host woken up because of roam event");
-		    vos_mem_copy((u_int8_t *) &wow_buf_pkt_len,
-				param_buf->wow_packet_buffer, 4);
 		    WMA_LOGD("wow_packet_buffer dump");
 				vos_trace_hex_dump(VOS_MODULE_ID_WDA,
 				VOS_TRACE_LEVEL_DEBUG,
@@ -23873,8 +23876,6 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 		if (param_buf->wow_packet_buffer) {
 		    /* station kickout event embedded in wow_packet_buffer */
 		    WMA_LOGD("Host woken up because of sta_kickout event");
-		    vos_mem_copy((u_int8_t *) &wow_buf_pkt_len,
-				param_buf->wow_packet_buffer, 4);
 		    WMA_LOGD("wow_packet_buffer dump");
 				vos_trace_hex_dump(VOS_MODULE_ID_WDA,
 				VOS_TRACE_LEVEL_DEBUG,
@@ -23898,8 +23899,6 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 		WMA_LOGD("Host woken up because of extscan reason");
 		wma_wow_wake_up_stats(wma, NULL, 0, WOW_REASON_EXTSCAN);
 		if (param_buf->wow_packet_buffer) {
-			wow_buf_pkt_len =
-				*(uint32_t *)param_buf->wow_packet_buffer;
 			wma_extscan_wow_event_callback(handle,
 				(u_int8_t *)(param_buf->wow_packet_buffer + 4),
 				wow_buf_pkt_len);
@@ -23916,8 +23915,6 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 			WMA_LOGD("Host woken up because of rssi breach reason");
 			/* rssi breach event is embedded in wow_packet_buffer */
 			if (param_buf->wow_packet_buffer) {
-				vos_mem_copy((u_int8_t *) &wow_buf_pkt_len,
-					param_buf->wow_packet_buffer, 4);
 				if (wow_buf_pkt_len >= sizeof(param)) {
 					param.fixed_param =
 					(wmi_rssi_breach_event_fixed_param *)
@@ -23952,8 +23949,6 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 	case WOW_REASON_NAN_DATA:
 		WMA_LOGD(FL("Host woken up for NAN data event from FW"));
 		if (param_buf->wow_packet_buffer) {
-			wow_buf_pkt_len =
-				*(uint32_t *)param_buf->wow_packet_buffer;
 			WMA_LOGD(FL("wow_packet_buffer dump"));
 			vos_trace_hex_dump(VOS_MODULE_ID_WDA,
 				VOS_TRACE_LEVEL_DEBUG,
@@ -23986,8 +23981,6 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 				WOW_REASON_OEM_RESPONSE_EVENT);
 		if (param_buf->wow_packet_buffer) {
 			WMA_LOGD(FL("Host woken up by OEM Response event"));
-			wow_buf_pkt_len =
-				*(uint32_t *)param_buf->wow_packet_buffer;
 			vos_trace_hex_dump(VOS_MODULE_ID_WDA,
                                 VOS_TRACE_LEVEL_DEBUG,
                                 param_buf->wow_packet_buffer,
@@ -34064,10 +34057,15 @@ static int wma_scan_event_callback(WMA_HANDLE handle, u_int8_t *data,
 	vos_msg_t vos_msg = {0};
 	VOS_STATUS vos_status = VOS_STATUS_SUCCESS;
 
-        param_buf = (WMI_SCAN_EVENTID_param_tlvs *) data;
-        wmi_event = param_buf->fixed_param;
-        vdev_id = wmi_event->vdev_id;
-        scan_id = wma_handle->interfaces[vdev_id].scan_info.scan_id;
+	if (wmi_event->vdev_id >= wma_handle->max_bssid) {
+		WMA_LOGE("Invalid vdev id from firmware");
+		return -EINVAL;
+	}
+
+	param_buf = (WMI_SCAN_EVENTID_param_tlvs *) data;
+	wmi_event = param_buf->fixed_param;
+	vdev_id = wmi_event->vdev_id;
+	scan_id = wma_handle->interfaces[vdev_id].scan_info.scan_id;
 
 	adf_os_spin_lock_bh(&wma_handle->roam_preauth_lock);
 	if (wma_handle->roam_preauth_scan_id == wmi_event->scan_id) {
@@ -34454,6 +34452,11 @@ static int wma_roam_event_callback(WMA_HANDLE handle, u_int8_t *event_buf,
 	wmi_event = param_buf->fixed_param;
 	WMA_LOGD("%s: Reason %x for vdevid %x, rssi %d",
 		__func__, wmi_event->reason, wmi_event->vdev_id, wmi_event->rssi);
+
+	if (wmi_event->vdev_id >= wma_handle->max_bssid) {
+		WMA_LOGE("Invalid vdev id from firmware");
+		return -EINVAL;
+	}
 
 	DPTRACE(adf_dp_trace_record_event(ADF_DP_TRACE_EVENT_RECORD,
 		wmi_event->vdev_id, ADF_PROTO_TYPE_EVENT, ADF_ROAM_EVENTID));
