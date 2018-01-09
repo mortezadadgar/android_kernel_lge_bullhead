@@ -1070,6 +1070,7 @@ struct f2fs_io_info {
 	int need_lock;		/* indicate we need to lock cp_rwsem */
 	bool in_list;		/* indicate fio is in io_list */
 	enum iostat_type io_type;	/* io type */
+	struct writeback_control *io_wbc; /* writeback control */
 };
 
 #define is_read_io(rw) ((rw) == READ)
@@ -2588,6 +2589,15 @@ enum rw_hint {
 	WRITE_LIFE_LONG		= 4, /* RWH_WRITE_LIFE_LONG */
 	WRITE_LIFE_EXTREME	= 5, /* RWH_WRITE_LIFE_EXTREME */
 };
+
+static inline void wbc_init_bio(struct writeback_control *wbc, struct bio *bio)
+{
+}
+
+static inline void wbc_account_io(struct writeback_control *wbc,
+				  struct page *page, size_t bytes)
+{
+}
 
 static inline void f2fs_kvfree(void *ptr)
 {
