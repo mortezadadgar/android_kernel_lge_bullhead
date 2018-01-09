@@ -100,8 +100,7 @@ drm_clflush_pages(struct page *pages[], unsigned long num_pages)
 }
 EXPORT_SYMBOL(drm_clflush_pages);
 
-void
-drm_clflush_sg(struct sg_table *st)
+void drm_clflush_sg(struct drm_device *drm, struct sg_table *st)
 {
 #if defined(CONFIG_X86)
 	if (cpu_has_clflush) {
@@ -117,6 +116,9 @@ drm_clflush_sg(struct sg_table *st)
 
 	if (on_each_cpu(drm_clflush_ipi_handler, NULL, 1) != 0)
 		printk(KERN_ERR "Timed out waiting for cache flush.\n");
+#elif defined(CONFIG_ARM)
+	dma_sync_sg_for_device(drm->dev, st->sgl, st->nents,
+			       DMA_TO_DEVICE);
 #else
 	printk(KERN_ERR "Architecture has no drm_cache.c support\n");
 	WARN_ON_ONCE(1);

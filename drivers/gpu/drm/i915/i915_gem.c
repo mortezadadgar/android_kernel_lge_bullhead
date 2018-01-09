@@ -3347,7 +3347,7 @@ i915_gem_clflush_object(struct drm_i915_gem_object *obj,
 		return false;
 
 	trace_i915_gem_object_clflush(obj);
-	drm_clflush_sg(obj->pages);
+	drm_clflush_sg(obj->base.dev, obj->pages);
 
 	return true;
 }
