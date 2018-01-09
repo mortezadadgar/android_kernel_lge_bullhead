@@ -99,11 +99,17 @@ static void vgem_gem_free_object(struct drm_gem_object *obj)
 
 	vgem_obj->pages = NULL;
 
+	if (vgem_obj->sgt)
+		sg_free_table(vgem_obj->sgt);
+
+	vgem_obj->sgt = NULL;
+
 	kfree(vgem_obj);
 }
 
 int vgem_gem_get_pages(struct drm_vgem_gem_object *obj)
 {
+	struct scatterlist *s;
 	struct address_space *mapping;
 	gfp_t gfpmask = GFP_KERNEL;
 	int num_pages, i, ret = 0;
@@ -129,6 +135,15 @@ int vgem_gem_get_pages(struct drm_vgem_gem_object *obj)
 		}
 		obj->pages[i] = page;
 	}
+
+	obj->sgt = drm_prime_pages_to_sg(obj->pages, num_pages);
+	if (IS_ERR(obj->sgt))
+		goto err_out;
+
+	for_each_sg(obj->sgt->sgl, s, obj->sgt->nents, i)
+		sg_dma_address(s) = sg_phys(s);
+
+	drm_clflush_sg(obj->base.dev, obj->sgt);
 
 	return ret;
 

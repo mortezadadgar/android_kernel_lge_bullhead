@@ -40,6 +40,7 @@
 struct drm_vgem_gem_object {
 	struct drm_gem_object base;
 	struct page **pages;
+	struct sg_table *sgt;
 };
 
 /* vgem_drv.c */
