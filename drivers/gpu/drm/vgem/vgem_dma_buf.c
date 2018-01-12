@@ -31,72 +31,31 @@
 
 #define VGEM_FD_PERMS 0600
 
-static struct sg_table *vgem_gem_map_dma_buf(struct dma_buf_attachment *attach,
-					     enum dma_data_direction dir)
+struct sg_table *vgem_gem_prime_get_sg_table(struct drm_gem_object *gobj)
 {
-	struct drm_vgem_gem_object *obj = attach->dmabuf->priv;
-	struct sg_table *sg;
-	int ret;
-
-	ret = vgem_gem_get_pages(obj);
-	if (ret)
-		return ERR_PTR(ret);
-
-	/* VGEM assumes cache coherent access. Normally we might have to flush
-	 * caches here */
-
+	struct drm_vgem_gem_object *obj = to_vgem_bo(gobj);
 	BUG_ON(obj->pages == NULL);
 
-	sg = drm_prime_pages_to_sg(obj->pages, obj->base.size / PAGE_SIZE);
-	if (!sg) {
-		vgem_gem_put_pages(obj);
-		return NULL;
-	}
-
-	return sg;
+	return drm_prime_pages_to_sg(obj->pages, obj->base.size / PAGE_SIZE);
 }
 
-static void vgem_gem_unmap_dma_buf(struct dma_buf_attachment *attach,
-			    struct sg_table *sg,
-			    enum dma_data_direction data_direction)
+int vgem_gem_prime_pin(struct drm_gem_object *gobj)
 {
-	sg_free_table(sg);
-	kfree(sg);
+	struct drm_vgem_gem_object *obj = to_vgem_bo(gobj);
+	return vgem_gem_get_pages(obj);
 }
 
-static void *vgem_kmap_atomic_dma_buf(struct dma_buf *dma_buf,
-				      unsigned long page_num)
+void *vgem_gem_prime_vmap(struct drm_gem_object *gobj)
 {
-	return NULL;
+	struct drm_vgem_gem_object *obj = to_vgem_bo(gobj);
+	BUG_ON(obj->pages == NULL);
+
+	return vmap(obj->pages, obj->base.size / PAGE_SIZE, 0, PAGE_KERNEL);
 }
 
-static void *vgem_kmap_dma_buf(struct dma_buf *dma_buf,
-			       unsigned long page_num)
+void vgem_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
 {
-	return NULL;
-}
-
-static int vgem_mmap_dma_buf(struct dma_buf *dma_buf,
-			     struct vm_area_struct *vma)
-{
-	return -EINVAL;
-}
-
-static struct dma_buf_ops vgem_dmabuf_ops = {
-	.map_dma_buf	= vgem_gem_map_dma_buf,
-	.unmap_dma_buf	= vgem_gem_unmap_dma_buf,
-	.release	= drm_gem_dmabuf_release,
-	.kmap_atomic	= vgem_kmap_atomic_dma_buf,
-	.kmap		= vgem_kmap_dma_buf,
-	.mmap		= vgem_mmap_dma_buf,
-};
-
-struct dma_buf *vgem_gem_prime_export(struct drm_device *dev,
-				      struct drm_gem_object *obj,
-				      int flags)
-{
-	return dma_buf_export(to_vgem_bo(obj), &vgem_dmabuf_ops,
-			      obj->size, flags);
+	vunmap(vaddr);
 }
 
 int vgem_gem_prime_mmap(struct drm_gem_object *gobj,
