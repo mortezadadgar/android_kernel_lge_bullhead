@@ -3940,7 +3940,7 @@ static int wma_extscan_hotlist_match_event_handler(void *handle,
 	wmi_extscan_wlan_descriptor    *src_hotlist;
 	uint32_t numap;
 	int j, ap_found = 0;
-
+	uint32_t buf_len;
 	tpAniSirGlobal pMac = (tpAniSirGlobal )vos_get_context(
 					VOS_MODULE_ID_PE, wma->vos_context);
 	if (!pMac) {
@@ -3969,6 +3969,13 @@ static int wma_extscan_hotlist_match_event_handler(void *handle,
 		WMA_LOGE("%s: Total Entries %u greater than max",
 			  __func__, numap);
 		numap = WMA_EXTSCAN_MAX_HOTLIST_ENTRIES;
+	}
+	buf_len = sizeof(wmi_extscan_hotlist_match_event_fixed_param) +
+			(4 * sizeof(uint32_t)) +
+			(numap * sizeof(wmi_extscan_wlan_descriptor));
+	if (buf_len > len) {
+		WMA_LOGE("Invalid buf len from FW %d numap %d", len, numap);
+		return -EINVAL;
 	}
 	dest_hotlist = vos_mem_malloc(sizeof(*dest_hotlist) +
 					sizeof(*dest_ap) * numap);
@@ -5029,8 +5036,23 @@ static int wma_unified_link_radio_stats_event_handler(void *handle,
 		return -EINVAL;
 	}
 
+	if (radio_stats->num_channels >
+	    NUM_2_4GHZ_CHANNELS + NUM_5GHZ_CHANNELS) {
+		WMA_LOGE("%s: Too many channels %d",
+			 __func__, radio_stats->num_channels);
+		return -EINVAL;
+	}
+
 	radio_stats_size = sizeof(tSirWifiRadioStat);
 	chan_stats_size  = sizeof(tSirWifiChannelStats);
+
+	if (fixed_param->num_radio >
+	    (UINT_MAX - sizeof(*link_stats_results)) / radio_stats_size) {
+		WMA_LOGE("excess num_radio %d is leading to int overflow",
+			 fixed_param->num_radio);
+		return -EINVAL;
+	}
+
 	link_stats_results_size = sizeof(*link_stats_results) +
 			radio_stats_size +
 			(radio_stats->num_channels * chan_stats_size);
