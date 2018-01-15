@@ -2059,7 +2059,7 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
 	struct page *page = NULL;
 	pgoff_t index = ((unsigned long long) pos) >> PAGE_SHIFT;
-	bool need_balance = false;
+	bool need_balance = false, drop_atomic = false;
 	block_t blkaddr = NULL_ADDR;
 	int err = 0;
 
@@ -2068,6 +2068,7 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 	if (f2fs_is_atomic_file(inode) &&
 			!available_free_memory(sbi, INMEM_PAGES)) {
 		err = -ENOMEM;
+		drop_atomic = true;
 		goto fail;
 	}
 
@@ -2147,7 +2148,7 @@ repeat:
 fail:
 	f2fs_put_page(page, 1);
 	f2fs_write_failed(mapping, pos + len);
-	if (f2fs_is_atomic_file(inode))
+	if (drop_atomic)
 		drop_inmem_pages_all(sbi);
 	return err;
 }
