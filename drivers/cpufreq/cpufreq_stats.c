@@ -294,7 +294,7 @@ static int uid_time_in_state_show(struct seq_file *m, void *v)
 }
 
 /*
- * time_in_state is an array of u64's in the following format:
+ * time_in_state is an array of u32's in the following format:
  * [n, uid0, time0a, time0b, ..., time0n,
  *     uid1, time1a, time1b, ..., time1n,
  *     uid2, time2a, time2b, ..., time2n, etc.]
@@ -304,8 +304,8 @@ static int time_in_state_show(struct seq_file *m, void *v)
 {
 	struct uid_entry *uid_entry;
 	unsigned long bkt;
-	u64 cpufreq_max_states = all_freq_table->table_size;
-	u64 uid, time;
+	u32 cpufreq_max_states = all_freq_table->table_size;
+	u32 uid, time;
 	int i;
 
 	if (!cpufreq_all_freq_init)
@@ -324,12 +324,12 @@ static int time_in_state_show(struct seq_file *m, void *v)
 			max_state = uid_entry->alive_max_states;
 
 		if (max_state) {
-			uid = (u64) uid_entry->uid;
+			uid = (u32) uid_entry->uid;
 			seq_write(m, &uid, sizeof(uid));
 		}
 
 		for (i = 0; i < max_state; ++i) {
-			u64 total_time_in_state = 0;
+			u32 total_time_in_state = 0;
 
 			if (uid_entry->dead_time_in_state &&
 				i < uid_entry->dead_max_states) {
@@ -341,7 +341,7 @@ static int time_in_state_show(struct seq_file *m, void *v)
 				total_time_in_state +=
 					uid_entry->alive_time_in_state[i];
 			}
-			time = (u64)
+			time = (u32)
 				cputime_to_clock_t(total_time_in_state);
 			seq_write(m, &time, sizeof(time));
 		}
@@ -356,7 +356,7 @@ static int time_in_state_show(struct seq_file *m, void *v)
 }
 
 /*
- * concurrent_active_time is an array of u64's in the following format:
+ * concurrent_active_time is an array of u32's in the following format:
  * [n, uid0, time0a, time0b, ..., time0n,
  *     uid1, time1a, time1b, ..., time1n,
  *     uid2, time2a, time2b, ..., time2n, etc.]
@@ -366,7 +366,7 @@ static int concurrent_active_time_show(struct seq_file *m, void *v)
 {
 	struct uid_entry *uid_entry;
 	struct task_struct *task, *temp;
-	u64 uid, time, num_possible_cpus = num_possible_cpus();
+	u32 uid, time, num_possible_cpus = num_possible_cpus();
 	unsigned long bkt, flags;
 	int i;
 
@@ -410,11 +410,11 @@ static int concurrent_active_time_show(struct seq_file *m, void *v)
 			!uid_entry->dead_concurrent_active_time)
 			continue;
 
-		uid = (u64) uid_entry->uid;
+		uid = (u32) uid_entry->uid;
 		seq_write(m, &uid, sizeof(uid));
 
 		for (i = 0; i < num_possible_cpus; ++i) {
-			u64 total_concurrent_active_time = 0;
+			u32 total_concurrent_active_time = 0;
 
 			if (uid_entry->dead_concurrent_active_time)
 				total_concurrent_active_time =
@@ -422,7 +422,7 @@ static int concurrent_active_time_show(struct seq_file *m, void *v)
 			if (uid_entry->alive_concurrent_active_time)
 				total_concurrent_active_time +=
 					uid_entry->alive_concurrent_active_time[i];
-			time = (u64)
+			time = (u32)
 				cputime_to_clock_t(total_concurrent_active_time);
 			seq_write(m, &time, sizeof(time));
 		}
@@ -438,7 +438,7 @@ static int concurrent_active_time_show(struct seq_file *m, void *v)
 }
 
 /*
- * concurrent_policy_time is an array of u64's in the following format:
+ * concurrent_policy_time is an array of u32's in the following format:
  * [n, x0, ..., xn, uid0, time0a, time0b, ..., time0n,
  *                  uid1, time1a, time1b, ..., time1n,
  *                  uid2, time2a, time2b, ..., time2n, etc.]
@@ -451,8 +451,8 @@ static int concurrent_policy_time_show(struct seq_file *m, void *v)
 	struct task_struct *task, *temp;
 	struct cpufreq_policy *policy;
 	struct cpufreq_policy *last_policy = NULL;
-	u64 buf[num_possible_cpus()];
-	u64 uid, time;
+	u32 buf[num_possible_cpus()];
+	u32 uid, time;
 	unsigned long bkt, flags;
 	int i, cnt = 0, num_possible_cpus = num_possible_cpus();
 
@@ -477,7 +477,7 @@ static int concurrent_policy_time_show(struct seq_file *m, void *v)
 	if (last_policy)
 		cpufreq_cpu_put(last_policy);
 
-	buf[0] = (u64) cnt;
+	buf[0] = (u32) cnt;
 	seq_write(m, buf, (cnt + 1) * sizeof(*buf));
 
 	rt_mutex_lock(&uid_lock);
@@ -515,11 +515,11 @@ static int concurrent_policy_time_show(struct seq_file *m, void *v)
 			!uid_entry->dead_concurrent_policy_time)
 			continue;
 
-		uid = (u64) uid_entry->uid;
+		uid = (u32) uid_entry->uid;
 		seq_write(m, &uid, sizeof(uid));
 
 		for (i = 0; i < num_possible_cpus; ++i) {
-			u64 total_concurrent_policy_time = 0;
+			u32 total_concurrent_policy_time = 0;
 
 			if (uid_entry->dead_concurrent_policy_time)
 				total_concurrent_policy_time =
@@ -527,7 +527,7 @@ static int concurrent_policy_time_show(struct seq_file *m, void *v)
 			if (uid_entry->alive_concurrent_policy_time)
 				total_concurrent_policy_time +=
 					uid_entry->alive_concurrent_policy_time[i];
-			time = (u64)
+			time = (u32)
 				cputime_to_clock_t(total_concurrent_policy_time);
 			seq_write(m, &time, sizeof(time));
 		}
