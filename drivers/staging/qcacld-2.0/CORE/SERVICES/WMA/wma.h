@@ -107,6 +107,7 @@
 #define WMA_VDEV_TBL_ENTRY_ADD				1
 #define WMA_VDEV_TBL_ENTRY_DEL				0
 
+#define WMA_SVC_MSG_MAX_SIZE                            1536
 
 /* 11A/G channel boundary */
 #define WMA_11A_CHANNEL_BEGIN           34
@@ -1347,6 +1348,7 @@ struct wma_set_key_params {
 	u_int32_t key_idx;
 	bool unicast;
 	u_int8_t key_data[SIR_MAC_MAX_KEY_LENGTH];
+	u_int8_t key_rsc[SIR_MAC_MAX_KEY_RSC_LEN];
 };
 
 typedef struct {
