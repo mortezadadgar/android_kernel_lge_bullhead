@@ -815,7 +815,7 @@ void diag_update_pkt_buffer(unsigned char *buf, int type)
 		return;
 	}
 	mutex_lock(&driver->diagchar_mutex);
-	if (CHK_OVERFLOW(ptr, ptr, ptr + PKT_SIZE, length)) {
+	if (CHK_OVERFLOW(ptr, ptr + PKT_SIZE, length)) {
 		memcpy(ptr, temp , length);
 		*in_busy = 1;
 	} else {

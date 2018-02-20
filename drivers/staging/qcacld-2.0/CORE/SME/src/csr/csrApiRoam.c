@@ -16653,7 +16653,7 @@ eHalStatus csrGetSnr(tpAniSirGlobal pMac,
 
    pMsg->msgType = pal_cpu_to_be16((tANI_U16)eWNI_SME_GET_SNR_REQ);
    pMsg->msgLen = (tANI_U16)sizeof(tAniGetSnrReq);
-   pMsg->sessionId = sessionId;
+   pMsg->sessionId = sessionId = 0;
    pMsg->staId = staId;
    pMsg->snrCallback = callback;
    pMsg->pDevContext = pContext;

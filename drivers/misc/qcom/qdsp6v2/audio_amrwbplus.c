@@ -103,7 +103,7 @@ static long audio_ioctl_shared(struct file *file, unsigned int cmd,
 			audio->enabled);
 		if (audio->stopped == 1)
 			audio->stopped = 0;
-			break;
+		break;
 		}
 	default:
 		pr_err("%s: Unknown ioctl cmd = %d", __func__, cmd);
@@ -133,12 +133,12 @@ static long audio_ioctl(struct file *file, unsigned int cmd,
 					__func__);
 				break;
 			}
-			} else {
-				pr_err("%s: wb+ config v2 invalid parameters\n"
-					, __func__);
-				rc = -EFAULT;
-				break;
-			}
+		} else {
+			pr_err("%s: wb+ config v2 invalid parameters\n"
+				, __func__);
+			rc = -EFAULT;
+			break;
+		}
 		break;
 	}
 	case AUDIO_SET_AMRWBPLUS_CONFIG_V2: {
@@ -150,12 +150,12 @@ static long audio_ioctl(struct file *file, unsigned int cmd,
 					__func__);
 				break;
 			}
-			} else {
-				pr_err("%s: wb+ config invalid parameters\n",
-					__func__);
-				rc = -EFAULT;
-				break;
-			}
+		} else {
+			pr_err("%s: wb+ config invalid parameters\n",
+				__func__);
+			rc = -EFAULT;
+			break;
+		}
 		break;
 	}
 	default: {
