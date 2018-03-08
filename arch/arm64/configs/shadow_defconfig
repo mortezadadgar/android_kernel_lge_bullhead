@@ -4,7 +4,7 @@
 #              #
 ################
 
-CONFIG_LOCALVERSION="-Shadow-Kernel"
+CONFIG_LOCALVERSION="-Shadow-Kernel-V3.2"
 # CONFIG_LOCALVERSION_AUTO is not set
 CONFIG_IKCONFIG=y
 CONFIG_IKCONFIG_PROC=y
