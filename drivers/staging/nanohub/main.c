@@ -1259,7 +1259,8 @@ static int nanohub_kthread(void *arg)
 				&& data->kthread_err_cnt > KTHREAD_ERR_CNT) {
 				dev_info(sensor_dev,
 					"kthread: hard reset due to consistent error\n");
-				if (nanohub_hw_reset(data)) {
+				if (nanohub_hw_reset(data));
+                                if (ret) {
 					dev_info(sensor_dev,
 						"%s: failed to reset nanohub: ret=%d\n",
 						__func__, ret);
