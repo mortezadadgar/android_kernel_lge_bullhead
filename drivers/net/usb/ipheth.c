@@ -470,7 +470,7 @@ static int ipheth_probe(struct usb_interface *intf,
 		return -ENOMEM;
 
 	netdev->netdev_ops = &ipheth_netdev_ops;
-	netdev->watchdog_timeo = IPHETH_TX_TIMEOUT;
+	netdev->watchdog_timeo = 0;
 	strcpy(netdev->name, "eth%d");
 
 	dev = netdev_priv(netdev);
