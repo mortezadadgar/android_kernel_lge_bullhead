@@ -1705,8 +1705,11 @@ static void get_scan_count(struct lruvec *lruvec, struct scan_control *sc,
 	if (!global_reclaim(sc))
 		force_scan = true;
 
-	/* do not scan file pages when file page count is low */
-	if (file_is_low(lruvec)) {
+	/*
+	 * Do not scan file pages when swap is allowed by __GFP_IO and
+	 * file page count is low.
+	 */
+	if ((sc->gfp_mask & __GFP_IO) && file_is_low(lruvec)) {
 		scan_balance = SCAN_ANON;
 		goto out;
 	}
