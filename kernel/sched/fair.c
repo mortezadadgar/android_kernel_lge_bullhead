@@ -7695,13 +7695,6 @@ void idle_balance(int this_cpu, struct rq *this_rq)
 
 	raw_spin_lock(&this_rq->lock);
 
-	/*
-	 * While browsing the domains, we released the rq lock.
-	 * A task could have be enqueued in the meantime
-	 */
-	if (this_rq->nr_running && !pulled_task)
-		return;
-
 	if (balance_cpu == this_cpu &&
 	    (!pulled_task || time_after(jiffies, this_rq->next_balance))) {
 		/*
