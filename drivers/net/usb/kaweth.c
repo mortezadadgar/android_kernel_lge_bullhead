@@ -1170,7 +1170,7 @@ err_fw:
                sizeof(kaweth->configuration.hw_addr));
 
 	netdev->netdev_ops = &kaweth_netdev_ops;
-	netdev->watchdog_timeo = 0;
+	netdev->watchdog_timeo = KAWETH_TX_TIMEOUT;
 	netdev->mtu = le16_to_cpu(kaweth->configuration.segment_size);
 	SET_ETHTOOL_OPS(netdev, &ops);
 
