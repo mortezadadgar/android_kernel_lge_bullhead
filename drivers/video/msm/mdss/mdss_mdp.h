@@ -566,7 +566,6 @@ struct mdss_mdp_writeback_arg {
 };
 
 struct mdss_overlay_private {
-	bool vsync_en;
 	ktime_t vsync_time;
 	struct sysfs_dirent *vsync_event_sd;
 	int borderfill_enable;
