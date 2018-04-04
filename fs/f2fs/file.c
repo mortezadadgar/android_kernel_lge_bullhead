@@ -2733,7 +2733,6 @@ static ssize_t f2fs_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	struct file *file = iocb->ki_filp;
 	struct inode *inode = file_inode(file);
 	size_t count;
-	struct blk_plug plug;
 	ssize_t ret;
 
 	ret = generic_segment_checks(iov, &nr_segs, &count, VERIFY_READ);
@@ -2749,11 +2748,8 @@ static ssize_t f2fs_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
 			inode_unlock(inode);
 			return err;
 		}
-		blk_start_plug(&plug);
 		ret = __generic_file_aio_write(iocb, iov, nr_segs,
 							&iocb->ki_pos);
-		blk_finish_plug(&plug);
-
 		if (ret > 0)
 			f2fs_update_iostat(F2FS_I_SB(inode), APP_WRITE_IO, ret);
 	}
