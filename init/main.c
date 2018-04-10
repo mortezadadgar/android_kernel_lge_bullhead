@@ -623,6 +623,7 @@ asmlinkage void __init start_kernel(void)
 	dbg_late_init();
 	vfs_caches_init(totalram_pages);
 	signals_init();
+	seq_file_init();
 	/* rootfs populating might need page-writeback */
 	page_writeback_init();
 #ifdef CONFIG_PROC_FS
