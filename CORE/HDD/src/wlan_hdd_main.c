@@ -76,6 +76,7 @@
 #include <wlan_hdd_wowl.h>
 #include <wlan_hdd_misc.h>
 #include <wlan_hdd_wext.h>
+#include "wlan_hdd_request_manager.h"
 #include "wlan_hdd_trace.h"
 #include "vos_types.h"
 #include "vos_trace.h"
@@ -3838,47 +3839,33 @@ static void hdd_GetLink_statusCB(v_U8_t status, void *pContext)
    spin_unlock(&hdd_context_lock);
 }
 
+struct fw_state {
+	bool fw_active;
+};
+
 /**
  * hdd_get_fw_state_cb() - validates the context and notifies the caller
- * @callback_context: caller context
+ * @cookie: cookie from the request contest
  *
  * Return: none
  */
-static void hdd_get_fw_state_cb(void *callback_context)
+static void hdd_get_fw_state_cb(void *cookie)
 {
-	struct statsContext *context;
-	hdd_adapter_t *adapter;
+	struct hdd_request *request;
+	struct fw_state *priv;
 
-	if (NULL == callback_context) {
-		hddLog(LOGE, FL("Bad pContext [%p]"), callback_context);
+	request = hdd_request_get(cookie);
+	if (!request) {
+		hddLog(LOGE, FL("Obsolete request"));
 		return;
 	}
 
-	context = callback_context;
-	adapter = context->pAdapter;
+	priv = hdd_request_priv(request);
 
-	spin_lock(&hdd_context_lock);
+	priv->fw_active = true;
 
-	if ((NULL == adapter) || (FW_STATUS_MAGIC != context->magic)) {
-		/* the caller presumably timed out so there is
-		 * nothing we can do
-		 */
-		spin_unlock(&hdd_context_lock);
-		hddLog(LOGE, FL("Invalid context, Adapter [%p] magic [%08x]"),
-			adapter, context->magic);
-		return;
-	}
-
-	/* context is valid so caller is still waiting */
-
-	/* paranoia: invalidate the magic */
-	context->magic = 0;
-
-	/* notify the caller */
-	complete(&context->completion);
-
-	/* serialization is complete */
-	spin_unlock(&hdd_context_lock);
+	hdd_request_complete(request);
+	hdd_request_put(request);
 }
 
 /**
@@ -3895,38 +3882,48 @@ static void hdd_get_fw_state_cb(void *callback_context)
 bool wlan_hdd_get_fw_state(hdd_adapter_t *adapter)
 {
 	hdd_context_t *hdd_ctx = WLAN_HDD_GET_CTX(adapter);
-	struct statsContext context;
-	eHalStatus hstatus = eHAL_STATUS_SUCCESS;
-	unsigned long rc;
-	bool fw_active = true;
+	eHalStatus hstatus;
+	int ret;
+	void *cookie;
+	struct fw_state *priv;
+	static const struct hdd_request_params params = {
+		.priv_size = sizeof(*priv),
+		.timeout_ms = WLAN_WAIT_TIME_LINK_STATUS,
+	};
+	struct hdd_request *request;
+	bool fw_active;
 
 	if (wlan_hdd_validate_context(hdd_ctx) != 0)
 		return false;
 
-	init_completion(&context.completion);
-	context.pAdapter = adapter;
-	context.magic = FW_STATUS_MAGIC;
+	request = hdd_request_alloc(&params);
+	if (!request) {
+		hddLog(LOGE, FL("Request allocation failure"));
+		return false;
+	}
+
+	cookie = hdd_request_cookie(request);
+
 	hstatus = sme_get_fw_state(WLAN_HDD_GET_HAL_CTX(adapter),
 				   hdd_get_fw_state_cb,
-				   &context);
-
+				   cookie);
 	if (eHAL_STATUS_SUCCESS != hstatus) {
 		hddLog(LOGE, FL("Unable to retrieve firmware status"));
 		fw_active = false;
 	} else {
 		/* request is sent -- wait for the response */
-		rc = wait_for_completion_timeout(&context.completion,
-			msecs_to_jiffies(WLAN_WAIT_TIME_LINK_STATUS));
-		if (!rc) {
+		ret = hdd_request_wait_for_response(request);
+		if (ret) {
 			hddLog(LOGE,
 				FL("SME timed out while retrieving firmware status"));
 			fw_active = false;
+		} else {
+			priv = hdd_request_priv(request);
+			fw_active = priv->fw_active;
 		}
 	}
 
-	spin_lock(&hdd_context_lock);
-	context.magic = 0;
-	spin_unlock(&hdd_context_lock);
+	hdd_request_put(request);
 
 	return fw_active;
 }
@@ -13793,6 +13790,8 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
 
    hdd_wlan_green_ap_deinit(pHddCtx);
 
+   hdd_request_manager_deinit();
+
    //Close Watchdog
    if (pConfig && pConfig->fIsLogpEnabled)
       vos_watchdog_close(pVosContext);
@@ -15644,6 +15643,7 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
          goto err_wdclose;
       }
 
+      hdd_request_manager_init();
       hdd_wlan_green_ap_init(pHddCtx);
 
       status = vos_open( &pVosContext, 0);
@@ -16496,6 +16496,7 @@ err_vos_nv_close:
    vos_nv_close();
 
    hdd_wlan_green_ap_deinit(pHddCtx);
+   hdd_request_manager_deinit();
 
 err_wdclose:
    if(pHddCtx->cfg_ini->fIsLogpEnabled)

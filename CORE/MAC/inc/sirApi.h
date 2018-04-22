@@ -93,6 +93,9 @@ typedef tANI_U8 tSirVersionString[SIR_VERSION_STRING_LEN];
 
 #define MAX_LEN_UDP_RESP_OFFLOAD 128
 
+/* Maximum peer station number query one time */
+#define MAX_PEER_STA 12
+
 #ifdef FEATURE_WLAN_EXTSCAN
 
 #define WLAN_EXTSCAN_MAX_CHANNELS                 36
@@ -4842,6 +4845,17 @@ struct sir_peer_info {
 struct sir_peer_info_resp {
 	uint8_t count;
 	struct sir_peer_info info[0];
+};
+
+/**
+ * @sta_num: number of peer station which has valid info
+ * @info: peer information
+ *
+ * all SAP peer station's information retrieved
+ */
+struct sir_peer_sta_info {
+	uint8_t sta_num;
+	struct sir_peer_info info[MAX_PEER_STA];
 };
 
 /**
