@@ -2125,6 +2125,7 @@ static int __init ep_pcie_init(void)
 
 	pr_debug("%s\n", __func__);
 
+#ifdef CONFIG_IPC_LOGGING
 	snprintf(logname, MAX_NAME_LEN, "ep-pcie-long");
 	ep_pcie_dev.ipc_log_sel =
 		ipc_log_context_create(EP_PCIE_LOG_PAGES, logname, 0);
@@ -2157,6 +2158,7 @@ static int __init ep_pcie_init(void)
 		EP_PCIE_DBG(&ep_pcie_dev,
 			"PCIe V%d: IPC dump logging is enable for %s\n",
 			ep_pcie_dev.rev, logname);
+#endif
 
 	mutex_init(&ep_pcie_dev.setup_mtx);
 	mutex_init(&ep_pcie_dev.ext_mtx);

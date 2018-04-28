@@ -133,7 +133,9 @@ static struct dentry *dfile_ipa_poll_iteration;
 static char dbg_buff[IPA_MAX_MSG_LEN];
 static char *active_clients_buf;
 static s8 ep_reg_idx;
+#ifdef CONFIG_IPC_LOGGING
 static void *ipa_ipc_low_buff;
+#endif
 
 int _ipa_read_gen_reg_v1_1(char *buff, int max_len)
 {
@@ -1895,6 +1897,7 @@ static ssize_t ipa_enable_ipc_low(struct file *file,
 	if (kstrtos8(dbg_buff, 0, &option))
 		return -EFAULT;
 
+#ifdef CONFIG_IPC_LOGGING
 	mutex_lock(&ipa_ctx->lock);
 	if (option) {
 		if (!ipa_ipc_low_buff) {
@@ -1909,6 +1912,7 @@ static ssize_t ipa_enable_ipc_low(struct file *file,
 		ipa_ctx->logbuf_low = NULL;
 	}
 	mutex_unlock(&ipa_ctx->lock);
+#endif
 
 	return count;
 }

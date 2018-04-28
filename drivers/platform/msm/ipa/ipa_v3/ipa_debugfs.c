@@ -1865,6 +1865,7 @@ static ssize_t ipa3_enable_ipc_low(struct file *file,
 	if (kstrtos8(dbg_buff, 0, &option))
 		return -EFAULT;
 
+#ifdef CONFIG_IPC_LOGGING
 	mutex_lock(&ipa3_ctx->lock);
 	if (option) {
 		if (!ipa_ipc_low_buff) {
@@ -1879,6 +1880,7 @@ static ssize_t ipa3_enable_ipc_low(struct file *file,
 		ipa3_ctx->logbuf_low = NULL;
 	}
 	mutex_unlock(&ipa3_ctx->lock);
+#endif
 
 	return count;
 }

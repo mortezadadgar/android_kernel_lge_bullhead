@@ -4306,9 +4306,11 @@ DECLARE_USB_FUNCTION_INIT(ffs, ffs_alloc_inst, ffs_alloc);
 
 static int ffs_init(void)
 {
+ #ifdef CONFIG_IPC_LOGGING
 	ffs_ipc_log = ipc_log_context_create(NUM_PAGES, "f_fs", 0);
 	if (IS_ERR_OR_NULL(ffs_ipc_log))
 		ffs_ipc_log =  NULL;
+#endif
 
 	return 0;
 }

@@ -4023,7 +4023,9 @@ EXPORT_SYMBOL(usbpd_destroy);
 
 static int __init usbpd_init(void)
 {
+#ifdef CONFIG_IPC_LOGGING
 	usbpd_ipc_log = ipc_log_context_create(NUM_LOG_PAGES, "usb_pd", 0);
+#endif
 	return class_register(&usbpd_class);
 }
 module_init(usbpd_init);
