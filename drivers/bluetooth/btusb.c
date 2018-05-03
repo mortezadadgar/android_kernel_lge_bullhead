@@ -26,6 +26,7 @@
 #include <linux/firmware.h>
 #include <linux/of.h>
 #include <asm/unaligned.h>
+#include <linux/delay.h>
 
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
@@ -1865,6 +1866,11 @@ static int btusb_setup_intel(struct hci_dev *hdev)
 						 &disable_patch);
 		if (ret < 0)
 			goto exit_mfg_deactivate;
+		/* For each memory write controller need at least 2 ms to
+		 * realize the write is complete before it receives one
+		 * more write.
+		 */
+		mdelay(2);
 	}
 
 	release_firmware(fw);
@@ -1874,7 +1880,10 @@ static int btusb_setup_intel(struct hci_dev *hdev)
 
 	/* Patching completed successfully and disable the manufacturer mode
 	 * with reset and activate the downloaded firmware patches.
+	 * 8ms delay - Once firmware patch download complete, controller needs
+	 * 8ms to validate the patches.
 	 */
+	mdelay(8);
 	err = btintel_exit_mfg(hdev, true, true);
 	if (err)
 		return err;
