@@ -12221,6 +12221,7 @@ static enum nl80211_timeout_reason hdd_convert_timeout_reason(
 	}
 }
 
+#if defined CFG80211_CONNECT_TIMEOUT
 /**
  * hdd_cfg80211_connect_timeout() - API to send connection timeout reason
  * @dev: network device
@@ -12241,6 +12242,7 @@ static void hdd_cfg80211_connect_timeout(struct net_device *dev,
 	cfg80211_connect_timeout(dev, bssid, NULL, 0, GFP_KERNEL,
 				 nl_timeout_reason);
 }
+#endif /* CFG80211_CONNECT_TIMEOUT */
 
 /**
  * __hdd_connect_bss() - API to send connection status to supplicant
