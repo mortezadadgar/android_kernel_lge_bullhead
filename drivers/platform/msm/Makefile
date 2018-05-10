@@ -15,6 +15,7 @@ obj-$(CONFIG_I2C_MSM_PROF_DBG) += i2c-msm-prof-dbg.o
 obj-$(CONFIG_IPA) += ipa/
 obj-$(CONFIG_SPS) += sps/
 obj-$(CONFIG_QPNP_POWER_ON) += qpnp-power-on.o
+CFLAGS_usb_bam.o := $(call cc-disable-warning, enum-conversion)
 obj-$(CONFIG_QPNP_VIBRATOR) += qpnp-vibrator.o
 obj-$(CONFIG_QPNP_CLKDIV) += qpnp-clkdiv.o
 obj-$(CONFIG_QPNP_COINCELL) += qpnp-coincell.o
