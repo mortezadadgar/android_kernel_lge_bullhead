@@ -3113,5 +3113,29 @@ static inline int yama_task_prctl(int option, unsigned long arg2,
 }
 #endif /* CONFIG_SECURITY_YAMA */
 
+#ifdef CONFIG_SECURITY_CHROMIUMOS
+int chromiumos_security_capable(const struct cred *cred,
+				struct user_namespace *ns,
+				int cap);
+int chromiumos_security_task_fix_setuid(struct cred *new,
+					const struct cred *old,
+					int flags);
+#else
+static inline
+int chromiumos_security_capable(const struct cred *cred,
+				struct user_namespace *ns,
+				int cap)
+{
+	return 0;
+}
+static inline
+int chromiumos_security_task_fix_setuid(struct cred *new,
+					const struct cred *old,
+					int flags)
+{
+	return 0;
+}
+#endif /* CONFIG_SECURITY_CHROMIUMOS */
+
 #endif /* ! __LINUX_SECURITY_H */
 
