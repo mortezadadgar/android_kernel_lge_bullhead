@@ -311,7 +311,7 @@ int f2fs_acl_chmod(struct inode *inode)
 	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
 	struct posix_acl *acl;
 	int error;
-	umode_t mode = get_inode_mode(inode);
+	umode_t mode = f2fs_get_inode_mode(inode);
 
 	if (!test_opt(sbi, POSIX_ACL))
 		return 0;
