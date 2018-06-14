@@ -280,6 +280,5 @@ source "drivers/net/wireless-3.8/rtlwifi/Kconfig"
 source "drivers/net/wireless-3.8/ti/Kconfig"
 source "drivers/net/wireless-3.8/zd1211rw/Kconfig"
 source "drivers/net/wireless-3.8/mwifiex/Kconfig"
-source "drivers/net/wireless-3.8/iwl7000/Kconfig"
 
 endif # WLAN
