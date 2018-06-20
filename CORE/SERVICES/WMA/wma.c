@@ -2590,6 +2590,11 @@ static void wma_vdev_stats_lost_link_helper(tp_wma_handle wma,
 	uint8_t zero_mac[ETH_ALEN] = {0};
 	int8_t bcn_snr, dat_snr;
 
+	if (vdev_stats->vdev_id >= wma->max_bssid) {
+		WMA_LOGE("%s: Invalid vdev_id %hu",
+		 __func__, vdev_stats->vdev_id);
+		return;
+	}
 	node = &wma->interfaces[vdev_stats->vdev_id];
 	if (node->vdev_up &&
 	    vos_mem_compare(node->bssid, zero_mac, ETH_ALEN)) {
@@ -2634,6 +2639,11 @@ static void wma_update_vdev_stats(tp_wma_handle wma,
 	vos_msg_t sme_msg = {0};
 	int8_t bcn_snr, dat_snr;
 
+	if (vdev_stats->vdev_id >= wma->max_bssid) {
+		WMA_LOGE("%s: Invalid vdev_id %hu",
+		 __func__, vdev_stats->vdev_id);
+		return;
+	}
 	node = &wma->interfaces[vdev_stats->vdev_id];
 	stats_rsp_params = node->stats_rsp;
 	if (stats_rsp_params) {
@@ -2893,6 +2903,11 @@ static void wma_update_rssi_stats(tp_wma_handle wma,
 	uint32_t temp_mask;
 	uint8_t vdev_id;
 
+	if (rssi_stats->vdev_id >= wma->max_bssid) {
+		WMA_LOGE("%s: Invalid vdev_id %hu",
+		 __func__, rssi_stats->vdev_id);
+		return;
+	}
 	vdev_id = rssi_stats->vdev_id;
 	node = &wma->interfaces[vdev_id];
 	if (node->stats_rsp) {
