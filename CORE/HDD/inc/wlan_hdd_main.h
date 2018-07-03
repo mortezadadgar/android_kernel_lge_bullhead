@@ -1398,9 +1398,7 @@ struct hdd_adapter_s
     v_TIME_t startRocTs;
 
     /* State for synchronous OCB requests to WMI */
-    struct sir_ocb_set_config_response ocb_set_config_resp;
     struct sir_ocb_get_tsf_timer_response ocb_get_tsf_timer_resp;
-    struct sir_dcc_update_ndl_response dcc_update_ndl_resp;
 #ifdef WLAN_FEATURE_DSRC
     /* MAC addresses used for OCB interfaces */
     tSirMacAddr ocb_mac_address[VOS_MAX_CONCURRENCY_PERSONA];
