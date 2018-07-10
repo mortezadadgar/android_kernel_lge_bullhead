@@ -52,19 +52,6 @@
 #define HDD_OCB_MAGIC 0x489a154f
 
 /**
- * struct hdd_ocb_ctxt - Context for OCB operations
- * adapter: the ocb adapter
- * completion_evt: the completion event
- * status: status of the request
- */
-struct hdd_ocb_ctxt {
-	uint32_t magic;
-	hdd_adapter_t *adapter;
-	struct completion completion_evt;
-	int status;
-};
-
-/**
  * hdd_set_dot11p_config() - Set 802.11p config flag
  * @hdd_ctx: HDD Context pointer
  *
@@ -414,7 +401,7 @@ struct sir_ocb_config *hdd_ocb_config_new(uint32_t num_channels,
 					  uint32_t ndl_active_state_list_len)
 {
 	struct sir_ocb_config *ret = 0;
-	uint32_t len;
+	size_t len;
 	void *cursor;
 
 	if (num_channels > CFG_TGT_NUM_OCB_CHANNELS ||
@@ -457,6 +444,26 @@ fail:
 }
 
 /**
+ * hdd_ocb_set_config_priv - private parameter for ocb set config
+ * @status: status of set config
+ */
+struct hdd_ocb_set_config_priv {
+	int status;
+};
+
+/**
+ * enum ocb_channel_config_status - ocb config status
+ * @OCB_CHANNEL_CONFIG_SUCCESS: success
+ * @OCB_CHANNEL_CONFIG_FAIL: failure
+ * @OCB_CHANNEL_CONFIG_STATUS_MAX: place holder, not a real status
+ */
+enum ocb_channel_config_status {
+	OCB_CHANNEL_CONFIG_SUCCESS = 0,
+	OCB_CHANNEL_CONFIG_FAIL,
+	OCB_CHANNEL_CONFIG_STATUS_MAX
+};
+
+/**
  * hdd_ocb_set_config_callback() - OCB set config callback function
  * @context_ptr: OCB call context
  * @response_ptr: Pointer to response structure
@@ -466,46 +473,27 @@ fail:
  */
 static void hdd_ocb_set_config_callback(void *context_ptr, void *response_ptr)
 {
-	struct hdd_ocb_ctxt *context = context_ptr;
-	struct sir_ocb_set_config_response *resp = response_ptr;
+	struct hdd_request *hdd_request;
+	struct hdd_ocb_set_config_priv *priv;
+	struct sir_ocb_set_config_response *response = response_ptr;
 
-	if (!context)
+	hdd_request = hdd_request_get(context_ptr);
+	if (!hdd_request) {
+		hddLog(LOGE, FL("Obsolete request"));
 		return;
-
-	if (resp && resp->status)
-		hddLog(LOGE, FL("Operation failed: %d"), resp->status);
-
-	spin_lock(&hdd_context_lock);
-	if (context->magic == HDD_OCB_MAGIC) {
-		hdd_adapter_t *adapter = context->adapter;
-		if (!resp) {
-			context->status = -EINVAL;
-			complete(&context->completion_evt);
-			spin_unlock(&hdd_context_lock);
-			return;
-		}
-
-		context->adapter->ocb_set_config_resp = *resp;
-		spin_unlock(&hdd_context_lock);
-		if (!resp->status) {
-			/*
-			 * OCB set config command successful.
-			 * Open the TX data path
-			 */
-			if (!hdd_ocb_register_sta(adapter)) {
-				wlan_hdd_netif_queue_control(adapter,
-					WLAN_START_ALL_NETIF_QUEUE_N_CARRIER,
-					WLAN_CONTROL_PATH);
-			}
-		}
-
-		spin_lock(&hdd_context_lock);
-		if (context->magic == HDD_OCB_MAGIC)
-			complete(&context->completion_evt);
-		spin_unlock(&hdd_context_lock);
-	} else {
-		spin_unlock(&hdd_context_lock);
 	}
+	priv = hdd_request_priv(hdd_request);
+
+	if (response && (response->status != OCB_CHANNEL_CONFIG_SUCCESS))
+		hddLog(LOGE, FL("Operation failed: %d"), response->status);
+
+	if (response && (response->status == OCB_CHANNEL_CONFIG_SUCCESS))
+		priv->status = 0;
+	else
+		priv->status = -EINVAL;
+
+	hdd_request_complete(hdd_request);
+	hdd_request_put(hdd_request);
 }
 
 /**
@@ -520,56 +508,65 @@ static int hdd_ocb_set_config_req(hdd_adapter_t *adapter,
 {
 	int rc;
 	eHalStatus halStatus;
-	struct hdd_ocb_ctxt context = {0};
+	void *cookie;
+	struct hdd_request *hdd_request;
+	struct hdd_ocb_set_config_priv *priv;
+	static const struct hdd_request_params params = {
+		.priv_size = sizeof(*priv),
+		.timeout_ms = WLAN_WAIT_TIME_OCB_CMD,
+	};
 
 	if (hdd_ocb_validate_config(adapter, config)) {
 		hddLog(LOGE, FL("The configuration is invalid"));
 		return -EINVAL;
 	}
 
-	init_completion(&context.completion_evt);
-	context.adapter = adapter;
-	context.magic = HDD_OCB_MAGIC;
+	hdd_request = hdd_request_alloc(&params);
+	if (!hdd_request) {
+		hddLog(LOGE, FL("Request allocation failure"));
+		return -ENOMEM;
+	}
+	cookie = hdd_request_cookie(hdd_request);
 
 	hddLog(LOG1, FL("Disabling queues"));
 	wlan_hdd_netif_queue_control(adapter, WLAN_NETIF_TX_DISABLE_N_CARRIER,
 				WLAN_CONTROL_PATH);
 	/* Call the SME API to set the config */
 	halStatus = sme_ocb_set_config(
-		((hdd_context_t *)adapter->pHddCtx)->hHal, &context,
+		((hdd_context_t *)adapter->pHddCtx)->hHal, cookie,
 		hdd_ocb_set_config_callback, config);
 	if (halStatus != eHAL_STATUS_SUCCESS) {
 		hddLog(LOGE, FL("Error calling SME function."));
 		/* Convert from eHalStatus to errno */
-		return -EINVAL;
-	}
-
-	/* Wait for the function to complete. */
-	rc = wait_for_completion_timeout(&context.completion_evt,
-		msecs_to_jiffies(WLAN_WAIT_TIME_OCB_CMD));
-	if (rc == 0) {
-		rc = -ETIMEDOUT;
-		goto end;
-	}
-	rc = 0;
-
-	if (context.status) {
-		rc = context.status;
-		goto end;
-	}
-
-	if (adapter->ocb_set_config_resp.status) {
 		rc = -EINVAL;
 		goto end;
 	}
 
+	/* Wait for the function to complete. */
+	rc = hdd_request_wait_for_response(hdd_request);
+	if (rc) {
+		hddLog(LOGE, FL("Operation timed out"));
+		goto end;
+	}
+
+	priv = hdd_request_priv(hdd_request);
+	rc = priv->status;
+	if (rc) {
+		hddLog(LOGE, FL("Operation failed: %d"), rc);
+		goto end;
+	}
+
+	/*
+	 * OCB set config command successful.
+	 * Open the TX data path
+	 */
+	if (!hdd_ocb_register_sta(adapter))
+		wlan_hdd_netif_queue_control(adapter,
+					WLAN_START_ALL_NETIF_QUEUE_N_CARRIER,
+					WLAN_CONTROL_PATH);
 	/* fall through */
 end:
-	spin_lock(&hdd_context_lock);
-	context.magic = 0;
-	spin_unlock(&hdd_context_lock);
-	if (rc)
-		hddLog(LOGE, FL("Operation failed: %d"), rc);
+	hdd_request_put(hdd_request);
 	return rc;
 }
 
@@ -1967,6 +1964,10 @@ int wlan_hdd_cfg80211_dcc_clear_stats(struct wiphy *wiphy,
 	return ret;
 }
 
+struct hdd_dcc_update_ndl_priv {
+	int status;
+};
+
 /**
  * hdd_dcc_update_ndl_callback() - Callback to update NDL command
  * @context_ptr: request context
@@ -1974,23 +1975,22 @@ int wlan_hdd_cfg80211_dcc_clear_stats(struct wiphy *wiphy,
  */
 static void hdd_dcc_update_ndl_callback(void *context_ptr, void *response_ptr)
 {
-	struct hdd_ocb_ctxt *context = context_ptr;
+	struct hdd_request *hdd_request;
+	struct hdd_dcc_update_ndl_priv *priv;
 	struct sir_dcc_update_ndl_response *response = response_ptr;
 
-	if (!context)
+	hdd_request = hdd_request_get(context_ptr);
+	if (!hdd_request) {
+		hddLog(LOGE, FL("Obsolete request"));
 		return;
-
-	spin_lock(&hdd_context_lock);
-	if (context->magic == HDD_OCB_MAGIC) {
-		if (response) {
-			context->adapter->dcc_update_ndl_resp = *response;
-			context->status = 0;
-		} else {
-			context->status = -EINVAL;
-		}
-		complete(&context->completion_evt);
 	}
-	spin_unlock(&hdd_context_lock);
+	priv = hdd_request_priv(hdd_request);
+	if (response && (0 == response->status))
+		priv->status = 0;
+	else
+		priv->status = -EINVAL;
+	hdd_request_complete(hdd_request);
+	hdd_request_put(hdd_request);
 }
 
 /**
@@ -2018,7 +2018,13 @@ static int __wlan_hdd_cfg80211_dcc_update_ndl(struct wiphy *wiphy,
 	uint32_t ndl_active_state_array_len;
 	void *ndl_active_state_array;
 	int rc = -EINVAL;
-	struct hdd_ocb_ctxt context = {0};
+	void *cookie;
+	struct hdd_request *hdd_request;
+	struct hdd_dcc_update_ndl_priv *priv;
+	static const struct hdd_request_params params = {
+		.priv_size = sizeof(*priv),
+		.timeout_ms = WLAN_WAIT_TIME_OCB_CMD,
+	};
 
 	ENTER();
 
@@ -2028,11 +2034,11 @@ static int __wlan_hdd_cfg80211_dcc_update_ndl(struct wiphy *wiphy,
 	}
 
 	if (wlan_hdd_validate_context(hdd_ctx))
-		goto end;
+		return -EINVAL;
 
 	if (adapter->device_mode != WLAN_HDD_OCB) {
 		hddLog(LOGE, FL("Device not in OCB mode!"));
-		goto end;
+		return -EINVAL;
 	}
 
 	if (!wma_is_vdev_up(adapter->sessionId)) {
@@ -2046,7 +2052,7 @@ static int __wlan_hdd_cfg80211_dcc_update_ndl(struct wiphy *wiphy,
 		      data_len,
 		      qca_wlan_vendor_dcc_update_ndl)) {
 		hddLog(LOGE, FL("Invalid ATTR"));
-		goto end;
+		return -EINVAL;
 	}
 
 	/* Verify that the parameter is present */
@@ -2068,10 +2074,12 @@ static int __wlan_hdd_cfg80211_dcc_update_ndl(struct wiphy *wiphy,
 	ndl_active_state_array = nla_data(
 		tb[QCA_WLAN_VENDOR_ATTR_DCC_UPDATE_NDL_ACTIVE_STATE_ARRAY]);
 
-	/* Initialize the callback context */
-	init_completion(&context.completion_evt);
-	context.adapter = adapter;
-	context.magic = HDD_OCB_MAGIC;
+	hdd_request = hdd_request_alloc(&params);
+	if (!hdd_request) {
+		hddLog(LOGE, "Request allocation failure");
+		return -ENOMEM;
+	}
+	cookie = hdd_request_cookie(hdd_request);
 
 	/* Copy the parameters to the request structure. */
 	request.vdev_id = adapter->sessionId;
@@ -2082,43 +2090,32 @@ static int __wlan_hdd_cfg80211_dcc_update_ndl(struct wiphy *wiphy,
 	request.dcc_ndl_active_state_list = ndl_active_state_array;
 
 	/* Call the SME function */
-	rc = sme_dcc_update_ndl(hdd_ctx->hHal, &context,
+	rc = sme_dcc_update_ndl(hdd_ctx->hHal, cookie,
 				hdd_dcc_update_ndl_callback,
 				&request);
 	if (rc) {
 		hddLog(LOGE, FL("Error calling SME function."));
 		/* Convert from eHalStatus to errno */
-		return -EINVAL;
-	}
-
-	/* Wait for the function to complete. */
-	rc = wait_for_completion_timeout(&context.completion_evt,
-		msecs_to_jiffies(WLAN_WAIT_TIME_OCB_CMD));
-	if (rc == 0) {
-		hddLog(LOGE, FL("Operation timed out"));
-		rc = -ETIMEDOUT;
-		goto end;
-	}
-	rc = 0;
-
-	if (context.status) {
-		hddLog(LOGE, FL("Operation failed: %d"), context.status);
-		rc = context.status;
-		goto end;
-	}
-
-	if (adapter->dcc_update_ndl_resp.status) {
-		hddLog(LOGE, FL("Operation returned: %d"),
-		       adapter->dcc_update_ndl_resp.status);
 		rc = -EINVAL;
 		goto end;
 	}
 
+	/* Wait for the function to complete. */
+	rc = hdd_request_wait_for_response(hdd_request);
+	if (rc) {
+		hddLog(LOGE, FL("Operation timed out"));
+		goto end;
+	}
+
+	priv = hdd_request_priv(hdd_request);
+	rc = priv->status;
+	if (rc)
+		hddLog(LOGE, FL("Operation failed: %d"), rc);
+
 	/* fall through */
 end:
-	spin_lock(&hdd_context_lock);
-	context.magic = 0;
-	spin_unlock(&hdd_context_lock);
+	hdd_request_put(hdd_request);
+
 	return rc;
 }
 
