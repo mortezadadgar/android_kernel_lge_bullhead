@@ -72,9 +72,6 @@ static int f2fs_xattr_generic_get(struct dentry *dentry, const char *name,
 			return -EOPNOTSUPP;
 		break;
 	case F2FS_XATTR_INDEX_TRUSTED:
-		if (!capable(CAP_SYS_ADMIN))
-			return -EPERM;
-		break;
 	case F2FS_XATTR_INDEX_SECURITY:
 		break;
 	default:
@@ -96,9 +93,6 @@ static int f2fs_xattr_generic_set(struct dentry *dentry, const char *name,
 			return -EOPNOTSUPP;
 		break;
 	case F2FS_XATTR_INDEX_TRUSTED:
-		if (!capable(CAP_SYS_ADMIN))
-			return -EPERM;
-		break;
 	case F2FS_XATTR_INDEX_SECURITY:
 		break;
 	default:
