@@ -2174,6 +2174,24 @@ typedef enum
 #define CFG_THERMAL_TEMP_MAX_LEVEL3_MAX       ( 1000 )
 #define CFG_THERMAL_TEMP_MAX_LEVEL3_DEFAULT   ( 0 )
 
+/*
+ * <ini>
+ * gRemoveTimeStampSyncCmd - Enable/Disable to remove time stamp sync cmd
+ * @Min: 0
+ * @Max: 1
+ * @Default: 0
+ *
+ * This ini is used to enable/disable the removal of time stamp sync cmd
+ *
+ * Usage: External
+ *
+ * </ini>
+ */
+
+#define CFG_REMOVE_TIME_STAMP_SYNC_CMD_NAME      "gRemoveTimeStampSyncCmd"
+#define CFG_REMOVE_TIME_STAMP_SYNC_CMD_MIN       ( 0 )
+#define CFG_REMOVE_TIME_STAMP_SYNC_CMD_MAX       ( 1 )
+#define CFG_REMOVE_TIME_STAMP_SYNC_CMD_DEFAULT   ( 0 )
 
 /*
  * Enable/Disable Modulated DTIM feature
@@ -5074,6 +5092,7 @@ struct hdd_config {
    bool                        sap_get_peer_info;
    bool                        disable_abg_rate_txdata;
    uint8_t                     rate_for_tx_mgmt;
+   uint8_t                     remove_time_stamp_sync_cmd;
 #ifdef QCA_LL_TX_FLOW_CT
    v_U32_t                     TxFlowLowWaterMark;
    v_U32_t                     TxFlowHighWaterMarkOffset;
