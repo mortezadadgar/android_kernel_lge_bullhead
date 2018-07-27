@@ -320,8 +320,7 @@ static ssize_t mdss_livedisplay_get_cabc(struct device *dev,
 }
 
 static ssize_t mdss_livedisplay_set_cabc(struct device *dev,
-							   struct device_attribute *attr,
-							   const char *buf, size_t count)
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int level = 0;
 	struct fb_info *fbi = dev_get_drvdata(dev);
@@ -361,8 +360,7 @@ static ssize_t mdss_livedisplay_get_reading_mode(struct device *dev,
 }
 
 static ssize_t mdss_livedisplay_set_reading_mode(struct device *dev,
-							   struct device_attribute *attr,
-							   const char *buf, size_t count)
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int value = 0;
 	struct fb_info *fbi = dev_get_drvdata(dev);
@@ -397,8 +395,7 @@ static ssize_t mdss_livedisplay_get_video_mode(struct device *dev,
 }
 
 static ssize_t mdss_livedisplay_set_video_mode(struct device *dev,
-							   struct device_attribute *attr,
-							   const char *buf, size_t count)
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int value = 0;
 	struct fb_info *fbi = dev_get_drvdata(dev);
@@ -441,8 +438,7 @@ static ssize_t mdss_livedisplay_get_sre(struct device *dev,
 }
 
 static ssize_t mdss_livedisplay_set_sre(struct device *dev,
-							   struct device_attribute *attr,
-							   const char *buf, size_t count)
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int level = 0;
 	struct fb_info *fbi = dev_get_drvdata(dev);
@@ -474,8 +470,7 @@ static ssize_t mdss_livedisplay_get_color_enhance(struct device *dev,
 }
 
 static ssize_t mdss_livedisplay_set_color_enhance(struct device *dev,
-							   struct device_attribute *attr,
-							   const char *buf, size_t count)
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int value = 0;
 	struct fb_info *fbi = dev_get_drvdata(dev);
@@ -507,8 +502,7 @@ static ssize_t mdss_livedisplay_get_aco(struct device *dev,
 }
 
 static ssize_t mdss_livedisplay_set_aco(struct device *dev,
-							   struct device_attribute *attr,
-							   const char *buf, size_t count)
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int value = 0;
 	struct fb_info *fbi = dev_get_drvdata(dev);
@@ -540,8 +534,7 @@ static ssize_t mdss_livedisplay_get_preset(struct device *dev,
 }
 
 static ssize_t mdss_livedisplay_set_preset(struct device *dev,
-							   struct device_attribute *attr,
-							   const char *buf, size_t count)
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int value = 0;
 	struct fb_info *fbi = dev_get_drvdata(dev);
@@ -589,8 +582,7 @@ static ssize_t mdss_livedisplay_get_rgb(struct device *dev,
 }
 
 static ssize_t mdss_livedisplay_set_rgb(struct device *dev,
-							struct device_attribute *attr,
-							const char *buf, size_t count)
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	uint32_t r = 0, g = 0, b = 0;
 	struct fb_info *fbi = dev_get_drvdata(dev);
