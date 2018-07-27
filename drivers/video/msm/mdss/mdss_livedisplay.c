@@ -331,10 +331,98 @@ static ssize_t mdss_livedisplay_set_cabc(struct device *dev,
 	mutex_lock(&mlc->lock);
 
 	sscanf(buf, "%du", &level);
-	if (level >= CABC_OFF && level < CABC_MAX &&
-				level != mlc->cabc_level) {
-		mlc->cabc_level = level;
-		mdss_livedisplay_update_locked(get_ctrl(mfd), MODE_CABC);
+	if ((level == CABC_OFF && mlc->cabc_level) ||
+				(level == CABC_UI && !mlc->cabc_level)) {
+		if (level == CABC_UI) {
+			if (mlc->video_mode_enabled)
+				level = CABC_VIDEO;
+			else if (mlc->reading_mode_enabled)
+				level = CABC_IMAGE;
+		}
+		if (level != mlc->cabc_level) {
+			mlc->cabc_level = level;
+			mdss_livedisplay_update_locked(get_ctrl(mfd), MODE_CABC);
+		}
+	}
+
+	mutex_unlock(&mlc->lock);
+
+	return count;
+}
+
+static ssize_t mdss_livedisplay_get_reading_mode(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_livedisplay_ctx *mlc = get_ctx(mfd);
+
+	return sprintf(buf, "%d\n", mlc->reading_mode_enabled);
+}
+
+static ssize_t mdss_livedisplay_set_reading_mode(struct device *dev,
+							   struct device_attribute *attr,
+							   const char *buf, size_t count)
+{
+	int value = 0;
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_livedisplay_ctx *mlc = get_ctx(mfd);
+
+	mutex_lock(&mlc->lock);
+
+	sscanf(buf, "%du", &value);
+	if ((value == 0 || value == 1)
+			&& value != mlc->reading_mode_enabled) {
+		mlc->reading_mode_enabled = value;
+		if (mlc->cabc_level && !mlc->video_mode_enabled) {
+			mlc->cabc_level = value ? CABC_IMAGE : CABC_UI;
+			mdss_livedisplay_update_locked(get_ctrl(mfd), MODE_CABC);
+		}
+	}
+
+	mutex_unlock(&mlc->lock);
+
+	return count;
+}
+
+static ssize_t mdss_livedisplay_get_video_mode(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_livedisplay_ctx *mlc = get_ctx(mfd);
+
+	return sprintf(buf, "%d\n", mlc->video_mode_enabled);
+}
+
+static ssize_t mdss_livedisplay_set_video_mode(struct device *dev,
+							   struct device_attribute *attr,
+							   const char *buf, size_t count)
+{
+	int value = 0;
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_livedisplay_ctx *mlc = get_ctx(mfd);
+
+	mutex_lock(&mlc->lock);
+
+	sscanf(buf, "%du", &value);
+	if ((value == 0 || value == 1)
+			&& value != mlc->video_mode_enabled) {
+		mlc->video_mode_enabled = value;
+		if (mlc->cabc_level) {
+			if (mlc->video_mode_enabled) {
+				mlc->cabc_level = CABC_VIDEO;
+				mdss_livedisplay_update_locked(get_ctrl(mfd), MODE_CABC);
+			} else if (mlc->reading_mode_enabled) {
+				mlc->cabc_level = CABC_IMAGE;
+				mdss_livedisplay_update_locked(get_ctrl(mfd), MODE_CABC);
+			} else {
+				mlc->cabc_level = CABC_UI;
+				mdss_livedisplay_update_locked(get_ctrl(mfd), MODE_CABC);
+			}
+		}
 	}
 
 	mutex_unlock(&mlc->lock);
@@ -545,6 +633,8 @@ static ssize_t mdss_livedisplay_set_rgb(struct device *dev,
 }
 
 static DEVICE_ATTR(cabc, S_IRUGO | S_IWUSR | S_IWGRP, mdss_livedisplay_get_cabc, mdss_livedisplay_set_cabc);
+static DEVICE_ATTR(reading_mode, S_IRUGO | S_IWUSR | S_IWGRP, mdss_livedisplay_get_reading_mode, mdss_livedisplay_set_reading_mode);
+static DEVICE_ATTR(video_mode, S_IRUGO | S_IWUSR | S_IWGRP, mdss_livedisplay_get_video_mode, mdss_livedisplay_set_video_mode);
 static DEVICE_ATTR(sre, S_IRUGO | S_IWUSR | S_IWGRP, mdss_livedisplay_get_sre, mdss_livedisplay_set_sre);
 static DEVICE_ATTR(color_enhance, S_IRUGO | S_IWUSR | S_IWGRP, mdss_livedisplay_get_color_enhance, mdss_livedisplay_set_color_enhance);
 static DEVICE_ATTR(aco, S_IRUGO | S_IWUSR | S_IWGRP, mdss_livedisplay_get_aco, mdss_livedisplay_set_aco);
@@ -649,6 +739,16 @@ int mdss_livedisplay_create_sysfs(struct msm_fb_data_type *mfd)
 		rc = sysfs_create_file(&mfd->fbi->dev->kobj, &dev_attr_cabc.attr);
 		if (rc)
 			goto sysfs_err;
+		if (mlc->cabc_image_value) {
+			rc = sysfs_create_file(&mfd->fbi->dev->kobj, &dev_attr_reading_mode.attr);
+			if (rc)
+				goto sysfs_err;
+		}
+		if (mlc->cabc_video_value) {
+			rc = sysfs_create_file(&mfd->fbi->dev->kobj, &dev_attr_video_mode.attr);
+			if (rc)
+				goto sysfs_err;
+		}
 	}
 
 	if (mlc->caps & MODE_SRE) {
