@@ -516,6 +516,8 @@ void
 limSetEdcaBcastACMFlag(tpAniSirGlobal pMac, tANI_U32 ac, tANI_U32 acmFlag)
 {
     tpPESession psessionEntry = &pMac->lim.gpSession[0];
+    if (ac >= MAX_NUM_AC)
+        return;
     psessionEntry->gLimEdcaParamsBC[ac].aci.acm = (tANI_U8)acmFlag;
     psessionEntry->gLimEdcaParamSetCount++;
     schSetFixedBeaconFields(pMac,psessionEntry);
