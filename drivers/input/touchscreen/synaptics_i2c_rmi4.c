@@ -791,6 +791,8 @@ static void configure_sleep(struct synaptics_rmi4_data *rmi4_data)
 
 	rmi4_data->fb_notif.notifier_call = fb_notifier_callback;
 
+	rmi4_data->fb_notif.priority = INT_MAX;
+
 	retval = fb_register_client(&rmi4_data->fb_notif);
 	if (retval)
 		dev_err(&rmi4_data->i2c_client->dev,
