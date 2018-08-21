@@ -17,6 +17,7 @@
 
 #include "f2fs.h"
 #include "node.h"
+#include "segment.h"
 #include "xattr.h"
 #include "acl.h"
 #include <trace/events/f2fs.h>
@@ -266,6 +267,9 @@ static int f2fs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
 
 	if (unlikely(f2fs_cp_error(sbi)))
 		return -EIO;
+	err = f2fs_is_checkpoint_ready(sbi);
+	if (err)
+		return err;
 
 	dquot_initialize(dir);
 
@@ -311,6 +315,9 @@ static int f2fs_link(struct dentry *old_dentry, struct inode *dir,
 
 	if (unlikely(f2fs_cp_error(sbi)))
 		return -EIO;
+	err = f2fs_is_checkpoint_ready(sbi);
+	if (err)
+		return err;
 
 	if (f2fs_encrypted_inode(dir) &&
 			!fscrypt_has_permitted_context(dir, inode))
@@ -569,6 +576,9 @@ static int f2fs_symlink(struct inode *dir, struct dentry *dentry,
 
 	if (unlikely(f2fs_cp_error(sbi)))
 		return -EIO;
+	err = f2fs_is_checkpoint_ready(sbi);
+	if (err)
+		return err;
 
 	if (f2fs_encrypted_inode(dir)) {
 		err = fscrypt_get_encryption_info(dir);
@@ -731,6 +741,9 @@ static int f2fs_mknod(struct inode *dir, struct dentry *dentry,
 		return -EIO;
 	if (!new_valid_dev(rdev))
 		return -EINVAL;
+	err = f2fs_is_checkpoint_ready(sbi);
+	if (err)
+		return err;
 
 	dquot_initialize(dir);
 
@@ -860,6 +873,9 @@ static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
 
 	if (unlikely(f2fs_cp_error(sbi)))
 		return -EIO;
+	err = f2fs_is_checkpoint_ready(sbi);
+	if (err)
+		return err;
 
 	if ((f2fs_encrypted_inode(old_dir) &&
 			!fscrypt_has_encryption_key(old_dir)) ||
@@ -1036,6 +1052,9 @@ static int f2fs_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
 
 	if (unlikely(f2fs_cp_error(sbi)))
 		return -EIO;
+	err = f2fs_is_checkpoint_ready(sbi);
+	if (err)
+		return err;
 
 	if ((f2fs_encrypted_inode(old_dir) &&
 			!fscrypt_has_encryption_key(old_dir)) ||
