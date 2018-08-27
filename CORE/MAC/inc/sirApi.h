@@ -49,8 +49,7 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 #include "sirMacProtDef.h"
 #include "aniSystemDefs.h"
 #include "sirParams.h"
-#include "dot11f.h"
-
+#include <dot11f.h>
 #if defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD)
 #include "eseGlobal.h"
 #endif
