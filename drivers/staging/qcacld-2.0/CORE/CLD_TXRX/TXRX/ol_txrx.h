@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014,2017-2018 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -51,6 +51,10 @@ ol_tx_desc_pool_size_hl(ol_pdev_handle ctrl_pdev);
 #define OL_TX_DESC_POOL_SIZE_MAX_HL 5000
 #endif
 
+#ifndef FW_STATS_DESC_POOL_SIZE
+#define FW_STATS_DESC_POOL_SIZE 10
+#endif
+
 #ifdef CONFIG_PER_VDEV_TX_DESC_POOL
 #define TXRX_HL_TX_FLOW_CTRL_VDEV_LOW_WATER_MARK 400
 #define TXRX_HL_TX_FLOW_CTRL_MGMT_RESERVED 100
@@ -59,4 +63,14 @@ ol_tx_desc_pool_size_hl(ol_pdev_handle ctrl_pdev);
 #ifdef CONFIG_TX_DESC_HI_PRIO_RESERVE
 #define TXRX_HL_TX_DESC_HI_PRIO_RESERVED 20
 #endif
+
+int ol_txrx_fw_stats_desc_pool_init(struct ol_txrx_pdev_t *pdev,
+				    uint8_t pool_size);
+void ol_txrx_fw_stats_desc_pool_deinit(struct ol_txrx_pdev_t *pdev);
+struct ol_txrx_fw_stats_desc_t
+	*ol_txrx_fw_stats_desc_alloc(struct ol_txrx_pdev_t
+				     *pdev);
+struct ol_txrx_stats_req_internal *ol_txrx_fw_stats_desc_get_req(struct
+	ol_txrx_pdev_t *pdev, uint8_t desc_id);
+
 #endif /* _OL_TXRX__H_ */
