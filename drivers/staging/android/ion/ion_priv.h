@@ -509,8 +509,8 @@ void ion_pages_sync_for_device(struct device *dev, struct page *page,
 int ion_walk_heaps(struct ion_client *client, int heap_id, void *data,
 			int (*f)(struct ion_heap *heap, void *data));
 
-struct ion_handle *ion_handle_get_by_id(struct ion_client *client,
-					int id);
+struct ion_handle *ion_handle_get_by_id_nolock(struct ion_client *client,
+					       int id);
 
 int ion_handle_put(struct ion_handle *handle);
 
