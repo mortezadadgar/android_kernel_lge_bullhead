@@ -257,6 +257,12 @@ void security_sb_free(struct super_block *sb)
 
 int security_sb_copy_data(char *orig, char *copy)
 {
+	int ret;
+
+	ret = chromiumos_sb_copy_data(orig, copy);
+	if (ret)
+		return ret;
+
 	return security_ops->sb_copy_data(orig, copy);
 }
 EXPORT_SYMBOL(security_sb_copy_data);
@@ -268,6 +274,12 @@ int security_sb_remount(struct super_block *sb, void *data)
 
 int security_sb_kern_mount(struct super_block *sb, int flags, void *data)
 {
+	int ret;
+
+	ret = chromiumos_sb_kern_mount(sb, flags, data);
+	if (ret)
+		return ret;
+
 	return security_ops->sb_kern_mount(sb, flags, data);
 }
 
