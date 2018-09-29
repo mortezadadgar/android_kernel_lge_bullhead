@@ -40,13 +40,16 @@ static int gc_thread_func(void *data)
 		if (gc_th->gc_wake)
 			gc_th->gc_wake = 0;
 
-		if (try_to_freeze())
+		if (try_to_freeze()) {
+			stat_other_skip_bggc_count(sbi);
 			continue;
+		}
 		if (kthread_should_stop())
 			break;
 
 		if (sbi->sb->s_writers.frozen >= SB_FREEZE_WRITE) {
 			increase_sleep_time(gc_th, &wait_ms);
+			stat_other_skip_bggc_count(sbi);
 			continue;
 		}
 
@@ -57,8 +60,10 @@ static int gc_thread_func(void *data)
 		}
 #endif
 
-		if (!sb_start_write_trylock(sbi->sb))
+		if (!sb_start_write_trylock(sbi->sb)) {
+			stat_other_skip_bggc_count(sbi);
 			continue;
+		}
 
 		/*
 		 * [GC triggering condition]
@@ -79,12 +84,15 @@ static int gc_thread_func(void *data)
 			goto do_gc;
 		}
 
-		if (!mutex_trylock(&sbi->gc_mutex))
+		if (!mutex_trylock(&sbi->gc_mutex)) {
+			stat_other_skip_bggc_count(sbi);
 			goto next;
+		}
 
 		if (!is_idle(sbi, GC_TIME)) {
 			increase_sleep_time(gc_th, &wait_ms);
 			mutex_unlock(&sbi->gc_mutex);
+			stat_io_skip_bggc_count(sbi);
 			goto next;
 		}
 
