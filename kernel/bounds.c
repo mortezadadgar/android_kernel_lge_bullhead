@@ -11,11 +11,13 @@
 #include <linux/kbuild.h>
 #include <linux/page_cgroup.h>
 
-void foo(void)
+int main(void)
 {
 	/* The enum constants to put into include/generated/bounds.h */
 	DEFINE(NR_PAGEFLAGS, __NR_PAGEFLAGS);
 	DEFINE(MAX_NR_ZONES, __MAX_NR_ZONES);
 	DEFINE(NR_PCG_FLAGS, __NR_PCG_FLAGS);
 	/* End of constants */
+
+	return 0;
 }
