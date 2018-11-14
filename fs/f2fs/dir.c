@@ -809,6 +809,17 @@ int f2fs_fill_dentries(struct file *file, void *dirent, filldir_t filldir,
 		de_name.name = d->filename[bit_pos];
 		de_name.len = le16_to_cpu(de->name_len);
 
+		/* check memory boundary before moving forward */
+		bit_pos += GET_DENTRY_SLOTS(le16_to_cpu(de->name_len));
+		if (unlikely(bit_pos > d->max)) {
+			f2fs_msg(sbi->sb, KERN_WARNING,
+				"%s: corrupted namelen=%d, run fsck to fix.",
+				__func__, le16_to_cpu(de->name_len));
+			set_sbi_flag(sbi, SBI_NEED_FSCK);
+			err = -EINVAL;
+			goto out;
+		}
+
 		if (f2fs_encrypted_inode(d->inode)) {
 			int save_len = fstr->len;
 
@@ -833,8 +844,6 @@ int f2fs_fill_dentries(struct file *file, void *dirent, filldir_t filldir,
 
 		if (readdir_ra)
 			f2fs_ra_node_page(sbi, le32_to_cpu(de->ino));
-
-		bit_pos += GET_DENTRY_SLOTS(le16_to_cpu(de->name_len));
 	}
 out:
 	if (readdir_ra)
