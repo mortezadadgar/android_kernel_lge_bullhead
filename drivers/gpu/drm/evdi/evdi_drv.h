@@ -77,6 +77,7 @@ struct drm_encoder *evdi_encoder_init(struct drm_device *dev);
 int evdi_driver_load(struct drm_device *dev, unsigned long flags);
 int evdi_driver_unload(struct drm_device *dev);
 void evdi_driver_preclose(struct drm_device *dev, struct drm_file *file_priv);
+void evdi_driver_postclose(struct drm_device *dev, struct drm_file *file_priv);
 
 int evdi_fbdev_init(struct drm_device *dev);
 void evdi_fbdev_cleanup(struct drm_device *dev);
