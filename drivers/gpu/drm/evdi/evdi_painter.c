@@ -563,7 +563,7 @@ evdi_painter_connect(struct evdi_device *evdi,
 	return 0;
 }
 
-static void evdi_painter_disconnect(struct evdi_device *evdi,
+static int evdi_painter_disconnect(struct evdi_device *evdi,
 	struct drm_file *file)
 {
 	struct evdi_painter *painter = evdi->painter;
@@ -574,7 +574,7 @@ static void evdi_painter_disconnect(struct evdi_device *evdi,
 
 	if (file != painter->drm_filp) {
 		painter_unlock(painter);
-		return;
+		return -EFAULT;
 	}
 
 	evdi_painter_set_new_scanout_buffer(evdi, NULL);
@@ -599,6 +599,7 @@ static void evdi_painter_disconnect(struct evdi_device *evdi,
 	painter_unlock(painter);
 
 	drm_helper_hpd_irq_event(evdi->ddev);
+	return 0;
 }
 
 void evdi_painter_close(struct evdi_device *evdi, struct drm_file *file)
