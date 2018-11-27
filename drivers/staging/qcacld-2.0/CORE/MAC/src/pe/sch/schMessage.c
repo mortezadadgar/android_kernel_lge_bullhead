@@ -407,6 +407,8 @@ schQosUpdateBroadcast(tpAniSirGlobal pMac, tpPESession psessionEntry)
 
     if (schSetFixedBeaconFields(pMac,psessionEntry) != eSIR_SUCCESS)
         PELOGE(schLog(pMac, LOGE, "Unable to set beacon fields!");)
+    else
+        limSendBeaconInd(pMac, psessionEntry);
 }
 
 void
