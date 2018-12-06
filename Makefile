@@ -376,7 +376,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks \
-		   -std=gnu89
+		   -std=gnu89 -fdiagnostics-color=always
 
 # Disable not-so-important warnings
 KBUILD_CFLAGS	+= -Wno-format-truncation -Wno-unused-const-variable \
