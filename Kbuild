@@ -141,9 +141,6 @@ ifeq ($(KERNEL_BUILD), 0)
         endif
 
 	ifneq ($(CONFIG_ARCH_MDM9607), y)
-		#Flag to enable memdump feature
-		CONFIG_WLAN_FEATURE_MEMDUMP := y
-
 		#Flag to enable offload packets feature
 		CONFIG_WLAN_OFFLOAD_PACKETS := y
 	endif
@@ -419,6 +416,7 @@ HDD_OBJS := 	$(HDD_SRC_DIR)/wlan_hdd_assoc.o \
 		$(HDD_SRC_DIR)/wlan_hdd_ftm.o \
 		$(HDD_SRC_DIR)/wlan_hdd_hostapd.o \
 		$(HDD_SRC_DIR)/wlan_hdd_main.o \
+		$(HDD_SRC_DIR)/wlan_hdd_memdump.o \
 		$(HDD_SRC_DIR)/wlan_hdd_oemdata.o \
 		$(HDD_SRC_DIR)/wlan_hdd_request_manager.o \
 		$(HDD_SRC_DIR)/wlan_hdd_scan.o \
@@ -452,10 +450,6 @@ endif
 
 ifeq ($(CONFIG_WLAN_SYNC_TSF),y)
 HDD_OBJS +=	$(HDD_SRC_DIR)/wlan_hdd_tsf.o
-endif
-
-ifeq ($(CONFIG_WLAN_FEATURE_MEMDUMP),y)
-HDD_OBJS += $(HDD_SRC_DIR)/wlan_hdd_memdump.o
 endif
 
 ifeq ($(CONFIG_WLAN_FEATURE_NAN_DATAPATH),y)
@@ -1597,10 +1591,6 @@ endif
 
 ifeq ($(CONFIG_STATICALLY_ADD_11P_CHANNELS),y)
 CDEFINES += -DFEATURE_STATICALLY_ADD_11P_CHANNELS
-endif
-
-ifeq ($(CONFIG_WLAN_FEATURE_MEMDUMP),y)
-CDEFINES += -DWLAN_FEATURE_MEMDUMP
 endif
 
 ifeq ($(CONFIG_WLAN_OFFLOAD_PACKETS),y)
