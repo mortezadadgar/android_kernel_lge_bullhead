@@ -801,6 +801,10 @@ int f2fs_fill_dentries(struct file *file, void *dirent, filldir_t filldir,
 
 		if (de->name_len == 0) {
 			bit_pos++;
+			printk_ratelimited(
+				"%s, invalid namelen(0), ino:%u, run fsck to fix.",
+				KERN_WARNING, le32_to_cpu(de->ino));
+			set_sbi_flag(sbi, SBI_NEED_FSCK);
 			continue;
 		}
 
