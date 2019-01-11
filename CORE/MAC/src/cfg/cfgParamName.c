@@ -339,4 +339,12 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"MAX_HT_MCS_TX_DATA",
     (unsigned char *)"DISABLE_ABG_RATE_TX_DATA",
     (unsigned char *)"RATE_FOR_TX_MGMT",
+    (unsigned char *)"EDCA_ETSI_ACBK_LOCAL",
+    (unsigned char *)"EDCA_ETSI_ACBE_LOCAL",
+    (unsigned char *)"EDCA_ETSI_ACVI_LOCAL",
+    (unsigned char *)"EDCA_ETSI_ACVO_LOCAL",
+    (unsigned char *)"EDCA_ETSI_ACBK",
+    (unsigned char *)"EDCA_ETSI_ACBE",
+    (unsigned char *)"EDCA_ETSI_ACVI",
+    (unsigned char *)"EDCA_ETSI_ACVO",
 };
