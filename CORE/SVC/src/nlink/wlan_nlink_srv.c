@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -250,7 +250,7 @@ inline int nl_srv_is_initialized(void)
 		return -EPERM;
 }
 
-#elif !defined(MULTI_IF_NAME)
+#elif !defined(MULTI_IF_NAME) || defined(FAKE_MULTI_IF)
 /* Global variables */
 static DEFINE_MUTEX(nl_srv_sem);
 static struct sock *nl_srv_sock;
