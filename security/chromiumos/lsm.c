@@ -757,6 +757,7 @@ static struct security_operations chromiumos_security_ops = {
 	.kernel_module_from_file = chromiumos_security_load_module,
 	.inode_follow_link = chromiumos_security_inode_follow_link,
 	.file_open = chromiumos_security_file_open,
+	.sb_umount = chromiumos_security_sb_umount,
 };
 
 /* Unfortunately the kernel doesn't implement memmem function. */
