@@ -3308,6 +3308,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_THERMAL_TEMP_MAX_LEVEL3_MIN,
                  CFG_THERMAL_TEMP_MAX_LEVEL3_MAX ),
 
+   REG_VARIABLE( CFG_REMOVE_TIME_STAMP_SYNC_CMD_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, remove_time_stamp_sync_cmd,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_REMOVE_TIME_STAMP_SYNC_CMD_DEFAULT,
+                 CFG_REMOVE_TIME_STAMP_SYNC_CMD_MIN,
+                 CFG_REMOVE_TIME_STAMP_SYNC_CMD_MAX),
+
   REG_VARIABLE( CFG_SET_TXPOWER_LIMIT2G_NAME , WLAN_PARAM_Integer,
                 hdd_config_t, TxPower2g,
                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
@@ -5320,6 +5327,11 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
              "Name = [sap_channel_avoidance] value = [%u]",
              pHddCtx->cfg_ini->sap_channel_avoidance);
 #endif /* FEATURE_AP_MCC_CH_AVOIDANCE */
+
+  VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+             "Name = [%s] value = [%u]", CFG_REMOVE_TIME_STAMP_SYNC_CMD_NAME,
+             pHddCtx->cfg_ini->remove_time_stamp_sync_cmd);
+
   VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
              "Name = [%s] value = [%u]", CFG_SAP_P2P_11AC_OVERRIDE_NAME,
              pHddCtx->cfg_ini->sap_p2p_11ac_override);
@@ -7565,6 +7577,14 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
        fStatus = FALSE;
        hddLog(LOGE, "Could not pass on WNI_CFG_RATE_FOR_TX_MGMT to CCM");
    }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_REMOVE_TIME_SYNC_CMD,
+                    pConfig->remove_time_stamp_sync_cmd, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE) {
+       fStatus = FALSE;
+       hddLog(LOGE, "Could not pass on WNI_CFG_REMOVE_TIME_SYNC_CMD to CCM");
+   }
+
    return fStatus;
 }
 
