@@ -495,6 +495,37 @@ static inline void unlock_rcu_walk(void)
 	br_read_unlock(&vfsmount_lock);
 }
 
+/*
+ * When we move over from the RCU domain to properly refcounted
+ * long-lived dentries, we need to check the sequence numbers
+ * we got before lookup very carefully.
+ *
+ * We cannot blindly increment a dentry refcount - even if it
+ * is not locked - if it is zero, because it may have gone
+ * through the final d_kill() logic already.
+ *
+ * So for a zero refcount, we need to get the spinlock (which is
+ * safe even for a dead dentry because the de-allocation is
+ * RCU-delayed), and check the sequence count under the lock.
+ *
+ * Once we have checked the sequence count, we know it is live,
+ * and since we hold the spinlock it cannot die from under us.
+ *
+ * In contrast, if the reference count wasn't zero, we can just
+ * increment the lockref without having to take the spinlock.
+ * Even if the sequence number ends up being stale, we haven't
+ * gone through the final dput() and killed the dentry yet.
+ */
+static inline int d_rcu_to_refcount(struct dentry *dentry, seqcount_t *validate, unsigned seq)
+{
+	if (likely(lockref_get_not_dead(&dentry->d_lockref))) {
+		if (!read_seqcount_retry(validate, seq))
+				return 0;
+		dput(dentry);
+	}
+	return -ECHILD;
+}
+
 /**
  * unlazy_walk - try to switch to ref-walk mode.
  * @nd: nameidata pathwalk data
@@ -509,29 +540,16 @@ static int unlazy_walk(struct nameidata *nd, struct dentry *dentry)
 {
 	struct fs_struct *fs = current->fs;
 	struct dentry *parent = nd->path.dentry;
+	int want_root = 0;
 
 	BUG_ON(!(nd->flags & LOOKUP_RCU));
-
-	/*
-	 * Get a reference to the parent first: we're
-	 * going to make "path_put(nd->path)" valid in
-	 * non-RCU context for "terminate_walk()".
-	 *
-	 * If this doesn't work, return immediately with
-	 * RCU walking still active (and then we will do
-	 * the RCU walk cleanup in terminate_walk()).
-	 */
-	if (!lockref_get_not_dead(&parent->d_lockref))
-		return -ECHILD;
-
-	/*
-	 * After the mntget(), we terminate_walk() will do
-	 * the right thing for non-RCU mode, and all our
-	 * subsequent exit cases should unlock_rcu_walk()
-	 * before returning.
-	 */
-	mntget(nd->path.mnt);
-	nd->flags &= ~LOOKUP_RCU;
+	if (nd->root.mnt && !(nd->flags & LOOKUP_ROOT)) {
+		want_root = 1;
+		spin_lock(&fs->lock);
+		if (nd->root.mnt != fs->root.mnt ||
+				nd->root.dentry != fs->root.dentry)
+			goto err_root;
+	}
 
 	/*
 	 * For a negative lookup, the lookup sequence point is the parents
@@ -545,39 +563,30 @@ static int unlazy_walk(struct nameidata *nd, struct dentry *dentry)
 	 * be valid if the child sequence number is still valid.
 	 */
 	if (!dentry) {
-		if (read_seqcount_retry(&parent->d_seq, nd->seq))
-			goto out;
+		if (d_rcu_to_refcount(parent, &parent->d_seq, nd->seq) < 0)
+			goto err_root;
 		BUG_ON(nd->inode != parent->d_inode);
 	} else {
-		if (!lockref_get_not_dead(&dentry->d_lockref))
-			goto out;
-		if (read_seqcount_retry(&dentry->d_seq, nd->seq))
-			goto drop_dentry;
+		if (d_rcu_to_refcount(dentry, &dentry->d_seq, nd->seq) < 0)
+			goto err_root;
+		if (d_rcu_to_refcount(parent, &dentry->d_seq, nd->seq) < 0)
+			goto err_parent;
 	}
-
-	/*
-	 * Sequence counts matched. Now make sure that the root is
-	 * still valid and get it if required.
-	 */
-	if (nd->root.mnt && !(nd->flags & LOOKUP_ROOT)) {
-		spin_lock(&fs->lock);
-		if (nd->root.mnt != fs->root.mnt || nd->root.dentry != fs->root.dentry)
-			goto unlock_and_drop_dentry;
+	if (want_root) {
 		path_get(&nd->root);
 		spin_unlock(&fs->lock);
 	}
+	mntget(nd->path.mnt);
 
 	unlock_rcu_walk();
+	nd->flags &= ~LOOKUP_RCU;
 	return 0;
 
-unlock_and_drop_dentry:
-	spin_unlock(&fs->lock);
-drop_dentry:
-	unlock_rcu_walk();
+err_parent:
 	dput(dentry);
-	return -ECHILD;
-out:
-	unlock_rcu_walk();
+err_root:
+	if (want_root)
+		spin_unlock(&fs->lock);
 	return -ECHILD;
 }
 
@@ -606,13 +615,8 @@ static int complete_walk(struct nameidata *nd)
 		if (!(nd->flags & LOOKUP_ROOT))
 			nd->root.mnt = NULL;
 
-		if (unlikely(!lockref_get_not_dead(&dentry->d_lockref))) {
+		if (d_rcu_to_refcount(dentry, &dentry->d_seq, nd->seq) < 0) {
 			unlock_rcu_walk();
-			return -ECHILD;
-		}
-		if (read_seqcount_retry(&dentry->d_seq, nd->seq)) {
-			unlock_rcu_walk();
-			dput(dentry);
 			return -ECHILD;
 		}
 		mntget(nd->path.mnt);
