@@ -86,7 +86,7 @@ __adf_os_init_delayed_work(adf_os_handle_t    hdl,
 
 static inline __adf_os_workqueue_t* __adf_os_create_workqueue(char *name)
 {
-    return create_workqueue(name);
+    return alloc_workqueue(name, WQ_POWER_EFFICIENT, 0);
 }
 
 static inline void __adf_os_queue_work(adf_os_handle_t hdl, __adf_os_workqueue_t *wqueue, __adf_os_work_t* work)
