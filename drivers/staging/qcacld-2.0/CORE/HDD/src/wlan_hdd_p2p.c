@@ -239,7 +239,7 @@ wlan_hdd_remain_on_channel_callback(tHalHandle hHal, void* pCtx,
      * after sending any cancel remain on channel event will also
      * ensure that the cancel roc is sent without any delays.
      */
-    schedule_delayed_work(&hdd_ctx->rocReqWork, 0);
+    queue_delayed_work(system_power_efficient_wq, &hdd_ctx->rocReqWork, 0);
 
     if ( ( WLAN_HDD_INFRA_STATION == pAdapter->device_mode ) ||
          ( WLAN_HDD_P2P_CLIENT == pAdapter->device_mode ) ||
@@ -942,7 +942,7 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
                     pRemainChanCtx->duration = HDD_P2P_MAX_ROC_DURATION;
 
                 wlan_hdd_roc_request_enqueue(pAdapter, pRemainChanCtx);
-                schedule_delayed_work(&pHddCtx->rocReqWork,
+                queue_delayed_work(system_power_efficient_wq, &pHddCtx->rocReqWork,
                 msecs_to_jiffies(pHddCtx->cfg_ini->p2p_listen_defer_interval));
                 hddLog(LOG1, "Defer interval is %hu, pAdapter %p",
                        pHddCtx->cfg_ini->p2p_listen_defer_interval, pAdapter);
@@ -983,7 +983,7 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
      */
     if (isBusy == VOS_FALSE && pAdapter->is_roc_inprogress == false) {
         hddLog(LOG1, FL("scheduling delayed work: no connection/roc active"));
-        schedule_delayed_work(&pHddCtx->rocReqWork, 0);
+        queue_delayed_work(system_power_efficient_wq, &pHddCtx->rocReqWork, 0);
     }
     EXIT();
     return 0;
