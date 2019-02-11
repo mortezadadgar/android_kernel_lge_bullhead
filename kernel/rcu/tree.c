@@ -251,7 +251,7 @@ static void rcu_momentary_dyntick_idle(void)
 
 	/* Find the flavor that needs a quiescent state. */
 	for_each_rcu_flavor(rsp) {
-		rdp = __this_cpu_write(rsp->rda);
+		rdp = raw_cpu_ptr(rsp->rda);
 		if (!(resched_mask & rsp->flavor_mask))
 			continue;
 		smp_mb(); /* rcu_sched_qs_mask before cond_resched_completed. */
@@ -2185,7 +2185,7 @@ rcu_send_cbs_to_orphanage(int cpu, struct rcu_state *rsp,
 static void rcu_adopt_orphan_cbs(struct rcu_state *rsp, unsigned long flags)
 {
 	int i;
-	struct rcu_data *rdp = __this_cpu_read(rsp->rda);
+	struct rcu_data *rdp = raw_cpu_ptr(rsp->rda);
 
 	/* No-CBs CPUs are handled specially. */
 	if (rcu_nocb_adopt_orphan_cbs(rsp, rdp, flags))
