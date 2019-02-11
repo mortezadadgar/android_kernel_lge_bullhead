@@ -246,12 +246,12 @@ static void rcu_momentary_dyntick_idle(void)
 	 * Yes, we can lose flag-setting operations.  This is OK, because
 	 * the flag will be set again after some delay.
 	 */
-	resched_mask = raw_cpu_read(rcu_sched_qs_mask);
-	raw_cpu_write(rcu_sched_qs_mask, 0);
+	resched_mask = __this_cpu_read(rcu_sched_qs_mask);
+	__this_cpu_write(rcu_sched_qs_mask, 0);
 
 	/* Find the flavor that needs a quiescent state. */
 	for_each_rcu_flavor(rsp) {
-		rdp = raw_cpu_ptr(rsp->rda);
+		rdp = __this_cpu_write(rsp->rda);
 		if (!(resched_mask & rsp->flavor_mask))
 			continue;
 		smp_mb(); /* rcu_sched_qs_mask before cond_resched_completed. */
@@ -284,7 +284,7 @@ void rcu_note_context_switch(int cpu)
 	trace_rcu_utilization(TPS("Start context switch"));
 	rcu_sched_qs();
 	rcu_preempt_note_context_switch(cpu);
-	if (unlikely(raw_cpu_read(rcu_sched_qs_mask)))
+	if (unlikely(__this_cpu_read(rcu_sched_qs_mask)))
 		rcu_momentary_dyntick_idle();
 	trace_rcu_utilization(TPS("End context switch"));
 }
@@ -2185,7 +2185,7 @@ rcu_send_cbs_to_orphanage(int cpu, struct rcu_state *rsp,
 static void rcu_adopt_orphan_cbs(struct rcu_state *rsp, unsigned long flags)
 {
 	int i;
-	struct rcu_data *rdp = raw_cpu_ptr(rsp->rda);
+	struct rcu_data *rdp = __this_cpu_read(rsp->rda);
 
 	/* No-CBs CPUs are handled specially. */
 	if (rcu_nocb_adopt_orphan_cbs(rsp, rdp, flags))
