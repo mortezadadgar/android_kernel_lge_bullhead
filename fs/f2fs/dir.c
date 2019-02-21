@@ -903,7 +903,7 @@ static int f2fs_readdir(struct file *file, void *dirent, filldir_t filldir)
 			page_cache_sync_readahead(inode->i_mapping, ra, file, n,
 				min(npages - n, (pgoff_t)MAX_DIR_RA_PAGES));
 
-		dentry_page = f2fs_get_lock_data_page(inode, n, false);
+		dentry_page = f2fs_find_data_page(inode, n);
 		if (IS_ERR(dentry_page)) {
 			err = PTR_ERR(dentry_page);
 			if (err == -ENOENT) {
@@ -921,12 +921,12 @@ static int f2fs_readdir(struct file *file, void *dirent, filldir_t filldir)
 		err = f2fs_fill_dentries(file, dirent, filldir, &d, n,
 							bit_pos, &fstr);
 		if (err) {
-			f2fs_put_page(dentry_page, 1);
+			f2fs_put_page(dentry_page, 0);
 			break;
 		}
 
 		bit_pos = 0;
-		f2fs_put_page(dentry_page, 1);
+		f2fs_put_page(dentry_page, 0);
 	}
 out_free:
 	fscrypt_fname_free_buffer(&fstr);
