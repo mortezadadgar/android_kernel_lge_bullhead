@@ -1125,6 +1125,11 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 			return 0;
 		}
 		if (data->opcode == APR_BASIC_RSP_RESULT) {
+			if (data->payload_size < (2 * sizeof(uint32_t))) {
+				pr_err("%s: Invalid payload size %d\n", __func__,
+					data->payload_size);
+				return 0;
+			}
 			pr_debug("%s: APR_BASIC_RSP_RESULT id 0x%x\n",
 				__func__, payload[0]);
 			if (payload[1] != 0) {
@@ -1222,9 +1227,14 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 
 		switch (data->opcode) {
 		case ADM_CMDRSP_DEVICE_OPEN_V5: {
-			struct adm_cmd_rsp_device_open_v5 *open =
-			(struct adm_cmd_rsp_device_open_v5 *)data->payload;
-
+			struct adm_cmd_rsp_device_open_v5 *open = NULL;
+			if (data->payload_size <
+				sizeof(struct adm_cmd_rsp_device_open_v5)) {
+				pr_err("%s: Invalid payload size %d\n", __func__,
+					data->payload_size);
+				return 0;
+			}
+			open = (struct adm_cmd_rsp_device_open_v5 *)data->payload;
 			if (open->copp_id == INVALID_COPP_ID) {
 				pr_err("%s: invalid coppid rxed %d\n",
 					__func__, open->copp_id);
