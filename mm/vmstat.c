@@ -776,6 +776,7 @@ const char * const vmstat_text[] = {
 	"allocstall",
 
 	"pgrotated",
+	"oom_kill",
 
 #ifdef CONFIG_NUMA_BALANCING
 	"numa_pte_updates",
