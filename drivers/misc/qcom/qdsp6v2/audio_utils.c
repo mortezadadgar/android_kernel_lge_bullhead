@@ -873,8 +873,7 @@ ssize_t audio_in_write(struct file *file,
 						__func__, audio->ac->session);
 			}
 		}
-		xfer = (count > (audio->pcm_cfg.buffer_size)) ?
-				(audio->pcm_cfg.buffer_size) : count;
+		xfer = (count > size) ? size : count;
 
 		if (copy_from_user(cpy_ptr, buf, xfer)) {
 			rc = -EFAULT;
