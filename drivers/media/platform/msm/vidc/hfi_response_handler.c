@@ -1200,12 +1200,8 @@ static void hfi_process_session_rel_buf_done(msm_vidc_callback callback,
 	cmd_done.size = sizeof(struct msm_vidc_cb_cmd_done);
 	cmd_done.session_id = session->session_id;
 	cmd_done.status = hfi_map_err_status(pkt->error_type);
-	if (pkt->rg_buffer_info) {
-		cmd_done.data = (void *) &pkt->rg_buffer_info;
-		cmd_done.size = sizeof(struct hfi_buffer_info);
-	} else {
-		dprintk(VIDC_ERR, "invalid payload in rel_buff_done\n");
-	}
+	cmd_done.data = (void *) &pkt->rg_buffer_info;
+	cmd_done.size = sizeof(struct hfi_buffer_info);
 	callback(SESSION_RELEASE_BUFFER_DONE, &cmd_done);
 }
 
