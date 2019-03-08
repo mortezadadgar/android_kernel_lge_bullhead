@@ -127,6 +127,15 @@ config BT_EVE_HACKS
 	  this option will be on for eve and off for every other device
 	  for now. Yes, this is beyond ugly. Accepting patches :)
 
+config BT_ENFORCE_CLASSIC_SECURITY
+	bool "Enforces security requirements for Bluetooth classic"
+	depends on BT
+	default y
+	help
+	  Enforces Bluetooth classic security requirements by disallowing use of
+	  insecure Bluetooth chips, i.e. that doesn't support Read Encryption
+	  Key Size command to prevent BT classic connection with very short
+	  encryption key.
 
 
 source "drivers/bluetooth/Kconfig"
