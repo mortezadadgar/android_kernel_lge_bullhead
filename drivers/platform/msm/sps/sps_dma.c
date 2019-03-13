@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, 2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -373,7 +373,7 @@ int sps_dma_device_de_init(unsigned long h)
 
 	dev = sps_dma_find_device(h);
 	if (dev == NULL) {
-		SPS_ERR("sps:BAM-DMA: not registered: %lx", h);
+		SPS_ERR("sps:BAM-DMA: not registered: %pK", (void *)h);
 		result = SPS_ERROR;
 		goto exit_err;
 	}
@@ -534,7 +534,8 @@ int sps_alloc_dma_chan(const struct sps_alloc_dma_chan *alloc,
 
 	dev = sps_dma_find_device(alloc->dev);
 	if (dev == NULL) {
-		SPS_ERR("sps:BAM-DMA: invalid BAM handle: %lx", alloc->dev);
+		SPS_ERR("sps:BAM-DMA: invalid BAM handle: %pK",
+							(void *)alloc->dev);
 		goto exit_err;
 	}
 
@@ -606,7 +607,8 @@ int sps_free_dma_chan(struct sps_dma_chan *chan)
 
 	dev = sps_dma_find_device(chan->dev);
 	if (dev == NULL) {
-		SPS_ERR("sps:BAM-DMA: invalid BAM handle: %lx", chan->dev);
+		SPS_ERR("sps:BAM-DMA: invalid BAM handle: %pK",
+			(void *)chan->dev);
 		result = SPS_ERROR;
 		goto exit_err;
 	}

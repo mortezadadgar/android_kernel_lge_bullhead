@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, 2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -374,7 +374,8 @@ static struct sps_connection *sps_rm_create(struct sps_pipe *pipe)
 	map->src.bam = sps_h2bam(map->src.dev);
 	if (map->src.bam == NULL) {
 		if (map->src.dev != SPS_DEV_HANDLE_MEM) {
-			SPS_ERR("sps:Invalid BAM handle: %pa", &map->src.dev);
+			SPS_ERR("sps:Invalid BAM handle: %pK",
+					(void *)(&map->src.dev));
 			goto exit_err;
 		}
 		map->src.pipe_index = SPS_BAM_PIPE_INVALID;
@@ -382,7 +383,8 @@ static struct sps_connection *sps_rm_create(struct sps_pipe *pipe)
 	map->dest.bam = sps_h2bam(map->dest.dev);
 	if (map->dest.bam == NULL) {
 		if (map->dest.dev != SPS_DEV_HANDLE_MEM) {
-			SPS_ERR("sps:Invalid BAM handle: %pa", &map->dest.dev);
+			SPS_ERR("sps:Invalid BAM handle: %pK",
+					(void *)(&map->dest.dev));
 			goto exit_err;
 		}
 		map->dest.pipe_index = SPS_BAM_PIPE_INVALID;
@@ -391,8 +393,8 @@ static struct sps_connection *sps_rm_create(struct sps_pipe *pipe)
 	/* Check the BAM device for the pipe */
 	if ((dir == SPS_MODE_SRC && map->src.bam == NULL) ||
 	    (dir != SPS_MODE_SRC && map->dest.bam == NULL)) {
-		SPS_ERR("sps:Invalid BAM endpt: dir %d src %pa dest %pa",
-			dir, &map->src.dev, &map->dest.dev);
+		SPS_ERR("sps:Invalid BAM endpt: dir %d src %pK dest %pK",
+			dir, (void *)(&map->src.dev), (void *)(&map->dest.dev));
 		goto exit_err;
 	}
 
