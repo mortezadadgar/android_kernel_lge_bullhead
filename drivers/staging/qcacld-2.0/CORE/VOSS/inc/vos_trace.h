@@ -107,7 +107,7 @@ typedef enum
 #define NO_SESSION 0xFF
 
 #else
-#define MTRACE(p) {  }
+#define MTRACE(p) do { } while (0);
 
 #endif
 
