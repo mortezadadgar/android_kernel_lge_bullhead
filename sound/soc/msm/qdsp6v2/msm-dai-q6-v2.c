@@ -720,6 +720,7 @@ static int msm_dai_q6_spdif_hw_params(struct snd_pcm_substream *substream,
 		dai_data->spdif_port.cfg.bit_width = 16;
 		break;
 	case SNDRV_PCM_FORMAT_S24_LE:
+	case SNDRV_PCM_FORMAT_S24_3LE:
 		dai_data->spdif_port.cfg.bit_width = 24;
 		break;
 	default:
@@ -994,8 +995,19 @@ static int msm_dai_q6_i2s_hw_params(struct snd_pcm_hw_params *params,
 	dai_data->port_config.i2s.i2s_cfg_minor_version =
 						AFE_API_VERSION_I2S_CONFIG;
 	dai_data->port_config.i2s.data_format =  AFE_LINEAR_PCM_DATA;
-	/* Q6 only supports 16 as now */
-	dai_data->port_config.i2s.bit_width = 16;
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+	case SNDRV_PCM_FORMAT_SPECIAL:
+		dai_data->port_config.i2s.bit_width = 16;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+	case SNDRV_PCM_FORMAT_S24_3LE:
+		dai_data->port_config.i2s.bit_width = 24;
+		break;
+	default:
+		pr_err("%s: format %d\n",
+			__func__, params_format(params));
+	}
 	dai_data->port_config.i2s.channel_mode = 1;
 
 	return 0;
