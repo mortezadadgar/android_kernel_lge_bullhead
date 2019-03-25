@@ -582,7 +582,7 @@ void f2fs_truncate_data_blocks_range(struct dnode_of_data *dn, int count)
 
 void f2fs_truncate_data_blocks(struct dnode_of_data *dn)
 {
-	f2fs_truncate_data_blocks_range(dn, ADDRS_PER_BLOCK);
+	f2fs_truncate_data_blocks_range(dn, ADDRS_PER_BLOCK(dn->inode));
 }
 
 static int truncate_partial_data_page(struct inode *inode, u64 from,
@@ -1041,7 +1041,8 @@ next_dnode:
 	} else if (ret == -ENOENT) {
 		if (dn.max_level == 0)
 			return -ENOENT;
-		done = min((pgoff_t)ADDRS_PER_BLOCK - dn.ofs_in_node, len);
+		done = min((pgoff_t)ADDRS_PER_BLOCK(inode) - dn.ofs_in_node,
+									len);
 		blkaddr += done;
 		do_replace += done;
 		goto next;
@@ -1192,7 +1193,7 @@ static int __exchange_data_block(struct inode *src_inode,
 	int ret;
 
 	while (len) {
-		olen = min((pgoff_t)4 * ADDRS_PER_BLOCK, len);
+		olen = min((pgoff_t)4 * ADDRS_PER_BLOCK(src_inode), len);
 
 		src_blkaddr = kvzalloc(sizeof(block_t) * olen, GFP_KERNEL);
 		if (!src_blkaddr)
