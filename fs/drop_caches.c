@@ -49,6 +49,14 @@ static void drop_slab(void)
 	} while (nr_objects > 10);
 }
 
+void mm_drop_caches(int val)
+{
+	if (val & 1)
+		iterate_supers(drop_pagecache_sb, NULL);
+	if (val & 2)
+		drop_slab();
+}
+
 int drop_caches_sysctl_handler(ctl_table *table, int write,
 	void __user *buffer, size_t *length, loff_t *ppos)
 {
@@ -58,10 +66,9 @@ int drop_caches_sysctl_handler(ctl_table *table, int write,
 	if (ret)
 		return ret;
 	if (write) {
-		if (sysctl_drop_caches & 1)
-			iterate_supers(drop_pagecache_sb, NULL);
-		if (sysctl_drop_caches & 2)
-			drop_slab();
+
+		mm_drop_caches(sysctl_drop_caches);
+
 	}
 	return 0;
 }
