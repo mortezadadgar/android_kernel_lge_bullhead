@@ -147,6 +147,13 @@ do_gc:
 			sbi->gc_mode = GC_NORMAL;
 			f2fs_info(sbi, "No more GC victim found, "
 				"sleeping for %u ms", wait_ms);
+
+			/*
+			 * Rapid GC would have cleaned hundreds of segments
+			 * that would not be read again anytime soon.
+			 */
+			mm_drop_caches(3);
+			f2fs_info(sbi, "dropped caches");
 		}
 
 		trace_f2fs_background_gc(sbi->sb, wait_ms,
