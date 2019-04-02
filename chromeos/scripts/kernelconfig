@@ -157,7 +157,7 @@ main() {
 	# Set up variables the build func expects.
 	local kerneldir=$(pwd)
 	local confdir="${kerneldir}/chromeos/config"
-	local archs=( x86_64 i386 armel )
+	local archs=( x86_64 armel )
 	local bindir="${kerneldir}/chromeos/scripts"
 	local base_conf="${confdir}/base.config"
 
