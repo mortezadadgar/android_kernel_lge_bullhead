@@ -89,10 +89,7 @@ MODULE_PARM_DESC(cpe_debug_mode, "boot cpe in debug mode");
 
 static atomic_t kp_tomtom_priv;
 
-static int high_perf_mode;
-module_param(high_perf_mode, int,
-			S_IRUGO | S_IWUSR | S_IWGRP);
-MODULE_PARM_DESC(high_perf_mode, "enable/disable class AB config for hph");
+static int high_perf_mode = 1;
 
 static struct afe_param_slimbus_slave_port_cfg tomtom_slimbus_slave_port_cfg = {
 	.minor_version = 1,
@@ -697,6 +694,7 @@ static int tomtom_get_sample_rate(struct snd_soc_codec *codec, int path)
 			(TOMTOM_A_CDC_RX1_B5_CTL + 8 * (path - 1)));
 }
 
+#if 0
 static int tomtom_compare_bit_format(struct snd_soc_codec *codec,
 				int bit_format)
 {
@@ -712,15 +710,30 @@ static int tomtom_compare_bit_format(struct snd_soc_codec *codec,
 	}
 	return ret;
 }
+#endif
+
+static bool tomtom_bit_format_greater_eq(struct snd_soc_codec *codec,
+					 int bit_format)
+{
+	struct tomtom_priv *tomtom_p = snd_soc_codec_get_drvdata(codec);
+	int i;
+
+	for (i = 0; i < NUM_CODEC_DAIS; i++) {
+		if (tomtom_p->dai[i].bit_width >= bit_format)
+			return true;
+	}
+
+	return false;
+}
 
 static int tomtom_update_uhqa_mode(struct snd_soc_codec *codec, int path)
 {
 	int ret = 0;
 	struct tomtom_priv *tomtom_p = snd_soc_codec_get_drvdata(codec);
 
-	/* UHQA path has fs=192KHz & bit=24 bit */
-	if (((tomtom_get_sample_rate(codec, path) & 0xE0) == 0xA0) &&
-		(tomtom_compare_bit_format(codec, 24))) {
+	/* UHQA path for fs>48KHz & bit>=24 bit */
+	if (tomtom_get_sample_rate(codec, path) > 48 ||
+		tomtom_bit_format_greater_eq(codec, 24)) {
 		tomtom_p->uhqa_mode = 1;
 	} else {
 		tomtom_p->uhqa_mode = 0;
@@ -1008,6 +1021,9 @@ static int tomtom_set_compander(struct snd_kcontrol *kcontrol,
 	int comp = ((struct soc_multi_mixer_control *)
 		    kcontrol->private_value)->shift;
 	int value = ucontrol->value.integer.value[0];
+
+	if (comp == COMPANDER_1)
+		value = 0;
 
 	pr_debug("%s: Compander %d enable current %d, new %d\n",
 		 __func__, comp, tomtom->comp_enabled[comp], value);
@@ -4213,17 +4229,11 @@ static int tomtom_hphl_dac_event(struct snd_soc_dapm_widget *w,
 			msleep(50);
 		}
 
-		if (!high_perf_mode && !tomtom_p->uhqa_mode) {
-			wcd9xxx_clsh_fsm(codec, &tomtom_p->clsh_d,
-						 WCD9XXX_CLSH_STATE_HPHL,
-						 WCD9XXX_CLSH_REQ_ENABLE,
-						 WCD9XXX_CLSH_EVENT_PRE_DAC);
-		} else {
-			wcd9xxx_enable_high_perf_mode(codec, &tomtom_p->clsh_d,
-						tomtom_p->uhqa_mode,
-						WCD9XXX_CLSAB_STATE_HPHL,
-						WCD9XXX_CLSAB_REQ_ENABLE);
-		}
+		wcd9xxx_enable_high_perf_mode(codec, &tomtom_p->clsh_d,
+					tomtom_p->uhqa_mode,
+					WCD9XXX_CLSAB_STATE_HPHL,
+					WCD9XXX_CLSAB_REQ_ENABLE);
+
 		ret = wcd9xxx_mbhc_get_impedance(&tomtom_p->mbhc,
 					&impedl, &impedr);
 		if (!ret)
@@ -4241,17 +4251,10 @@ static int tomtom_hphl_dac_event(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, TOMTOM_A_CDC_RX1_B4_CTL, 0x30, 0x00);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		if (!high_perf_mode && !tomtom_p->uhqa_mode) {
-			wcd9xxx_clsh_fsm(codec, &tomtom_p->clsh_d,
-						 WCD9XXX_CLSH_STATE_HPHL,
-						 WCD9XXX_CLSH_REQ_DISABLE,
-						 WCD9XXX_CLSH_EVENT_POST_PA);
-		} else {
-			wcd9xxx_enable_high_perf_mode(codec, &tomtom_p->clsh_d,
-						tomtom_p->uhqa_mode,
-						WCD9XXX_CLSAB_STATE_HPHL,
-						WCD9XXX_CLSAB_REQ_DISABLE);
-		}
+		wcd9xxx_enable_high_perf_mode(codec, &tomtom_p->clsh_d,
+					tomtom_p->uhqa_mode,
+					WCD9XXX_CLSAB_STATE_HPHL,
+					WCD9XXX_CLSAB_REQ_DISABLE);
 		break;
 	}
 	return 0;
@@ -4273,17 +4276,10 @@ static int tomtom_hphr_dac_event(struct snd_soc_dapm_widget *w,
 		}
 
 		snd_soc_update_bits(codec, w->reg, 0x40, 0x40);
-		if (!high_perf_mode && !tomtom_p->uhqa_mode) {
-			wcd9xxx_clsh_fsm(codec, &tomtom_p->clsh_d,
-						 WCD9XXX_CLSH_STATE_HPHR,
-						 WCD9XXX_CLSH_REQ_ENABLE,
-						 WCD9XXX_CLSH_EVENT_PRE_DAC);
-		} else {
-			wcd9xxx_enable_high_perf_mode(codec, &tomtom_p->clsh_d,
-						tomtom_p->uhqa_mode,
-						WCD9XXX_CLSAB_STATE_HPHR,
-						WCD9XXX_CLSAB_REQ_ENABLE);
-		}
+		wcd9xxx_enable_high_perf_mode(codec, &tomtom_p->clsh_d,
+					tomtom_p->uhqa_mode,
+					WCD9XXX_CLSAB_STATE_HPHR,
+					WCD9XXX_CLSAB_REQ_ENABLE);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		snd_soc_update_bits(codec, TOMTOM_A_CDC_RX2_B3_CTL, 0xBC, 0x94);
@@ -4295,17 +4291,10 @@ static int tomtom_hphr_dac_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		snd_soc_update_bits(codec, w->reg, 0x40, 0x00);
-		if (!high_perf_mode && !tomtom_p->uhqa_mode) {
-			wcd9xxx_clsh_fsm(codec, &tomtom_p->clsh_d,
-						 WCD9XXX_CLSH_STATE_HPHR,
-						 WCD9XXX_CLSH_REQ_DISABLE,
-						 WCD9XXX_CLSH_EVENT_POST_PA);
-		} else {
-			wcd9xxx_enable_high_perf_mode(codec, &tomtom_p->clsh_d,
-						tomtom_p->uhqa_mode,
-						WCD9XXX_CLSAB_STATE_HPHR,
-						WCD9XXX_CLSAB_REQ_DISABLE);
-		}
+		wcd9xxx_enable_high_perf_mode(codec, &tomtom_p->clsh_d,
+					tomtom_p->uhqa_mode,
+					WCD9XXX_CLSAB_STATE_HPHR,
+					WCD9XXX_CLSAB_REQ_DISABLE);
 		break;
 	}
 	return 0;
@@ -5960,6 +5949,7 @@ static int tomtom_hw_params(struct snd_pcm_substream *substream,
 		rx_fs_rate = 0x40;
 		compander_fs = COMPANDER_FS_32KHZ;
 		break;
+        case 44100:
 	case 48000:
 		tx_fs_rate = 0x03;
 		rx_fs_rate = 0x60;
