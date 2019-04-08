@@ -632,7 +632,6 @@ config EARJACK_DEBUGGER
 
 config UID_SYS_STATS
 	tristate "Per-UID statistics"
-	depends on PROFILING
 	help
 	  Per UID based cpu time statistics exported to /proc/uid_cputime
 	  Per UID based io statistics exported to /proc/uid_io
