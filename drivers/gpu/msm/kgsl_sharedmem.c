@@ -975,6 +975,9 @@ int kgsl_cma_alloc_secure(struct kgsl_device *device,
 	/* Align size to 1M boundaries */
 	size = ALIGN(size, SZ_1M);
 
+	if (size > UINT_MAX)
+		return -EINVAL;
+
 	memdesc->size = size;
 	memdesc->pagetable = pagetable;
 	memdesc->ops = &kgsl_cma_ops;
