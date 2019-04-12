@@ -527,6 +527,9 @@ static ssize_t tzdbgfs_read(struct file *file, char __user *buf,
 		break;
 	}
 
+	if (count > debug_rw_buf_size)
+		count = debug_rw_buf_size;
+
 	if (len > count)
 		len = count;
 
