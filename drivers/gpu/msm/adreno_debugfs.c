@@ -48,9 +48,11 @@ static void sync_event_print(struct seq_file *s,
 		break;
 	}
 	case KGSL_CMD_SYNCPOINT_TYPE_FENCE:
+#ifdef CONFIG_SYNC_DEBUG
 		seq_printf(s, "sync: [%pK] %s", sync_event->handle,
 		(sync_event->handle && sync_event->handle->fence)
 				? sync_event->handle->fence->name : "NULL");
+#endif
 		break;
 	default:
 		seq_printf(s, "sync: type: %d", sync_event->type);

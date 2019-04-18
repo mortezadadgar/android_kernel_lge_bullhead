@@ -406,7 +406,9 @@ struct sync_pt_info {
  */
 struct sync_fence_info_data {
 	__u32	len;
+#ifdef CONFIG_SYNC_DEBUG
 	char	name[32];
+#endif
 	__s32	status;
 
 	__u8	pt_info[0];

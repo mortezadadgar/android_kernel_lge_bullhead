@@ -328,11 +328,13 @@ int kgsl_sync_timeline_create(struct kgsl_context *context)
 	 * name, process id, and context id. This makes it possible to
 	 * identify the context of a timeline in the sync dump. */
 	char ktimeline_name[sizeof(context->timeline->name)] = {};
+#ifdef CONFIG_FENCE_DEBUG
 	snprintf(ktimeline_name, sizeof(ktimeline_name),
 		"%s_%.15s(%d)-%.15s(%d)-%d",
 		context->device->name,
 		current->group_leader->comm, current->group_leader->pid,
 		current->comm, current->pid, context->id);
+#endif
 
 	context->timeline = sync_timeline_create(&kgsl_sync_timeline_ops,
 		(int) sizeof(struct kgsl_sync_timeline), ktimeline_name);
@@ -404,7 +406,9 @@ struct kgsl_sync_fence_waiter *kgsl_sync_fence_async_wait(int fd,
 	kwaiter->priv = priv;
 	kwaiter->func = func;
 
+#ifdef CONFIG_SYNC_DEBUG
 	strlcpy(kwaiter->name, fence->name, sizeof(kwaiter->name));
+#endif
 
 	sync_fence_waiter_init((struct sync_fence_waiter *) kwaiter,
 		kgsl_sync_callback);

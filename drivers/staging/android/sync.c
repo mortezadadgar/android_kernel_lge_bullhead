@@ -55,7 +55,9 @@ struct sync_timeline *sync_timeline_create(const struct sync_timeline_ops *ops,
 
 	kref_init(&obj->kref);
 	obj->ops = ops;
+#ifdef CONFIG_FENCE_DEBUG
 	strlcpy(obj->name, name, sizeof(obj->name));
+#endif
 
 	INIT_LIST_HEAD(&obj->child_list_head);
 	spin_lock_init(&obj->child_list_lock);
@@ -264,7 +266,9 @@ static struct sync_fence *sync_fence_alloc(const char *name)
 		goto err;
 
 	kref_init(&fence->kref);
+#ifdef CONFIG_SYNC_DEBUG
 	strlcpy(fence->name, name, sizeof(fence->name));
+#endif
 
 	INIT_LIST_HEAD(&fence->pt_list_head);
 	INIT_LIST_HEAD(&fence->waiter_list_head);
@@ -649,8 +653,10 @@ void _sync_fence_log(struct sync_fence *fence, bool pt_callback)
 	struct list_head *pos;
 	unsigned long flags;
 
+#ifdef CONFIG_FENCE_DEBUG
 	pr_info("[%p] %s: %s\n", fence, fence->name,
 		sync_status_str(fence->status));
+#endif
 
 	pr_info("waiters:\n");
 
@@ -881,7 +887,9 @@ static long sync_fence_ioctl_fence_info(struct sync_fence *fence,
 	if (size > 4096)
 		size = 4096;
 
+#ifdef CONFIG_SYNC_DEBUG
 	strlcpy(data->name, fence->name, sizeof(data->name));
+#endif
 	data->status = fence->status;
 	len = sizeof(struct sync_fence_info_data);
 
