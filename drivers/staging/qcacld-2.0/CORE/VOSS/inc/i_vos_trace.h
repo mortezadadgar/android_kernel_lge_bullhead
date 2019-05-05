@@ -94,8 +94,16 @@ void vos_trace_set_module_trace_level(VOS_MODULE_ID module, uint32_t level);
 #define VOS_TRACE vos_trace_msg
 #define VOS_TRACE_HEX_DUMP vos_trace_hex_dump
 #else
-#define VOS_TRACE(arg...)
-#define VOS_TRACE_HEX_DUMP(arg...)
+static inline void __printf(3, 4) no_vos_trace_msg(VOS_MODULE_ID module, VOS_TRACE_LEVEL level,
+		   char *str_format, ...)
+{
+}
+static inline void no_vos_trace_hex_dump(VOS_MODULE_ID module, VOS_TRACE_LEVEL level,
+			void *data, int buf_len)
+{
+}
+#define VOS_TRACE no_vos_trace_msg
+#define VOS_TRACE_HEX_DUMP no_vos_trace_hex_dump
 #endif
 
 
