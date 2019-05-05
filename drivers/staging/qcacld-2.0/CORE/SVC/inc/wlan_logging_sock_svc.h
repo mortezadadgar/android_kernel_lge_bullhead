@@ -49,6 +49,9 @@ void wlan_logging_set_per_pkt_stats(void);
 void wlan_logging_set_log_level(void);
 void wlan_logging_set_fw_flush_complete(void);
 void wlan_flush_host_logs_for_fatal(void);
+void wlan_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data);
+void wlan_deregister_txrx_packetdump(void);
+void wlan_register_txrx_packetdump(void);
 #else
 static inline void wlan_logging_set_per_pkt_stats(void)
 {
@@ -63,6 +66,18 @@ static inline void wlan_logging_set_fw_flush_complete(void)
 	return;
 }
 static inline void wlan_flush_host_logs_for_fatal(void)
+{
+	return;
+}
+static inline void wlan_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data)
+{
+	return;
+}
+static inline void wlan_deregister_txrx_packetdump(void)
+{
+	return;
+}
+static inline void wlan_register_txrx_packetdump(void)
 {
 	return;
 }
@@ -81,8 +96,4 @@ static inline void wlan_report_log_completion(uint32_t is_fatal,
 }
 #endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
-void wlan_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data);
-
-void wlan_deregister_txrx_packetdump(void);
-void wlan_register_txrx_packetdump(void);
 #endif /* WLAN_LOGGING_SOCK_SVC_H */
