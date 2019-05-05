@@ -2324,7 +2324,9 @@ int __wlan_hdd_del_virtual_intf(struct wiphy *wiphy, struct net_device *dev)
     struct net_device *dev = wdev->netdev;
 #endif
     hdd_context_t *pHddCtx = (hdd_context_t*) wiphy_priv(wiphy);
+#ifdef TRACE_RECORD
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
+#endif
     hdd_adapter_t *pVirtAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     int status;
     ENTER();
@@ -2483,7 +2485,9 @@ void __hdd_indicate_mgmt_frame(hdd_adapter_t *pAdapter,
                 vos_mem_compare(&pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+2], SIR_MAC_P2P_OUI, SIR_MAC_P2P_OUI_SIZE))
             // P2P action frames
             {
+#ifdef WLAN_FEATURE_P2P_DEBUG
                 u8 *macFrom = &pbFrames[WLAN_HDD_80211_FRM_DA_OFFSET+6];
+#endif
                 actionFrmType = pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_TYPE_OFFSET];
                 hddLog(LOG1, "Rx Action Frame %u", actionFrmType);
 #ifdef WLAN_FEATURE_P2P_DEBUG

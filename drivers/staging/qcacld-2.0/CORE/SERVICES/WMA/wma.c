@@ -95,9 +95,7 @@
 #include "testmode.h"
 #endif
 
-#if !defined(REMOVE_PKT_LOG)
 #include "pktlog_ac.h"
-#endif
 
 #include "dbglog_host.h"
 /* FIXME: Inclusion of .c looks odd but this is how it is in internal codebase */

@@ -367,6 +367,7 @@ struct ipa_uc_pending_event {
 	uint8_t mac_addr[VOS_MAC_ADDR_SIZE];
 };
 
+#ifdef WLAN_DEBUG
 static const char *op_string[HDD_IPA_UC_OPCODE_MAX] = {
 	"TX_SUSPEND",
 	"TX_RESUME",
@@ -375,6 +376,7 @@ static const char *op_string[HDD_IPA_UC_OPCODE_MAX] = {
 	"STATS",
 	"OPCODE_MAX"
 };
+#endif
 
 struct uc_rm_work_struct {
 	struct work_struct work;
@@ -1656,8 +1658,10 @@ static void hdd_ipa_uc_op_cb(struct op_msg_type *op_msg, void *usr_ctxt)
 		return;
 	}
 
+#ifdef TRACE_RECORD
 	HDD_IPA_LOG(VOS_TRACE_LEVEL_DEBUG,
 		"%s, OPCODE %s", __func__, op_string[msg->op_code]);
+#endif
 
 	if ((HDD_IPA_UC_OPCODE_TX_RESUME == msg->op_code) ||
 		(HDD_IPA_UC_OPCODE_RX_RESUME == msg->op_code)) {

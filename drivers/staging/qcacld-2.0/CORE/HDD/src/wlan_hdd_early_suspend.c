@@ -98,6 +98,7 @@
 #endif
 
 #include "ol_fw.h"
+#include "wlan_hdd_host_offload.h"
 /* Time in msec */
 #ifdef CONFIG_SLUB_DEBUG_ON
 #define HDD_SSR_BRING_UP_TIME 50000
