@@ -109,6 +109,7 @@ static const u16 mgmt_commands[] = {
 	MGMT_OP_READ_EXT_INFO,
 	MGMT_OP_SET_APPEARANCE,
 	MGMT_OP_SET_ADVERTISING_INTERVALS,
+	MGMT_OP_SET_BLOCKED_LTKS,
 };
 
 static const u16 mgmt_events[] = {
@@ -4349,6 +4350,19 @@ static int set_advertising_intervals(struct sock *sk, struct hci_dev *hdev,
 	return err;
 }
 
+static int set_blocked_ltks(struct sock *sk, struct hci_dev *hdev,
+			    void *data, u16 len)
+{
+	struct mgmt_cp_set_blocked_ltks *cp = data;
+
+	hci_dev_lock(hdev);
+	memcpy(hdev->blocked_ltks, cp->ltks, sizeof(hdev->blocked_ltks));
+	hci_dev_unlock(hdev);
+
+	return mgmt_cmd_complete(sk, hdev->id, MGMT_OP_SET_BLOCKED_LTKS, 0,
+				 NULL, 0);
+}
+
 static void set_bredr_complete(struct hci_dev *hdev, u8 status, u16 opcode)
 {
 	struct mgmt_pending_cmd *cmd;
@@ -6648,6 +6662,8 @@ static const struct hci_mgmt_handler mgmt_handlers[] = {
 						HCI_MGMT_UNTRUSTED },
 	{ set_appearance,	   MGMT_SET_APPEARANCE_SIZE },
 	{ set_advertising_intervals, MGMT_SET_ADVERTISING_INTERVALS_SIZE },
+	{ NULL, 0 }, // 0x0045 SET_EVENT_MASK unimplemented
+	{ set_blocked_ltks,	   MGMT_SET_BLOCKED_LTKS_CP_SIZE },
 };
 
 void mgmt_index_added(struct hci_dev *hdev)

@@ -910,6 +910,29 @@ static const struct file_operations long_term_keys_fops = {
 	.release	= single_release,
 };
 
+static int blocked_ltks_show(struct seq_file *f, void *ptr)
+{
+	struct hci_dev *hdev = f->private;
+	int i;
+
+	for (i = 0; i < MAX_BLOCKED_LTKS; i++)
+		seq_printf(f, "%*phN\n", LTK_LENGTH, hdev->blocked_ltks[i]);
+
+	return 0;
+}
+
+static int blocked_ltks_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, blocked_ltks_show, inode->i_private);
+}
+
+static const struct file_operations blocked_ltks_fops = {
+	.open		= blocked_ltks_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int conn_min_interval_set(void *data, u64 val)
 {
 	struct hci_dev *hdev = data;
@@ -1139,6 +1162,8 @@ void hci_debugfs_create_le(struct hci_dev *hdev)
 			    hdev, &identity_resolving_keys_fops);
 	debugfs_create_file("long_term_keys", 0400, hdev->debugfs, hdev,
 			    &long_term_keys_fops);
+	debugfs_create_file("blocked_ltks", 0400, hdev->debugfs, hdev,
+			    &blocked_ltks_fops);
 	debugfs_create_file("conn_min_interval", 0644, hdev->debugfs, hdev,
 			    &conn_min_interval_fops);
 	debugfs_create_file("conn_max_interval", 0644, hdev->debugfs, hdev,
