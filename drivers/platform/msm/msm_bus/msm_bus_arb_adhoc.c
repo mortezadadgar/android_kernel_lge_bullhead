@@ -1116,8 +1116,6 @@ static int update_context(uint32_t cl, bool active_only,
 	int ret = 0;
 	struct msm_bus_scale_pdata *pdata;
 	struct msm_bus_client *client;
-	const char *test_cl = "Null";
-	bool log_transaction = false;
 
 	rt_mutex_lock(&msm_bus_adhoc_lock);
 	if (!cl) {
@@ -1172,8 +1170,6 @@ static int update_request_adhoc(uint32_t cl, unsigned int index)
 	int ret = 0;
 	struct msm_bus_scale_pdata *pdata;
 	struct msm_bus_client *client;
-	const char *test_cl = "Null";
-	bool log_transaction = false;
 
 	rt_mutex_lock(&msm_bus_adhoc_lock);
 
@@ -1211,16 +1207,10 @@ static int update_request_adhoc(uint32_t cl, unsigned int index)
 		goto exit_update_request;
 	}
 
-	if (!strcmp(test_cl, pdata->name))
-		log_transaction = true;
-
-	if (!strcmp(test_cl, pdata->name))
-		log_transaction = true;
-
 	MSM_BUS_DBG("%s: cl: %u index: %d curr: %d num_paths: %d\n", __func__,
 		cl, index, client->curr, client->pdata->usecase->num_paths);
 	msm_bus_dbg_client_data(client->pdata, index , cl);
-	ret = update_client_paths(client, log_transaction, index);
+	ret = update_client_paths(client, false, index);
 	if (ret) {
 		pr_err("%s: Err updating path\n", __func__);
 		goto exit_update_request;
@@ -1245,8 +1235,6 @@ static void free_cl_mem(struct msm_bus_client_handle *cl)
 static int update_bw_adhoc(struct msm_bus_client_handle *cl, u64 ab, u64 ib)
 {
 	int ret = 0;
-	char *test_cl = "test-client";
-	bool log_transaction = false;
 	u64 slp_ib, slp_ab;
 
 	rt_mutex_lock(&msm_bus_adhoc_lock);
@@ -1256,9 +1244,6 @@ static int update_bw_adhoc(struct msm_bus_client_handle *cl, u64 ab, u64 ib)
 		ret = -ENXIO;
 		goto exit_update_request;
 	}
-
-	if (!strcmp(test_cl, cl->name))
-		log_transaction = true;
 
 	msm_bus_dbg_rec_transaction(cl, ab, ib);
 
@@ -1290,8 +1275,6 @@ static int update_bw_adhoc(struct msm_bus_client_handle *cl, u64 ab, u64 ib)
 	cl->cur_slp_ib = slp_ib;
 	cl->cur_slp_ab = slp_ab;
 
-	if (log_transaction)
-		getpath_debug(cl->mas, cl->first_hop, cl->active_only);
 	trace_bus_update_request_end(cl->name);
 exit_update_request:
 	rt_mutex_unlock(&msm_bus_adhoc_lock);
