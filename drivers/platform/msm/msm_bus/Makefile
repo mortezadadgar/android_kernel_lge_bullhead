@@ -22,5 +22,3 @@ ifdef CONFIG_ARCH_MSM8974
 else
 	obj-y += msm_bus_id.o
 endif
-
-obj-$(CONFIG_DEBUG_FS) += msm_bus_dbg.o
