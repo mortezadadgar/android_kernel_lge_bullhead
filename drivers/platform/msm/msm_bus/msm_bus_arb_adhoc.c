@@ -689,7 +689,7 @@ exit_remove_path:
 	return ret;
 }
 
-static void getpath_debug(int src, int curr, int active_only)
+static void __maybe_unused getpath_debug(int src, int curr, int active_only)
 {
 	struct device *dev_node;
 	struct device *dev_it;
@@ -913,8 +913,6 @@ static int update_request_adhoc(uint32_t cl, unsigned int index)
 	int lnode, src, curr, dest;
 	uint64_t req_clk, req_bw, curr_clk, curr_bw;
 	struct msm_bus_client *client;
-	const char *test_cl = "Null";
-	bool log_transaction = false;
 
 	rt_mutex_lock(&msm_bus_adhoc_lock);
 
@@ -949,9 +947,6 @@ static int update_request_adhoc(uint32_t cl, unsigned int index)
 	curr = client->curr;
 	client->curr = index;
 
-	if (!strcmp(test_cl, pdata->name))
-		log_transaction = true;
-
 	MSM_BUS_DBG("%s: cl: %u index: %d curr: %d num_paths: %d\n", __func__,
 		cl, index, client->curr, client->pdata->usecase->num_paths);
 
@@ -982,8 +977,6 @@ static int update_request_adhoc(uint32_t cl, unsigned int index)
 			goto exit_update_request;
 		}
 
-		if (log_transaction)
-			getpath_debug(src, lnode, pdata->active_only);
 	}
 	trace_bus_update_request_end(pdata->name);
 exit_update_request:
@@ -1003,8 +996,6 @@ static void free_cl_mem(struct msm_bus_client_handle *cl)
 static int update_bw_adhoc(struct msm_bus_client_handle *cl, u64 ab, u64 ib)
 {
 	int ret = 0;
-	char *test_cl = "test-client";
-	bool log_transaction = false;
 
 	rt_mutex_lock(&msm_bus_adhoc_lock);
 
@@ -1013,9 +1004,6 @@ static int update_bw_adhoc(struct msm_bus_client_handle *cl, u64 ab, u64 ib)
 		ret = -ENXIO;
 		goto exit_update_request;
 	}
-
-	if (!strcmp(test_cl, cl->name))
-		log_transaction = true;
 
 	if (DEBUG_REC_TRANSACTION)
 		msm_bus_dbg_rec_transaction(cl, ab, ib);
@@ -1037,8 +1025,6 @@ static int update_bw_adhoc(struct msm_bus_client_handle *cl, u64 ab, u64 ib)
 	cl->cur_ib = ib;
 	cl->cur_ab = ab;
 
-	if (log_transaction)
-		getpath_debug(cl->mas, cl->first_hop, cl->active_only);
 	trace_bus_update_request_end(cl->name);
 exit_update_request:
 	rt_mutex_unlock(&msm_bus_adhoc_lock);
