@@ -42,7 +42,7 @@ enum {
 	SHM_INFO_FLAG = 0x1,
 	SHM_DEBUG_FLAG = 0x2,
 };
-static int shm_debug_mask = SHM_INFO_FLAG;
+static int shm_debug_mask;
 module_param_named(debug_mask, shm_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 static int shm_default_timeout_ms = 2000;
