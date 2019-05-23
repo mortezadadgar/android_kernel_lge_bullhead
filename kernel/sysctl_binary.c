@@ -117,6 +117,7 @@ static const struct bin_table bin_kern_table[] = {
 	{ CTL_INT,	KERN_CADPID,			"cad_pid" },
 	{ CTL_INT,	KERN_PIDMAX,			"pid_max" },
 	{ CTL_STR,	KERN_CORE_PATTERN,		"core_pattern" },
+	{ CTL_INT,	KERN_LOCK_CORE_PATTERN,		"lock_core_pattern" },
 	{ CTL_INT,	KERN_PANIC_ON_OOPS,		"panic_on_oops" },
 	{ CTL_INT,	KERN_HPPA_PWRSW,		"soft-power" },
 	{ CTL_INT,	KERN_HPPA_UNALIGNED,		"unaligned-trap" },

@@ -144,6 +144,11 @@ static int maxolduid = 65535;
 static int minolduid;
 static int min_percpu_pagelist_fract = 8;
 
+/* this is needed for locking access to core_pattern */
+#ifdef CONFIG_COREDUMP
+static atomic_t core_pattern_locked = ATOMIC_INIT(0);
+#endif
+
 static int ngroups_max = NGROUPS_MAX;
 static const int cap_last_cap = CAP_LAST_CAP;
 
@@ -190,6 +195,9 @@ static int proc_dointvec_minmax_coredump(struct ctl_table *table, int write,
 #ifdef CONFIG_COREDUMP
 static int proc_dostring_coredump(struct ctl_table *table, int write,
 		void __user *buffer, size_t *lenp, loff_t *ppos);
+static int proc_lock_core_pattern(struct ctl_table *table, int write,
+		void __user *buffer, size_t *lenp, loff_t *ppos);
+
 #endif
 
 #ifdef CONFIG_MAGIC_SYSRQ
@@ -478,6 +486,13 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= CORENAME_MAX_SIZE,
 		.mode		= 0644,
 		.proc_handler	= proc_dostring_coredump,
+	},
+	{
+		.procname	= "lock_core_pattern",
+		.data		= &core_pattern_locked,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0200,
+		.proc_handler	= proc_lock_core_pattern,
 	},
 	{
 		.procname	= "core_pipe_limit",
@@ -2154,10 +2169,22 @@ static int proc_dointvec_minmax_coredump(struct ctl_table *table, int write,
 static int proc_dostring_coredump(struct ctl_table *table, int write,
 		  void __user *buffer, size_t *lenp, loff_t *ppos)
 {
-	int error = proc_dostring(table, write, buffer, lenp, ppos);
+	int error;
+
+	if (write && atomic_read(&core_pattern_locked))
+		return -EPERM;
+
+	error = proc_dostring(table, write, buffer, lenp, ppos);
 	if (!error)
 		validate_coredump_safety();
 	return error;
+}
+
+static int proc_lock_core_pattern(struct ctl_table *table, int write,
+		  void __user *buffer, size_t *lenp, loff_t *ppos)
+{
+	atomic_set((atomic_t *) table->data, 1);
+	return 0;
 }
 #endif
 
