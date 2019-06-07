@@ -48,7 +48,9 @@ struct ion_buffer *ion_handle_buffer(struct ion_handle *handle);
  *			a void *
  * @priv_phys:		private data to the buffer representable as
  *			an ion_phys_addr_t (and someday a phys_addr_t)
- * @lock:		protects the buffers cnt fields
+ * @alloc_lock:		protects the buffer's kmap allocation and deallocation
+ * @page_lock:		protects the buffer's pages
+ * @vma_lock:		protects the buffer's vma list
  * @kmap_cnt:		number of times the buffer is mapped to the kernel
  * @vaddr:		the kenrel mapping if kmap_cnt is not zero
  * @dmap_cnt:		number of times the buffer is mapped for dma
@@ -77,15 +79,17 @@ struct ion_buffer {
 		void *priv_virt;
 		ion_phys_addr_t priv_phys;
 	};
-	struct mutex lock;
-	int kmap_cnt;
+	struct mutex alloc_lock;
+	struct mutex page_lock;
+	struct mutex vma_lock;
+	atomic_t kmap_cnt;
 	void *vaddr;
 	int dmap_cnt;
 	struct sg_table *sg_table;
 	struct page **pages;
 	struct list_head vmas;
 	/* used to track orphaned buffers */
-	int handle_count;
+	atomic_t handle_count;
 	char task_comm[TASK_COMM_LEN];
 	pid_t pid;
 };
@@ -381,7 +385,7 @@ void ion_carveout_free(struct ion_heap *heap, ion_phys_addr_t addr,
  * @low_count:		number of lowmem items in the pool
  * @high_items:		list of highmem items
  * @low_items:		list of lowmem items
- * @mutex:		lock protecting this struct and especially the count
+ * @lock:		lock protecting this struct and especially the count
  *			item list
  * @gfp_mask:		gfp_mask to use from alloc
  * @order:		order of pages in the pool
@@ -397,7 +401,7 @@ struct ion_page_pool {
 	int low_count;
 	struct list_head high_items;
 	struct list_head low_items;
-	struct mutex mutex;
+	spinlock_t lock;
 	gfp_t gfp_mask;
 	unsigned int order;
 	struct plist_node list;
@@ -435,6 +439,6 @@ int ion_walk_heaps(struct ion_client *client, int heap_id, void *data,
 struct ion_handle *ion_handle_get_by_id(struct ion_client *client,
 					int id);
 
-int ion_handle_put(struct ion_handle *handle);
+void ion_handle_put(struct ion_handle *handle);
 
 #endif /* _ION_PRIV_H */
