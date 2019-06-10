@@ -3003,8 +3003,8 @@ static int hotplug_notify(enum thermal_trip_type type, int temp, void *data)
 {
 	struct cpu_info *cpu_node = (struct cpu_info *)data;
 
-	pr_info_ratelimited("%s reach temp threshold: %d\n",
-			       cpu_node->sensor_type, temp);
+	pr_debug("%s reach temp threshold: %d\n",
+				cpu_node->sensor_type, temp);
 
 	if (!(msm_thermal_info.core_control_mask & BIT(cpu_node->cpu)))
 		return 0;
