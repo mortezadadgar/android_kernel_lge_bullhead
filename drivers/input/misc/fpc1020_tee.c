@@ -48,6 +48,7 @@
 #include <linux/of_gpio.h>
 #endif
 #include <linux/wakelock.h>
+#include <linux/cpu_input_boost.h>
 #define FPC1020_RESET_LOW_US 1000
 #define FPC1020_RESET_HIGH1_US 100
 #define FPC1020_RESET_HIGH2_US 1250
@@ -730,6 +731,8 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	if (fpc1020->wakeup_enabled ) {
 		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
 	}
+
+	cpu_input_boost_kick_max(150);
 
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 
