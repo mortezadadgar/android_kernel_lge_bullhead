@@ -60,6 +60,18 @@ static void push_object(int type,
 	for (index = 0; index < objbufptr; index++) {
 		if (objbuf[index].gpuaddr == gpuaddr &&
 			objbuf[index].entry->priv == process) {
+			/*
+			 * Check if newly requested size is within the
+			 * allocated range or not, otherwise continue
+			 * with previous size.
+			 */
+			if (!kgsl_gpuaddr_in_memdesc(
+				&objbuf[index].entry->memdesc,
+				gpuaddr, dwords << 2)) {
+				KGSL_CORE_ERR(
+					"snapshot: IB size is not within the memdesc range\n");
+				return;
+			}
 
 			objbuf[index].size = max_t(unsigned int,
 						objbuf[index].size,
