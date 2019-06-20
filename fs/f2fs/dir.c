@@ -819,7 +819,7 @@ int f2fs_fill_dentries(struct file *file, void *dirent, filldir_t filldir,
 			f2fs_warn(sbi, "%s: corrupted namelen=%d, run fsck to fix.",
 				  __func__, le16_to_cpu(de->name_len));
 			set_sbi_flag(sbi, SBI_NEED_FSCK);
-			err = -EINVAL;
+			err = -EFSCORRUPTED;
 			goto out;
 		}
 

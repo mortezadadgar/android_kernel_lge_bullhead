@@ -393,7 +393,7 @@ static int lookup_all_xattrs(struct inode *inode, struct page *ipage,
 
 	*xe = __find_xattr(cur_addr, last_txattr_addr, index, len, name);
 	if (!*xe) {
-		err = -EFAULT;
+		err = -EFSCORRUPTED;
 		goto out;
 	}
 check:
@@ -662,7 +662,7 @@ static int __f2fs_setxattr(struct inode *inode, int index,
 	/* find entry with wanted name. */
 	here = __find_xattr(base_addr, last_base_addr, index, len, name);
 	if (!here) {
-		error = -EFAULT;
+		error = -EFSCORRUPTED;
 		goto exit;
 	}
 
