@@ -382,7 +382,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 KBUILD_CFLAGS	+= -Wno-format-truncation -Wno-unused-const-variable \
 		   -Wno-packed-not-aligned -Wno-stringop-truncation \
 		   -Wno-attribute-alias -Wno-maybe-uninitialized \
-		   -Wno-address-of-packed-member
+		   -Wno-address-of-packed-member -Wno-format-overflow
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
