@@ -1274,7 +1274,7 @@ static const struct file_operations proc_vmstat_file_operations = {
 
 #ifdef CONFIG_SMP
 static DEFINE_PER_CPU(struct delayed_work, vmstat_work);
-int sysctl_stat_interval __read_mostly = HZ;
+int sysctl_stat_interval __read_mostly = 8 * HZ;
 
 static void vmstat_update(struct work_struct *w)
 {
