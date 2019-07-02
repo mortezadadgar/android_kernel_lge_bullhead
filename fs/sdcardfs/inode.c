@@ -556,7 +556,7 @@ void copy_attrs(struct inode *dest, const struct inode *src)
 	dest->i_acl = src->i_acl;
 #endif
 #ifdef CONFIG_SECURITY
-	dest->i_security = src->i_security;
+	*dest->i_security = *src->i_security;
 #endif
 }
 
