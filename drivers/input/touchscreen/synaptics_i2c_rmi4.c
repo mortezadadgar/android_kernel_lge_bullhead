@@ -3720,10 +3720,6 @@ static void synaptics_rmi4_init_work(struct work_struct *work)
 
 	synaptics_rmi4_irq_enable(rmi4_data, true);
 
-	mutex_lock(&suspended_mutex);
-	rmi4_data->suspended = false;
-	mutex_unlock(&suspended_mutex);
-
 	return;
 
 err_check_configuration:
@@ -4019,7 +4015,6 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		INIT_LIST_HEAD(&exp_fn_list);
 		exp_fn_inited = 1;
 	}
-	mutex_init(&suspended_mutex);
 
 	rmi4_data->det_workqueue =
 			alloc_ordered_workqueue("rmi_det_workqueue", WQ_HIGHPRI);
@@ -4327,23 +4322,23 @@ static int fb_notifier_callback(struct notifier_block *self,
 				unsigned long event, void *data)
 {
 	struct fb_event *evdata = data;
-	int *blank;
+	int *blank = evdata->data;
 	struct synaptics_rmi4_data *rmi4_data =
 		container_of(self, struct synaptics_rmi4_data, fb_notif);
 
-	if (evdata && evdata->data && rmi4_data && rmi4_data->i2c_client) {
-		if (event == FB_EARLY_EVENT_BLANK)
-			synaptics_secure_touch_stop(rmi4_data, 0);
-		else if (event == FB_EVENT_BLANK) {
-			blank = evdata->data;
-			if ((*blank == FB_BLANK_UNBLANK) ||
-			    (*blank == FB_BLANK_VSYNC_SUSPEND &&
-			     rmi4_data->suspended))
-				synaptics_rmi4_resume(
-					&(rmi4_data->input_dev->dev));
-			else if (*blank == FB_BLANK_POWERDOWN)
-				synaptics_rmi4_suspend(
-					&(rmi4_data->input_dev->dev));
+	if (evdata && evdata->data && rmi4_data && rmi4_data->i2c_client &&
+		event == FB_EARLY_EVENT_BLANK) {
+		if ((*blank == FB_BLANK_UNBLANK ||
+		     *blank == FB_BLANK_VSYNC_SUSPEND) &&
+		      rmi4_data->suspended) {
+			synaptics_rmi4_resume(
+				&(rmi4_data->input_dev->dev));
+			rmi4_data->suspended = false;
+		} else if (*blank == FB_BLANK_POWERDOWN ||
+			   !rmi4_data->suspended) {
+			synaptics_rmi4_suspend(
+				&(rmi4_data->input_dev->dev));
+			rmi4_data->suspended = true;
 		}
 	}
 
@@ -4662,9 +4657,6 @@ static int synaptics_rmi4_suspend(struct device *dev)
 			goto err_gpio_configure;
 		}
 	}
-	mutex_lock(&suspended_mutex);
-	rmi4_data->suspended = true;
-	mutex_unlock(&suspended_mutex);
 
 	return 0;
 
