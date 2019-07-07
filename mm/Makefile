@@ -65,3 +65,4 @@ obj-$(CONFIG_ZBUD)	+= zbud.o
 obj-$(CONFIG_GENERIC_EARLY_IOREMAP) += early_ioremap.o
 obj-$(CONFIG_ZPOOL)	+= zpool.o
 obj-$(CONFIG_ZSMALLOC)	+= zsmalloc.o
+CFLAGS_kmemleak.o += -DCONFIG_DEBUG_FS
