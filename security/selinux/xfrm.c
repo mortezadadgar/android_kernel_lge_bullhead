@@ -231,7 +231,7 @@ static int selinux_xfrm_sec_ctx_alloc(struct xfrm_sec_ctx **ctxp,
 	int rc = 0;
 	const struct task_security_struct *tsec = current_security();
 	struct xfrm_sec_ctx *ctx = NULL;
-	char *ctx_str = NULL;
+	char ctx_str[SELINUX_LABEL_LENGTH];
 	u32 str_len;
 
 	BUG_ON(uctx && sid);
@@ -280,7 +280,7 @@ static int selinux_xfrm_sec_ctx_alloc(struct xfrm_sec_ctx **ctxp,
 	return rc;
 
 not_from_user:
-	rc = security_sid_to_context(sid, &ctx_str, &str_len);
+	rc = security_sid_to_context_stack(sid, ctx_str, &str_len);
 	if (rc)
 		goto out;
 
@@ -307,7 +307,6 @@ out:
 	*ctxp = NULL;
 	kfree(ctx);
 out2:
-	kfree(ctx_str);
 	return rc;
 }
 
