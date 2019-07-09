@@ -17,6 +17,7 @@
 #include <asm/page.h>
 
 static struct kmem_cache *seq_file_cache;
+static struct kmem_cache *seq_ops_cache;
 
 /*
  * seq_files have a buffer which can may overflow. When this happens a larger
@@ -601,7 +602,7 @@ static void single_stop(struct seq_file *p, void *v)
 int single_open(struct file *file, int (*show)(struct seq_file *, void *),
 		void *data)
 {
-	struct seq_operations *op = kmalloc(sizeof(*op), GFP_KERNEL);
+	struct seq_operations *op = kmem_cache_alloc(seq_ops_cache, GFP_KERNEL);
 	int res = -ENOMEM;
 
 	if (op) {
@@ -613,7 +614,7 @@ int single_open(struct file *file, int (*show)(struct seq_file *, void *),
 		if (!res)
 			((struct seq_file *)file->private_data)->private = data;
 		else
-			kfree(op);
+			kmem_cache_free(seq_ops_cache, op);
 	}
 	return res;
 }
@@ -641,7 +642,7 @@ int single_release(struct inode *inode, struct file *file)
 {
 	const struct seq_operations *op = ((struct seq_file *)file->private_data)->op;
 	int res = seq_release(inode, file);
-	kfree(op);
+	kmem_cache_free(seq_ops_cache, (void*)op);
 	return res;
 }
 EXPORT_SYMBOL(single_release);
@@ -960,4 +961,5 @@ EXPORT_SYMBOL(seq_hlist_next_rcu);
 void __init seq_file_init(void)
 {
 	seq_file_cache = KMEM_CACHE(seq_file, SLAB_PANIC);
+	seq_ops_cache = KMEM_CACHE(seq_operations, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
 }
