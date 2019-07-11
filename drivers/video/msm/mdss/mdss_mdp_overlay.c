@@ -4195,7 +4195,8 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 {
 	struct mdp_overlay_list ovlist;
 	struct mdp_overlay *req_list[OVERLAY_MAX];
-	struct mdp_overlay *overlays;
+	static struct mdp_overlay overlays[OVERLAY_MAX];
+
 	int i, ret;
 
 	if (!mfd_to_ctl(mfd))
@@ -4209,12 +4210,6 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 		return -EINVAL;
 	}
 
-	overlays = kmalloc(ovlist.num_overlays * sizeof(*overlays), GFP_KERNEL);
-	if (!overlays) {
-		pr_err("Unable to allocate memory for overlays\n");
-		return -ENOMEM;
-	}
-
 	if (copy_from_user(req_list, ovlist.overlay_list,
 				sizeof(struct mdp_overlay *) *
 				ovlist.num_overlays)) {
@@ -4224,7 +4219,7 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 
 	for (i = 0; i < ovlist.num_overlays; i++) {
 		if (copy_from_user(overlays + i, req_list[i],
-				sizeof(struct mdp_overlay))) {
+				sizeof(overlays))) {
 			ret = -EFAULT;
 			goto validate_exit;
 		}
@@ -4245,7 +4240,6 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 		ret = -EFAULT;
 
 validate_exit:
-	kfree(overlays);
 
 	return ret;
 }
