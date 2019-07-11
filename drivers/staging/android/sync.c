@@ -991,14 +991,15 @@ static void sync_print_obj(struct seq_file *s, struct sync_timeline *obj)
 	spin_unlock_irqrestore(&obj->child_list_lock, flags);
 }
 
-#ifdef CONFIG_SYNC_DEBUG
 static void sync_print_fence(struct seq_file *s, struct sync_fence *fence)
 {
 	struct list_head *pos;
 	unsigned long flags;
 
+#ifdef CONFIG_SYNC_DEBUG
 	seq_printf(s, "[%pK] %s: %s\n", fence, fence->name,
 		   sync_status_str(fence->status));
+#endif
 
 	list_for_each(pos, &fence->pt_list_head) {
 		struct sync_pt *pt =
@@ -1016,11 +1017,6 @@ static void sync_print_fence(struct seq_file *s, struct sync_fence *fence)
 	}
 	spin_unlock_irqrestore(&fence->waiter_list_lock, flags);
 }
-#else
-static void inline sync_print_fence(struct seq_file *s, struct sync_fence *fence)
-{
-}
-#endif
 
 static int sync_debugfs_show(struct seq_file *s, void *unused)
 {

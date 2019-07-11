@@ -37,7 +37,7 @@ typedef void (*reg_read_init_t)(struct kgsl_device *device);
 typedef void (*reg_read_fill_t)(struct kgsl_device *device, int i,
 	unsigned int *vals, int linec);
 
-#ifdef CONFIG_SYNC_DEBUG
+
 static void sync_event_print(struct seq_file *s,
 		struct kgsl_cmdbatch_sync_event *sync_event)
 {
@@ -57,12 +57,6 @@ static void sync_event_print(struct seq_file *s,
 		break;
 	}
 }
-#else
-static void sync_event_print(struct seq_file *s,
-                struct kgsl_cmdbatch_sync_event *sync_event)
-{
-}
-#endif
 
 struct flag_entry {
 	unsigned long mask;
