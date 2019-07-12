@@ -46,6 +46,8 @@
 #undef MODULE_PARAM_PREFIX
 #define MODULE_PARAM_PREFIX "kgsl."
 
+static struct kmem_cache *kmem_cmdbatch;
+
 #ifndef arch_mmap_check
 #define arch_mmap_check(addr, len, flags)	(0)
 #endif
@@ -1676,7 +1678,7 @@ void kgsl_cmdbatch_destroy_object(struct kref *kref)
 
 	kgsl_context_put(cmdbatch->context);
 
-	kfree(cmdbatch);
+	kmem_cache_free(kmem_cmdbatch, cmdbatch);
 }
 EXPORT_SYMBOL(kgsl_cmdbatch_destroy_object);
 
@@ -2177,7 +2179,7 @@ int kgsl_cmdbatch_add_memobj(struct kgsl_cmdbatch *cmdbatch,
 static struct kgsl_cmdbatch *kgsl_cmdbatch_create(struct kgsl_device *device,
 		struct kgsl_context *context, unsigned int flags)
 {
-	struct kgsl_cmdbatch *cmdbatch = kzalloc(sizeof(*cmdbatch), GFP_KERNEL);
+	struct kgsl_cmdbatch *cmdbatch = kmem_cache_zalloc(kmem_cmdbatch, GFP_KERNEL);
 	if (cmdbatch == NULL)
 		return ERR_PTR(-ENOMEM);
 
@@ -2187,7 +2189,7 @@ static struct kgsl_cmdbatch *kgsl_cmdbatch_create(struct kgsl_device *device,
 	 */
 
 	if (!_kgsl_context_get(context)) {
-		kfree(cmdbatch);
+		kmem_cache_free(kmem_cmdbatch, cmdbatch);
 		return ERR_PTR(-EINVAL);
 	}
 
@@ -4864,6 +4866,8 @@ static void kgsl_core_exit(void)
 	if (memobjs_cache)
 		kmem_cache_destroy(memobjs_cache);
 
+	kmem_cache_destroy(kmem_cmdbatch);
+
 	kgsl_memfree_exit();
 	unregister_chrdev_region(kgsl_driver.major, KGSL_DEVICE_MAX);
 }
@@ -4952,6 +4956,12 @@ static int __init kgsl_core_init(void)
 	memobjs_cache = KMEM_CACHE(kgsl_memobj_node, 0);
 	if (memobjs_cache == NULL) {
 		KGSL_CORE_ERR("failed to create memobjs_cache");
+		result = -ENOMEM;
+		goto err;
+	}
+
+	kmem_cmdbatch = KMEM_CACHE(kgsl_cmdbatch, SLAB_HWCACHE_ALIGN);
+	if (!kmem_cmdbatch) {
 		result = -ENOMEM;
 		goto err;
 	}
