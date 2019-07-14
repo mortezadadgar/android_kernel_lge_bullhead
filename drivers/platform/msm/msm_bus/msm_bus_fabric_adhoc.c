@@ -199,9 +199,9 @@ static int send_rpm_msg(struct device *device)
 					 ndev->node_info->mas_rpm_id);
 				goto exit_send_rpm_msg;
 			}
-			trace_bus_agg_bw(ndev->node_info->id,
+			/* trace_bus_agg_bw(ndev->node_info->id,
 				ndev->node_info->mas_rpm_id, ctx,
-				ndev->node_ab.ab[ctx]);
+				ndev->node_ab.ab[ctx]); */
 		}
 
 		if (ndev->node_info->slv_rpm_id != -1) {
@@ -216,9 +216,9 @@ static int send_rpm_msg(struct device *device)
 					ndev->node_info->slv_rpm_id);
 				goto exit_send_rpm_msg;
 			}
-			trace_bus_agg_bw(ndev->node_info->id,
+			/* trace_bus_agg_bw(ndev->node_info->id,
 				ndev->node_info->slv_rpm_id, ctx,
-				ndev->node_ab.ab[ctx]);
+				ndev->node_ab.ab[ctx]); */
 		}
 	}
 exit_send_rpm_msg:
@@ -324,7 +324,7 @@ static int flush_clk_data(struct device *node_device, int ctx)
 			ret = -ENODEV;
 			goto exit_flush_clk_data;
 		}
-		trace_bus_agg_clk(node->node_info->id, ctx, nodeclk->rate);
+		/* trace_bus_agg_clk(node->node_info->id, ctx, nodeclk->rate); */
 		MSM_BUS_DBG("%s: Updated %d clk to %llu", __func__,
 				node->node_info->id, nodeclk->rate);
 

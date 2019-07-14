@@ -497,7 +497,7 @@ static int msm_bus_apply_rules(struct list_head *list, bool after_clk_commit)
 							rule->lim_bw);
 		if (ret)
 			MSM_BUS_ERR("Failed to set limiter for %d", rule->id);
-		trace_bus_rules_apply(rule->id, rule->lim_bw, rule->throttle);
+		/* trace_bus_rules_apply(rule->id, rule->lim_bw, rule->throttle); */
 	}
 
 	return ret;
@@ -983,9 +983,8 @@ static int update_request_adhoc(uint32_t cl, unsigned int index)
 					__func__, ret, ACTIVE_CTX);
 			goto exit_update_request;
 		}
-
 	}
-	trace_bus_update_request_end(pdata->name);
+	/* trace_bus_update_request_end(pdata->name); */
 exit_update_request:
 	rt_mutex_unlock(&msm_bus_adhoc_lock);
 	return ret;
@@ -1032,7 +1031,7 @@ static int update_bw_adhoc(struct msm_bus_client_handle *cl, u64 ab, u64 ib)
 	cl->cur_ib = ib;
 	cl->cur_ab = ab;
 
-	trace_bus_update_request_end(cl->name);
+	/* trace_bus_update_request_end(cl->name); */
 exit_update_request:
 	rt_mutex_unlock(&msm_bus_adhoc_lock);
 
