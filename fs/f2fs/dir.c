@@ -860,7 +860,7 @@ static int f2fs_readdir(struct file *file, void *dirent, filldir_t filldir)
 	struct f2fs_dentry_block *dentry_blk = NULL;
 	struct page *dentry_page = NULL;
 	struct file_ra_state *ra = &file->f_ra;
-	loff_t start_pos = ctx->pos;
+	loff_t start_pos = file->f_pos;
 	struct f2fs_dentry_ptr d;
 	struct fscrypt_str fstr = FSTR_INIT(NULL, 0);
 	unsigned int n = 0;
@@ -928,7 +928,7 @@ static int f2fs_readdir(struct file *file, void *dirent, filldir_t filldir)
 out_free:
 	fscrypt_fname_free_buffer(&fstr);
 out:
-	trace_f2fs_readdir(inode, start_pos, ctx->pos, err);
+	trace_f2fs_readdir(inode, start_pos, file->f_pos, err);
 	return err < 0 ? err : 0;
 }
 
