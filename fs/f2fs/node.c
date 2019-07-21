@@ -2776,7 +2776,7 @@ static int init_free_nid_cache(struct f2fs_sb_info *sbi)
 		return -ENOMEM;
 
 	for (i = 0; i < nm_i->nat_blocks; i++) {
-		nm_i->free_nid_bitmap[i] = f2fs_kvzalloc(sbi,
+		nm_i->free_nid_bitmap[i] = kvzalloc(
 				NAT_ENTRY_BITMAP_SIZE_ALIGNED, GFP_KERNEL);
 		if (!nm_i->free_nid_bitmap)
 			return -ENOMEM;
