@@ -744,7 +744,7 @@ int f2fs_getattr(struct vfsmount *mnt,
 		stat->attributes |= STATX_ATTR_APPEND;
 	if (flags & F2FS_COMPR_FL)
 		stat->attributes |= STATX_ATTR_COMPRESSED;
-	if (IS_ENCRYPTED(inode))
+	if (f2fs_encrypted_inode(inode))
 		stat->attributes |= STATX_ATTR_ENCRYPTED;
 	if (flags & F2FS_IMMUTABLE_FL)
 		stat->attributes |= STATX_ATTR_IMMUTABLE;
@@ -1797,7 +1797,7 @@ static int f2fs_ioc_getflags(struct file *filp, unsigned long arg)
 	struct f2fs_inode_info *fi = F2FS_I(inode);
 	u32 fsflags = f2fs_iflags_to_fsflags(fi->i_flags);
 
-	if (IS_ENCRYPTED(inode))
+	if (f2fs_encrypted_inode(inode))
 		fsflags |= FS_ENCRYPT_FL;
 	if (f2fs_has_inline_data(inode) || f2fs_has_inline_dentry(inode))
 		fsflags |= FS_INLINE_DATA_FL;

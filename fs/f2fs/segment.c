@@ -4121,7 +4121,7 @@ static int build_sit_info(struct f2fs_sb_info *sbi)
 	if (!sit_i->tmp_map)
 		return -ENOMEM;
 
-	if (__is_large_section(sbi) {
+	if (__is_large_section(sbi)) {
 		sit_i->sec_entries = kvzalloc(MAIN_SECS(sbi) *
 					sizeof(struct sec_entry), GFP_KERNEL);
 		if (!sit_i->sec_entries)
