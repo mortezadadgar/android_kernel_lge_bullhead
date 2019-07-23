@@ -1482,7 +1482,7 @@ static int update_gmmu_ptes_locked(struct vm_gk20a *vm,
 		nvhost_dbg(dbg_pte, "pte_lo=%d, pte_hi=%d", pte_lo, pte_hi);
 		for (pte_cur = pte_lo; pte_cur <= pte_hi; pte_cur++) {
 
-			if (likely(sgt)) {
+			if (likely(cur_chunk)) {
 				u64 new_addr = gk20a_mm_iova_addr(cur_chunk);
 				if (new_addr) {
 					addr = new_addr;
