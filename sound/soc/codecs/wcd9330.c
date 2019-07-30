@@ -89,7 +89,7 @@ MODULE_PARM_DESC(cpe_debug_mode, "boot cpe in debug mode");
 
 static atomic_t kp_tomtom_priv;
 
-static int high_perf_mode;
+static int high_perf_mode = 1;
 module_param(high_perf_mode, int,
 			S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(high_perf_mode, "enable/disable class AB config for hph");
@@ -718,9 +718,9 @@ static int tomtom_update_uhqa_mode(struct snd_soc_codec *codec, int path)
 	int ret = 0;
 	struct tomtom_priv *tomtom_p = snd_soc_codec_get_drvdata(codec);
 
-	/* UHQA path has fs=192KHz & bit=24 bit */
-	if (((tomtom_get_sample_rate(codec, path) & 0xE0) == 0xA0) &&
-		(tomtom_compare_bit_format(codec, 24))) {
+	/* UHQA path for fs>48KHz & bit>=24 bit */
+	if (tomtom_get_sample_rate(codec, path) > 48 ||
+		tomtom_compare_bit_format(codec, 24)) {
 		tomtom_p->uhqa_mode = 1;
 	} else {
 		tomtom_p->uhqa_mode = 0;
