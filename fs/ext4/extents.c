@@ -2828,6 +2828,7 @@ int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
 			  ext4_lblk_t end)
 {
 	struct super_block *sb = inode->i_sb;
+	struct ext4_ext_path path_onstack[SZ_4K / sizeof(struct ext4_ext_path)];
 	int depth = ext_depth(inode);
 	struct ext4_ext_path *path = NULL;
 	long long partial_cluster = 0;
@@ -2907,11 +2908,15 @@ again:
 			path[k].p_block =
 				le16_to_cpu(path[k].p_hdr->eh_entries)+1;
 	} else {
-		path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1),
-			       GFP_NOFS);
-		if (path == NULL) {
-			ext4_journal_stop(handle);
-			return -ENOMEM;
+		if (depth + 1 <= ARRAY_SIZE(path_onstack)) {
+			path = path_onstack;
+			memset(path, 0, sizeof(*path) * (depth + 1));
+		} else {
+			path = kzalloc(sizeof(*path) * (depth + 1), GFP_NOFS);
+			if (path == NULL) {
+				ext4_journal_stop(handle);
+				return -ENOMEM;
+			}
 		}
 		path[0].p_maxdepth = path[0].p_depth = depth;
 		path[0].p_hdr = ext_inode_hdr(inode);
@@ -3032,7 +3037,8 @@ again:
 	}
 out:
 	ext4_ext_drop_refs(path);
-	kfree(path);
+	if (path != path_onstack)
+		kfree(path);
 	path = NULL;
 	if (err == -EAGAIN)
 		goto again;
