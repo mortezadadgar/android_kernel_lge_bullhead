@@ -315,6 +315,7 @@ int sps_bam_enable(struct sps_bam *dev)
 		} else {
 			SPS_DBG1("sps:BAM %pa does not have an vaild IRQ# %d\n",
 				BAM_ID(dev), dev->props.irq);
+			return SPS_ERROR;
 		}
 
 		if (result) {
