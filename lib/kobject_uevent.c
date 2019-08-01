@@ -131,7 +131,7 @@ static int kobj_usermode_filter(struct kobject *kobj)
 int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 		       char *envp_ext[])
 {
-	struct kobj_uevent_env *env;
+	struct kobj_uevent_env env;
 	const char *action_string = kobject_actions[action];
 	const char *devpath = NULL;
 	const char *subsystem;
@@ -190,11 +190,6 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 		return 0;
 	}
 
-	/* environment buffer */
-	env = kzalloc(sizeof(struct kobj_uevent_env), GFP_KERNEL);
-	if (!env)
-		return -ENOMEM;
-
 	/* complete object path */
 	devpath = kobject_get_path(kobj, GFP_KERNEL);
 	if (!devpath) {
@@ -202,21 +197,23 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 		goto exit;
 	}
 
+	memset(&env, 0, sizeof(env));
+
 	/* default keys */
-	retval = add_uevent_var(env, "ACTION=%s", action_string);
+	retval = add_uevent_var(&env, "ACTION=%s", action_string);
 	if (retval)
 		goto exit;
-	retval = add_uevent_var(env, "DEVPATH=%s", devpath);
+	retval = add_uevent_var(&env, "DEVPATH=%s", devpath);
 	if (retval)
 		goto exit;
-	retval = add_uevent_var(env, "SUBSYSTEM=%s", subsystem);
+	retval = add_uevent_var(&env, "SUBSYSTEM=%s", subsystem);
 	if (retval)
 		goto exit;
 
 	/* keys passed in from the caller */
 	if (envp_ext) {
 		for (i = 0; envp_ext[i]; i++) {
-			retval = add_uevent_var(env, "%s", envp_ext[i]);
+			retval = add_uevent_var(&env, "%s", envp_ext[i]);
 			if (retval)
 				goto exit;
 		}
@@ -224,7 +221,7 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 
 	/* let the kset specific function add its stuff */
 	if (uevent_ops && uevent_ops->uevent) {
-		retval = uevent_ops->uevent(kset, kobj, env);
+		retval = uevent_ops->uevent(kset, kobj, &env);
 		if (retval) {
 			pr_debug("kobject: '%s' (%p): %s: uevent() returned "
 				 "%d\n", kobject_name(kobj), kobj,
@@ -246,7 +243,7 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 
 	mutex_lock(&uevent_sock_mutex);
 	/* we will send an event, so request a new sequence number */
-	retval = add_uevent_var(env, "SEQNUM=%llu", (unsigned long long)++uevent_seqnum);
+	retval = add_uevent_var(&env, "SEQNUM=%llu", (unsigned long long)++uevent_seqnum);
 	if (retval) {
 		mutex_unlock(&uevent_sock_mutex);
 		goto exit;
@@ -264,7 +261,7 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 
 		/* allocate message with the maximum possible size */
 		len = strlen(action_string) + strlen(devpath) + 2;
-		skb = alloc_skb(len + env->buflen, GFP_KERNEL);
+		skb = alloc_skb(len + env.buflen, GFP_KERNEL);
 		if (skb) {
 			char *scratch;
 
@@ -273,10 +270,10 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 			sprintf(scratch, "%s@%s", action_string, devpath);
 
 			/* copy keys to our continuous event payload buffer */
-			for (i = 0; i < env->envp_idx; i++) {
-				len = strlen(env->envp[i]) + 1;
+			for (i = 0; i < env.envp_idx; i++) {
+				len = strlen(env.envp[i]) + 1;
 				scratch = skb_put(skb, len);
-				strcpy(scratch, env->envp[i]);
+				strcpy(scratch, env.envp[i]);
 			}
 
 			NETLINK_CB(skb).dst_group = 1;
@@ -300,21 +297,21 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 		argv [0] = uevent_helper;
 		argv [1] = (char *)subsystem;
 		argv [2] = NULL;
-		retval = add_uevent_var(env, "HOME=/");
+		retval = add_uevent_var(&env, "HOME=/");
+
 		if (retval)
 			goto exit;
-		retval = add_uevent_var(env,
+		retval = add_uevent_var(&env,
 					"PATH=/sbin:/bin:/usr/sbin:/usr/bin");
 		if (retval)
 			goto exit;
 
 		retval = call_usermodehelper(argv[0], argv,
-					     env->envp, UMH_WAIT_EXEC);
+					     env.envp, UMH_WAIT_EXEC);
 	}
 
 exit:
 	kfree(devpath);
-	kfree(env);
 	return retval;
 }
 EXPORT_SYMBOL_GPL(kobject_uevent_env);
