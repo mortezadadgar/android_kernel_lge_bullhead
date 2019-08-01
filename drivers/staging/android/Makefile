@@ -15,4 +15,3 @@ obj-$(CONFIG_SW_SYNC)			+= sw_sync.o
 obj-$(CONFIG_ONESHOT_SYNC)		+= oneshot_sync.o
 obj-$(CONFIG_ANDROID_SIMPLE_LMK)	+= simple_lmk.o
 
-CFLAGS_sync.o += -Wframe-larger-than=8192
