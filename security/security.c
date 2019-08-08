@@ -334,6 +334,7 @@ EXPORT_SYMBOL(security_sb_parse_opts_str);
 
 int security_inode_alloc(struct inode *inode)
 {
+	inode->i_security = NULL;
 	return security_ops->inode_alloc_security(inode);
 }
 
