@@ -578,7 +578,6 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 	struct page *page;
 	unsigned char *user_mem, *cmem, *src, *uncmem = NULL;
 	struct zram_meta *meta = zram->meta;
-	static unsigned long zram_rs_time;
 	struct zcomp_strm *zstrm = NULL;
 	unsigned long alloced_pages;
 	unsigned long element;
