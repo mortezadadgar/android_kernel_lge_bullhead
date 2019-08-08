@@ -517,7 +517,6 @@ static struct device_attribute attrs[] = {
 static bool exp_fn_inited;
 static struct mutex exp_fn_list_mutex;
 static struct list_head exp_fn_list;
-static struct mutex suspended_mutex;
 
 #if defined(CONFIG_SECURE_TOUCH)
 static int synaptics_secure_touch_clk_prepare_enable(
