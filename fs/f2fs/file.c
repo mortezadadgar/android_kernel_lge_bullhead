@@ -799,6 +799,7 @@ static void __setattr_copy(struct inode *inode, const struct iattr *attr)
 int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
 {
 	struct inode *inode = d_inode(dentry);
+	bool to_smaller = (attr->ia_size <= i_size_read(inode));
 	int err;
 
 	if (unlikely(f2fs_cp_error(F2FS_I_SB(inode))))
@@ -842,8 +843,6 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
 			if (!fscrypt_has_encryption_key(inode))
 				return -ENOKEY;
 		}
-
-	bool to_smaller = (attr->ia_size <= i_size_read(inode));
 
 		down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
 		down_write(&F2FS_I(inode)->i_mmap_sem);
