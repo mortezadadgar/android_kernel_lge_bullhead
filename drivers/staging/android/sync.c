@@ -866,9 +866,7 @@ static long sync_fence_ioctl_fence_info(struct sync_fence *fence,
 	if (size > 4096)
 		size = 4096;
 
-#ifdef CONFIG_SYNC_DEBUG
 	strlcpy(data->name, fence->name, sizeof(data->name));
-#endif
 	data->status = fence->status;
 	len = sizeof(struct sync_fence_info_data);
 
