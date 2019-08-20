@@ -1662,8 +1662,11 @@ EXPORT_SYMBOL(kgsl_cmdbatch_destroy_object);
 /*
  * a generic function to retire a pending sync event and (possibly)
  * kick the dispatcher
+ * Returns false if the event was already marked for cancellation in another
+ * thread. This function should return true if this thread is responsible for
+ * freeing up the memory, and the event will not be cancelled.
  */
-static void kgsl_cmdbatch_sync_expire(struct kgsl_device *device,
+static bool kgsl_cmdbatch_sync_expire(struct kgsl_device *device,
 	struct kgsl_cmdbatch_sync_event *event)
 {
 	struct kgsl_cmdbatch_sync_event *e, *tmp;
@@ -1691,6 +1694,11 @@ static void kgsl_cmdbatch_sync_expire(struct kgsl_device *device,
 		}
 	}
 
+	if (removed == 0) {
+		spin_unlock_irqrestore(&event->cmdbatch->lock, flags);
+		return false;
+	}
+
 	event->handle = NULL;
 	sched = list_empty(&event->cmdbatch->synclist) ? 1 : 0;
 	spin_unlock_irqrestore(&event->cmdbatch->lock, flags);
@@ -1710,6 +1718,8 @@ static void kgsl_cmdbatch_sync_expire(struct kgsl_device *device,
 	/* Put events that have been removed from the synclist */
 	if (removed)
 		kgsl_cmdbatch_sync_event_put(event);
+
+	return true;
 }
 
 
@@ -1725,8 +1735,13 @@ static void kgsl_cmdbatch_sync_func(struct kgsl_device *device,
 	trace_syncpoint_timestamp_expire(event->cmdbatch,
 		event->context, event->timestamp);
 
-	kgsl_cmdbatch_sync_expire(device, event);
-	kgsl_context_put(event->context);
+	/*
+	 * Put down the context ref count only if
+	 * this thread successfully clears the pending bit mask.
+	 */
+	if (kgsl_cmdbatch_sync_expire(device, event))
+		kgsl_context_put(event->context);
+
 	/* Put events that have signaled */
 	kgsl_cmdbatch_sync_event_put(event);
 }
