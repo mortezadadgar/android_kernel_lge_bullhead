@@ -389,7 +389,13 @@ htt_t2h_lp_msg_handler(void *context, adf_nbuf_t htt_t2h_msg )
         {
             u_int32_t *pl_hdr;
             u_int32_t log_type;
+            uint32_t len = adf_nbuf_len(htt_t2h_msg);
+            struct ol_fw_data pl_fw_data;
+
             pl_hdr = (msg_word + 1);
+            pl_fw_data.data = pl_hdr;
+            pl_fw_data.len = len - sizeof(*msg_word);
+
             log_type = (*(pl_hdr + 1) & ATH_PKTLOG_HDR_LOG_TYPE_MASK) >>
                                             ATH_PKTLOG_HDR_LOG_TYPE_SHIFT;
             if (log_type == PKTLOG_TYPE_TX_CTRL ||
@@ -397,14 +403,14 @@ htt_t2h_lp_msg_handler(void *context, adf_nbuf_t htt_t2h_msg )
                (log_type) == PKTLOG_TYPE_TX_MSDU_ID ||
                (log_type) == PKTLOG_TYPE_TX_FRM_HDR ||
                (log_type) == PKTLOG_TYPE_TX_VIRT_ADDR) {
-                wdi_event_handler(WDI_EVENT_TX_STATUS, pdev->txrx_pdev, pl_hdr);
+                wdi_event_handler(WDI_EVENT_TX_STATUS, pdev->txrx_pdev, &pl_fw_data);
             } else if ((log_type) == PKTLOG_TYPE_RC_FIND) {
-                wdi_event_handler(WDI_EVENT_RATE_FIND, pdev->txrx_pdev, pl_hdr);
+                wdi_event_handler(WDI_EVENT_RATE_FIND, pdev->txrx_pdev, &pl_fw_data);
             } else if ((log_type) == PKTLOG_TYPE_RC_UPDATE) {
                 wdi_event_handler(
-                    WDI_EVENT_RATE_UPDATE, pdev->txrx_pdev, pl_hdr);
+                    WDI_EVENT_RATE_UPDATE, pdev->txrx_pdev, &pl_fw_data);
             } else if ((log_type) == PKTLOG_TYPE_RX_STAT) {
-                wdi_event_handler(WDI_EVENT_RX_DESC, pdev->txrx_pdev, pl_hdr);
+                wdi_event_handler(WDI_EVENT_RX_DESC, pdev->txrx_pdev, &pl_fw_data);
             }
             break;
         }
@@ -600,6 +606,8 @@ if (adf_os_unlikely(pdev->rx_ring.rx_reset)) {
             unsigned num_msdu_bytes;
             u_int16_t peer_id;
             u_int8_t tid;
+            u_int32_t msg_len = adf_nbuf_len(htt_t2h_msg);
+            unsigned int calculated_msg_len;
 
             if (adf_os_unlikely(pdev->cfg.is_full_reorder_offload)) {
                 adf_os_print("HTT_T2H_MSG_TYPE_RX_IND not supported with full "
@@ -627,6 +635,34 @@ if (adf_os_unlikely(pdev->rx_ring.rx_reset)) {
                 (HTT_RX_IND_HDR_BYTES + num_msdu_bytes + 3) >> 2;
             num_mpdu_ranges = HTT_RX_IND_NUM_MPDU_RANGES_GET(*(msg_word + 1));
             pdev->rx_ind_msdu_byte_idx = 0;
+
+            if (unlikely(pdev->rx_mpdu_range_offset_words > msg_len)) {
+                adf_print("HTT_T2H_MSG_TYPE_RX_IND, invalid rx_mpdu_range_offset_words %d\n",
+                                      pdev->rx_mpdu_range_offset_words);
+                WARN_ON(1);
+                break;
+            }
+            calculated_msg_len = pdev->rx_mpdu_range_offset_words +
+                                                     (num_mpdu_ranges *
+                                                     (int)sizeof(uint32_t));
+            /*
+             * Check that the addition and multiplication
+             * do not cause integer overflow
+             */
+            if (unlikely(calculated_msg_len <
+                                     pdev->rx_mpdu_range_offset_words)) {
+                        adf_print("HTT_T2H_MSG_TYPE_RX_IND, invalid mpdu_ranges %u\n",
+                                                (num_mpdu_ranges *
+                                                (int)sizeof(uint32_t)));
+                        WARN_ON(1);
+                        break;
+            }
+            if (unlikely(calculated_msg_len > msg_len)) {
+                        adf_print("HTT_T2H_MSG_TYPE_RX_IND, invalid offset_words + mpdu_ranges %u\n",
+                                      calculated_msg_len);
+                        WARN_ON(1);
+                        break;
+            }
 
             if (pdev->cfg.is_high_latency) {
                 /*
