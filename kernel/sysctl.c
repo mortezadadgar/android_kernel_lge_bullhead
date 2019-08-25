@@ -288,7 +288,7 @@ static struct ctl_table kern_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
 	},
-#ifndef CONFIG_SCHED_HMP
+#if 0
 	{
 		.procname	= "sched_wake_to_idle",
 		.data		= &sysctl_sched_wake_to_idle,
@@ -296,7 +296,6 @@ static struct ctl_table kern_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
 	},
-#endif
 	{
 		.procname	= "sched_capacity_margin",
 		.data		= &sysctl_sched_capacity_margin,
@@ -304,6 +303,7 @@ static struct ctl_table kern_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
 	},
+#endif
 #ifdef CONFIG_SCHED_FREQ_INPUT
 	{
 		.procname	= "sched_freq_inc_notify",
