@@ -367,8 +367,8 @@ void schedtune_enqueue_task(struct task_struct *p, int cpu)
 	raw_spin_unlock_irqrestore(&bg->lock, irq_flags);
 }
 
-int schedtune_can_attach(struct cgroup_subsys_state *css,
-			  struct cgroup_taskset *tset)
+int schedtune_can_attach(struct cgroup *cgrp,
+		struct cgroup_taskset *tset)
 {
 	struct task_struct *task;
 	struct boost_groups *bg;
@@ -382,7 +382,7 @@ int schedtune_can_attach(struct cgroup_subsys_state *css,
 	if (!unlikely(schedtune_initialized))
 		return 0;
 
-	cgroup_taskset_for_each(task, tset) {
+	cgroup_taskset_for_each(task, cgrp, tset) {
 
 		/*
 		 * Lock the CPU's RQ the task is enqueued to avoid race
@@ -404,7 +404,7 @@ int schedtune_can_attach(struct cgroup_subsys_state *css,
 		bg = &per_cpu(cpu_boost_groups, cpu);
 		raw_spin_lock(&bg->lock);
 
-		dst_bg = css_st(css)->idx;
+		dst_bg = cgroup_st(cgrp)->idx;
 		src_bg = task_schedtune(task)->idx;
 
 		/*
@@ -439,8 +439,8 @@ int schedtune_can_attach(struct cgroup_subsys_state *css,
 	return 0;
 }
 
-void schedtune_cancel_attach(struct cgroup_subsys_state *css,
-			     struct cgroup_taskset *tset)
+void schedtune_cancel_attach(struct cgroup *cgrp,
+		struct cgroup_taskset *tset)
 {
 	/* This can happen only if SchedTune controller is mounted with
 	 * other hierarchies ane one of them fails. Since usually SchedTune is
