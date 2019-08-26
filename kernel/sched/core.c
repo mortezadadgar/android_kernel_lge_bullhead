@@ -6766,12 +6766,10 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
 	 * Keep a potential priority boosting if called from
 	 * sched_setscheduler().
 	 */
-#if 0
 	if (keep_boost)
 		p->prio = rt_mutex_get_effective_prio(p, normal_prio(p));
 	else
 		p->prio = normal_prio(p);
-#endif
 
 	if (dl_prio(p->prio))
 		p->sched_class = &dl_sched_class;
@@ -6854,12 +6852,10 @@ static int __sched_setscheduler(struct task_struct *p,
 				const struct sched_attr *attr,
 				bool user)
 {
-#if 0
 	int newprio = dl_policy(attr->sched_policy) ? MAX_DL_PRIO - 1 :
 		      MAX_RT_PRIO - 1 - attr->sched_priority;
-#endif
 	int retval, oldprio, oldpolicy = -1, queued, running;
-	int policy = attr->sched_policy;
+	int new_effective_prio, policy = attr->sched_policy;
 	unsigned long flags;
 	const struct sched_class *prev_class;
 	struct rq *rq;
@@ -7047,14 +7043,12 @@ change:
 	 * the runqueue. This will be done when the task deboost
 	 * itself.
 	 */
-#if 0
 	new_effective_prio = rt_mutex_get_effective_prio(p, newprio);
 	if (new_effective_prio == oldprio) {
 		__setscheduler_params(p, attr);
 		task_rq_unlock(rq, p, &flags);
 		return 0;
 	}
-#endif
 
 	queued = task_on_rq_queued(p);
 	running = task_current(rq, p);
