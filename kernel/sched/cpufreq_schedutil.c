@@ -15,6 +15,7 @@
 #include <linux/kthread.h>
 #include <linux/slab.h>
 #include <trace/events/power.h>
+#include <linux/irq_work.h>
 
 #include "sched.h"
 #include "tune.h"
@@ -529,6 +530,8 @@ static ssize_t iowait_boost_enable_store(struct gov_attr_set *attr_set,
 
 	return count;
 }
+
+#define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store)
 
 static struct governor_attr up_rate_limit_us = __ATTR_RW(up_rate_limit_us);
 static struct governor_attr down_rate_limit_us = __ATTR_RW(down_rate_limit_us);
