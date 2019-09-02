@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016, 2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016, 2018-2019 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -4923,7 +4923,7 @@ typedef struct sDot11fIESuppChannels {
 #define DOT11F_EID_SUPPCHANNELS ( 36 )
 
 // N.B. These #defines do *not* include the EID & length
-#define DOT11F_IE_SUPPCHANNELS_MIN_LEN ( 2 )
+#define DOT11F_IE_SUPPCHANNELS_MIN_LEN ( 0 )
 
 #define DOT11F_IE_SUPPCHANNELS_MAX_LEN ( 96 )
 
