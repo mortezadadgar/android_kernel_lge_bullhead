@@ -213,7 +213,7 @@ static void update_fdomain_capacity_request(int cpu)
 	 * drivers.
 	 */
 	if (cpufreq_driver_slow)
-		irq_work_queue(&gd->irq_work);
+		irq_work_queue_on(&gd->irq_work, cpu);
 	else
 		cpufreq_sched_try_driver_target(policy, freq_new);
 
