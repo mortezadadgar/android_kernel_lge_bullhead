@@ -96,6 +96,7 @@ when           who                what, where, why
 #define       MAX_ACL_MAC_ADDRESS          32
 #define       AUTO_CHANNEL_SELECT          0
 #define       MAX_ASSOC_IND_IE_LEN         255
+#define       ASSOC_REQ_IE_OFFSET          4
 
 #define       MAX_NAME_SIZE                64
 #define       MAX_TEXT_SIZE                32
@@ -265,6 +266,8 @@ typedef struct sap_StationAssocIndication_s {
     eCsrEncryptionType negotiatedMCEncryptionType;
     tANI_BOOLEAN fAuthRequired;
     uint8_t      ecsa_capable;
+    uint32_t owe_ie_len;
+    uint8_t *owe_ie;
 } tSap_StationAssocIndication;
 
 typedef struct sap_StationAssocReassocCompleteEvent_s {
@@ -1072,7 +1075,8 @@ WLANSAP_Start
     v_PVOID_t  pvosGCtx,
     tVOS_CON_MODE mode,
     uint8_t *addr,
-    uint32_t *session_id
+    uint32_t *session_id,
+    bool reinit
 );
 
 /*==========================================================================
