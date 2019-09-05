@@ -62,7 +62,18 @@
 #define IEEE80211_CHAN_NO_IBSS IEEE80211_CHAN_NO_IR
 #endif
 
-static v_REGDOMAIN_t temp_reg_domain = REGDOMAIN_COUNT;
+static v_REGDOMAIN_t reg_domain = REGDOMAIN_COUNT;
+
+static void reg_domain_update(v_REGDOMAIN_t temp_reg_domain)
+{
+	reg_domain = temp_reg_domain;
+}
+
+static v_REGDOMAIN_t reg_domain_get(void)
+{
+	return reg_domain;
+}
+
 /* true if init happens thru init time driver hint */
 static v_BOOL_t init_by_driver = VOS_FALSE;
 /* true if init happens thru init time  callback from regulatory core.
@@ -74,7 +85,7 @@ static v_BOOL_t init_by_reg_core = VOS_FALSE;
  * Preprocessor Definitions and Constants
  * -------------------------------------------------------------------------*/
 #define MAX_COUNTRY_COUNT        300
-#define REG_WAIT_TIME            50
+#define REG_WAIT_TIME            120
 /*
  * This is a set of common rules used by our world regulatory domains.
  * We have 12 world regulatory domains. To save space we consolidate
@@ -1558,6 +1569,7 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
     struct wiphy *wiphy = NULL;
     int i;
     int wait_result;
+    v_REGDOMAIN_t temp_reg_domain;
 
     /* sanity checks */
     if (NULL == pRegDomain)
@@ -1601,7 +1613,7 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
     if (pHddCtx->isLogpInProgress) {
         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                    (" SSR in progress, return") );
-        *pRegDomain = temp_reg_domain;
+        *pRegDomain = reg_domain_get();
          return VOS_STATUS_SUCCESS;
     }
 
@@ -1641,9 +1653,10 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
         temp_reg_domain = REGDOMAIN_WORLD;
     }
 
+    reg_domain_update(temp_reg_domain);
     if (COUNTRY_QUERY == source) {
         *pRegDomain = temp_reg_domain;
-         return VOS_STATUS_SUCCESS;
+        return VOS_STATUS_SUCCESS;
     }
 
     VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
@@ -1682,7 +1695,6 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                        "runtime country code : %c%c is found in kernel db",
                         country_code[0], country_code[1]);
-           *pRegDomain = temp_reg_domain;
         }
 
         else
@@ -1696,7 +1708,7 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
         }
     }
 
-    *pRegDomain = temp_reg_domain;
+    *pRegDomain = reg_domain_get();
     return VOS_STATUS_SUCCESS;
 }
 
@@ -1906,7 +1918,8 @@ int vos_update_band(v_U8_t  band_capability)
 }
 
 /* create_linux_regulatory_entry to populate internal structures from wiphy */
-static int create_linux_regulatory_entry(struct wiphy *wiphy,
+static int create_linux_regulatory_entry(v_REGDOMAIN_t temp_reg_domain,
+                                         struct wiphy *wiphy,
                                          v_U8_t nBandCapability,
                                          bool reset)
 {
@@ -2278,6 +2291,7 @@ int __wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
     int i;
     v_BOOL_t isVHT80Allowed;
     bool reset = false;
+    v_REGDOMAIN_t temp_reg_domain;
 
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
               FL("country: %c%c, initiator %d, dfs_region: %d"),
@@ -2419,7 +2433,8 @@ int __wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
         isVHT80Allowed = pHddCtx->isVHT80Allowed;
         regChannels =
             pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels;
-        if (create_linux_regulatory_entry(wiphy,
+        if (create_linux_regulatory_entry(temp_reg_domain,
+                                          wiphy,
                                           nBandCapability,
                                           reset) == 0)
         {
@@ -2441,6 +2456,7 @@ int __wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
             sme_GenericChangeCountryCode(pHddCtx->hHal, country_code,
                                          temp_reg_domain);
         }
+        reg_domain_update(temp_reg_domain);
 
         /* send CTL info to firmware */
         regdmn_set_regval(&pHddCtx->reg);
@@ -2494,6 +2510,7 @@ VOS_STATUS vos_init_wiphy_from_eeprom(void)
    v_CONTEXT_t pVosContext = NULL;
    hdd_context_t *pHddCtx = NULL;
    struct wiphy *wiphy = NULL;
+   v_REGDOMAIN_t temp_reg_domain;
 
    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
 
@@ -2519,13 +2536,15 @@ VOS_STATUS vos_init_wiphy_from_eeprom(void)
 
    if (is_world_regd(pHddCtx->reg.reg_domain)) {
       temp_reg_domain = REGDOMAIN_WORLD;
-      if (create_linux_regulatory_entry(wiphy,
+      if (create_linux_regulatory_entry(temp_reg_domain,
+                                        wiphy,
                                         pHddCtx->cfg_ini->nBandCapability,
                                         true) != 0) {
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                ("Error while creating regulatory entry"));
          return VOS_STATUS_E_FAULT;
       }
+      reg_domain_update(temp_reg_domain);
    }
 
    init_completion(&pHddCtx->reg_init);
