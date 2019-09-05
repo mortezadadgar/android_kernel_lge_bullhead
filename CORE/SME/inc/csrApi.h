@@ -1590,6 +1590,8 @@ typedef struct sSirSmeAssocIndToUpperLayerCnf
     tSirSmeChanInfo      chan_info;
     /* Extended capabilities of STA */
     uint8_t              ecsa_capable;
+    uint32_t             ies_len;
+    uint8_t              *ies;
     bool                 ampdu;
     bool                 sgi_enable;
     bool                 tx_stbc;

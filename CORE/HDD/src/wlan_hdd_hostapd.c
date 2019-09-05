@@ -2446,8 +2446,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             {
                v_U16_t iesLen =  event->iesLen;
 
-               if (iesLen <= MAX_ASSOC_IND_IE_LEN )
-               {
                   struct station_info *stainfo;
                   stainfo = vos_mem_malloc(sizeof(*stainfo));
                   if (stainfo == NULL) {
@@ -2455,8 +2453,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                       return VOS_STATUS_E_NOMEM;
                   }
                   memset(stainfo, 0, sizeof(*stainfo));
-                  stainfo->assoc_req_ies =
-                     (const u8 *)&event->ies[0];
+                  stainfo->assoc_req_ies = event->ies;
                   stainfo->assoc_req_ies_len = iesLen;
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0))
                   /*
@@ -2473,11 +2470,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                         (const u8 *)&event->staMac.bytes[0],
                         stainfo, GFP_KERNEL);
                   vos_mem_free(stainfo);
-               }
-               else
-               {
-                  hddLog(LOGE, FL(" Assoc Ie length is too long"));
-               }
             }
 
             pScanInfo =  &pHostapdAdapter->scan_info;
