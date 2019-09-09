@@ -818,7 +818,7 @@ int msm_fd_hw_get_clocks(struct msm_fd_device *fd)
 	size_t cnt;
 	int clk_rates;
 	int i;
-	int ret;
+	int ret = 0;
 
 	cnt = of_property_count_strings(fd->dev->of_node, "clock-names");
 	if (cnt > MSM_FD_MAX_CLK_NUM) {
