@@ -32,6 +32,7 @@
 #include <linux/string.h>
 #include <linux/bitops.h>
 #include <linux/rcupdate.h>
+#include <linux/preempt.h>		/* in_interrupt() */
 
 
 #ifdef __KERNEL__
