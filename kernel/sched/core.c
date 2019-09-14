@@ -804,7 +804,7 @@ void resched_task(struct task_struct *p)
 
 #ifdef CONFIG_SCHED_HMP
 static ktime_t ktime_last;
-static bool sched_ktime_suspended;
+static __read_mostly bool sched_ktime_suspended;
 
 u64 sched_ktime_clock(void)
 {
