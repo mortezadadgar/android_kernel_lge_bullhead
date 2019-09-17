@@ -488,6 +488,20 @@ enum vidc_status hfi_process_sess_init_done_prop_read(
 
 	data_ptr = (u8 *) &pkt->rg_property_data[0];
 	num_properties = pkt->num_properties;
+#define VALIDATE_PROPERTY_STRUCTURE_SIZE(pkt_size, property_size) ({\
+		if (pkt_size < property_size) { \
+			status = VIDC_ERR_BAD_PARAM; \
+			break; \
+		} \
+})
+
+#define VALIDATE_PROPERTY_PAYLOAD_SIZE(pkt_size, payload_size, \
+		property_count) ({\
+		if (pkt_size/payload_size < property_count) { \
+			status = VIDC_ERR_BAD_PARAM; \
+			break; \
+		} \
+})
 
 	while ((status == VIDC_ERR_NONE) && num_properties &&
 		   (rem_bytes >= sizeof(u32))) {
@@ -503,11 +517,13 @@ enum vidc_status hfi_process_sess_init_done_prop_read(
 			u32 num_capabilities;
 			struct hfi_capability_supported *cap_ptr;
 
-			if ((rem_bytes - next_offset) < sizeof(*cap_ptr)) {
-				status = VIDC_ERR_BAD_PARAM;
-				break;
-			}
-
+			VALIDATE_PROPERTY_STRUCTURE_SIZE(rem_bytes -
+					next_offset,
+					sizeof(*prop));
+			VALIDATE_PROPERTY_PAYLOAD_SIZE(rem_bytes -
+					next_offset - sizeof(u32),
+					sizeof(struct hfi_capability_supported),
+					prop->num_capabilities);
 			num_capabilities = prop->num_capabilities;
 			cap_ptr = &prop->rg_data[0];
 			next_offset += sizeof(u32);
@@ -532,10 +548,10 @@ enum vidc_status hfi_process_sess_init_done_prop_read(
 			char *fmt_ptr;
 			struct hfi_uncompressed_plane_info *plane_info;
 
-			if ((rem_bytes - next_offset) < sizeof(*prop)) {
-				status = VIDC_ERR_BAD_PARAM;
-				break;
-			}
+			VALIDATE_PROPERTY_STRUCTURE_SIZE(rem_bytes -
+					next_offset,
+					sizeof(*prop));
+
 			num_format_entries = prop->format_entries;
 			next_offset = sizeof(*prop) - sizeof(u32);
 			fmt_ptr = (char *)&prop->rg_format_info[0];
@@ -545,11 +561,10 @@ enum vidc_status hfi_process_sess_init_done_prop_read(
 				plane_info =
 				(struct hfi_uncompressed_plane_info *) fmt_ptr;
 
-				if ((rem_bytes - next_offset) <
-						sizeof(*plane_info)) {
-					status = VIDC_ERR_BAD_PARAM;
-					break;
-				}
+				VALIDATE_PROPERTY_STRUCTURE_SIZE(rem_bytes -
+						next_offset,
+						sizeof(*plane_info));
+
 				bytes_to_skip = sizeof(*plane_info) -
 					sizeof(struct
 					hfi_uncompressed_plane_constraints) +
@@ -557,7 +572,11 @@ enum vidc_status hfi_process_sess_init_done_prop_read(
 					sizeof(struct
 					hfi_uncompressed_plane_constraints);
 
-				fmt_ptr +=  bytes_to_skip;
+				VALIDATE_PROPERTY_STRUCTURE_SIZE(rem_bytes -
+						next_offset,
+						bytes_to_skip);
+
+				fmt_ptr += bytes_to_skip;
 				next_offset += bytes_to_skip;
 				num_format_entries--;
 			}
@@ -569,6 +588,14 @@ enum vidc_status hfi_process_sess_init_done_prop_read(
 			struct hfi_properties_supported *prop =
 				(struct hfi_properties_supported *)
 				(data_ptr + next_offset);
+
+			VALIDATE_PROPERTY_STRUCTURE_SIZE(rem_bytes -
+					next_offset,
+					sizeof(*prop));
+			VALIDATE_PROPERTY_PAYLOAD_SIZE(rem_bytes -
+					next_offset - sizeof(*prop) +
+					sizeof(u32), sizeof(u32),
+					prop->num_properties);
 
 			next_offset += sizeof(*prop) - sizeof(u32)
 				+ prop->num_properties * sizeof(u32);
@@ -583,6 +610,14 @@ enum vidc_status hfi_process_sess_init_done_prop_read(
 			struct hfi_profile_level_supported *prop =
 				(struct hfi_profile_level_supported *)
 				(data_ptr + next_offset);
+			VALIDATE_PROPERTY_STRUCTURE_SIZE(rem_bytes -
+					next_offset,
+					sizeof(*prop));
+			VALIDATE_PROPERTY_PAYLOAD_SIZE(rem_bytes -
+					next_offset -
+					sizeof(u32),
+					sizeof(struct hfi_profile_level),
+					prop->profile_count);
 			ptr = (char *) &prop->rg_profile_level[0];
 			dprintk(VIDC_DBG, "prop->profile_count: %d\n",
 				prop->profile_count);
@@ -615,6 +650,10 @@ enum vidc_status hfi_process_sess_init_done_prop_read(
 		}
 		case HFI_PROPERTY_PARAM_NAL_STREAM_FORMAT_SUPPORTED:
 		{
+			VALIDATE_PROPERTY_STRUCTURE_SIZE(rem_bytes -
+					next_offset,
+					sizeof(struct hfi_nal_stream_format_supported));
+
 			next_offset +=
 				sizeof(struct hfi_nal_stream_format_supported);
 			num_properties--;
@@ -622,18 +661,27 @@ enum vidc_status hfi_process_sess_init_done_prop_read(
 		}
 		case HFI_PROPERTY_PARAM_NAL_STREAM_FORMAT_SELECT:
 		{
+			VALIDATE_PROPERTY_STRUCTURE_SIZE(rem_bytes -
+					next_offset,
+					sizeof(u32));
 			next_offset += sizeof(u32);
 			num_properties--;
 			break;
 		}
 		case HFI_PROPERTY_PARAM_MAX_SEQUENCE_HEADER_SIZE:
 		{
+			VALIDATE_PROPERTY_STRUCTURE_SIZE(rem_bytes -
+					next_offset,
+					sizeof(u32));
 			next_offset += sizeof(u32);
 			num_properties--;
 			break;
 		}
 		case HFI_PROPERTY_PARAM_VENC_INTRA_REFRESH:
 		{
+			VALIDATE_PROPERTY_STRUCTURE_SIZE(rem_bytes -
+					next_offset,
+					sizeof(struct hfi_intra_refresh));
 			next_offset +=
 				sizeof(struct hfi_intra_refresh);
 			num_properties--;
@@ -645,6 +693,14 @@ enum vidc_status hfi_process_sess_init_done_prop_read(
 				(struct hfi_buffer_alloc_mode_supported *)
 				(data_ptr + next_offset);
 			int i;
+			VALIDATE_PROPERTY_STRUCTURE_SIZE(rem_bytes -
+					next_offset,
+					sizeof(*prop));
+			VALIDATE_PROPERTY_PAYLOAD_SIZE(rem_bytes -
+					next_offset - sizeof(*prop) +
+					sizeof(u32), sizeof(u32),
+					prop->num_entries);
+
 			if (prop->buffer_type == HFI_BUFFER_OUTPUT ||
 				prop->buffer_type == HFI_BUFFER_OUTPUT2) {
 				sess_init_done->alloc_mode_out = 0;
@@ -676,8 +732,13 @@ enum vidc_status hfi_process_sess_init_done_prop_read(
 			dprintk(VIDC_DBG,
 				"%s default case - 0x%x\n", __func__, prop_id);
 		}
-		rem_bytes -= next_offset;
-		data_ptr += next_offset;
+
+		if (rem_bytes > next_offset) {
+			rem_bytes -= next_offset;
+			data_ptr += next_offset;
+		} else {
+			rem_bytes = 0;
+		}
 	}
 	return status;
 }
