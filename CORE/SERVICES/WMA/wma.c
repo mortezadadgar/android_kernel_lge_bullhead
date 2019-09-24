@@ -1484,6 +1484,8 @@ static int wma_vdev_start_rsp_ind(tp_wma_handle wma, u_int8_t *buf)
 	return 0;
 }
 
+#define BIG_ENDIAN_MAX_DEBUG_BUF   500
+
 /* function   : wma_unified_debug_print_event_handler
  * Description :
  * Args       :
@@ -1497,21 +1499,32 @@ static int wma_unified_debug_print_event_handler(void *handle, u_int8_t *datap,
 	u_int32_t datalen;
 
 	param_buf = (WMI_DEBUG_PRINT_EVENTID_param_tlvs *)datap;
-	if (!param_buf) {
+	if (!param_buf || !param_buf->data) {
 		WMA_LOGE("Get NULL point message from FW");
 		return -ENOMEM;
 	}
 	data = param_buf->data;
 	datalen = param_buf->num_data;
-
+	if (datalen > WMA_SVC_MSG_MAX_SIZE ) {
+		WMA_LOGE("Received data len %d exceeds max value %d",
+			 datalen, WMA_SVC_MSG_MAX_SIZE);
+		return -EINVAL;
+	}
+	data[datalen - 1] = '\0';
 #ifdef BIG_ENDIAN_HOST
-    {
-	    char dbgbuf[500] = {0};
-	    memcpy(dbgbuf, data, datalen);
-	    SWAPME(dbgbuf, datalen);
-	    WMA_LOGD("FIRMWARE:%s", dbgbuf);
-	    return 0;
-    }
+	{
+		if (datalen >= BIG_ENDIAN_MAX_DEBUG_BUF) {
+			WMA_LOGE("%s Invalid data len %d, limiting to max",
+					__func__, datalen);
+			datalen = BIG_ENDIAN_MAX_DEBUG_BUF - 1;
+		}
+
+		char dbgbuf[BIG_ENDIAN_MAX_DEBUG_BUF] = { 0 };
+		memcpy(dbgbuf, data, datalen);
+		SWAPME(dbgbuf, datalen);
+		WMA_LOGD("FIRMWARE:%s", dbgbuf);
+		return 0;
+	}
 #else
 	WMA_LOGD("FIRMWARE:%s", data);
     return 0;
@@ -22913,6 +22926,13 @@ static int wma_log_supported_evt_handler(void *handle,
 	}
 	wmi_event = param_buf->fixed_param;
 	num_of_diag_events_logs = wmi_event->num_of_diag_events_logs;
+	if (num_of_diag_events_logs >
+	    param_buf->num_diag_events_logs_list) {
+		WMA_LOGE("message number of events %d is more than tlv hdr content %d",
+		          num_of_diag_events_logs,
+			  param_buf->num_diag_events_logs_list);
+		return -EINVAL;
+	}
 	evt_args = param_buf->diag_events_logs_list;
 	if (!evt_args) {
 		WMA_LOGE("%s: Event list is empty, num_of_diag_events_logs=%d",
@@ -38080,6 +38100,11 @@ wma_process_utf_event(WMA_HANDLE handle,
 	data = param_buf->data;
 	datalen = param_buf->num_data;
 
+	if (datalen < sizeof(segHdrInfo)) {
+		WMA_LOGE("message size %d is smaller than struct seg_hdr_info",
+			 datalen);
+		return -EINVAL;
+	}
 
 	segHdrInfo = *(SEG_HDR_INFO_STRUCT *)&(data[0]);
 
