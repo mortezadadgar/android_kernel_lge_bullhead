@@ -896,7 +896,7 @@ void
 ol_txrx_pdev_detach(ol_txrx_pdev_handle pdev, int force)
 {
     int i;
-    struct ol_txrx_stats_req_internal *req;
+    struct ol_txrx_stats_req_internal *req, *temp_req;
 
     /*checking to ensure txrx pdev structure is not NULL */
     if (!pdev) {
@@ -910,7 +910,7 @@ ol_txrx_pdev_detach(ol_txrx_pdev_handle pdev, int force)
     TXRX_ASSERT1(TAILQ_EMPTY(&pdev->vdev_list));
 
     adf_os_spin_lock_bh(&pdev->req_list_spinlock);
-    TAILQ_FOREACH(req, &pdev->req_list, req_list_elem) {
+    TAILQ_FOREACH_SAFE(req, &pdev->req_list, req_list_elem, temp_req) {
         TAILQ_REMOVE(&pdev->req_list, req, req_list_elem);
         pdev->req_list_depth--;
         adf_os_mem_free(req);
