@@ -165,7 +165,7 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 		mutex_unlock(&mdp5_data->ov_lock);
 	mutex_unlock(&ctrl_pdata->mutex);
 
-	if ((pstatus_data->mfd->panel_power_state == MDSS_PANEL_POWER_ON)) {
+	if (pstatus_data->mfd->panel_power_state == MDSS_PANEL_POWER_ON) {
 		if (ret > 0)
 			schedule_delayed_work(&pstatus_data->check_status,
 				msecs_to_jiffies(interval));
