@@ -41,7 +41,7 @@ static void __iomem *virt_base;
 #define dsi1phypll_mm_source_val 2
 #define hdmiphypll_mm_source_val 3
 
-#define FIXDIV(div) (div ? (2 * (div) - 1) : (0))
+#define FIXDIV(div) (div != 0 ? (2 * (div) - 1) : (0))
 
 #define F_MM(f, s, div, m, n) \
 	{ \
