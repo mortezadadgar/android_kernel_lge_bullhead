@@ -39,10 +39,17 @@
 #ifndef __SIR_API_H
 #define __SIR_API_H
 
+// Take care to avoid redefinition of this type, if it is
+// already defined in "halWmmApi.h"
+#if !defined(_HALMAC_WMM_API_H)
+typedef struct sAniSirGlobal *tpAniSirGlobal;
+#endif
+
 #include "sirTypes.h"
 #include "sirMacProtDef.h"
 #include "aniSystemDefs.h"
 #include "sirParams.h"
+#include "dot11f.h"
 
 #if defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD)
 #include "eseGlobal.h"
