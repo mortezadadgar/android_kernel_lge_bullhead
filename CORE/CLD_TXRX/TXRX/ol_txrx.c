@@ -288,6 +288,15 @@ ol_txrx_update_tx_queue_groups(
     u_int32_t group_vdev_bit_mask, vdev_bit_mask, group_vdev_id_mask;
     u_int32_t membership;
     struct ol_txrx_vdev_t *vdev;
+
+    if (group_id >= OL_TX_MAX_TXQ_GROUPS) {
+        TXRX_PRINT(TXRX_PRINT_LEVEL_WARN,
+            "%s: invalid group_id=%u, ignore update.\n",
+            __func__,
+            group_id);
+        return;
+    }
+
     group = &pdev->txq_grps[group_id];
 
     membership = OL_TXQ_GROUP_MEMBERSHIP_GET(vdev_id_mask,ac_mask);
@@ -896,7 +905,7 @@ void
 ol_txrx_pdev_detach(ol_txrx_pdev_handle pdev, int force)
 {
     int i;
-    struct ol_txrx_stats_req_internal *req;
+    struct ol_txrx_stats_req_internal *req, *temp_req;
 
     /*checking to ensure txrx pdev structure is not NULL */
     if (!pdev) {
@@ -910,7 +919,7 @@ ol_txrx_pdev_detach(ol_txrx_pdev_handle pdev, int force)
     TXRX_ASSERT1(TAILQ_EMPTY(&pdev->vdev_list));
 
     adf_os_spin_lock_bh(&pdev->req_list_spinlock);
-    TAILQ_FOREACH(req, &pdev->req_list, req_list_elem) {
+    TAILQ_FOREACH_SAFE(req, &pdev->req_list, req_list_elem, temp_req) {
         TAILQ_REMOVE(&pdev->req_list, req, req_list_elem);
         pdev->req_list_depth--;
         adf_os_mem_free(req);

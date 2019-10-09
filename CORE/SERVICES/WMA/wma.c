@@ -8702,7 +8702,7 @@ static int wma_stats_ext_event_handler(void *handle, u_int8_t *event_buf,
 	alloc_len += stats_ext_info->data_len;
 
 	if (stats_ext_info->data_len > (WMA_SVC_MSG_MAX_SIZE -
-	    sizeof(*stats_ext_info)) ||
+	    WMI_TLV_HDR_SIZE - sizeof(*stats_ext_info)) ||
 	    stats_ext_info->data_len > param_buf->num_data) {
 		WMA_LOGE("Excess data_len:%d", stats_ext_info->data_len);
 		VOS_ASSERT(0);
@@ -36882,6 +36882,12 @@ v_VOID_t wma_rx_service_ready_event(WMA_HANDLE handle, void *cmd_param_info)
 	}
 
 	WMA_LOGA("WMA <-- WMI_SERVICE_READY_EVENTID");
+	if (ev->num_dbs_hw_modes > param_buf->num_wlan_dbs_hw_mode_list) {
+		WMA_LOGE("FW dbs_hw_mode entry %d more than value %d in TLV hdr",
+			ev->num_dbs_hw_modes,
+			param_buf->num_wlan_dbs_hw_mode_list);
+		return;
+	}
 
 	wma_handle->phy_capability = ev->phy_capability;
 	wma_handle->max_frag_entry = ev->max_frag_entry;
