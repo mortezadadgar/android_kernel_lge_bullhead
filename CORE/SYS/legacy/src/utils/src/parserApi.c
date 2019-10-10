@@ -5812,15 +5812,15 @@ sap_auth_offload_construct_rsn_opaque( tDot11fIERSN *pdot11f_rsn,
             }
         }
 
-        if (pdot11f_rsn->akm_suite_count) {
-            element_len = sizeof(pdot11f_rsn->akm_suite_count);
-            vos_mem_copy(ptr, &pdot11f_rsn->akm_suite_count, element_len);
+        if (pdot11f_rsn->akm_suite_cnt) {
+            element_len = sizeof(pdot11f_rsn->akm_suite_cnt);
+            vos_mem_copy(ptr, &pdot11f_rsn->akm_suite_cnt, element_len);
             ptr += element_len;
             data_len += element_len;
-            for (count = 0; count < pdot11f_rsn->akm_suite_count; count++) {
+            for (count = 0; count < pdot11f_rsn->akm_suite_cnt; count++) {
                 element_len = DOT11F_RSN_OUI_SIZE;
                 vos_mem_copy(ptr,
-                             &pdot11f_rsn->akm_suites[count][0],
+                             &pdot11f_rsn->akm_suite[count][0],
                              element_len);
                 ptr += element_len;
                 data_len += element_len;
