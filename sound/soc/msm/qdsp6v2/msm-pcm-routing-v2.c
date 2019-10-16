@@ -3850,17 +3850,20 @@ static int msm_routing_put_app_type_cfg_control(struct snd_kcontrol *kcontrol,
 					  struct snd_ctl_elem_value *ucontrol)
 {
 	int i = 0, j;
-	int num_app_types = ucontrol->value.integer.value[i++];
+	int num_app_types;
 
 	pr_debug("%s\n", __func__);
 
-	memset(app_type_cfg, 0, MAX_APP_TYPES*
-				sizeof(struct msm_pcm_routing_app_type_data));
-	if (num_app_types > MAX_APP_TYPES) {
+	if (ucontrol->value.integer.value[0] > MAX_APP_TYPES) {
 		pr_err("%s: number of app types exceed the max supported\n",
 			__func__);
 		return -EINVAL;
 	}
+
+	num_app_types = ucontrol->value.integer.value[i++];
+	memset(app_type_cfg, 0, MAX_APP_TYPES*
+			sizeof(struct msm_pcm_routing_app_type_data));
+
 	for (j = 0; j < num_app_types; j++) {
 		app_type_cfg[j].app_type =
 				ucontrol->value.integer.value[i++];
