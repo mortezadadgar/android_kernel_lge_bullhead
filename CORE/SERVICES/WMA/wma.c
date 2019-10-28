@@ -4134,9 +4134,14 @@ static int wma_extscan_operations_event_handler(void *handle,
 		return -EINVAL;
 	}
 	event = param_buf->fixed_param;
+	if (event->num_buckets > param_buf->num_bucket_id) {
+		WMA_LOGE("FW mesg num_buk %d more than TLV hdr %d",
+			event->num_buckets,
+			param_buf->num_bucket_id);
+		return -EINVAL;
+	}
 	buf_len = sizeof(*buf);
 	buf = vos_mem_malloc(buf_len);
-
 	if (!buf) {
 		WMA_LOGE("%s: extscan memory allocation failed", __func__);
 		return -ENOMEM;
@@ -31970,8 +31975,10 @@ static VOS_STATUS wma_send_udp_resp_offload_cmd(tp_wma_handle wma_handle,
 
 	WMA_LOGD("%s: Enter", __func__);
 	if (1 == udp_response->enable) {
-		pattern_len = strlen(udp_response->udp_payload_filter);
-		response_len = strlen(udp_response->udp_response_payload);
+		pattern_len = strnlen(udp_response->udp_payload_filter,
+				      MAX_LEN_UDP_RESP_OFFLOAD);
+		response_len = strnlen(udp_response->udp_response_payload,
+				       MAX_LEN_UDP_RESP_OFFLOAD);
 	}
 
 	udp_len = (pattern_len % 4) ?
@@ -35254,7 +35261,8 @@ static int wma_ibss_peer_info_event_handler(void *handle, u_int8_t *data,
     }
 
     /*sanity check*/
-    if ((num_peers > 32) || (NULL == peer_info))
+    if ((num_peers > 32) || (num_peers > param_tlvs->num_peer_info) ||
+	(!peer_info))
     {
        WMA_LOGE("%s: Invalid event data from target num_peers %d peer_info %p",
            __func__, num_peers, peer_info);
