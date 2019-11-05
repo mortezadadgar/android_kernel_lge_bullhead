@@ -1669,6 +1669,11 @@ static int map_buffer(struct fastrpc_apps *me, struct file_data *fdata,
 	spin_lock(&fdata->hlock);
 	hlist_for_each_entry_safe(map, n, &fdata->hlst, hn) {
 		if (map->handle == handle) {
+			if (map->refs + 1 == INT_MAX) {
+				pr_err("%s: refcount reaches INT_MAX\n", __func__);
+				spin_unlock(&me->hlock);
+				return -ETOOMANYREFS;
+			}
 			map->refs++;
 			mapmatch = map;
 			break;
