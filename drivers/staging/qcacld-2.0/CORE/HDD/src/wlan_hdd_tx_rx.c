@@ -1204,12 +1204,6 @@ VOS_STATUS hdd_rx_packet_cbk(v_VOID_t *vosContext,
       if (skb->next) {
          rxstat = netif_rx(skb);
       } else {
-         if ((pHddCtx->cfg_ini->rx_wakelock_timeout) &&
-             (PACKET_BROADCAST != skb->pkt_type) &&
-             (PACKET_MULTICAST != skb->pkt_type))
-	    vos_wake_lock_timeout_acquire(&pHddCtx->rx_wake_lock,
-                        pHddCtx->cfg_ini->rx_wakelock_timeout,
-                        WIFI_POWER_EVENT_WAKELOCK_HOLD_RX);
          /*
           * This is the last packet on the chain
           * Scheduling rx sirq
