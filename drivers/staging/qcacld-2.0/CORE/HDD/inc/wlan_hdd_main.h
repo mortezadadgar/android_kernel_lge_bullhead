@@ -1518,8 +1518,6 @@ struct hdd_context_s
    /* Thermal mitigation information */
    hdd_thermal_mitigation_info_t tmInfo;
 
-   vos_wake_lock_t rx_wake_lock;
-
    /*
     * Framework initiated driver restarting
     *    hdd_reload_timer   : Restart retry timer
