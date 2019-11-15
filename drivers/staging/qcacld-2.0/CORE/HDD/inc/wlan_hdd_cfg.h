@@ -3805,10 +3805,6 @@ enum dot11p_mode {
 #define CFG_EDCA_BE_AIFS_VALUE_MAX        (15)
 #define CFG_EDCA_BE_AIFS_VALUE_DEFAULT    (3)
 
-#define CFG_RX_WAKELOCK_TIMEOUT_NAME         "rx_wakelock_timeout"
-#define CFG_RX_WAKELOCK_TIMEOUT_DEFAULT      (50)
-#define CFG_RX_WAKELOCK_TIMEOUT_MIN          (0)
-#define CFG_RX_WAKELOCK_TIMEOUT_MAX          (100)
 /*
  * In static display use case when APPS is in stand alone power save mode enable
  * active offload mode which helps FW to filter out MC/BC data packets to avoid
@@ -4641,7 +4637,6 @@ struct hdd_config {
    uint32_t                    edca_vi_aifs;
    uint32_t                    edca_bk_aifs;
    uint32_t                    edca_be_aifs;
-   uint32_t                    rx_wakelock_timeout;
    bool                        active_mode_offload;
 
    bool probe_req_ie_whitelist;
