@@ -2026,8 +2026,9 @@ static void qpnp_led_turn_off_delayed(struct work_struct *work)
 static void qpnp_led_turn_off(struct qpnp_led_data *led)
 {
 	INIT_DELAYED_WORK(&led->dwork, qpnp_led_turn_off_delayed);
-	schedule_delayed_work(&led->dwork,
-		msecs_to_jiffies(led->turn_off_delay_ms));
+	queue_delayed_work(system_power_efficient_wq,
+			&led->dwork,
+			msecs_to_jiffies(led->turn_off_delay_ms));
 }
 
 static int qpnp_wled_init(struct qpnp_led_data *led)
