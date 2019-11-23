@@ -87,7 +87,7 @@ enum {
 };
 
 /* Default IPC log level INFO */
-static int hs_serial_debug_mask = INFO_LEV;
+static int hs_serial_debug_mask;
 module_param_named(debug_mask, hs_serial_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 
