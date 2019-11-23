@@ -29,7 +29,7 @@
 #define ANDROID_ALARM_PRINT_IO (1U << 1)
 #define ANDROID_ALARM_PRINT_INT (1U << 2)
 
-static int debug_mask = ANDROID_ALARM_PRINT_INFO;
+static int debug_mask;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 #define alarm_dbg(debug_level_mask, fmt, ...)				\
