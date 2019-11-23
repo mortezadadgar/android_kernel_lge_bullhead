@@ -108,6 +108,7 @@ static struct ion_heap_desc ion_heap_meta[] = {
 };
 #endif
 
+#if 0
 static int msm_ion_lowmem_notifier(struct notifier_block *nb,
 					unsigned long action, void *data)
 {
@@ -118,6 +119,7 @@ static int msm_ion_lowmem_notifier(struct notifier_block *nb,
 static struct notifier_block msm_ion_nb = {
 	.notifier_call = msm_ion_lowmem_notifier,
 };
+#endif
 
 struct ion_client *msm_ion_client_create(const char *name)
 {
@@ -1018,7 +1020,10 @@ static int msm_ion_probe(struct platform_device *pdev)
 	 */
 	idev = new_dev;
 
+#if 0
 	show_mem_notifier_register(&msm_ion_nb);
+#endif
+
 	return 0;
 
 freeheaps:
