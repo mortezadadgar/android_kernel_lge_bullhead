@@ -14,10 +14,15 @@
 /* interface for the other module to play different sequences */
 #ifdef CONFIG_QPNP_HAPTIC
 int qpnp_hap_play_byte(u8 data, bool on);
+void qpnp_disable_haptics(void);
+void qpnp_enable_haptics(void);
+
 #else
 int qpnp_hap_play_byte(u8 data, bool on);
 {
 	return 0;
 }
+void qpnp_disable_haptics(void) { }
+void qpnp_disable_haptics(void) { }
 #endif
 #endif
