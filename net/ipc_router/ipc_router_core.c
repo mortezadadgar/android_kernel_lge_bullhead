@@ -53,8 +53,11 @@ static int msm_ipc_router_debug_mask;
 module_param_named(debug_mask, msm_ipc_router_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 
+#ifdef CONFIG_IPC_LOGGING
 static void *ipc_rtr_log_ctxt;
 #define IPC_RTR_LOG_PAGES 5
+#endif
+
 #define DIAG(x...) pr_info("[RR] ERROR " x)
 
 #if defined(DEBUG)
@@ -3712,11 +3715,13 @@ static int msm_ipc_router_init(void)
 	}
 
 	msm_ipc_router_debug_mask |= SMEM_LOG;
+#ifdef CONFIG_IPC_LOGGING
 	ipc_rtr_log_ctxt = ipc_log_context_create(IPC_RTR_LOG_PAGES,
 						  "ipc_router", 0);
 	if (!ipc_rtr_log_ctxt)
 		IPC_RTR_ERR("%s: Unable to create IPC logging for IPC RTR",
 			__func__);
+#endif
 
 	debugfs_init();
 
