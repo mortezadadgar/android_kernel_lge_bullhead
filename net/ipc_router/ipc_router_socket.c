@@ -697,6 +697,7 @@ static struct proto msm_ipc_proto = {
  */
 void msm_ipc_router_ipc_log_init(void)
 {
+#ifdef CONFIG_IPC_LOGGING
 	ipc_req_resp_log_txt =
 		ipc_log_context_create(REQ_RESP_IPC_LOG_PAGES,
 			"ipc_rtr_req_resp", 0);
@@ -710,6 +711,7 @@ void msm_ipc_router_ipc_log_init(void)
 		IPC_RTR_ERR("%s: Unable to create IPC logging for Indications",
 			__func__);
 	}
+#endif
 }
 
 int msm_ipc_router_init_sockets(void)
