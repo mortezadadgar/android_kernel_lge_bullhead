@@ -47,6 +47,13 @@ struct westwood {
 #define TCP_WESTWOOD_RTT_MIN   (HZ/20)	/* 50ms */
 #define TCP_WESTWOOD_INIT_RTT  (20*HZ)	/* maybe too conservative?! */
 
+static int tcp_westwood_rtt_min __read_mostly = TCP_WESTWOOD_RTT_MIN;
+static int tcp_westwood_init_rtt __read_mostly = TCP_WESTWOOD_INIT_RTT;
+
+/* Westwood tunables */
+module_param_named(rtt_min, tcp_westwood_rtt_min, int, 0644);
+module_param_named(rtt_init, tcp_westwood_init_rtt, int, 0644);
+
 /*
  * @tcp_westwood_create
  * This function initializes fields used in TCP Westwood+,
