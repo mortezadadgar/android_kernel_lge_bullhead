@@ -87,7 +87,7 @@ enum sps_bam_type bam_types[] = {SPS_BAM_LEGACY, SPS_BAM_NDP, SPS_BAM_NDP_4K};
 
 static void sps_device_de_init(void);
 
-#ifdef CONFIG_DEBUG_FS
+#if 0
 u8 debugfs_record_enabled;
 u8 logging_option;
 u8 debug_level_option;
@@ -667,7 +667,6 @@ static void sps_debugfs_exit(void)
 	kfree(debugfs_buf);
 	debugfs_buf = NULL;
 }
-#endif
 
 /* Get the debug info of BAM registers and descriptor FIFOs */
 int sps_get_bam_debug_info(unsigned long dev, u32 option, u32 para,
@@ -893,6 +892,7 @@ int sps_get_bam_debug_info(unsigned long dev, u32 option, u32 para,
 	return res;
 }
 EXPORT_SYMBOL(sps_get_bam_debug_info);
+#endif
 
 /**
  * Initialize SPS device
@@ -2833,7 +2833,7 @@ static int __init sps_init(void)
 {
 	int ret;
 
-#ifdef CONFIG_DEBUG_FS
+#if 0
 	sps_debugfs_init();
 #endif
 
@@ -2865,7 +2865,7 @@ static void __exit sps_exit(void)
 		sps = NULL;
 	}
 
-#ifdef CONFIG_DEBUG_FS
+#if 0
 	sps_debugfs_exit();
 #endif
 }

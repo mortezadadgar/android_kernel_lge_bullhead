@@ -1339,8 +1339,16 @@ int sps_get_unused_desc_num(struct sps_pipe *h, u32 *desc_num);
  * @return 0 on success, negative value on error
  *
  */
+#if 0
 int sps_get_bam_debug_info(unsigned long dev, u32 option, u32 para,
 		u32 tb_sel, u32 desc_sel);
+#else
+static inline int sps_get_bam_debug_info(unsigned long dev, u32 option,
+		u32 para, u32 tb_sel, u32 desc_sel)
+{
+	return -EPERM;
+}
+#endif
 
 /**
  * Vote for or relinquish BAM DMA clock
@@ -1548,12 +1556,6 @@ static inline int sps_setup_bam2bam_fifo(struct sps_mem_buffer *mem_buffer,
 }
 
 static inline int sps_get_unused_desc_num(struct sps_pipe *h, u32 *desc_num)
-{
-	return -EPERM;
-}
-
-static inline int sps_get_bam_debug_info(unsigned long dev, u32 option,
-		u32 para, u32 tb_sel, u32 desc_sel)
 {
 	return -EPERM;
 }

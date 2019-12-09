@@ -55,7 +55,7 @@ extern bool enhd_pipe;
 extern bool imem;
 extern enum sps_bam_type bam_type;
 
-#ifdef CONFIG_DEBUG_FS
+#if 0
 extern u8 debugfs_record_enabled;
 extern u8 logging_option;
 extern u8 debug_level_option;
@@ -186,7 +186,7 @@ enum sps_bam_type {
 	SPS_BAM_NDP_4K
 };
 
-#ifdef CONFIG_DEBUG_FS
+#if 0
 /* record debug info for debugfs */
 void sps_debugfs_record(const char *);
 #endif
