@@ -656,10 +656,10 @@ static ssize_t wakeup_enable_set(struct device *dev,
 {
 	struct fpc1020_data *fpc1020 = dev_get_drvdata(dev);
 
-	if (!strncmp(buf, "enable", strlen("enable"))) {
+	if (!memcmp(buf, "enable", sizeof("enable"))) {
 		fpc1020->wakeup_enabled = true;
 		smp_wmb();
-	} else if (!strncmp(buf, "disable", strlen("disable"))) {
+	} else if (!memcmp(buf, "disable", sizeof("disable"))) {
 		fpc1020->wakeup_enabled = false;
 		smp_wmb();
 	} else {
