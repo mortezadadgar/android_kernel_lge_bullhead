@@ -1120,7 +1120,7 @@ static int synaptics_rmi4_set_page(struct synaptics_rmi4_data *rmi4_data,
 		buf[1] = page;
 		for (retry = 0; retry < SYN_I2C_RETRY_TIMES; retry++) {
 			retval = i2c_master_send(i2c, buf, PAGE_SELECT_LEN);
-			if (retval != PAGE_SELECT_LEN) {
+			if (unlikely(retval != PAGE_SELECT_LEN)) {
 				dev_err(&i2c->dev,
 						"%s: I2C retry %d\n",
 						__func__, retry + 1);
@@ -1171,11 +1171,11 @@ static inline int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 	mutex_lock(&(rmi4_data->rmi4_io_ctrl_mutex));
 
 	retval = synaptics_rmi4_set_page(rmi4_data, addr);
-	if (retval != PAGE_SELECT_LEN)
+	if (unlikely(retval != PAGE_SELECT_LEN))
 		goto exit;
 
 	for (retry = 0; retry < SYN_I2C_RETRY_TIMES; retry++) {
-		if (i2c_transfer(rmi4_data->i2c_client->adapter, msg, 2) == 2) {
+		if (likely(i2c_transfer(rmi4_data->i2c_client->adapter, msg, 2) == 2)) {
 			retval = length;
 			break;
 		}
@@ -1185,7 +1185,7 @@ static inline int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 		msleep(20);
 	}
 
-	if (retry == SYN_I2C_RETRY_TIMES) {
+	if (unlikely(retry == SYN_I2C_RETRY_TIMES)) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: I2C read over retry limit\n",
 				__func__);
@@ -1227,7 +1227,7 @@ static inline int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data
 	mutex_lock(&(rmi4_data->rmi4_io_ctrl_mutex));
 
 	retval = synaptics_rmi4_set_page(rmi4_data, addr);
-	if (retval != PAGE_SELECT_LEN)
+	if (unlikely(retval != PAGE_SELECT_LEN))
 		goto exit;
 
 	msg[0].addr = rmi4_data->i2c_client->addr;
@@ -1239,7 +1239,7 @@ static inline int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data
 	memcpy(&buf[1], &data[0], length);
 
 	for (retry = 0; retry < SYN_I2C_RETRY_TIMES; retry++) {
-		if (i2c_transfer(rmi4_data->i2c_client->adapter, msg, 1) == 1) {
+		if (likely(i2c_transfer(rmi4_data->i2c_client->adapter, msg, 1) == 1)) {
 			retval = length;
 			break;
 		}
@@ -1249,7 +1249,7 @@ static inline int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data
 		msleep(20);
 	}
 
-	if (retry == SYN_I2C_RETRY_TIMES) {
+	if (unlikely(retry == SYN_I2C_RETRY_TIMES)) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: I2C write over retry limit\n",
 				__func__);
@@ -1721,17 +1721,17 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 			rmi4_data->f01_data_base_addr,
 			device_status.data,
 			sizeof(device_status.data));
-	if (retval < 0)
+	if (unlikely(retval < 0))
 		return retval;
 
-	if ((device_status.status_code & STATUS_DEVICE_FAILURE)
+	if (unlikely(device_status.status_code & STATUS_DEVICE_FAILURE)
 						== STATUS_DEVICE_FAILURE) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"ESD damage occurred. Reset Touch IC\n");
 		return -EIO;
 	}
 
-	if (device_status.unconfigured) {
+	if (unlikely(device_status.unconfigured)) {
 		dev_err(&rmi4_data->i2c_client->dev,
 			"Touch IC resetted internally. Reconfigure...\n");
 		return -EIO;
@@ -1745,10 +1745,11 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 			rmi4_data->f01_data_base_addr + 1,
 			intr,
 			rmi4_data->num_of_intr_regs);
-	if (retval < 0)
+	if (unlikely(retval < 0))
 		return retval;
+
 	/* Checking ESD damage */
-	if (intr[0] & INTERRUPT_MASK_FLASH) {
+	if (unlikely(intr[0] & INTERRUPT_MASK_FLASH)) {
 		dev_err(&rmi4_data->i2c_client->dev,"Impossible interrupt\n");
 		return -EIO;
 	}
