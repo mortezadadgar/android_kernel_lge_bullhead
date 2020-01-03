@@ -234,8 +234,8 @@ static void rcu_momentary_dyntick_idle(void)
 	 * Yes, we can lose flag-setting operations.  This is OK, because
 	 * the flag will be set again after some delay.
 	 */
-	resched_mask = raw_cpu_read(rcu_sched_qs_mask);
-	raw_cpu_write(rcu_sched_qs_mask, 0);
+	resched_mask = __this_cpu_read(rcu_sched_qs_mask);
+	__this_cpu_write(rcu_sched_qs_mask, 0);
 
 	/* Find the flavor that needs a quiescent state. */
 	for_each_rcu_flavor(rsp) {
@@ -272,7 +272,7 @@ void rcu_note_context_switch(int cpu)
 	trace_rcu_utilization("Start context switch");
 	rcu_sched_qs(cpu);
 	rcu_preempt_note_context_switch(cpu);
-	if (unlikely(raw_cpu_read(rcu_sched_qs_mask)))
+	if (unlikely(__this_cpu_read(rcu_sched_qs_mask)))
 		rcu_momentary_dyntick_idle();
 	trace_rcu_utilization("End context switch");
 }
