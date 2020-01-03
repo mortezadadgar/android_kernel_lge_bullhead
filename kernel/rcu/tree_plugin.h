@@ -2075,28 +2075,18 @@ static void __call_rcu_nocb_enqueue(struct rcu_data *rdp,
 		return;
 	len = atomic_long_read(&rdp->nocb_q_count);
 	if (old_rhpp == &rdp->nocb_head) {
-		if (!irqs_disabled_flags(flags)) {
+		if (!irqs_disabled_flags(flags))
 			/* ... if queue was empty ... */
 			wake_nocb_leader(rdp, false);
-			trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu,
-					    TPS("WakeEmpty"));
-		} else {
+		else
 			rdp->nocb_defer_wakeup = RCU_NOGP_WAKE;
-			trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu,
-					    TPS("WakeEmptyIsDeferred"));
-		}
 		rdp->qlen_last_fqs_check = 0;
 	} else if (len > rdp->qlen_last_fqs_check + qhimark) {
 		/* ... or if many callbacks queued. */
-		if (!irqs_disabled_flags(flags)) {
+		if (!irqs_disabled_flags(flags))
 			wake_nocb_leader(rdp, true);
-			trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu,
-					    TPS("WakeOvf"));
-		} else {
+		else
 			rdp->nocb_defer_wakeup = RCU_NOGP_WAKE_FORCE;
-			trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu,
-					    TPS("WakeOvfIsDeferred"));
-		}
 		rdp->qlen_last_fqs_check = LONG_MAX / 2;
 	}
 	return;
@@ -2205,7 +2195,6 @@ static void rcu_nocb_wait_gp(struct rcu_data *rdp)
  */
 static void nocb_leader_wait(struct rcu_data *my_rdp)
 {
-	bool firsttime = true;
 	bool gotcbs;
 	struct rcu_data *rdp;
 	struct rcu_head **tail;
@@ -2213,15 +2202,9 @@ static void nocb_leader_wait(struct rcu_data *my_rdp)
 wait_again:
 
 	/* Wait for callbacks to appear. */
-	if (!rcu_nocb_poll) {
-		trace_rcu_nocb_wake(my_rdp->rsp->name, my_rdp->cpu, "Sleep");
+	if (!rcu_nocb_poll)
 		wait_event_interruptible(my_rdp->nocb_wq,
 					 ACCESS_ONCE(my_rdp->nocb_leader_wake));
-		/* Memory barrier handled by smp_mb() calls below and repoll. */
-	} else if (firsttime) {
-		firsttime = false; /* Don't drown trace log with "Poll"! */
-		trace_rcu_nocb_wake(my_rdp->rsp->name, my_rdp->cpu, "Poll");
-	}
 
 	/*
 	 * Each pass through the following loop checks a follower for CBs.
@@ -2249,8 +2232,6 @@ wait_again:
 	 */
 	if (unlikely(!gotcbs)) {
 		if (!rcu_nocb_poll)
-			trace_rcu_nocb_wake(my_rdp->rsp->name, my_rdp->cpu,
-					    "WokeEmpty");
 		flush_signals(current);
 		schedule_timeout_interruptible(1);
 
@@ -2310,26 +2291,15 @@ wait_again:
  */
 static void nocb_follower_wait(struct rcu_data *rdp)
 {
-	bool firsttime = true;
-
 	for (;;) {
-		if (!rcu_nocb_poll) {
-			trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu,
-					    "FollowerSleep");
+		if (!rcu_nocb_poll)
 			wait_event_interruptible(rdp->nocb_wq,
 						 ACCESS_ONCE(rdp->nocb_follower_head));
-		} else if (firsttime) {
-			/* Don't drown trace log with "Poll"! */
-			firsttime = false;
-			trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu, "Poll");
-		}
 		if (smp_load_acquire(&rdp->nocb_follower_head)) {
 			/* ^^^ Ensure CB invocation follows _head test. */
 			return;
 		}
-		if (!rcu_nocb_poll)
-			trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu,
-					    "WokeEmpty");
+
 		flush_signals(current);
 		schedule_timeout_interruptible(1);
 	}
@@ -2360,7 +2330,6 @@ static int rcu_nocb_kthread(void *arg)
 		/* Pull the ready-to-invoke callbacks onto local list. */
 		list = ACCESS_ONCE(rdp->nocb_follower_head);
 		BUG_ON(!list);
-		trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu, "WokeNonEmpty");
 		ACCESS_ONCE(rdp->nocb_follower_head) = NULL;
 		tail = xchg(&rdp->nocb_follower_tail, &rdp->nocb_follower_head);
 		c = atomic_long_xchg(&rdp->nocb_follower_count, 0);
@@ -2412,7 +2381,6 @@ static void do_nocb_deferred_wakeup(struct rcu_data *rdp)
 	ndw = ACCESS_ONCE(rdp->nocb_defer_wakeup);
 	ACCESS_ONCE(rdp->nocb_defer_wakeup) = RCU_NOGP_WAKE_NOT;
 	wake_nocb_leader(rdp, ndw == RCU_NOGP_WAKE_FORCE);
-	trace_rcu_nocb_wake(rdp->rsp->name, rdp->cpu, TPS("DeferredWake"));
 }
 
 void __init rcu_init_nohz(void)
