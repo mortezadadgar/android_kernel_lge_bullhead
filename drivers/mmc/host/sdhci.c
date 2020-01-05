@@ -1605,20 +1605,9 @@ static int sdhci_disable(struct mmc_host *mmc)
 		host->pm_qos_index = host->power_policy;
 
 	sdhci_set_pmqos_req_type(host, false);
-	/*
-	 * In performance mode, release QoS vote after a timeout to
-	 * make sure back-to-back requests don't suffer from latencies
-	 * that are involved to wake CPU from low power modes in cases
-	 * where the CPU goes into low power mode as soon as QoS vote is
-	 * released.
-	 */
-	if (host->power_policy == SDHCI_POWER_SAVE_MODE)
-		pm_qos_update_request(&host->pm_qos_req_dma,
-			PM_QOS_DEFAULT_VALUE);
-	else
-		pm_qos_update_request_timeout(&host->pm_qos_req_dma,
-			host->cpu_dma_latency_us[host->pm_qos_index],
-			host->pm_qos_timeout_us);
+
+	pm_qos_update_request(&host->pm_qos_req_dma,
+					PM_QOS_DEFAULT_VALUE);
 
 platform_bus_vote:
 	if (host->ops->platform_bus_voting)
