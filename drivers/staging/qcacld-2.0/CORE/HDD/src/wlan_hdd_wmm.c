@@ -83,9 +83,6 @@
 #define WMM_TRACE_LEVEL_INFO_LOW   VOS_TRACE_LEVEL_INFO_LOW
 #endif
 
-
-#define WLAN_HDD_MAX_DSCP 0x3f
-
 // DHCP Port number
 #define DHCP_SOURCE_PORT 0x4400
 #define DHCP_DESTINATION_PORT 0x4300
@@ -1516,7 +1513,7 @@ VOS_STATUS hdd_wmm_init ( hdd_adapter_t *pAdapter )
     * DSCP to User Priority Lookup Table
     * By default use the 3 Precedence bits of DSCP as the User Priority
     */
-   for (dscp = 0; dscp <= WLAN_HDD_MAX_DSCP; dscp++) {
+   for (dscp = 0; dscp <= WLAN_MAX_DSCP; dscp++) {
       hddWmmDscpToUpMap[dscp] = dscp >> 3;
    }
 
