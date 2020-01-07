@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1382,7 +1382,7 @@ struct hdd_adapter_s
     v_BOOL_t offloads_configured;
 
     /* DSCP to UP QoS Mapping */
-    sme_QosWmmUpType hddWmmDscpToUpMap[WLAN_HDD_MAX_DSCP+1];
+    sme_QosWmmUpType hddWmmDscpToUpMap[WLAN_MAX_DSCP+1];
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
    v_BOOL_t isLinkLayerStatsSet;
