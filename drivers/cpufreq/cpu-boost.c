@@ -328,7 +328,7 @@ static int cpu_boost_init(void)
 		pr_err("cpu-boost: Failed to init kworker!\n");
 		return -EFAULT;
 
-	sched_setscheduler(cpu_boost_worker_thread, SCHED_FIFO, &param);
+	ret = sched_setscheduler(cpu_boost_worker_thread, SCHED_FIFO, &param);
 	if (ret)
 		pr_err("cpu-boost: Failed to set SCHED_FIFO!\n");
 
