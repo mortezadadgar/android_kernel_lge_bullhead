@@ -923,7 +923,7 @@ static int __wlan_hdd_cfg80211_ocb_set_config(struct wiphy *wiphy,
 	}
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_OCB_SET_CONFIG_MAX,
+	if (wlan_cfg80211_nla_parse(tb, QCA_WLAN_VENDOR_ATTR_OCB_SET_CONFIG_MAX,
 			data,
 			data_len, qca_wlan_vendor_ocb_set_config_policy)) {
 		hddLog(LOGE, FL("Invalid ATTR"));
@@ -1143,7 +1143,8 @@ static int __wlan_hdd_cfg80211_ocb_set_utc_time(struct wiphy *wiphy,
 	}
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_OCB_SET_UTC_TIME_MAX,
+	if (wlan_cfg80211_nla_parse(tb,
+		      QCA_WLAN_VENDOR_ATTR_OCB_SET_UTC_TIME_MAX,
 		      data,
 		      data_len, qca_wlan_vendor_ocb_set_utc_time_policy)) {
 		hddLog(LOGE, FL("Invalid ATTR"));
@@ -1267,7 +1268,8 @@ __wlan_hdd_cfg80211_ocb_start_timing_advert(struct wiphy *wiphy,
 	timing_advert->vdev_id = adapter->sessionId;
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_OCB_START_TIMING_ADVERT_MAX,
+	if (wlan_cfg80211_nla_parse(tb,
+		      QCA_WLAN_VENDOR_ATTR_OCB_START_TIMING_ADVERT_MAX,
 		      data,
 		      data_len,
 		      qca_wlan_vendor_ocb_start_timing_advert_policy)) {
@@ -1389,7 +1391,8 @@ __wlan_hdd_cfg80211_ocb_stop_timing_advert(struct wiphy *wiphy,
 	timing_advert->vdev_id = adapter->sessionId;
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_OCB_STOP_TIMING_ADVERT_MAX,
+	if (wlan_cfg80211_nla_parse(tb,
+		      QCA_WLAN_VENDOR_ATTR_OCB_STOP_TIMING_ADVERT_MAX,
 		      data,
 		      data_len,
 		      qca_wlan_vendor_ocb_stop_timing_advert_policy)) {
@@ -1752,7 +1755,7 @@ static int __wlan_hdd_cfg80211_dcc_get_stats(struct wiphy *wiphy,
 	}
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_DCC_GET_STATS_MAX,
+	if (wlan_cfg80211_nla_parse(tb, QCA_WLAN_VENDOR_ATTR_DCC_GET_STATS_MAX,
 		      data,
 		      data_len,
 		      qca_wlan_vendor_dcc_get_stats)) {
@@ -1924,7 +1927,8 @@ static int __wlan_hdd_cfg80211_dcc_clear_stats(struct wiphy *wiphy,
 	}
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_DCC_CLEAR_STATS_MAX,
+	if (wlan_cfg80211_nla_parse(tb,
+		      QCA_WLAN_VENDOR_ATTR_DCC_CLEAR_STATS_MAX,
 		      data,
 		      data_len,
 		      qca_wlan_vendor_dcc_clear_stats)) {
@@ -2057,7 +2061,7 @@ static int __wlan_hdd_cfg80211_dcc_update_ndl(struct wiphy *wiphy,
 	}
 
 	/* Parse the netlink message */
-	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_DCC_UPDATE_NDL_MAX,
+	if (wlan_cfg80211_nla_parse(tb, QCA_WLAN_VENDOR_ATTR_DCC_UPDATE_NDL_MAX,
 		      data,
 		      data_len,
 		      qca_wlan_vendor_dcc_update_ndl)) {
