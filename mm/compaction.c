@@ -16,7 +16,6 @@
 #include <linux/sysfs.h>
 #include <linux/balloon_compaction.h>
 #include <linux/page-isolation.h>
-#include <linux/fb.h>
 #include "internal.h"
 
 #ifdef CONFIG_COMPACTION
@@ -1136,33 +1135,6 @@ unsigned long try_to_compact_pages(struct zonelist *zonelist,
 	return rc;
 }
 
-static void compact_nodes(void);
-
-static int fb_notifier_callback(struct notifier_block *nb,
-				unsigned long action, void *data)
-{
-	struct fb_event *evdata = data;
-	int *blank = evdata->data;
-
-	/* Parse framebuffer events as soon as they occur */
-	if (action != FB_EARLY_EVENT_BLANK)
-		return NOTIFY_OK;
-
-	switch (*blank) {
-		case FB_BLANK_POWERDOWN:
-			compact_nodes();
-			break;
-		default:
-			break;
-	}
-
-	return NOTIFY_OK;
-}
-
-static struct notifier_block compact_notifier_block = {
-	.notifier_call = fb_notifier_callback,
-	.priority = -1,
-};
 
 /* Compact all zones within a node */
 static void __compact_pgdat(pg_data_t *pgdat, struct compact_control *cc)
@@ -1283,10 +1255,4 @@ void compaction_unregister_node(struct node *node)
 }
 #endif /* CONFIG_SYSFS && CONFIG_NUMA */
 
-static int  __init mem_compaction_init(void)
-{
-	fb_register_client(&compact_notifier_block);
-	return 0;
-}
-late_initcall(mem_compaction_init);
 #endif /* CONFIG_COMPACTION */
