@@ -75,17 +75,6 @@
 #include "binder_alloc.h"
 #include "binder_trace.h"
 
-/* Scheduler prio bits */
-#define MAX_NICE	19
-#define MIN_NICE	-20
-#define NICE_WIDTH	(MAX_NICE - MIN_NICE + 1)
-#define MAX_USER_RT_PRIO        100
-#define MAX_RT_PRIO             MAX_USER_RT_PRIO
-#define MAX_PRIO                (MAX_RT_PRIO + NICE_WIDTH)
-#define DEFAULT_PRIO    (MAX_RT_PRIO + NICE_WIDTH / 2)
-#define NICE_TO_PRIO(nice)      ((nice) + DEFAULT_PRIO)
-#define PRIO_TO_NICE(prio)      ((prio) - DEFAULT_PRIO)
-
 static HLIST_HEAD(binder_deferred_list);
 static DEFINE_MUTEX(binder_deferred_lock);
 
@@ -205,14 +194,6 @@ enum binder_stat_types {
 	BINDER_STAT_TRANSACTION_COMPLETE,
 	BINDER_STAT_COUNT
 };
-
-/*
- * Convert rlimit style value [1,40] to nice value [-20, 19].
- */
-static inline long rlimit_to_nice(long prio)
-{
-	return (MAX_NICE - prio + 1);
-}
 
 struct binder_stats {
 	atomic_t br[_IOC_NR(BR_FAILED_REPLY) + 1];
