@@ -319,18 +319,15 @@ static int cpu_boost_init(void)
 {
 	int cpu, ret;
 	struct cpu_sync *s;
-	struct sched_param param = { .sched_priority = 2 };
+	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 2 };
 
 	init_kthread_worker(&cpu_boost_worker);
 	cpu_boost_worker_thread = kthread_run(kthread_worker_fn,
 		&cpu_boost_worker, "cpu_boost_worker_thread");
 	if (IS_ERR(cpu_boost_worker_thread))
-		pr_err("cpu-boost: Failed to init kworker!\n");
 		return -EFAULT;
 
-	ret = sched_setscheduler(cpu_boost_worker_thread, SCHED_FIFO, &param);
-	if (ret)
-		pr_err("cpu-boost: Failed to set SCHED_FIFO!\n");
+	sched_setscheduler(cpu_boost_worker_thread, SCHED_FIFO, &param);
 
 	init_kthread_work(&input_boost_work, do_input_boost);
 	INIT_DELAYED_WORK(&input_boost_rem, do_input_boost_rem);
