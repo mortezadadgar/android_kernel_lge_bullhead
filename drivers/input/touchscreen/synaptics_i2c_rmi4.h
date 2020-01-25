@@ -41,6 +41,8 @@
 #include <linux/clk.h>
 #endif
 
+#include <linux/pm_qos.h>
+
 #define PDT_PROPS (0x00EF)
 #define PDT_START (0x00E9)
 #define PDT_END (0x000A)
@@ -291,6 +293,7 @@ struct synaptics_rmi4_data {
 	struct clk *iface_clk;
 #endif
 	ktime_t timestamp;
+	struct pm_qos_request pm_i2c_req;
 };
 
 enum exp_fn {

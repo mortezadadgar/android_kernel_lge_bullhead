@@ -1797,8 +1797,13 @@ static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 	if (IRQ_HANDLED == synaptics_filter_interrupt(data))
 		return IRQ_HANDLED;
 
+	/* prevent CPU from entering deep sleep */
+	pm_qos_update_request(&rmi4_data->pm_i2c_req, 100);
+
 	if (synaptics_rmi4_sensor_report(rmi4_data) == -EIO)
 		queue_work(rmi4_data->det_workqueue, &rmi4_data->recovery_work);
+
+	pm_qos_update_request(&rmi4_data->pm_i2c_req, PM_QOS_DEFAULT_VALUE);
 
 	return IRQ_HANDLED;
 }
@@ -4060,6 +4065,11 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	synaptics_rmi4_set_configuration(rmi4_data);
 
 	rmi4_data->irq = gpio_to_irq(platform_data->irq_gpio);
+
+	rmi4_data->pm_i2c_req.type = PM_QOS_REQ_AFFINE_IRQ;
+	rmi4_data->pm_i2c_req.irq = 128;    /* i2c-msm-v2-irq */
+	pm_qos_add_request(&rmi4_data->pm_i2c_req, PM_QOS_CPU_DMA_LATENCY,
+			   PM_QOS_DEFAULT_VALUE);
 
 	retval = request_threaded_irq(rmi4_data->irq, NULL,
 		synaptics_rmi4_irq, platform_data->irq_flags,
