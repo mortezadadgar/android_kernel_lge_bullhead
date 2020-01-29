@@ -751,25 +751,11 @@ int reuse_swap_page(struct page *page)
 	count = page_mapcount(page);
 	if (count <= 1 && PageSwapCache(page)) {
 		count += page_swapcount(page);
-		if (count != 1)
-			goto out;
-		if (!PageWriteback(page)) {
+		if (count == 1 && !PageWriteback(page)) {
 			delete_from_swap_cache(page);
 			SetPageDirty(page);
-		} else {
-			swp_entry_t entry;
-			struct swap_info_struct *p;
-
-			entry.val = page_private(page);
-			p = swap_info_get(entry);
-			if (p->flags & SWP_STABLE_WRITES) {
-				spin_unlock(&p->lock);
-				return false;
-			}
-			spin_unlock(&p->lock);
 		}
 	}
-out:
 	return count <= 1;
 }
 
@@ -2195,9 +2181,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
 		error = -ENOMEM;
 		goto bad_swap;
 	}
-
-	if (bdi_cap_stable_pages_required(mapping->backing_dev_info))
-		p->flags |= SWP_STABLE_WRITES;
 
 	error = swap_cgroup_swapon(p->type, maxpages);
 	if (error)
