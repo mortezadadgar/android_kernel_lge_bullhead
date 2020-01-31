@@ -3229,12 +3229,14 @@ skip_power_off:
 	return;
 }
 
-static void venus_hfi_process_msg_event_notify(
+static void print_sfr_message(
 	struct venus_hfi_device *device, void *packet)
 {
 	struct hfi_sfr_struct *vsfr = NULL;
 	struct hfi_msg_event_notify_packet *event_pkt;
 	struct vidc_hal_msg_pkt_hdr *msg_hdr;
+        u32 vsfr_size = 0;
+        void *p = NULL;
 
 	msg_hdr = (struct vidc_hal_msg_pkt_hdr *)packet;
 	event_pkt =
@@ -3255,13 +3257,11 @@ static void venus_hfi_process_msg_event_notify(
 		vsfr = (struct hfi_sfr_struct *)
 				device->sfr.align_virtual_addr;
 		if (vsfr) {
-			void *p = memchr(vsfr->rg_data, '\0',
-							vsfr->bufSize);
-			/* SFR isn't guaranteed to be NULL terminated
-			since SYS_ERROR indicates that Venus is in the
-			process of crashing.*/
+			vsfr_size = vsfr->bufSize - sizeof(u32);
+			p = memchr(vsfr->rg_data, '\0', vsfr_size);
+			/* SFR isn't guaranteed to be NULL terminated */
 			if (p == NULL)
-				vsfr->rg_data[vsfr->bufSize - 1] = '\0';
+				vsfr->rg_data[vsfr_size - 1] = '\0';
 			dprintk(VIDC_ERR, "SFR Message from FW : %s\n",
 				vsfr->rg_data);
 		}
@@ -3298,7 +3298,6 @@ static void venus_hfi_response_handler(struct venus_hfi_device *device)
 {
 	u8 packet[VIDC_IFACEQ_MED_PKT_SIZE];
 	u32 rc = 0;
-	struct hfi_sfr_struct *vsfr = NULL;
 
 	dprintk(VIDC_INFO, "#####venus_hfi_response_handler#####\n");
 	/* Process messages only if device is in valid state*/
@@ -3307,12 +3306,7 @@ static void venus_hfi_response_handler(struct venus_hfi_device *device)
 			VIDC_WRAPPER_INTR_CLEAR_A2HWD_BMSK)) {
 			dprintk(VIDC_ERR, "Received: Watchdog timeout %s\n",
 				__func__);
-			vsfr = (struct hfi_sfr_struct *)
-					device->sfr.align_virtual_addr;
-			if (vsfr)
-				dprintk(VIDC_ERR,
-					"SFR Message from FW : %s\n",
-						vsfr->rg_data);
+			print_sfr_message(device, (void *)packet);
 			__process_fatal_error(device);
 		}
 
@@ -3332,7 +3326,7 @@ static void venus_hfi_response_handler(struct venus_hfi_device *device)
 				(struct vidc_hal_msg_pkt_hdr *) packet,
 				&device->sess_head, &device->session_lock);
 			if (rc == HFI_MSG_EVENT_NOTIFY) {
-				venus_hfi_process_msg_event_notify(
+				print_sfr_message(
 					device, (void *)packet);
 			} else if (rc == HFI_MSG_SYS_RELEASE_RESOURCE) {
 				dprintk(VIDC_DBG,
