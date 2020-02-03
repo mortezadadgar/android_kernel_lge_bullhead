@@ -932,7 +932,7 @@ static void update_curr_rt(struct rq *rq)
 	if (curr->sched_class != &rt_sched_class)
 		return;
 
-	delta_exec = rq_clock_task(rq) - curr->se.exec_start;
+	delta_exec = rq->clock_task - curr->se.exec_start;
 	if (unlikely((s64)delta_exec <= 0))
 		return;
 
@@ -942,7 +942,7 @@ static void update_curr_rt(struct rq *rq)
 	curr->se.sum_exec_runtime += delta_exec;
 	account_group_exec_runtime(curr, delta_exec);
 
-	curr->se.exec_start = rq_clock_task(rq);
+	curr->se.exec_start = rq->clock_task;
 	cpuacct_charge(curr, delta_exec);
 
 	sched_rt_avg_update(rq, delta_exec);
@@ -1284,25 +1284,6 @@ static void yield_task_rt(struct rq *rq)
 #ifdef CONFIG_SMP
 static int find_lowest_rq(struct task_struct *task);
 
-static int cpumask_next_wrap(int n, const struct cpumask *mask, int start, int *wrapped)
-{
-	int next;
-
-again:
-	next = cpumask_next(n, mask);
-	if (*wrapped) {
-		if (next >= start)
-			return nr_cpu_ids;
-	} else {
-		if (next >= nr_cpu_ids) {
-			*wrapped = 1;
-			n = -1;
-			goto again;
-		}
-	}
-	return next;
-}
-
 static int
 select_task_rq_rt_hmp(struct task_struct *p, int sd_flag, int flags)
 {
@@ -1323,7 +1304,6 @@ static int
 select_task_rq_rt(struct task_struct *p, int sd_flag, int flags)
 {
 	struct task_struct *curr;
-	struct sched_domain *sd;
 	struct rq *rq;
 	int cpu;
 
@@ -1339,36 +1319,9 @@ select_task_rq_rt(struct task_struct *p, int sd_flag, int flags)
 	if (sd_flag != SD_BALANCE_WAKE && sd_flag != SD_BALANCE_FORK)
 		goto out;
 
-	if (idle_cpu(cpu))
-		goto out;
-
 	rq = cpu_rq(cpu);
 
 	rcu_read_lock();
-
-	/* Try and find a cache-sharing idle CPU if it exists */
-	sd = rcu_dereference(per_cpu(sd_llc, cpu));
-	if (sd) {
-		int i;
-		int wrapped = 0;
-		struct cpumask mask;
-
-		cpumask_empty(&mask);
-		cpumask_and(&mask, sched_domain_span(sd), tsk_cpus_allowed(p));
-		/*
-		 * Prevent RT tasks from piling to the same CPU by starting the
-		 * search from task_cpu(p) instead of -1. task_cpu(p) is !idle.
-		 */
-		for (i = cpu;
-		     i = cpumask_next_wrap(i, &mask, cpu, &wrapped),
-		     i < nr_cpu_ids; ) {
-			if (idle_cpu(i)) {
-				cpu = i;
-				goto unlock;
-			}
-		}
-	}
-
 	curr = ACCESS_ONCE(rq->curr); /* unlocked access */
 
 	/*
@@ -1407,8 +1360,6 @@ select_task_rq_rt(struct task_struct *p, int sd_flag, int flags)
 		    p->prio < cpu_rq(target)->rt.highest_prio.curr)
 			cpu = target;
 	}
-
-unlock:
 	rcu_read_unlock();
 
 out:
@@ -1513,7 +1464,7 @@ static struct task_struct *_pick_next_task_rt(struct rq *rq)
 		update_rq_clock(rq);
 	}
 	p = rt_task_of(rt_se);
-	p->se.exec_start = rq_clock_task(rq);
+	p->se.exec_start = rq->clock_task;
 
 	return p;
 }
@@ -2234,7 +2185,7 @@ static void set_curr_task_rt(struct rq *rq)
 {
 	struct task_struct *p = rq->curr;
 
-	p->se.exec_start = rq_clock_task(rq);
+	p->se.exec_start = rq->clock_task;
 
 	/* The running task is never eligible for pushing */
 	dequeue_pushable_task(rq, p);
