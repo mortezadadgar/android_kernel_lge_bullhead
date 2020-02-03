@@ -611,7 +611,7 @@ static int msm_ispif_config(struct ispif_device *ispif,
 
 		vfe_intf = params->entries[i].vfe_intf;
 		if (intftype >= RDI0)
-			pr_err("%s intftype %x, vfe_intf %d, csid %d\n", __func__,
+			pr_debug("%s intftype %x, vfe_intf %d, csid %d\n", __func__,
 				intftype, vfe_intf, params->entries[i].csid);
 
 		if ((intftype >= INTF_MAX) ||
@@ -639,7 +639,7 @@ static int msm_ispif_config(struct ispif_device *ispif,
 		cid_mask = msm_ispif_get_cids_mask_from_cfg(
 				&params->entries[i]);
 		if (intftype >= RDI0)
-			pr_err("%s: cid_mask %x\n", __func__, cid_mask);
+			pr_debug("%s: cid_mask %x\n", __func__, cid_mask);
 
 		msm_ispif_enable_intf_cids(ispif, intftype,
 			cid_mask, vfe_intf, 1);
@@ -725,7 +725,7 @@ static void msm_ispif_intf_cmd(struct ispif_device *ispif, uint32_t cmd_bits,
 		/* cmd for PIX0, PIX1, RDI0, RDI1 */
 		if (ispif->applied_intf_cmd[vfe_intf].intf_cmd != 0xFFFFFFFF) {
 			if (cmd_bits == ISPIF_INTF_CMD_ENABLE_FRAME_BOUNDARY)
-				pr_err("%s: vfe %d intf_cmd %x\n", __func__,
+				pr_debug("%s: vfe %d intf_cmd %x\n", __func__,
 					vfe_intf,
 					ispif->applied_intf_cmd[vfe_intf].
 					intf_cmd);

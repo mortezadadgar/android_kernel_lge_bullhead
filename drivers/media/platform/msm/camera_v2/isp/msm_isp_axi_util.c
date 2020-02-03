@@ -603,7 +603,7 @@ void msm_isp_check_for_output_error(struct vfe_device *vfe_dev,
 		}
 		if (stream_info->state == RESUMING &&
 			!stream_info->controllable_output) {
-			pr_err("%s: axi_updating_mask stream_id %x frame_id %d\n",
+			pr_debug("%s: axi_updating_mask stream_id %x frame_id %d\n",
 				__func__, stream_idx, vfe_dev->axi_data.
 				src_info[SRC_TO_INTF(stream_info->stream_src)]
 				.frame_id);
@@ -2660,7 +2660,7 @@ void msm_isp_process_axi_irq(struct vfe_device *vfe_dev,
 			stream_info = &axi_data->stream_info[stream_idx];
 
 			if (stream_info->state == INACTIVE) {
-				pr_warn("%s: Warning! Stream already inactive. Drop irq handling\n",
+				pr_debug("%s: Warning! Stream already inactive. Drop irq handling\n",
 					__func__);
 				continue;
 			}
@@ -2717,7 +2717,7 @@ void msm_isp_process_axi_irq(struct vfe_device *vfe_dev,
 			stream_info = &axi_data->stream_info[stream_idx];
 
 			if (stream_info->state == INACTIVE) {
-				pr_warn("%s: Warning! Stream already inactive. Drop irq handling\n",
+				pr_debug("%s: Warning! Stream already inactive. Drop irq handling\n",
 					__func__);
 				continue;
 			}
