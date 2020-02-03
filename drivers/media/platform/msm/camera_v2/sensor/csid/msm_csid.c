@@ -276,7 +276,7 @@ static int msm_csid_init(struct csid_device *csid_dev, uint32_t *csid_version)
 		return rc;
 	}
 
-	pr_info("%s: CSID_VERSION = 0x%x\n", __func__,
+	pr_debug("%s: CSID_VERSION = 0x%x\n", __func__,
 		csid_dev->ctrl_reg->csid_reg.csid_version);
 	/* power up */
 	if (csid_dev->ctrl_reg->csid_reg.csid_version < CSID_VERSION_V22) {
