@@ -32,6 +32,8 @@
 
 static inline int is_dma_buf_file(struct file *);
 
+static struct kmem_cache *kmem_dmabuf;
+
 struct dma_buf_list {
 	struct list_head head;
 	struct mutex lock;
@@ -123,7 +125,7 @@ struct dma_buf *dma_buf_export_named(void *priv, const struct dma_buf_ops *ops,
 		return ERR_PTR(-EINVAL);
 	}
 
-	dmabuf = kzalloc(sizeof(struct dma_buf), GFP_KERNEL);
+	dmabuf = kmem_cache_zalloc(kmem_dmabuf, GFP_KERNEL);
 	if (dmabuf == NULL)
 		return ERR_PTR(-ENOMEM);
 
@@ -133,7 +135,10 @@ struct dma_buf *dma_buf_export_named(void *priv, const struct dma_buf_ops *ops,
 	dmabuf->exp_name = exp_name;
 
 	file = anon_inode_getfile("dmabuf", &dma_buf_fops, dmabuf, flags);
-
+	if (IS_ERR(file)) {
+		kmem_cache_free(kmem_dmabuf, dmabuf);
+		return ERR_CAST(file);
+	}
 	dmabuf->file = file;
 
 	mutex_init(&dmabuf->lock);
@@ -699,6 +704,7 @@ static int __init dma_buf_init(void)
 {
 	mutex_init(&db_list.lock);
 	INIT_LIST_HEAD(&db_list.head);
+	kmem_dmabuf = KMEM_CACHE(dma_buf, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
 	dma_buf_init_debugfs();
 	return 0;
 }
