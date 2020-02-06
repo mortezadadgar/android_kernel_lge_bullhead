@@ -25,6 +25,8 @@
 static void kgsl_sync_timeline_signal(struct sync_timeline *timeline,
 	unsigned int timestamp);
 
+static struct kmem_cache *kmem_fence_event;
+
 static struct sync_pt *kgsl_sync_pt_create(struct sync_timeline *timeline,
 	struct kgsl_context *context, unsigned int timestamp)
 {
@@ -107,7 +109,7 @@ static int _add_fence_event(struct kgsl_device *device,
 	struct kgsl_fence_event_priv *event;
 	int ret;
 
-	event = kmalloc(sizeof(*event), GFP_KERNEL);
+	event = kmem_cache_alloc(kmem_fence_event, GFP_KERNEL);
 	if (event == NULL)
 		return -ENOMEM;
 
@@ -127,7 +129,7 @@ static int _add_fence_event(struct kgsl_device *device,
 
 	if (ret) {
 		kgsl_context_put(context);
-		kfree(event);
+		kmem_cache_free(kmem_fence_event, event);
 	}
 
 	return ret;
@@ -641,5 +643,12 @@ out:
 		sync_fence_put(fence);
 	kgsl_syncsource_put(syncsource);
 	return ret;
+}
+
+void __init kgsl_sync_init(void)
+{
+	kmem_fence_event = KMEM_CACHE(kgsl_fence_event_priv, SLAB_HWCACHE_ALIGN);
+	if (kmem_fence_event == NULL)
+		pr_err("failed to create kmem_fence_event\n");
 }
 #endif
