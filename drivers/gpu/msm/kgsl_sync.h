@@ -104,6 +104,8 @@ long kgsl_ioctl_syncsource_signal_fence(struct kgsl_device_private *dev_priv,
 
 void kgsl_syncsource_put(struct kgsl_syncsource *syncsource);
 
+void __init kgsl_sync_init(void);
+
 #else
 static inline long
 kgsl_ioctl_syncsource_create(struct kgsl_device_private *dev_priv,
