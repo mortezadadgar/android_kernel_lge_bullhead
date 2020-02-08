@@ -4065,8 +4065,7 @@ static int __handle_overlay_prepare(struct msm_fb_data_type *mfd,
 	struct mdss_data_type *mdata = mfd_to_mdata(mfd);
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 
-	static struct mdp_overlay sorted_ovs[OVERLAY_MAX]
-		____cacheline_aligned_in_smp;
+	static struct mdp_overlay sorted_ovs[OVERLAY_MAX];
 	struct mdp_overlay *req, *prev_req;
 
 	struct mdss_mdp_pipe *pipe, *left_blend_pipe;
@@ -4196,8 +4195,7 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 {
 	struct mdp_overlay_list ovlist;
 	struct mdp_overlay *req_list[OVERLAY_MAX];
-	static struct mdp_overlay overlays[OVERLAY_MAX]
-		____cacheline_aligned_in_smp;
+	static struct mdp_overlay overlays[OVERLAY_MAX];
 
 	int i, ret;
 
