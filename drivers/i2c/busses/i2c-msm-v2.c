@@ -1737,6 +1737,9 @@ static irqreturn_t i2c_msm_qup_isr(int irq, void *devid)
 
 		if (i2c_status & QUP_BUS_ERROR)
 			ctrl->xfer.err = I2C_MSM_ERR_BUS_ERR;
+
+		if (i2c_status & QUP_PACKET_NACKED)
+			ctrl->xfer.err = I2C_MSM_ERR_NACK;
 	}
 
 	/* check for FIFO over/under runs error */
