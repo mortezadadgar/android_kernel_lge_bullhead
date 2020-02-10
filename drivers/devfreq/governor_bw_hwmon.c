@@ -865,23 +865,26 @@ int register_bw_hwmon(struct device *dev, struct bw_hwmon *hwmon)
 		node->attr_grp = &dev_attr_group;
 	}
 
-	node->guard_band_mbps = 100;
+	node->guard_band_mbps = 0;
 	node->decay_rate = 90;
 	node->io_percent = 16;
 	node->low_power_ceil_mbps = 0;
 	node->low_power_io_percent = 16;
-	node->low_power_delay = 60;
+	node->low_power_delay = 40;
 	node->bw_step = 190;
-	node->sample_ms = 50;
-	node->up_scale = 0;
+	node->sample_ms = 4;
+	node->up_scale = 250;
 	node->up_thres = 10;
 	node->down_thres = 0;
 	node->down_count = 3;
-	node->hist_memory = 0;
+	node->hist_memory = 20;
 	node->hyst_trigger_count = 3;
-	node->hyst_length = 0;
-	node->idle_mbps = 400;
-	node->mbps_zones[0] = 0;
+	node->hyst_length = 10;
+	node->idle_mbps = 800;
+	node->mbps_zones[0] = 1525;
+	node->mbps_zones[1] = 3509;
+	node->mbps_zones[2] = 5928;
+	node->mbps_zones[3] = 7102;
 	node->hw = hwmon;
 
 	mutex_lock(&list_lock);
