@@ -776,6 +776,7 @@ typedef struct pglist_data {
 					     range, including holes */
 	int node_id;
 	nodemask_t reclaim_nodes;	/* Nodes allowed to reclaim from */
+	atomic_t kswapd_waiters;
 	wait_queue_head_t kswapd_wait;
 	wait_queue_head_t pfmemalloc_wait;
 	struct task_struct *kswapd;	/* Protected by lock_memory_hotplug() */
