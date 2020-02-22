@@ -403,68 +403,6 @@ static struct ion_heap_ops system_heap_ops = {
 	.shrink = ion_system_heap_shrink,
 };
 
-static int ion_system_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
-				      void *unused)
-{
-
-	struct ion_system_heap *sys_heap = container_of(heap,
-							struct ion_system_heap,
-							heap);
-	bool use_seq = s != NULL;
-	unsigned long uncached_total = 0;
-	unsigned long cached_total = 0;
-
-	int i;
-	for (i = 0; i < num_orders; i++) {
-		struct ion_page_pool *pool = sys_heap->uncached_pools[i];
-		if (use_seq) {
-			seq_printf(s,
-				"%d order %u highmem pages in uncached pool = %lu total\n",
-				pool->high_count, pool->order,
-				(1 << pool->order) * PAGE_SIZE *
-					pool->high_count);
-			seq_printf(s,
-				"%d order %u lowmem pages in uncached pool = %lu total\n",
-				pool->low_count, pool->order,
-				(1 << pool->order) * PAGE_SIZE *
-					pool->low_count);
-		} else {
-			uncached_total += (1 << pool->order) * PAGE_SIZE *
-						pool->high_count;
-			uncached_total += (1 << pool->order) * PAGE_SIZE *
-						pool->low_count;
-		}
-
-	}
-
-	for (i = 0; i < num_orders; i++) {
-		struct ion_page_pool *pool = sys_heap->cached_pools[i];
-		if (use_seq) {
-			seq_printf(s,
-				"%d order %u highmem pages in cached pool = %lu total\n",
-				pool->high_count, pool->order,
-				(1 << pool->order) * PAGE_SIZE * pool->high_count);
-			seq_printf(s,
-				"%d order %u lowmem pages in cached pool = %lu total\n",
-				pool->low_count, pool->order,
-				(1 << pool->order) * PAGE_SIZE *
-					pool->low_count);
-		} else {
-			cached_total += (1 << pool->order) * PAGE_SIZE *
-						pool->high_count;
-			cached_total += (1 << pool->order) * PAGE_SIZE *
-						pool->low_count;
-		}
-	}
-
-	if (!use_seq)
-		pr_info("uncached pool total = %lu cached pool total %lu\n",
-				uncached_total, cached_total);
-
-	return 0;
-}
-
-
 static void ion_system_heap_destroy_pools(struct ion_page_pool **pools)
 {
 	int i;
@@ -533,7 +471,6 @@ struct ion_heap *ion_system_heap_create(struct ion_platform_heap *unused)
 	if (ion_system_heap_create_pools(heap->cached_pools))
 		goto err_create_cached_pools;
 
-	heap->heap.debug_show = ion_system_heap_debug_show;
 	return &heap->heap;
 
 err_create_cached_pools:
@@ -675,4 +612,3 @@ void ion_system_contig_heap_destroy(struct ion_heap *heap)
 {
 	kfree(heap);
 }
-
