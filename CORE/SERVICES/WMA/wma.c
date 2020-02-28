@@ -20632,10 +20632,10 @@ static void wma_set_max_tx_power(WMA_HANDLE handle,
 		return;
 	}
 
-	if (wma_handle->interfaces[vdev_id].max_tx_power == tx_pwr_params->power) {
-		ret = 0;
-		goto end;
-	}
+	WMA_LOGE("MAX TX pwr %d; setting power %d",
+		 wma_handle->interfaces[vdev_id].max_tx_power,
+		 tx_pwr_params->power);
+
 	prev_max_power = wma_handle->interfaces[vdev_id].max_tx_power;
 	wma_handle->interfaces[vdev_id].max_tx_power = tx_pwr_params->power;
 	if (wma_handle->interfaces[vdev_id].max_tx_power == 0) {
