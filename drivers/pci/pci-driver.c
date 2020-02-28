@@ -1001,9 +1001,6 @@ static int pci_pm_runtime_suspend(struct device *dev)
 	pci_dev->state_saved = false;
 	pci_dev->no_d3cold = false;
 	error = pm->runtime_suspend(dev);
-	suspend_report_result(pm->runtime_suspend, error);
-	log_suspend_abort_reason("%s(): %pF returns %d\n", __func__,
-				 pm->runtime_suspend, error);
 	if (error)
 		return error;
 	if (!pci_dev->d3cold_allowed)
