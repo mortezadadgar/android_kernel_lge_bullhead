@@ -1197,10 +1197,8 @@ static int __hif_pci_runtime_suspend(struct pci_dev *pdev)
 	}
 
 	ret = __hif_pci_suspend(pdev, state, true);
-	if (ret) {
-		pr_err("%s: pci_suspend failed: %d\n", __func__, ret);
+	if (ret)
 		goto suspend_fail;
-	}
 
 	ret = vos_auto_suspend();
 
