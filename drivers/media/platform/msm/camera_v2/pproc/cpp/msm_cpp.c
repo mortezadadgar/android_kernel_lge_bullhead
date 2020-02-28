@@ -2594,7 +2594,7 @@ STREAM_BUFF_END:
 			buff_queue_info->stream_id);
 		if (cpp_dev->stream_cnt > 0) {
 			cpp_dev->stream_cnt--;
-			pr_info("stream_cnt:%d\n", cpp_dev->stream_cnt);
+			pr_debug("stream_cnt:%d\n", cpp_dev->stream_cnt);
 			if (cpp_dev->stream_cnt == 0) {
 				if (cpp_dev->bus_master_flag)
 					rc = msm_cpp_update_bandwidth(cpp_dev,
