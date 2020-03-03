@@ -1876,7 +1876,8 @@ static int zs_register_shrinker(struct zs_pool *pool)
 	pool->shrinker.batch = 0;
 	pool->shrinker.seeks = DEFAULT_SEEKS;
 
-	return register_shrinker(&pool->shrinker);
+	register_shrinker(&pool->shrinker);
+	return 0;
 }
 
 /**
