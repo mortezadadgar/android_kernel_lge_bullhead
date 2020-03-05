@@ -3869,7 +3869,7 @@ long kgsl_ioctl_helper(struct file *filep, unsigned int cmd,
 	unsigned int nr;
 	kgsl_ioctl_func_t func;
 	int ret;
-	char ustack[64];
+	char ustack[72];
 	void *uptr = ustack;
 
 	BUG_ON(dev_priv == NULL);
