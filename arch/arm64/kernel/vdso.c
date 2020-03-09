@@ -18,13 +18,12 @@
  * Author: Will Deacon <will.deacon@arm.com>
  */
 
-#include <linux/cache.h>
+#include <linux/kernel.h>
 #include <linux/clocksource.h>
 #include <linux/elf.h>
 #include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/gfp.h>
-#include <linux/kernel.h>
 #include <linux/mm.h>
 #include <linux/sched.h>
 #include <linux/signal.h>
@@ -38,7 +37,7 @@
 #include <asm/vdso_datapage.h>
 
 extern char vdso_start, vdso_end;
-static unsigned long vdso_pages __ro_after_init;
+static unsigned long vdso_pages;
 static struct page **vdso_pagelist;
 
 /*
@@ -54,7 +53,7 @@ struct vdso_data *vdso_data = &vdso_data_store.data;
 /*
  * Create and map the vectors page for AArch32 tasks.
  */
-static struct page *vectors_page[1] __ro_after_init;
+static struct page *vectors_page[1];
 
 static int alloc_vectors_page(void)
 {
