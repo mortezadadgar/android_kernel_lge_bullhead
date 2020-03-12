@@ -146,7 +146,7 @@ static u32 aes_sub(u32 input)
 	return ret;
 }
 
-int ce_aes_expandkey(struct crypto_aes_ctx *ctx, const u8 *in_key,
+int __visible ce_aes_expandkey(struct crypto_aes_ctx *ctx, const u8 *in_key,
 		     unsigned int key_len)
 {
 	/*
@@ -219,7 +219,7 @@ int ce_aes_expandkey(struct crypto_aes_ctx *ctx, const u8 *in_key,
 }
 EXPORT_SYMBOL(ce_aes_expandkey);
 
-int ce_aes_setkey(struct crypto_tfm *tfm, const u8 *in_key,
+int __visible ce_aes_setkey(struct crypto_tfm *tfm, const u8 *in_key,
 		  unsigned int key_len)
 {
 	struct crypto_aes_ctx *ctx = crypto_tfm_ctx(tfm);
