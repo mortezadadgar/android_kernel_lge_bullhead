@@ -67,40 +67,29 @@ static bool cfg80211_is_all_countryie_ignore(void)
 	struct wireless_dev *wdev;
 	bool is_all_countryie_ignore = true;
 
-	mutex_lock(&cfg80211_mutex);
-
 	list_for_each_entry(rdev, &cfg80211_rdev_list, list) {
-		cfg80211_lock_rdev(rdev);
 		list_for_each_entry(wdev, &rdev->wdev_list, list) {
 			wdev_lock(wdev);
 			if (!(wdev->wiphy->country_ie_pref &
 				NL80211_COUNTRY_IE_IGNORE_CORE)) {
 				is_all_countryie_ignore = false;
 				wdev_unlock(wdev);
-				cfg80211_unlock_rdev(rdev);
 				goto out;
 			}
 			wdev_unlock(wdev);
 		}
-		cfg80211_unlock_rdev(rdev);
 	}
 out:
-	mutex_unlock(&cfg80211_mutex);
-
 	return is_all_countryie_ignore;
 }
 
 
 static void disconnect_work(struct work_struct *work)
 {
-	if (!cfg80211_is_all_idle())
-		return;
-
-	if (cfg80211_is_all_countryie_ignore())
-		return;
-
-	rtnl_lock();	
-	regulatory_hint_disconnect();
+	rtnl_lock();
+	if (cfg80211_is_all_idle() &&
+	    !cfg80211_is_all_countryie_ignore())
+		regulatory_hint_disconnect();
 	rtnl_unlock();
 }
 
