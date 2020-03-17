@@ -977,7 +977,7 @@ static struct page *alloc_zspage(struct size_class *class, gfp_t flags)
 		struct page *page;
 
 		page = alloc_page(flags);
-		if (!page)
+		if (unlikely(!page))
 			goto cleanup;
 
 		INIT_LIST_HEAD(&page->lru);
@@ -1400,7 +1400,7 @@ unsigned long zs_malloc(struct zs_pool *pool, size_t size)
 		return 0;
 
 	handle = alloc_handle(pool);
-	if (!handle)
+	if (unlikely(!handle))
 		return 0;
 
 	/* extra space in chunk to keep the handle */
