@@ -578,6 +578,9 @@ else
 KBUILD_CFLAGS	+= -O3
 endif
 
+# Tell gcc to never replace conditional load with a non-conditional one
+KBUILD_CFLAGS	+= $(call cc-option,-fno-allow-store-data-races)
+
 KBUILD_CFLAGS += $(call cc-disable-warning, format-truncation) \
 				 $(call cc-disable-warning, format-overflow) \
 				 $(call cc-disable-warning, int-in-bool-context) \
