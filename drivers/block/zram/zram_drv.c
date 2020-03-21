@@ -507,17 +507,15 @@ static bool page_same_filled(void *ptr, unsigned long *element)
 {
 	unsigned int pos;
 	unsigned long *page;
-	unsigned long val;
 
 	page = (unsigned long *)ptr;
-	val = page[0];
 
-	for (pos = 1; pos < PAGE_SIZE / sizeof(*page); pos++) {
-		if (val != page[pos])
+	for (pos = 0; pos < PAGE_SIZE / sizeof(*page) - 1; pos++) {
+		if (page[pos] != page[pos + 1])
 			return false;
 	}
 
-	*element = val;
+	*element = page[pos];
 
 	return true;
 }
@@ -731,7 +729,7 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 	 * double check.
 	 */
 	if (unlikely(meta->table[index].handle ||
-			zram_test_flag(meta, index, ZRAM_SAME)))
+			zram_test_flag(meta, index, ZRAM_ZERO)))
 		zram_free_page(zram, index);
 
 	ret = zcomp_compress(zram->comp, zstrm, uncmem, &clen);
@@ -1188,7 +1186,7 @@ ZRAM_ATTR_RO(failed_reads);
 ZRAM_ATTR_RO(failed_writes);
 ZRAM_ATTR_RO(invalid_io);
 ZRAM_ATTR_RO(notify_free);
-ZRAM_ATTR_RO(same_pages);
+ZRAM_ATTR_RO(zero_pages);
 ZRAM_ATTR_RO(compr_data_size);
 
 static struct attribute *zram_disk_attrs[] = {
@@ -1202,7 +1200,7 @@ static struct attribute *zram_disk_attrs[] = {
 	&dev_attr_compact.attr,
 	&dev_attr_invalid_io.attr,
 	&dev_attr_notify_free.attr,
-	&dev_attr_same_pages.attr,
+	&dev_attr_zero_pages.attr,
 	&dev_attr_orig_data_size.attr,
 	&dev_attr_compr_data_size.attr,
 	&dev_attr_mem_used_total.attr,
