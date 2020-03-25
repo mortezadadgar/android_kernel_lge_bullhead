@@ -19,7 +19,6 @@
 #include <linux/gfp.h>
 #include <linux/kernel.h>
 #include <linux/key.h>
-#include <linux/key.h>
 #include <linux/list.h>
 #include <linux/mempool.h>
 #include <linux/random.h>
@@ -344,7 +343,7 @@ int _ext4_fname_disk_to_usr(struct inode *inode,
 		memcpy(buf+4, &hinfo->minor_hash, 4);
 	} else
 		memset(buf, 0, 8);
-	memcpy(buf + 8, iname->name + iname->len - 16, 16);
+	memcpy(buf + 8, iname->name + ((iname->len - 17) & ~15), 16);
 	oname->name[0] = '_';
 	ret = digest_encode(buf, 24, oname->name+1);
 	oname->len = ret + 1;

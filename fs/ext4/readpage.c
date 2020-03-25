@@ -130,6 +130,12 @@ static void mpage_end_io(struct bio *bio, int err)
 	bio_put(bio);
 }
 
+static void
+ext4_submit_bio_read(struct bio *bio)
+{
+	submit_bio(READ, bio);
+}
+
 int ext4_mpage_readpages(struct address_space *mapping,
 			 struct list_head *pages, struct page *page,
 			 unsigned nr_pages)
@@ -271,7 +277,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 		 */
 		if (bio && (last_block_in_bio != blocks[0] - 1)) {
 		submit_and_realloc:
-			submit_bio(READ, bio);
+			ext4_submit_bio_read(bio);
 			bio = NULL;
 		}
 		if (bio == NULL) {
@@ -303,14 +309,14 @@ int ext4_mpage_readpages(struct address_space *mapping,
 		if (((map.m_flags & EXT4_MAP_BOUNDARY) &&
 		     (relative_block == map.m_len)) ||
 		    (first_hole != blocks_per_page)) {
-			submit_bio(READ, bio);
+			ext4_submit_bio_read(bio);
 			bio = NULL;
 		} else
 			last_block_in_bio = blocks[blocks_per_page - 1];
 		goto next_page;
 	confused:
 		if (bio) {
-			submit_bio(READ, bio);
+			ext4_submit_bio_read(bio);
 			bio = NULL;
 		}
 		if (!PageUptodate(page))
@@ -323,6 +329,6 @@ int ext4_mpage_readpages(struct address_space *mapping,
 	}
 	BUG_ON(pages && !list_empty(pages));
 	if (bio)
-		submit_bio(READ, bio);
+		ext4_submit_bio_read(bio);
 	return 0;
 }

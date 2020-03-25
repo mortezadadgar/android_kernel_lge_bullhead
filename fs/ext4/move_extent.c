@@ -269,10 +269,12 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
 	unsigned long blocksize = orig_inode->i_sb->s_blocksize;
 	unsigned int w_flags = 0;
 	unsigned int tmp_data_size, data_size, replaced_size;
-	int err2, jblocks, retries = 0;
+	int i, err2, jblocks, retries = 0;
 	int replaced_count = 0;
 	int from = data_offset_in_page << orig_inode->i_blkbits;
 	int blocks_per_page = PAGE_CACHE_SIZE >> orig_inode->i_blkbits;
+	struct super_block *sb = orig_inode->i_sb;
+	struct buffer_head *bh = NULL;
 
 	/*
 	 * It needs twice the amount of ordinary journal buffers because
@@ -386,8 +388,17 @@ data_copy:
 	}
 	/* Perform all necessary steps similar write_begin()/write_end()
 	 * but keeping in mind that i_size will not change */
-	*err = __block_write_begin(pagep[0], from, replaced_size,
-				   ext4_get_block);
+	if (!page_has_buffers(pagep[0]))
+		create_empty_buffers(pagep[0], 1 << orig_inode->i_blkbits, 0);
+	bh = page_buffers(pagep[0]);
+	for (i = 0; i < data_offset_in_page; i++)
+		bh = bh->b_this_page;
+	for (i = 0; i < block_len_in_page; i++) {
+		*err = ext4_get_block(orig_inode, orig_blk_offset + i, bh, 0);
+		if (*err < 0)
+			break;
+		bh = bh->b_this_page;
+	}
 	if (!*err)
 		*err = block_commit_write(pagep[0], from, from + replaced_size);
 
@@ -405,10 +416,13 @@ unlock_pages:
 	page_cache_release(pagep[1]);
 stop_journal:
 	ext4_journal_stop(handle);
+	if (*err == -ENOSPC &&
+	    ext4_should_retry_alloc(sb, &retries))
+		goto again;
 	/* Buffer was busy because probably is pinned to journal transaction,
 	 * force transaction commit may help to free it. */
-	if (*err == -EBUSY && ext4_should_retry_alloc(orig_inode->i_sb,
-						      &retries))
+	if (*err == -EBUSY && retries++ < 4 && EXT4_SB(sb)->s_journal &&
+	    jbd2_journal_force_commit_nested(EXT4_SB(sb)->s_journal))
 		goto again;
 	return replaced_count;
 
@@ -519,9 +533,13 @@ mext_check_arguments(struct inode *orig_inode,
 			orig_inode->i_ino, donor_inode->i_ino);
 		return -EINVAL;
 	}
-	if (orig_eof < orig_start + *len - 1)
+	if (orig_eof <= orig_start)
+		*len = 0;
+	else if (orig_eof < orig_start + *len - 1)
 		*len = orig_eof - orig_start;
-	if (donor_eof < donor_start + *len - 1)
+	if (donor_eof <= donor_start)
+		*len = 0;
+	else if (donor_eof < donor_start + *len - 1)
 		*len = donor_eof - donor_start;
 	if (!*len) {
 		ext4_debug("ext4 move extent: len should not be 0 "
@@ -587,6 +605,14 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
 	    ext4_should_journal_data(donor_inode)) {
 		return -EINVAL;
 	}
+
+	if (ext4_encrypted_inode(orig_inode) ||
+	    ext4_encrypted_inode(donor_inode)) {
+		ext4_msg(orig_inode->i_sb, KERN_ERR,
+			 "Online defrag not supported for encrypted files");
+		return -EOPNOTSUPP;
+	}
+
 	/* Protect orig and donor inodes against a truncate */
 	lock_two_nondirectories(orig_inode, donor_inode);
 
