@@ -14,6 +14,7 @@ obj-vdso := $(addprefix $(obj)/, $(obj-vdso))
 ccflags-y := -shared -fno-common -fno-builtin
 ccflags-y += -nostdlib -Wl,-soname=linux-vdso.so.1 \
 		$(call cc-ldoption, -Wl$(comma)--hash-style=sysv)
+ccflags-y += $(call cc-option, -fno-whole-program)
 
 # Workaround for bare-metal (ELF) toolchains that neglect to pass -shared
 # down to collect2, resulting in silent corruption of the vDSO image.
