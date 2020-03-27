@@ -265,15 +265,6 @@ void mb_cache_entry_touch(struct mb_cache *cache,
 }
 EXPORT_SYMBOL(mb_cache_entry_touch);
 
-static unsigned long mb_cache_count(struct shrinker *shrink,
-				    struct shrink_control *sc)
-{
-	struct mb_cache *cache = container_of(shrink, struct mb_cache,
-					      c_shrink);
-
-	return cache->c_entry_count;
-}
-
 /* Shrink number of entries in cache */
 static unsigned long mb_cache_shrink(struct mb_cache *cache,
 				     unsigned int nr_to_scan)
@@ -315,12 +306,16 @@ static unsigned long mb_cache_shrink(struct mb_cache *cache,
 	return shrunk;
 }
 
-static unsigned long mb_cache_scan(struct shrinker *shrink,
+static int mb_cache_shrink_fn(struct shrinker *shrink,
 				   struct shrink_control *sc)
 {
 	int nr_to_scan = sc->nr_to_scan;
 	struct mb_cache *cache = container_of(shrink, struct mb_cache,
 					      c_shrink);
+
+	if (nr_to_scan == 0)
+		return cache->c_entry_count;
+
 	return mb_cache_shrink(cache, nr_to_scan);
 }
 
@@ -362,8 +357,7 @@ struct mb_cache *mb_cache_create(int bucket_bits)
 	for (i = 0; i < bucket_count; i++)
 		INIT_HLIST_BL_HEAD(&cache->c_hash[i]);
 
-	cache->c_shrink.count_objects = mb_cache_count;
-	cache->c_shrink.scan_objects = mb_cache_scan;
+	cache->c_shrink.shrink = mb_cache_shrink_fn;
 	cache->c_shrink.seeks = DEFAULT_SEEKS;
 	register_shrinker(&cache->c_shrink);
 
