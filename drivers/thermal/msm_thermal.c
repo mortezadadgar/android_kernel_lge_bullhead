@@ -831,7 +831,7 @@ static void update_cpu_freq(int cpu)
 	}
 }
 
-static int * __init get_sync_cluster(struct device *dev, int *cnt)
+static int * get_sync_cluster(struct device *dev, int *cnt)
 {
 	int *sync_cluster = NULL, cluster_cnt = 0, ret = 0;
 	char *key = "qcom,synchronous-cluster-id";
