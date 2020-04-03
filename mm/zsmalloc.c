@@ -1821,10 +1821,10 @@ void zs_pool_stats(struct zs_pool *pool, struct zs_pool_stats *stats)
 }
 EXPORT_SYMBOL_GPL(zs_pool_stats);
 
-static unsigned long zs_shrinker_scan(struct shrinker *shrinker,
+static int zs_shrinker_scan(struct shrinker *shrinker,
 		struct shrink_control *sc)
 {
-	unsigned long pages_freed;
+	int pages_freed;
 	struct zs_pool *pool = container_of(shrinker, struct zs_pool,
 			shrinker);
 
@@ -1836,15 +1836,15 @@ static unsigned long zs_shrinker_scan(struct shrinker *shrinker,
 	 */
 	pages_freed = zs_compact(pool) - pages_freed;
 
-	return pages_freed ? pages_freed : SHRINK_STOP;
+	return pages_freed ? pages_freed : -1;
 }
 
-static unsigned long zs_shrinker_count(struct shrinker *shrinker,
+static int zs_shrinker_count(struct shrinker *shrinker,
 		struct shrink_control *sc)
 {
 	int i;
 	struct size_class *class;
-	unsigned long pages_to_free = 0;
+	int pages_to_free = 0;
 	struct zs_pool *pool = container_of(shrinker, struct zs_pool,
 			shrinker);
 
@@ -1861,6 +1861,15 @@ static unsigned long zs_shrinker_count(struct shrinker *shrinker,
 	return pages_to_free;
 }
 
+static int zs_shrinker_fn(struct shrinker *shrink,
+		    struct shrink_control *sc)
+{
+	if (sc->nr_to_scan)
+		return zs_shrinker_scan(shrink, sc);
+	else
+		return zs_shrinker_count(shrink, sc);
+}
+
 static void zs_unregister_shrinker(struct zs_pool *pool)
 {
 	if (pool->shrinker_enabled) {
@@ -1871,12 +1880,12 @@ static void zs_unregister_shrinker(struct zs_pool *pool)
 
 static int zs_register_shrinker(struct zs_pool *pool)
 {
-	pool->shrinker.scan_objects = zs_shrinker_scan;
-	pool->shrinker.count_objects = zs_shrinker_count;
+	pool->shrinker.shrink = zs_shrinker_fn;
 	pool->shrinker.batch = 0;
 	pool->shrinker.seeks = DEFAULT_SEEKS;
 
-	return register_shrinker(&pool->shrinker);
+	register_shrinker(&pool->shrinker);
+	return 0;
 }
 
 /**
