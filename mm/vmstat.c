@@ -731,7 +731,9 @@ const char * const vmstat_text[] = {
 	"nr_shmem",
 	"nr_dirtied",
 	"nr_written",
-
+#if IS_ENABLED(CONFIG_ZSMALLOC)
+	"nr_zspages",
+#endif
 #ifdef CONFIG_NUMA
 	"numa_hit",
 	"numa_miss",
