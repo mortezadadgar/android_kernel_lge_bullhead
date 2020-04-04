@@ -20,19 +20,13 @@
 
 #include "zcomp.h"
 
-/*
- * Some arbitrary value. This is just to catch
- * invalid value for num_devices module parameter.
- */
-static const unsigned max_num_devices = 32;
-
 /*-- Configurable parameters */
 
 /*
  * Pages that compress to size greater than this are stored
  * uncompressed in memory.
  */
-static const size_t max_zpage_size = PAGE_SIZE / 10 * 9;
+static const size_t max_zpage_size = PAGE_SIZE / 4 * 3;
 
 /*
  * NOTE: max_zpage_size must be less than or equal to:
@@ -67,7 +61,8 @@ static const size_t max_zpage_size = PAGE_SIZE / 10 * 9;
 enum zram_pageflags {
 	/* Page consists entirely of zeros */
 	ZRAM_ZERO = ZRAM_FLAG_SHIFT,
-        ZRAM_ACCESS,    /* page is now accessed */
+	ZRAM_ACCESS,	/* page is now accessed */
+
 	__NR_ZRAM_PAGEFLAGS,
 };
 
@@ -83,7 +78,6 @@ struct zram_stats {
 	atomic64_t compr_data_size;	/* compressed size of pages stored */
 	atomic64_t num_reads;	/* failed + successful */
 	atomic64_t num_writes;	/* --do-- */
-	atomic64_t num_migrated;	/* no. of migrated object */
 	atomic64_t failed_reads;	/* can happen when memory is too low */
 	atomic64_t failed_writes;	/* can happen when memory is too low */
 	atomic64_t invalid_io;	/* non-page-aligned I/O requests */
@@ -98,12 +92,10 @@ struct zram_meta {
 	struct zs_pool *mem_pool;
 };
 
-
 struct zram {
 	struct zram_meta *meta;
 	struct zcomp *comp;
 	struct gendisk *disk;
-
 	/* Prevent concurrent execution of device init */
 	struct rw_semaphore init_lock;
 	/*
@@ -111,15 +103,20 @@ struct zram {
 	 */
 	unsigned long limit_pages;
 	int max_comp_streams;
+
 	struct zram_stats stats;
 	atomic_t refcount; /* refcount for zram_meta */
-        /* wait all IO under all of cpu are done */
-        wait_queue_head_t io_done;
+	/* wait all IO under all of cpu are done */
+	wait_queue_head_t io_done;
 	/*
 	 * This is the limit on amount of *uncompressed* worth of data
-         * we can store in a disk.
+	 * we can store in a disk.
 	 */
-	u64 disksize;   /* bytes */
+	u64 disksize;	/* bytes */
 	char compressor[10];
+	/*
+	 * zram is claimed so open request will be failed
+	 */
+	bool claim; /* Protected by bdev->bd_mutex */
 };
 #endif
