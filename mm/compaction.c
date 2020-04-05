@@ -888,7 +888,7 @@ static isolate_migrate_t isolate_migratepages(struct zone *zone,
 	}
 
 	/* Perform the isolation */
-	low_pfn = isolate_migratepages_range(zone, cc, low_pfn, end_pfn, false);
+	low_pfn = isolate_migratepages_range(zone, cc, low_pfn, end_pfn, true);
 	if (!low_pfn || cc->contended)
 		return ISOLATE_ABORT;
 
