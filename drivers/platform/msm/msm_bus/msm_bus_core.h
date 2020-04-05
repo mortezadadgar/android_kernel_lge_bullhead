@@ -313,7 +313,7 @@ int msm_bus_noc_hw_init(struct msm_bus_fabric_registration *pdata,
 	struct msm_bus_hw_algorithm *hw_algo);
 int msm_bus_bimc_hw_init(struct msm_bus_fabric_registration *pdata,
 	struct msm_bus_hw_algorithm *hw_algo);
-#if 0
+#if defined(CONFIG_DEBUG_FS) && defined(CONFIG_MSM_BUS_SCALING)
 void msm_bus_dbg_client_data(struct msm_bus_scale_pdata *pdata, int index,
 	uint32_t cl);
 void msm_bus_dbg_commit_data(const char *fabname, void *cdata,
@@ -333,7 +333,7 @@ static inline void msm_bus_dbg_commit_data(const char *fabname,
 	int op)
 {
 }
-static inline void msm_bus_dbg_remove_client
+static inline void void msm_bus_dbg_remove_client
 		(const struct msm_bus_client_handle *pdata)
 {
 }
