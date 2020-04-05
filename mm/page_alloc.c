@@ -2558,6 +2558,7 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	bool contended_compaction = false;
 	pg_data_t *pgdat = preferred_zone->zone_pgdat;
 	bool woke_kswapd = false;
+	int i;
 
 	/*
 	 * In the slowpath, we sanity check order to avoid ever trying to
@@ -2713,16 +2714,18 @@ noretry:
 	 * direct reclaim and reclaim/compaction depends on compaction
 	 * being called after reclaim so call directly if necessary
 	 */
-	 page = __alloc_pages_direct_compact(gfp_mask, order,
-				zonelist, high_zoneidx,
-				nodemask,
-				alloc_flags, preferred_zone,
-				migratetype, sync_migration,
-				&contended_compaction,
-				&deferred_compaction,
-				&did_some_progress);
-	if (page)
-		goto got_pg;
+	for (i = order ? 4 : 0; i > 0; i--) {
+		page = __alloc_pages_direct_compact(gfp_mask, order,
+					zonelist, high_zoneidx,
+					nodemask,
+					alloc_flags, preferred_zone,
+					migratetype, sync_migration,
+					&contended_compaction,
+					&deferred_compaction,
+					&did_some_progress);
+		if (page)
+			goto got_pg;
+	}
 nopage:
 got_pg:
 	if (woke_kswapd)
