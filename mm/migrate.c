@@ -1112,8 +1112,8 @@ int migrate_huge_page(struct page *hpage, new_page_t get_new_page,
 	int pass, rc;
 
 	for (pass = 0; pass < 10; pass++) {
-		rc = unmap_and_move_huge_page(get_new_page, private,
-						NULL, hpage, pass > 2, mode);
+		rc = unmap_and_move_huge_page(get_new_page, NULL, private,
+						hpage, pass > 2, mode);
 		switch (rc) {
 		case -ENOMEM:
 			goto out;
