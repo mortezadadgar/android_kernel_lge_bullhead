@@ -279,16 +279,11 @@ int balloon_page_migrate(struct page *newpage,
 	struct address_space *mapping;
 	int rc = -EAGAIN;
 
-	/*
-	 * Block others from accessing the 'newpage' when we get around to
-	 * establishing additional references. We should be the only one
-	 * holding a reference to the 'newpage' at this point.
-	 */
-	BUG_ON(!trylock_page(newpage));
+	VM_BUG_ON_PAGE(!PageLocked(page), page);
+	VM_BUG_ON_PAGE(!PageLocked(newpage), newpage);
 
 	if (WARN_ON(!__is_movable_balloon_page(page))) {
 		dump_page(page);
-		unlock_page(newpage);
 		return rc;
 	}
 
@@ -296,7 +291,6 @@ int balloon_page_migrate(struct page *newpage,
 	if (mapping)
 		rc = __migrate_balloon_page(mapping, newpage, page, mode);
 
-	unlock_page(newpage);
 	return rc;
 }
 #endif /* CONFIG_BALLOON_COMPACTION */
