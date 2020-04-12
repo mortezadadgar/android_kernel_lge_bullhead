@@ -649,9 +649,9 @@ enum
 #define CFG_IGNORE_DTIM_DEFAULT                WNI_CFG_IGNORE_DTIM_STADEF
 
 #define CFG_MAX_LI_MODULATED_DTIM_NAME         "gMaxLIModulatedDTIM"
-#define CFG_MAX_LI_MODULATED_DTIM_MIN          ( 1 )
-#define CFG_MAX_LI_MODULATED_DTIM_MAX          ( 10 )
-#define CFG_MAX_LI_MODULATED_DTIM_DEFAULT      ( 10 )
+#define CFG_MAX_LI_MODULATED_DTIM_MIN          ( 6 )
+#define CFG_MAX_LI_MODULATED_DTIM_MAX          ( 6 )
+#define CFG_MAX_LI_MODULATED_DTIM_DEFAULT      ( 6 )
 
 #define CFG_RX_ANT_CONFIGURATION_NAME          "gNumRxAnt"
 #define CFG_RX_ANT_CONFIGURATION_NAME_MIN      ( 1 )
@@ -2016,9 +2016,9 @@ typedef enum
  * Default: Disable
  */
 #define CFG_ENABLE_MODULATED_DTIM_NAME       "gEnableModulatedDTIM"
-#define CFG_ENABLE_MODULATED_DTIM_MIN        ( 0 )
-#define CFG_ENABLE_MODULATED_DTIM_MAX        ( 5 )
-#define CFG_ENABLE_MODULATED_DTIM_DEFAULT    ( 0 )
+#define CFG_ENABLE_MODULATED_DTIM_MIN        ( 2 )
+#define CFG_ENABLE_MODULATED_DTIM_MAX        ( 2 )
+#define CFG_ENABLE_MODULATED_DTIM_DEFAULT    ( 2 )
 
 /*
  * Enable/Disable Multicast MAC Address List feature
