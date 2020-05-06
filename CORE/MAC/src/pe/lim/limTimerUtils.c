@@ -598,6 +598,8 @@ limCreateTimers(tpAniSirGlobal pMac)
             limLog(pMac, LOGP, FL("AllocateMemory failed!"));
             goto err_timer;
         }
+        vos_mem_zero(pMac->lim.gLimPreAuthTimerTable.pTable[i],
+                     sizeof(tLimPreAuthNode));
     }
 
     limInitPreAuthTimerTable(pMac, &pMac->lim.gLimPreAuthTimerTable);
