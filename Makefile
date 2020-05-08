@@ -383,7 +383,8 @@ KBUILD_CFLAGS	+= -Wno-format-truncation -Wno-unused-const-variable \
 		   -Wno-packed-not-aligned -Wno-stringop-truncation \
 		   -Wno-attribute-alias -Wno-maybe-uninitialized \
 		   -Wno-address-of-packed-member -Wno-format-overflow \
-		   -Wno-psabi
+		   -Wno-psabi -Wno-restrict -Wno-stringop-overflow \
+		   -Wno-zero-length-bounds
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
