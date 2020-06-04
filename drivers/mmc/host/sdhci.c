@@ -1555,8 +1555,8 @@ static void sdhci_set_pmqos_req_type(struct sdhci_host *host, bool enable)
 			else
 				host->pm_qos_index = SDHCI_BIG_CLUSTER;
 		}
-		cpumask_bits(&host->pm_qos_req_dma.cpus_affine)[0] =
-			host->cpu_affinity_mask[host->pm_qos_index];
+		atomic_set(&host->pm_qos_req_dma.cpus_affine,
+			host->cpu_affinity_mask[host->pm_qos_index]);
 	}
 }
 #else
@@ -1584,8 +1584,10 @@ static int sdhci_enable(struct mmc_host *mmc)
 	sdhci_set_pmqos_req_type(host, true);
 	pm_qos_update_request(&host->pm_qos_req_dma,
 		host->cpu_dma_latency_us[host->pm_qos_index]);
-	if (host->pm_qos_req_dma.type == PM_QOS_REQ_AFFINE_CORES)
-		irq_set_affinity(host->irq, &host->pm_qos_req_dma.cpus_affine);
+	if (host->pm_qos_req_dma.type == PM_QOS_REQ_AFFINE_CORES) {
+		unsigned long cpus = atomic_read(&host->pm_qos_req_dma.cpus_affine);
+		irq_set_affinity(host->irq, to_cpumask(&cpus));
+	}
 
 platform_bus_vote:
 	if (host->ops->platform_bus_voting)
