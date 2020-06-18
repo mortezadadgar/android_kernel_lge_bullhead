@@ -99,6 +99,13 @@ typedef tANI_U8 tSirVersionString[SIR_VERSION_STRING_LEN];
 
 #define MAX_LEN_UDP_RESP_OFFLOAD 128
 
+/* Maximum number of realms present in fils indication element */
+#define SIR_MAX_REALM_COUNT 7
+/* Realm length */
+#define SIR_REALM_LEN 2
+/* Cache ID length */
+#define CACHE_ID_LEN 2
+
 /* Maximum peer station number query one time */
 #define MAX_PEER_STA 12
 
@@ -719,6 +726,24 @@ typedef struct sSirSmeStartBssReq
 
 #define WSCIE_PROBE_RSP_LEN (317 + 2)
 
+#ifdef WLAN_FEATURE_FILS_SK
+/* struct fils_ind_elements: elements parsed from fils indication present
+ * in beacon/probe resp
+ * @realm_cnt: number of realm present
+ * @realm: realms
+ * @is_fils_sk_supported: if FILS SK supported
+ * @is_cache_id_present: if cache id present
+ * @cache_id: cache id
+ */
+struct fils_ind_elements {
+    uint16_t realm_cnt;
+    uint8_t realm[SIR_MAX_REALM_COUNT][SIR_REALM_LEN];
+    bool is_fils_sk_supported;
+    bool is_cache_id_present;
+    uint8_t cache_id[CACHE_ID_LEN];
+};
+#endif
+
 typedef struct sSirBssDescription
 {
     //offset of the ieFields from bssId.
@@ -763,6 +788,9 @@ typedef struct sSirBssDescription
     tANI_U8              reservedPadding4;
     tANI_U32             tsf_delta;
 
+#ifdef WLAN_FEATURE_FILS_SK
+    struct fils_ind_elements fils_info_element;
+#endif
     tANI_U32             ieFields[1];
 } tSirBssDescription, *tpSirBssDescription;
 
@@ -7129,6 +7157,7 @@ struct sir_ocb_config_sched {
  * @channel_count: number of channels
  * @schedule_size: size of the channel schedule
  * @flags: reserved
+ * @ta_max_duration: ta max duration after last ta received
  * @channels: array of OCB channels
  * @schedule: array of OCB schedule elements
  * @dcc_ndl_chan_list_len: size of the ndl_chan array
@@ -7143,6 +7172,7 @@ struct sir_ocb_config {
 	uint32_t channel_count;
 	uint32_t schedule_size;
 	uint32_t flags;
+	uint32_t ta_max_duration;
 	struct sir_ocb_config_channel *channels;
 	struct sir_ocb_config_sched *schedule;
 	uint32_t dcc_ndl_chan_list_len;

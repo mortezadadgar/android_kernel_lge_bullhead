@@ -70,6 +70,12 @@ typedef enum
     eCSR_AUTH_TYPE_RSN_PSK_SHA256,
     eCSR_AUTH_TYPE_RSN_8021X_SHA256,
 #endif
+#ifdef WLAN_FEATURE_FILS_SK
+    eCSR_AUTH_TYPE_FILS_SHA256,
+    eCSR_AUTH_TYPE_FILS_SHA384,
+    eCSR_AUTH_TYPE_FT_FILS_SHA256,
+    eCSR_AUTH_TYPE_FT_FILS_SHA384,
+#endif
     eCSR_NUM_OF_SUPPORT_AUTH_TYPE,
     eCSR_AUTH_TYPE_FAILED = 0xff,
     eCSR_AUTH_TYPE_UNKNOWN = eCSR_AUTH_TYPE_FAILED,
@@ -224,6 +230,7 @@ typedef enum
 
 
 #define CSR_RSN_PMKID_SIZE          16
+#define CSR_RSN_MAX_PMK_LEN         48
 #define CSR_MAX_PMKID_ALLOWED       32
 #define CSR_WEP40_KEY_LEN       5
 #define CSR_WEP104_KEY_LEN      13
@@ -904,6 +911,11 @@ typedef struct tagPmkidCacheInfo
 {
     tCsrBssid BSSID;
     tANI_U8 PMKID[CSR_RSN_PMKID_SIZE];
+    uint8_t pmk[CSR_RSN_MAX_PMK_LEN];
+    uint8_t pmk_len;
+    uint8_t ssid_len;
+    uint8_t ssid[SIR_MAC_MAX_SSID_LENGTH];
+    uint8_t cache_id[CACHE_ID_LEN];
 }tPmkidCacheInfo;
 
 #ifdef FEATURE_WLAN_WAPI
@@ -1369,6 +1381,7 @@ typedef struct tagCsrConfigParam
     uint32_t edca_bk_aifs;
     uint32_t edca_be_aifs;
     struct csr_sta_roam_policy_params sta_roam_policy_params;
+    uint32_t sta_auth_retries_for_code17;
 }tCsrConfigParam;
 
 //Tush
