@@ -3528,6 +3528,12 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_ENABLE_PACKET_LOG_DEFAULT,
                  CFG_ENABLE_PACKET_LOG_MIN,
                  CFG_ENABLE_PACKET_LOG_MAX ),
+   REG_VARIABLE( CFG_EDCA_FROM_HOSTAPD,  WLAN_PARAM_Integer,
+                 hdd_config_t, enable_hostapd_edca_local,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK,
+                 CFG_EDCA_FROM_HOSTAPD_DEFAULT,
+                 CFG_EDCA_FROM_HOSTAPD_MIN,
+                 CFG_EDCA_FROM_HOSTAPD_MAX),
 
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
    REG_VARIABLE( CFG_ROAMING_OFFLOAD_NAME,  WLAN_PARAM_Integer,
@@ -5021,6 +5027,22 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_STA_AUTH_RETRIES_FOR_CODE17_DEFAULT,
                 CFG_STA_AUTH_RETRIES_FOR_CODE17_MIN,
                 CFG_STA_AUTH_RETRIES_FOR_CODE17_MAX ),
+               
+#ifdef WLAN_FEATURE_SAE
+	REG_VARIABLE(CFG_IS_SAE_ENABLED_NAME, WLAN_PARAM_Integer,
+		struct hdd_config, is_sae_enabled,
+		VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+		CFG_IS_SAE_ENABLED_DEFAULT,
+		CFG_IS_SAE_ENABLED_MIN,
+		CFG_IS_SAE_ENABLED_MAX),
+
+	REG_VARIABLE(CFG_ENABLE_SAE_FOR_SAP_NAME, WLAN_PARAM_Integer,
+		struct hdd_config, enable_sae_for_sap,
+		VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+		CFG_ENABLE_SAE_FOR_SAP_DEFAULT,
+		CFG_ENABLE_SAE_FOR_SAP_MIN,
+		CFG_ENABLE_SAE_FOR_SAP_MAX),
+#endif
 };
 
 
@@ -5287,6 +5309,29 @@ config_exit:
    return vos_status;
 }
 
+#ifdef WLAN_FEATURE_SAE
+static void hdd_cfg_print_sae(hdd_context_t *hdd_ctx)
+{
+	hddLog(LOG2, "Name = [%s] value = [%u]",
+	       CFG_IS_SAE_ENABLED_NAME,
+	       hdd_ctx->cfg_ini->is_sae_enabled);
+}
+
+static void hdd_cfg_print_sae_sap(hdd_context_t *hdd_ctx)
+{
+	hddLog(LOG2, "Name = [%s] value = [%u]",
+	       CFG_ENABLE_SAE_FOR_SAP_NAME,
+	       hdd_ctx->cfg_ini->enable_sae_for_sap);
+}
+#else
+static void hdd_cfg_print_sae(hdd_context_t *hdd_ctx)
+{
+}
+
+static void hdd_cfg_print_sae_sap(hdd_context_t *hdd_ctx)
+{
+}
+#endif
 
 void print_hdd_cfg(hdd_context_t *pHddCtx)
 {
@@ -5631,6 +5676,11 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
            "Name = [isRoamOffloadEnabled] Value = [%u]",
                    pHddCtx->cfg_ini->isRoamOffloadEnabled);
 #endif
+
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+           "Name = [gEnableHostapdEdcaLocal] Value = [%u]",
+                   pHddCtx->cfg_ini->enable_hostapd_edca_local);
+
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
            "Name = [gEnableSifsBurst] Value = [%u]",
                    pHddCtx->cfg_ini->enableSifsBurst);
@@ -5933,6 +5983,9 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
   hddLog(LOG2, "Name = [%s] Value = [%u]",
                  CFG_ARP_AC_CATEGORY,
                  pHddCtx->cfg_ini->arp_ac_category);
+
+  hdd_cfg_print_sae(pHddCtx);
+  hdd_cfg_print_sae_sap(pHddCtx);
 }
 
 #define CFG_VALUE_MAX_LEN 256

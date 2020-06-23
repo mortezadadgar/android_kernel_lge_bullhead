@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2017, 2019 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -366,10 +366,20 @@ limAddPreAuthNode(tpAniSirGlobal pMac, struct tLimPreAuthNode *pAuthNode)
 void
 limReleasePreAuthNode(tpAniSirGlobal pMac, tpLimPreAuthNode pAuthNode)
 {
-    pAuthNode->fFree = 1;
-    MTRACE(macTrace(pMac, TRACE_CODE_TIMER_DEACTIVATE, NO_SESSION, eLIM_PRE_AUTH_CLEANUP_TIMER));
-    tx_timer_deactivate(&pAuthNode->timer);
-    pMac->lim.gLimNumPreAuthContexts--;
+	pAuthNode->fFree = 1;
+	if (pAuthNode->authType == eSIR_AUTH_TYPE_SAE &&
+	    pAuthNode->assoc_req.present) {
+		tpSirAssocReq assoc =
+			(tpSirAssocReq)pAuthNode->assoc_req.assoc_req;
+
+		if (assoc->assocReqFrameLength)
+			vos_mem_free(assoc->assocReqFrame);
+		vos_mem_free(assoc);
+		pAuthNode->assoc_req.present = false;
+	}
+	MTRACE(macTrace(pMac, TRACE_CODE_TIMER_DEACTIVATE, NO_SESSION, eLIM_PRE_AUTH_CLEANUP_TIMER));
+	tx_timer_deactivate(&pAuthNode->timer);
+	pMac->lim.gLimNumPreAuthContexts--;
 } /*** end limReleasePreAuthNode() ***/
 
 
@@ -506,10 +516,15 @@ limRestoreFromAuthState(tpAniSirGlobal pMac, tSirResultCodes resultCode, tANI_U1
      * retry is needed also cancel the auth rety timer
      */
     pMac->auth_ack_status = LIM_AUTH_ACK_RCD_SUCCESS;
+
+    /* Auth retry and AUth failure timers are not started for SAE */
     /* 'Change' timer for future activations */
-    limDeactivateAndChangeTimer(pMac, eLIM_AUTH_RETRY_TIMER);
-    // 'Change' timer for future activations
-    limDeactivateAndChangeTimer(pMac, eLIM_AUTH_FAIL_TIMER);
+    if (tx_timer_running(&pMac->lim.limTimers.
+                         g_lim_periodic_auth_retry_timer))
+        limDeactivateAndChangeTimer(pMac, eLIM_AUTH_RETRY_TIMER);
+    /* 'Change' timer for future activations */
+    if (tx_timer_running(&pMac->lim.limTimers.gLimAuthFailureTimer))
+        limDeactivateAndChangeTimer(pMac, eLIM_AUTH_FAIL_TIMER);
 
     sirCopyMacAddr(currentBssId,sessionEntry->bssId);
 
@@ -538,8 +553,6 @@ limRestoreFromAuthState(tpAniSirGlobal pMac, tSirResultCodes resultCode, tANI_U1
         sessionEntry->sta_auth_retries_for_code17 = 0;
     }
 } /*** end limRestoreFromAuthState() ***/
-
-
 
 /**
  * limLookUpKeyMappings()
@@ -616,7 +629,7 @@ limEncryptAuthFrame(tpAniSirGlobal pMac, tANI_U8 keyId, tANI_U8 *pKey, tANI_U8 *
     // Compute CRC-32 and place them in last 4 bytes of plain text
     limComputeCrc32(icv, pPlainText, framelen);
 
-    vos_mem_copy( pPlainText + framelen,
+    vos_mem_copy((pPlainText + framelen),
                   icv, SIR_MAC_WEP_ICV_LENGTH);
 
     // Run RC4 on plain text with the seed

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2017, 2019 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -42,7 +42,9 @@
 #include "palTypes.h"
 #include "sirTypes.h"
 #include "wni_cfg.h"
-
+#ifdef WLAN_FEATURE_FILS_SK
+#include <lim_fils_defs.h>
+#endif
 
 ///Capability information related
 #define CAPABILITY_INFO_DELAYED_BA_BIT 14
@@ -378,6 +380,7 @@
 #define SIR_MAC_WPA_EID_MAX                255
 
 #define SIR_MAC_EID_VENDOR                221
+#define SIR_MAC_EID_EXT                   255
 
 #define SIR_MAC_WAPI_EID                68
 
@@ -439,6 +442,9 @@
 #endif
 
 #define SIR_MAC_OUI_VERSION_1         1
+
+/* OWE DH Parameter element https://tools.ietf.org/html/rfc8110 */
+#define SIR_DH_PARAMETER_ELEMENT_EXT_EID 32
 
 // OUI and type definition for WPA IE in network byte order
 #define SIR_MAC_WPA_OUI             0x01F25000
@@ -652,6 +658,7 @@
                     ((x)->roam.configParam.isWESModeEnabled)
 
 /// Status Code (present in Management response frames) enum
+/* (IEEE Std 802.11-2016, 9.4.1.9, Table 9-46) */
 
 typedef enum eSirMacStatusCodes
 {
@@ -697,7 +704,9 @@ typedef enum eSirMacStatusCodes
     eSIR_MAC_DSSS_OFDM_NOT_SUPPORTED_STATUS       = 26, //Association denied due to requesting station not supporting the DSSS-OFDM option
     // reserved                                     27-29
     eSIR_MAC_TRY_AGAIN_LATER                      = 30, //Association request rejected temporarily, try again later
-    // reserved                                     31
+#ifdef WLAN_FEATURE_11W
+    eSIR_MAC_ROBUST_MGMT_FRAMES_POLICY_VIOLATION_STATUS = 31,    /* Robust management frames policy violation */
+#endif
     eSIR_MAC_QOS_UNSPECIFIED_FAILURE_STATUS       = 32, //Unspecified, QoS-related failure
     eSIR_MAC_QAP_NO_BANDWIDTH_STATUS              = 33, //Association denied because QoS AP has insufficient bandwidth to handle another
                                                         //QoS STA
@@ -732,9 +741,8 @@ typedef enum eSirMacStatusCodes
     eSIR_MAC_DEST_STA_NOT_QSTA_STATUS             = 50, //The Destination STA is not a QoS STA
     eSIR_MAC_INVALID_LISTEN_INTERVAL_STATUS       = 51, //Association denied because the ListenInterval is too large
 
-    eSIR_MAC_DSSS_CCK_RATE_MUST_SUPPORT_STATUS    = 52, //FIXME:
-    eSIR_MAC_DSSS_CCK_RATE_NOT_SUPPORT_STATUS     = 53,
-    eSIR_MAC_PSMP_CONTROLLED_ACCESS_ONLY_STATUS   = 54,
+    eSIR_MAC_INVALID_FT_ACTION_FRAME_COUNT        = 52,
+    eSIR_MAC_INVALID_PMKID                        = 53,
 #ifdef FEATURE_WLAN_ESE
     eSIR_MAC_ESE_UNSPECIFIED_QOS_FAILURE_STATUS   = 200, //ESE-Unspecified, QoS related failure in (Re)Assoc response frames
     eSIR_MAC_ESE_TSPEC_REQ_REFUSED_STATUS         = 201, //ESE-TSPEC request refused due to AP's policy configuration in AddTs Rsp, (Re)Assoc Rsp.
@@ -2056,6 +2064,14 @@ typedef __ani_attr_pre_packed struct sSirMacAuthFrameBody
     tANI_U8      type;   // = SIR_MAC_CHALLENGE_TEXT_EID
     tANI_U8      length; // = SIR_MAC_AUTH_CHALLENGE_LENGTH
     tANI_U8      challengeText[SIR_MAC_AUTH_CHALLENGE_LENGTH];
+#ifdef WLAN_FEATURE_FILS_SK
+    tSirMacRsnInfo rsn_ie;
+    uint8_t assoc_delay_info;
+    uint8_t session[SIR_FILS_SESSION_LENGTH];
+    uint8_t wrapped_data_len;
+    uint8_t wrapped_data[SIR_FILS_WRAPPED_DATA_MAX_SIZE];
+    uint8_t nonce[SIR_FILS_NONCE_LENGTH];
+#endif
 } __ani_attr_packed tSirMacAuthFrameBody, *tpSirMacAuthFrameBody;
 
 typedef __ani_attr_pre_packed struct sSirMacAuthenticationFrame

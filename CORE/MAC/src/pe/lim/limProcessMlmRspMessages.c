@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2017, 2019 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1213,6 +1213,8 @@ limFillAssocIndParams(tpAniSirGlobal pMac, tpLimMlmAssocInd pAssocInd,
     vos_mem_copy(pSirSmeAssocInd->bssId, psessionEntry->bssId, sizeof(tSirMacAddr));
     // Fill in authType
     pSirSmeAssocInd->authType = pAssocInd->authType;
+    /* Fill in rsn_akm_type */
+    pSirSmeAssocInd->akm_type = pAssocInd->akm_type;
     // Fill in ssId
     vos_mem_copy((tANI_U8*)&pSirSmeAssocInd->ssId,
                  (tANI_U8 *) &(pAssocInd->ssId), pAssocInd->ssId.length + 1);
@@ -1259,6 +1261,7 @@ limFillAssocIndParams(tpAniSirGlobal pMac, tpLimMlmAssocInd pAssocInd,
     pSirSmeAssocInd->max_mcs_idx = pAssocInd->max_mcs_idx;
     pSirSmeAssocInd->rx_mcs_map = pAssocInd->rx_mcs_map;
     pSirSmeAssocInd->tx_mcs_map = pAssocInd->tx_mcs_map;
+    pSirSmeAssocInd->is_sae_authenticated = pAssocInd->is_sae_authenticated;
 } /*** end limAssocIndSerDes() ***/
 
 
@@ -1310,6 +1313,7 @@ limProcessMlmAssocInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         return;
     }
 
+    vos_mem_zero(pSirSmeAssocInd, len);
     pSirSmeAssocInd->messageType = eWNI_SME_ASSOC_IND;
     limFillAssocIndParams(pMac, (tpLimMlmAssocInd) pMsgBuf, pSirSmeAssocInd, psessionEntry);
     msgQ.type = eWNI_SME_ASSOC_IND;
@@ -2847,6 +2851,22 @@ limProcessIbssMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ ,tpPESession 
     }
 }
 
+#ifdef WLAN_FEATURE_FILS_SK
+static void lim_update_fils_auth_mode(tpPESession session_entry,
+                                      tAniAuthType *auth_mode)
+{
+    if (!session_entry->fils_info)
+        return;
+
+    if (session_entry->fils_info->is_fils_connection)
+        *auth_mode = session_entry->fils_info->auth;
+}
+#else
+static void lim_update_fils_auth_mode(tpPESession session_entry,
+                                      tAniAuthType *auth_mode)
+{}
+#endif
+
 static void
 limProcessStaMlmAddBssRspPreAssoc( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ, tpPESession psessionEntry )
 {
@@ -2889,7 +2909,7 @@ limProcessStaMlmAddBssRspPreAssoc( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ, tpPES
                 authMode = eSIR_SHARED_KEY; // Try Shared Authentication first
             else
                 authMode = cfgAuthType;
-
+            lim_update_fils_auth_mode(psessionEntry, &authMode);
             // Trigger MAC based Authentication
             pMlmAuthReq = vos_mem_malloc(sizeof(tLimMlmAuthReq));
             if ( NULL == pMlmAuthReq )

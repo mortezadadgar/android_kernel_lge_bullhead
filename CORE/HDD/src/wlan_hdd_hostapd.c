@@ -1395,25 +1395,14 @@ hdd_update_chandef(hdd_adapter_t *hostapd_adapter,
 }
 #endif
 
-/**
- * hdd_chan_change_notify() - Function to notify hostapd about channel change
- * @hostapd_adapter	hostapd adapter
- * @dev:		Net device structure
- * @oper_chan:		New operating channel
- *
- * This function is used to notify hostapd about the channel change
- *
- * Return: Success on intimating userspace
- *
- */
 VOS_STATUS hdd_chan_change_notify(hdd_adapter_t *hostapd_adapter,
 		struct net_device *dev,
-		uint8_t oper_chan)
+		uint8_t oper_chan,
+		eCsrPhyMode phy_mode)
 {
 	struct ieee80211_channel *chan;
 	struct cfg80211_chan_def chandef;
 	enum nl80211_channel_type channel_type;
-	eCsrPhyMode phy_mode;
 	ePhyChanBondState cb_mode;
 	uint32_t freq;
 	tHalHandle  hal = WLAN_HDD_GET_HAL_CTX(hostapd_adapter);
@@ -1437,13 +1426,6 @@ VOS_STATUS hdd_chan_change_notify(hdd_adapter_t *hostapd_adapter,
 				 __func__);
 		return VOS_STATUS_E_FAILURE;
 	}
-
-#ifdef WLAN_FEATURE_MBSSID
-	phy_mode = wlansap_get_phymode(WLAN_HDD_GET_SAP_CTX_PTR(hostapd_adapter));
-#else
-	phy_mode = wlansap_get_phymode(
-			(WLAN_HDD_GET_CTX(hostapd_adapter))->pvosContext);
-#endif
 
 	if (oper_chan <= 14)
 		cb_mode = sme_GetCBPhyStateFromCBIniValue(
@@ -2464,8 +2446,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             {
                v_U16_t iesLen =  event->iesLen;
 
-               if (iesLen <= MAX_ASSOC_IND_IE_LEN )
-               {
                   struct station_info *stainfo;
                   stainfo = vos_mem_malloc(sizeof(*stainfo));
                   if (stainfo == NULL) {
@@ -2473,8 +2453,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                       return VOS_STATUS_E_NOMEM;
                   }
                   memset(stainfo, 0, sizeof(*stainfo));
-                  stainfo->assoc_req_ies =
-                     (const u8 *)&event->ies[0];
+                  stainfo->assoc_req_ies = event->ies;
                   stainfo->assoc_req_ies_len = iesLen;
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0))
                   /*
@@ -2491,11 +2470,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                         (const u8 *)&event->staMac.bytes[0],
                         stainfo, GFP_KERNEL);
                   vos_mem_free(stainfo);
-               }
-               else
-               {
-                  hddLog(LOGE, FL(" Assoc Ie length is too long"));
-               }
             }
 
             pScanInfo =  &pHostapdAdapter->scan_info;
@@ -2743,6 +2717,16 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             hddLog(LOG1,"%s", maxAssocExceededEvent);
             break;
         case eSAP_STA_ASSOC_IND:
+            if (pSapEvent->sapevt.sapAssocIndication.owe_ie) {
+                hdd_send_update_owe_info_event(pHostapdAdapter,
+                       pSapEvent->sapevt.sapAssocIndication.staMac.bytes,
+                       pSapEvent->sapevt.sapAssocIndication.owe_ie,
+                       pSapEvent->sapevt.sapAssocIndication.owe_ie_len);
+                       vos_mem_free(
+                          pSapEvent->sapevt.sapAssocIndication.owe_ie);
+                       pSapEvent->sapevt.sapAssocIndication.owe_ie = NULL;
+                       pSapEvent->sapevt.sapAssocIndication.owe_ie_len = 0;
+            }
             return VOS_STATUS_SUCCESS;
 
         case eSAP_DISCONNECT_ALL_P2P_CLIENT:
@@ -2793,9 +2777,18 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             if (pHostapdAdapter->device_mode == WLAN_HDD_SOFTAP &&
                                                pHddCtx->cfg_ini->force_sap_acs)
                 return VOS_STATUS_SUCCESS;
-            else
+            else {
+                eCsrPhyMode phy_mode;
+#ifdef WLAN_FEATURE_MBSSID
+                phy_mode = wlansap_get_phymode(
+                              WLAN_HDD_GET_SAP_CTX_PTR(pHostapdAdapter));
+#else
+                phy_mode = wlansap_get_phymode(
+                              (WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext);
+#endif
                 return hdd_chan_change_notify(pHostapdAdapter, dev,
-                           pSapEvent->sapevt.sapChSelected.pri_ch);
+                           pSapEvent->sapevt.sapChSelected.pri_ch, phy_mode);
+            }
         case eSAP_ACS_SCAN_SUCCESS_EVENT:
             return hdd_handle_acs_scan_event(pSapEvent, pHostapdAdapter);
         case eSAP_DFS_NOL_GET:
@@ -2923,7 +2916,7 @@ int hdd_softap_unpackIE(
                 tHalHandle halHandle,
                 eCsrEncryptionType *pEncryptType,
                 eCsrEncryptionType *mcEncryptType,
-                eCsrAuthType *pAuthType,
+                tCsrAuthList *akm_list,
                 v_BOOL_t *pMFPCapable,
                 v_BOOL_t *pMFPRequired,
                 u_int16_t gen_ie_len,
@@ -2933,7 +2926,7 @@ int hdd_softap_unpackIE(
     tDot11fIEWPA dot11WPAIE;
 
     tANI_U8 *pRsnIe;
-    tANI_U16 RSNIeLen;
+    tANI_U16 RSNIeLen, i;
 
     if (NULL == halHandle)
     {
@@ -2969,11 +2962,11 @@ int hdd_softap_unpackIE(
                 __func__, dot11RSNIE.pwise_cipher_suite_count );
         hddLog(LOG1, FL("%s: authentication suite count: %d"),
                 __func__, dot11RSNIE.akm_suite_cnt);
-        /*Here we have followed the apple base code,
-          but probably I suspect we can do something different*/
-        //dot11RSNIE.akm_suite_cnt
-        // Just translate the FIRST one
-        *pAuthType =  hdd_TranslateRSNToCsrAuthType(dot11RSNIE.akm_suite[0]);
+        //Translate akms in akm suite
+        for (i = 0; i < dot11RSNIE.akm_suite_cnt; i++)
+            akm_list->authType[i] =
+                hdd_TranslateRSNToCsrAuthType(dot11RSNIE.akm_suite[i]);
+        akm_list->numEntries = dot11RSNIE.akm_suite_cnt;
         //dot11RSNIE.pwise_cipher_suite_count
         *pEncryptType = hdd_TranslateRSNToCsrEncryptionType(dot11RSNIE.pwise_cipher_suites[0]);
         //dot11RSNIE.gp_cipher_suite_count
@@ -3006,8 +2999,11 @@ int hdd_softap_unpackIE(
         hddLog(LOG1, FL("%s: WPA authentication suite count: %d"),
                 __func__, dot11WPAIE.auth_suite_count);
         //dot11WPAIE.auth_suite_count
-        // Just translate the FIRST one
-        *pAuthType =  hdd_TranslateWPAToCsrAuthType(dot11WPAIE.auth_suites[0]);
+        //Translate akms in akm suite
+        for (i = 0; i < dot11WPAIE.auth_suite_count; i++)
+            akm_list->authType[i] =
+                hdd_TranslateWPAToCsrAuthType(dot11WPAIE.auth_suites[i]);
+        akm_list->numEntries = dot11WPAIE.auth_suite_count;
         //dot11WPAIE.unicast_cipher_count
         *pEncryptType = hdd_TranslateWPAToCsrEncryptionType(dot11WPAIE.unicast_ciphers[0]);
         //dot11WPAIE.unicast_cipher_count
@@ -7440,7 +7436,7 @@ VOS_STATUS hdd_init_ap_mode(hdd_adapter_t *pAdapter, bool reinit)
 
     status = WLANSAP_Start(sapContext, device_mode,
             pAdapter->macAddressCurrent.bytes,
-            &session_id);
+            &session_id, reinit);
     if ( ! VOS_IS_STATUS_SUCCESS( status ) )
     {
           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, ("ERROR: WLANSAP_Start failed!!"));

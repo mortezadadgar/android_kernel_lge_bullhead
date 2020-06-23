@@ -4799,4 +4799,47 @@ eHalStatus sme_set_chip_pwr_save_fail_cb(tHalHandle hal, void (*cb)( void *,
  */
 uint32_t sme_unpack_rsn_ie(tHalHandle hal, uint8_t *buf,
                         uint8_t buf_len, tDot11fIERSN *rsn_ie);
+
+/**
+ * sme_update_owe_info() - Update OWE info
+ * @hHal: hal context
+ * @assoc_ind: assoc ind
+ *
+ * Return: eHalStatus
+ */
+eHalStatus sme_update_owe_info(tHalHandle hHal,
+			       struct sSirSmeAssocInd *assoc_ind);
+/**
+ * sme_send_mgmt_tx() - Sends mgmt frame from CSR to LIM
+ * @hal: The handle returned by mac_open
+ * @session_id: session id
+ * @buf: pointer to frame
+ * @len: frame length
+ *
+ * Return: eHalStatus
+ */
+eHalStatus sme_send_mgmt_tx(tHalHandle hal, uint8_t session_id,
+				const uint8_t *buf, uint32_t len);
+#ifdef WLAN_FEATURE_SAE
+/**
+ * sme_handle_sae_msg() - Sends SAE message received from supplicant
+ * @hal: The handle returned by mac_open
+ * @session_id: session id
+ * @sae_status: status of SAE authentication
+ * @peer_mac_addr: mac address of the peer to be authenticated
+ *
+ * Return: HAL_STATUS
+ */
+eHalStatus sme_handle_sae_msg(tHalHandle hal, uint8_t session_id,
+			      uint8_t sae_status,
+			      tSirMacAddr peer_mac_addr);
+#else
+static inline eHalStatus sme_handle_sae_msg(tHalHandle hal, uint8_t session_id,
+					    uint8_t sae_status,
+					    tSirMacAddr peer_mac_addr)
+{
+	return eHAL_STATUS_SUCCESS;
+}
+#endif
+
 #endif //#if !defined( __SME_API_H )

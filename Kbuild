@@ -103,6 +103,11 @@ ifeq ($(KERNEL_BUILD), 0)
 	#Flag to enable Fast Transition (11r) feature
 	CONFIG_QCOM_VOWIFI_11R := y
 
+        ifneq ($(KERNELRELEASE), 4.9.11+)
+        #Flag to enable FILS Feature (11ai)
+        CONFIG_WLAN_FEATURE_FILS := n
+        endif
+
 	ifneq ($(CONFIG_QCA_CLD_WLAN),)
         ifeq ($(CONFIG_CNSS),y)
 		#Flag to enable Protected Managment Frames (11w) feature
@@ -170,6 +175,9 @@ ifneq ($(CONFIG_MOBILE_ROUTER), y)
 CONFIG_QCOM_ESE := y
 CONFIG_QCOM_ESE_UPLOAD := y
 endif
+
+# enable SAE by default
+CONFIG_WLAN_FEATURE_SAE := y
 
 # Feature flags which are not (currently) configurable via Kconfig
 
@@ -355,6 +363,10 @@ ADF_OBJS :=     $(ADF_DIR)/adf_nbuf.o \
                 $(ADF_DIR)/linux/adf_os_defer_pvt.o \
                 $(ADF_DIR)/linux/adf_os_lock_pvt.o
 
+ifeq ($(CONFIG_WLAN_FEATURE_FILS), y)
+ADF_OBJS +=     $(ADF_DIR)/linux/qdf_crypto.o
+endif
+
 ifeq ($(CONFIG_DPTRACE_ENABLE), y)
 ADF_OBJS +=     $(ADF_DIR)/adf_trace.o
 endif
@@ -538,6 +550,10 @@ endif
 
 ifeq ($(CONFIG_QCOM_TDLS),y)
 MAC_LIM_OBJS += $(MAC_SRC_DIR)/pe/lim/limProcessTdls.o
+endif
+
+ifeq ($(CONFIG_WLAN_FEATURE_FILS),y)
+MAC_LIM_OBJS += $(MAC_SRC_DIR)/pe/lim/lim_process_fils.o
 endif
 
 ifeq ($(CONFIG_WLAN_FEATURE_NAN_DATAPATH),y)
@@ -1027,6 +1043,10 @@ ifeq ($(CONFIG_WLAN_POWER_DEBUGFS), y)
 CDEFINES += -DWLAN_POWER_DEBUGFS
 endif
 
+ifeq ($(CONFIG_WLAN_FEATURE_FILS),y)
+CDEFINES += -DWLAN_FEATURE_FILS_SK
+endif
+
 ifeq ($(CONFIG_SCPC_FEATURE), y)
 CDEFINES += -DWLAN_SCPC_FEATURE
 endif
@@ -1177,6 +1197,10 @@ endif
 
 ifeq ($(CONFIG_QCACLD_WLAN_LFR3),y)
 CDEFINES += -DWLAN_FEATURE_ROAM_OFFLOAD
+endif
+
+ifeq ($(CONFIG_WLAN_FEATURE_SAE),y)
+CDEFINES += -DWLAN_FEATURE_SAE
 endif
 
 ifeq ($(CONFIG_CNSS_GENL), y)
