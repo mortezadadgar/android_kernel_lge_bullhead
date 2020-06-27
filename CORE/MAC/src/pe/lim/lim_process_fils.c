@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -376,6 +376,14 @@ static uint32_t lim_process_fils_eap_tlv(tpPESession pe_session,
 		VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
 				FL("tlv type %x len %u total %u"),
 				tlv->type, tlv->length, data_len);
+
+		if (tlv->length > (data_len - 2)) {
+			VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+				  FL("tlv len %d greater data_len %d"),
+				  tlv->length, data_len);
+			return 0;
+		}
+
 		switch (tlv->type) {
 			case SIR_FILS_EAP_TLV_KEYNAME_NAI:
 				auth_info->keyname = vos_mem_malloc(tlv->length);
@@ -1130,10 +1138,13 @@ bool lim_process_fils_auth_frame2(tpAniSirGlobal mac_ctx,
 
 	if (!pe_session->fils_info)
 		return false;
-	dot11fUnpackIeRSN(mac_ctx,
+
+	if (dot11fUnpackIeRSN(mac_ctx,
 			&rx_auth_frm_body->rsn_ie.info[0],
 			rx_auth_frm_body->rsn_ie.length,
-			&dot11f_ie_rsn);
+			&dot11f_ie_rsn) != DOT11F_PARSE_SUCCESS) {
+		return false;
+	}
 
 	for (i = 0; i < dot11f_ie_rsn.pmkid_count; i++) {
 		if (vos_mem_compare(dot11f_ie_rsn.pmkid[i],
@@ -1407,6 +1418,11 @@ static VOS_STATUS lim_parse_kde_elements(tpAniSirGlobal mac_ctx,
 		elem_len = *temp_ie++;
 		rem_len -= 2;
 
+		if (elem_len < KDE_IE_DATA_OFFSET) {
+			limLog(max_ctx, LOGE, FL("Not enough len to parse elem_len %d"),
+			       elem_len);
+			return VOS_STATUS_E_FAILURE;
+		}
 		if (lim_check_if_vendor_oui_match(mac_ctx, KDE_OUI_TYPE,
 					KDE_OUI_TYPE_SIZE, current_ie, elem_len)) {
 			data_type = *(temp_ie + KDE_DATA_TYPE_OFFSET);
@@ -1415,6 +1431,12 @@ static VOS_STATUS lim_parse_kde_elements(tpAniSirGlobal mac_ctx,
 			switch(data_type) {
 				/* TODO - is anymore KDE type expected */
 				case DATA_TYPE_GTK:
+					if (data_len < GTK_OFFSET) {
+						limLog(mac_ctx, LOGE,
+						       FL("Invalid KDE data_len %d"),
+						       data_len);
+						return VOS_STATUS_E_FAILURE;
+					}
 					limLog(mac_ctx, LOG1, FL("GTK found "));
 					vos_mem_copy(fils_info->gtk, (ie_data +
 							GTK_OFFSET), (data_len -
@@ -1422,6 +1444,12 @@ static VOS_STATUS lim_parse_kde_elements(tpAniSirGlobal mac_ctx,
 					fils_info->gtk_len = (data_len - GTK_OFFSET);
 					break;
 				case DATA_TYPE_IGTK:
+					if (data_len < IGTK_OFFSET) {
+						limLog(mac_ctx, LOGE,
+						       FL("Invalid KDE data_len %d"),
+						       data_len);
+						return VOS_STATUS_E_FAILURE;
+					}
 					limLog(mac_ctx, LOG1, FL("IGTK found"));
 					fils_info->igtk_len = (data_len - IGTK_OFFSET);
 					vos_mem_copy(fils_info->igtk, (ie_data +

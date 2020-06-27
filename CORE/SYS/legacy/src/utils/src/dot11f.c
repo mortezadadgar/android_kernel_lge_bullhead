@@ -457,8 +457,9 @@ static const tIEDefn* FindIEDefn(tpAniSirGlobal pCtx,
         if (*pBuf == pIe->eid)
         {
            if (pIe->eid == 0xff) {
-               if ((*(pBuf + 2)) == pIe->extn_eid)
-                   return pIe;
+               if ((nBuf > 2) &&
+                   (*(pBuf + 2)) == pIe->extn_eid)
+                       return pIe;
            } else {
                if (0 == pIe->noui)
                    return pIe;
