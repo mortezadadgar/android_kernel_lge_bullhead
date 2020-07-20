@@ -69,7 +69,8 @@ __cfg80211_wdev_from_attrs(struct net *netns, struct nlattr **attrs)
 	if (have_wdev_id) {
 		wdev_id = nla_get_u64(attrs[NL80211_ATTR_WDEV]);
 		wiphy_idx = wdev_id >> 32;
-	}
+	} else
+		wdev_id = 0;
 
 	list_for_each_entry(rdev, &cfg80211_rdev_list, list) {
 		struct wireless_dev *wdev;
