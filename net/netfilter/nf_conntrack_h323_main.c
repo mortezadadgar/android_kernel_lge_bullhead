@@ -584,8 +584,8 @@ static int h245_help(struct sk_buff *skb, unsigned int protoff,
 {
 	static MultimediaSystemControlMessage mscm;
 	unsigned char *data = NULL;
-	int datalen;
-	int dataoff;
+	int datalen = 0;
+	int dataoff = 0;
 	int ret;
 
 	/* Until there's been traffic both ways, don't look in packets. */
@@ -1159,8 +1159,8 @@ static int q931_help(struct sk_buff *skb, unsigned int protoff,
 {
 	static Q931 q931;
 	unsigned char *data = NULL;
-	int datalen;
-	int dataoff;
+	int datalen = 0;
+	int dataoff = 0;
 	int ret;
 
 	/* Until there's been traffic both ways, don't look in packets. */
@@ -1237,7 +1237,7 @@ static unsigned char *get_udp_data(struct sk_buff *skb, unsigned int protoff,
 {
 	const struct udphdr *uh;
 	struct udphdr _uh;
-	int dataoff;
+	int dataoff = 0;
 
 	uh = skb_header_pointer(skb, protoff, sizeof(_uh), &_uh);
 	if (uh == NULL)
