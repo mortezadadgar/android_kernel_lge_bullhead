@@ -817,7 +817,7 @@ int jbd2_journal_bmap(journal_t *journal, unsigned long blocknr,
 struct buffer_head *jbd2_journal_get_descriptor_buffer(journal_t *journal)
 {
 	struct buffer_head *bh;
-	unsigned long long blocknr;
+	unsigned long long blocknr = 0;
 	int err;
 
 	err = jbd2_journal_next_log_block(journal, &blocknr);
@@ -1203,7 +1203,7 @@ journal_t * jbd2_journal_init_inode (struct inode *inode)
 	char *p;
 	int err;
 	int n;
-	unsigned long long blocknr;
+	unsigned long long blocknr = 0;
 
 	if (!journal)
 		return NULL;
