@@ -2360,7 +2360,7 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 	prev_therm_lvl = chip->therm_lvl_sel;
 	chip->therm_lvl_sel = lvl_sel;
 
-	pr_info("set lvl = %d\n", chip->therm_lvl_sel);
+	pr_debug("set lvl = %d\n", chip->therm_lvl_sel);
 
 	if (chip->therm_lvl_sel == (chip->thermal_levels - 1)) {
 		/*
