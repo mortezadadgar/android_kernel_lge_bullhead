@@ -268,7 +268,7 @@ static int msm_cpufreq_resume(void)
 			pr_info("cpufreq: Current frequency violates policy min/max for CPU%d\n",
 			       cpu);
 		else
-			pr_info("cpufreq: Frequency violation fixed for CPU%d\n",
+			pr_debug("cpufreq: Frequency violation fixed for CPU%d\n",
 				cpu);
 	}
 	put_online_cpus();

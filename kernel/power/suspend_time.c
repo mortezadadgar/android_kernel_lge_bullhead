@@ -87,7 +87,7 @@ static void suspend_time_syscore_resume(void)
 
 	time_in_suspend_bins[fls(after.tv_sec)]++;
 
-	pr_info("Suspended for %lu.%03lu seconds\n", after.tv_sec,
+	pr_debug("Suspended for %lu.%03lu seconds\n", after.tv_sec,
 		after.tv_nsec / NSEC_PER_MSEC);
 }
 
