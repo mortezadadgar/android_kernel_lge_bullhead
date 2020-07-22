@@ -4065,7 +4065,7 @@ static int __handle_overlay_prepare(struct msm_fb_data_type *mfd,
 	struct mdss_data_type *mdata = mfd_to_mdata(mfd);
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 
-	static struct mdp_overlay sorted_ovs[OVERLAY_MAX];
+	struct mdp_overlay *sorted_ovs = NULL;
 	struct mdp_overlay *req, *prev_req;
 
 	struct mdss_mdp_pipe *pipe, *left_blend_pipe;
@@ -4084,11 +4084,16 @@ static int __handle_overlay_prepare(struct msm_fb_data_type *mfd,
 	}
 
 	if (sort_needed) {
-		memset(sorted_ovs, 0, num_ovs * sizeof(*ip_ovs));
+		sorted_ovs = kzalloc(num_ovs * sizeof(*ip_ovs), GFP_KERNEL);
+		if (!sorted_ovs) {
+			pr_err("error allocating ovlist mem\n");
+			return -ENOMEM;
+		}
 		memcpy(sorted_ovs, ip_ovs, num_ovs * sizeof(*ip_ovs));
 		ret = __mdss_overlay_src_split_sort(mfd, sorted_ovs, num_ovs);
 		if (ret) {
 			pr_err("src_split_sort failed. ret=%d\n", ret);
+			kfree(sorted_ovs);
 			return ret;
 		}
 	}
@@ -4187,6 +4192,8 @@ validate_exit:
 	}
 	mutex_unlock(&mdp5_data->ov_lock);
 
+	kfree(sorted_ovs);
+
 	return ret;
 }
 
@@ -4195,8 +4202,7 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 {
 	struct mdp_overlay_list ovlist;
 	struct mdp_overlay *req_list[OVERLAY_MAX];
-	static struct mdp_overlay overlays[OVERLAY_MAX];
-
+	struct mdp_overlay *overlays;
 	int i, ret;
 
 	if (!mfd_to_ctl(mfd))
@@ -4210,6 +4216,12 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 		return -EINVAL;
 	}
 
+	overlays = kmalloc(ovlist.num_overlays * sizeof(*overlays), GFP_KERNEL);
+	if (!overlays) {
+		pr_err("Unable to allocate memory for overlays\n");
+		return -ENOMEM;
+	}
+
 	if (copy_from_user(req_list, ovlist.overlay_list,
 				sizeof(struct mdp_overlay *) *
 				ovlist.num_overlays)) {
@@ -4219,7 +4231,7 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 
 	for (i = 0; i < ovlist.num_overlays; i++) {
 		if (copy_from_user(overlays + i, req_list[i],
-				sizeof(overlays))) {
+				sizeof(struct mdp_overlay))) {
 			ret = -EFAULT;
 			goto validate_exit;
 		}
@@ -4240,6 +4252,7 @@ static int __handle_ioctl_overlay_prepare(struct msm_fb_data_type *mfd,
 		ret = -EFAULT;
 
 validate_exit:
+	kfree(overlays);
 
 	return ret;
 }
