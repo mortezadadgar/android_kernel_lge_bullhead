@@ -158,6 +158,7 @@ VPATH		:= $(srctree)$(if $(KBUILD_EXTMOD),:$(KBUILD_EXTMOD))
 
 export srctree objtree VPATH
 
+CCACHE := $(shell which ccache)
 
 # SUBARCH tells the usermode build what the underlying arch is.  That is set
 # first, and if a usermode build is happening, the "ARCH=um" on the command
@@ -239,8 +240,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
 	  else echo sh; fi ; fi)
 
-HOSTCC       = gcc
-HOSTCXX      = g++
+HOSTCC       = $(CCACHE) gcc
+HOSTCXX      = $(CCACHE) g++
 HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer -std=gnu89
 HOSTCXXFLAGS = -O2
 
@@ -326,7 +327,7 @@ include $(srctree)/scripts/Kbuild.include
 
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
-CC		= $(CROSS_COMPILE)gcc
+CC             = $(CCACHE) $(CROSS_COMPILE)gcc
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -573,10 +574,26 @@ endif # $(dot-config)
 all: vmlinux
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
+KBUILD_CFLAGS	+= -Os
 else
-KBUILD_CFLAGS	+= -O2
+KBUILD_CFLAGS	+= -O3
 endif
+
+KBUILD_CFLAGS += $(call cc-disable-warning, format-truncation) \
+		 $(call cc-disable-warning, format-overflow) \
+		 $(call cc-disable-warning, int-in-bool-context) \
+		 $(call cc-disable-warning, address-of-packed-member) \
+		 $(call cc-disable-warning, attribute-alias) \
+		 $(call cc-disable-warning, address-of-packed-member) \
+		 $(call cc-disable-warning, psabi) \
+		 $(call cc-disable-warning, restrict) \
+		 $(call cc-disable-warning, stringop-overflow) \
+		 $(call cc-disable-warning, zero-length-bounds) \
+		 $(call cc-disable-warning, attribute-alias) \
+		 $(call cc-disable-warning, packed-not-aligned) \
+		 $(call cc-disable-warning, stringop-truncation) \
+		 $(call cc-disable-warning, maybe-uninitialized,) \
+		 $(call cc-disable-warning, unused-const-variable)
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
 
