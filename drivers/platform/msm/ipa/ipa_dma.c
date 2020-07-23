@@ -177,7 +177,7 @@ int ipa_dma_init(void)
 	}
 
 	ipa_dma_ctx_t->ipa_dma_xfer_wrapper_cache =
-		kmem_cache_create("IPA DMA XFER WRAPPER",
+		kmem_cache_create("IPA_DMA_XFER_WRAPPER",
 			sizeof(struct ipa_dma_xfer_wrapper), 0, 0, NULL);
 	if (!ipa_dma_ctx_t->ipa_dma_xfer_wrapper_cache) {
 		IPAERR(":failed to create ipa dma xfer wrapper cache.\n");
