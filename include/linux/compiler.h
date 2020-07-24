@@ -158,10 +158,6 @@ void ftrace_likely_update(struct ftrace_branch_data *f, int val, int expect);
 # define barrier() __memory_barrier()
 #endif
 
-#ifndef barrier_data
-# define barrier_data(ptr) barrier()
-#endif
-
 /* Unreachable code */
 #ifndef unreachable
 # define unreachable() do { } while (1)
@@ -397,10 +393,6 @@ static __always_inline void __write_once_size(volatile void *p, void *res, int s
 
 #ifndef __visible
 #define __visible
-#endif
-
-#ifndef __noreorder
-#define __noreorder
 #endif
 
 /* Are two types/vars the same type (ignoring qualifiers)? */
