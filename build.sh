@@ -29,7 +29,7 @@ if [ ! $? -eq 0 ]; then
 fi
 
 # making kernel
-make CROSS_COMPILE=aarch64-linux-gnu- -j ${cpus}
+make CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-none-eabi- -j ${cpus}
 if [ ! $? -eq 0 ]; then
 	die "Kernel Compilation failed!"
 fi
