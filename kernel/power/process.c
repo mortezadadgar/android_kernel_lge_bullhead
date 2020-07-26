@@ -107,7 +107,7 @@ static int try_to_freeze_tasks(bool user_only)
 		} while_each_thread(g, p);
 		read_unlock(&tasklist_lock);
 	} else {
-		printk("(elapsed %d.%03d seconds) ", elapsed_msecs / 1000,
+		pr_debug("(elapsed %d.%03d seconds) ", elapsed_msecs / 1000,
 			elapsed_msecs % 1000);
 	}
 
@@ -235,7 +235,7 @@ void thaw_processes(void)
 	usermodehelper_enable();
 
 	schedule();
-	printk("done.\n");
+	pr_debug("done.\n");
 }
 
 void thaw_kernel_threads(void)
