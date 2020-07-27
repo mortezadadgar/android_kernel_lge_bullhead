@@ -48,6 +48,7 @@
 #include <linux/workqueue.h>
 #include <linux/export.h>
 #include <linux/hashtable.h>
+#include "time/timekeeping.h"
 
 /*
  * Management arrays for POSIX timers. Timers are now kept in static hash table

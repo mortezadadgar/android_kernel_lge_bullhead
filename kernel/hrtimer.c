@@ -53,6 +53,8 @@
 
 #include <trace/events/timer.h>
 
+#include "time/timekeeping.h"
+
 /*
  * The timer bases:
  *
@@ -113,21 +115,18 @@ static inline int hrtimer_clockid_to_base(clockid_t clock_id)
  */
 static void hrtimer_get_softirq_time(struct hrtimer_cpu_base *base)
 {
-	ktime_t xtim, mono, boot;
-	struct timespec xts, tom, slp;
-	s32 tai_offset;
+	ktime_t xtim, mono, boot, tai;
+	ktime_t off_real, off_boot, off_tai;
 
-	get_xtime_and_monotonic_and_sleep_offset(&xts, &tom, &slp);
-	tai_offset = timekeeping_get_tai_offset();
+	mono = ktime_get_update_offsets_tick(&off_real, &off_boot, &off_tai);
+	boot = ktime_add(mono, off_boot);
+	xtim = ktime_add(mono, off_real);
+	tai = ktime_add(xtim, off_tai);
 
-	xtim = timespec_to_ktime(xts);
-	mono = ktime_add(xtim, timespec_to_ktime(tom));
-	boot = ktime_add(mono, timespec_to_ktime(slp));
 	base->clock_base[HRTIMER_BASE_REALTIME].softirq_time = xtim;
 	base->clock_base[HRTIMER_BASE_MONOTONIC].softirq_time = mono;
 	base->clock_base[HRTIMER_BASE_BOOTTIME].softirq_time = boot;
-	base->clock_base[HRTIMER_BASE_TAI].softirq_time =
-				ktime_add(xtim,	ktime_set(tai_offset, 0));
+	base->clock_base[HRTIMER_BASE_TAI].softirq_time = tai;
 }
 
 /*
@@ -276,79 +275,28 @@ lock_hrtimer_base(const struct hrtimer *timer, unsigned long *flags)
  * too large for inlining:
  */
 #if BITS_PER_LONG < 64
-# ifndef CONFIG_KTIME_SCALAR
-/**
- * ktime_add_ns - Add a scalar nanoseconds value to a ktime_t variable
- * @kt:		addend
- * @nsec:	the scalar nsec value to add
- *
- * Returns the sum of kt and nsec in ktime_t format
- */
-ktime_t ktime_add_ns(const ktime_t kt, u64 nsec)
-{
-	ktime_t tmp;
-
-	if (likely(nsec < NSEC_PER_SEC)) {
-		tmp.tv64 = nsec;
-	} else {
-		unsigned long rem = do_div(nsec, NSEC_PER_SEC);
-
-		/* Make sure nsec fits into long */
-		if (unlikely(nsec > KTIME_SEC_MAX))
-			return (ktime_t){ .tv64 = KTIME_MAX };
-
-		tmp = ktime_set((long)nsec, rem);
-	}
-
-	return ktime_add(kt, tmp);
-}
-
-EXPORT_SYMBOL_GPL(ktime_add_ns);
-
-/**
- * ktime_sub_ns - Subtract a scalar nanoseconds value from a ktime_t variable
- * @kt:		minuend
- * @nsec:	the scalar nsec value to subtract
- *
- * Returns the subtraction of @nsec from @kt in ktime_t format
- */
-ktime_t ktime_sub_ns(const ktime_t kt, u64 nsec)
-{
-	ktime_t tmp;
-
-	if (likely(nsec < NSEC_PER_SEC)) {
-		tmp.tv64 = nsec;
-	} else {
-		unsigned long rem = do_div(nsec, NSEC_PER_SEC);
-
-		tmp = ktime_set((long)nsec, rem);
-	}
-
-	return ktime_sub(kt, tmp);
-}
-
-EXPORT_SYMBOL_GPL(ktime_sub_ns);
-# endif /* !CONFIG_KTIME_SCALAR */
-
 /*
  * Divide a ktime value by a nanosecond value
  */
-u64 ktime_divns(const ktime_t kt, s64 div)
+s64 __ktime_divns(const ktime_t kt, s64 div)
 {
-	u64 dclc;
 	int sft = 0;
+	s64 dclc;
+	u64 tmp;
 
 	dclc = ktime_to_ns(kt);
+	tmp = dclc < 0 ? -dclc : dclc;
+
 	/* Make sure the divisor is less than 2^32: */
 	while (div >> 32) {
 		sft++;
 		div >>= 1;
 	}
-	dclc >>= sft;
-	do_div(dclc, (unsigned long) div);
-
-	return dclc;
+	tmp >>= sft;
+	do_div(tmp, (unsigned long) div);
+	return dclc < 0 ? -tmp : tmp;
 }
+EXPORT_SYMBOL_GPL(__ktime_divns);
 #endif /* BITS_PER_LONG >= 64 */
 
 /*
@@ -707,7 +655,7 @@ static inline ktime_t hrtimer_update_base(struct hrtimer_cpu_base *base)
 	ktime_t *offs_boot = &base->clock_base[HRTIMER_BASE_BOOTTIME].offset;
 	ktime_t *offs_tai = &base->clock_base[HRTIMER_BASE_TAI].offset;
 
-	return ktime_get_update_offsets(offs_real, offs_boot, offs_tai);
+	return ktime_get_update_offsets_now(offs_real, offs_boot, offs_tai);
 }
 
 /*
