@@ -43,10 +43,10 @@ static spinlock_t resume_reason_lock;
 bool log_wakeups __read_mostly;
 struct completion wakeups_completion;
 
-static ktime_t last_monotime; /* monotonic time before last suspend */
-static ktime_t curr_monotime; /* monotonic time after last suspend */
-static ktime_t last_stime; /* monotonic boottime offset before last suspend */
-static ktime_t curr_stime; /* monotonic boottime offset after last suspend */
+static struct timespec last_xtime; /* wall time before last suspend */
+static struct timespec curr_xtime; /* wall time after last suspend */
+static struct timespec last_stime; /* sleep time before last suspend */
+static struct timespec curr_stime; /* sleep time after last suspend */
 
 static struct timespec total_xtime; /* total suspend time since boot */
 static struct timespec total_stime; /* total sleep time since boot */
@@ -267,22 +267,14 @@ static ssize_t last_suspend_time_show(struct kobject *kobj,
 	struct timespec total_time;
 	struct timespec suspend_resume_time;
 
-	/*
-	 * total_time is calculated from monotonic bootoffsets because
-	 * unlike CLOCK_MONOTONIC it include the time spent in suspend state.
-	 */
-	total_time = ktime_to_timespec(ktime_sub(curr_stime, last_stime));
+	sleep_time = timespec_sub(curr_stime, last_stime);
+	total_time = timespec_sub(curr_xtime, last_xtime);
+	suspend_resume_time = timespec_sub(total_time, sleep_time);
 
 	/*
-	 * suspend_resume_time is calculated as monotonic (CLOCK_MONOTONIC)
-	 * time interval before entering suspend and post suspend.
+	 * suspend_resume_time is calculated from sleep_time. Userspace would
+	 * always need both. Export them in pair here.
 	 */
-	suspend_resume_time = ktime_to_timespec(ktime_sub(curr_monotime, last_monotime));
-
-	/* sleep_time = total_time - suspend_resume_time */
-	sleep_time = timespec_sub(total_time, suspend_resume_time);
-
-	/* Export suspend_resume_time and sleep_time in pair here. */
 	return sprintf(buf, "%lu.%09lu %lu.%09lu\n",
 				suspend_resume_time.tv_sec, suspend_resume_time.tv_nsec,
 				sleep_time.tv_sec, sleep_time.tv_nsec);
@@ -570,41 +562,31 @@ void clear_wakeup_reasons(void)
 static int wakeup_reason_pm_event(struct notifier_block *notifier,
 		unsigned long pm_event, void *unused)
 {
+	struct timespec xtom; /* wall_to_monotonic, ignored */
 	unsigned long flags;
-	struct timespec xtime_suspend, stime_suspend, atime_suspend;
 
 	spin_lock_irqsave(&resume_reason_lock, flags);
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		clear_wakeup_reasons_nolock();
-		/* monotonic time since boot */
-		last_monotime = ktime_get();
-		/* monotonic time since boot including the time spent in suspend */
-		last_stime = ktime_get_boottime();
+
+		get_xtime_and_monotonic_and_sleep_offset(&last_xtime, &xtom,
+				&last_stime);
 		break;
 	case PM_POST_SUSPEND:
-		/* monotonic time since boot */
-		curr_monotime = ktime_get();
-		/* monotonic time since boot including the time spent in suspend */
-		curr_stime = ktime_get_boottime();
+		get_xtime_and_monotonic_and_sleep_offset(&curr_xtime, &xtom,
+				&curr_stime);
 
 		if (!suspend_abort) {
 			suspend_count++;
-			/* total_xtime = timespec_add(total_xtime, */
-			/* 		timespec_sub(curr_xtime, last_xtime)); */
-			xtime_suspend = ktime_to_timespec(ktime_sub(curr_monotime, last_monotime));
-			total_xtime = timespec_add(total_xtime, xtime_suspend);
-
-			/* total_stime = timespec_add(total_stime, */
-			/* 		timespec_sub(curr_stime, last_stime)); */
-			stime_suspend = ktime_to_timespec(ktime_sub(curr_stime, last_stime));
-			total_stime = timespec_add(total_stime, stime_suspend); 
+			total_xtime = timespec_add(total_xtime,
+					timespec_sub(curr_xtime, last_xtime));
+			total_stime = timespec_add(total_stime,
+					timespec_sub(curr_stime, last_stime));
 		} else {
 			abort_count++;
-			/* total_atime = timespec_add(total_atime, */
-			/* 		timespec_sub(curr_xtime, last_xtime)); */
-			atime_suspend = ktime_to_timespec(ktime_sub(curr_monotime, last_monotime));
-			total_atime = timespec_add(total_atime, stime_suspend); 
+			total_atime = timespec_add(total_atime,
+					timespec_sub(curr_xtime, last_xtime));
 		}
 
 #ifdef CONFIG_DEDUCE_WAKEUP_REASONS
