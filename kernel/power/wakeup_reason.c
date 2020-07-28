@@ -546,6 +546,9 @@ static int wakeup_reason_pm_event(struct notifier_block *notifier,
 {
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
+                spin_lock(&resume_reason_lock);
+                suspend_abort = false;
+                spin_unlock(&resume_reason_lock);
 		/* monotonic time since boot */
 		last_monotime = ktime_get();
 		/* monotonic time since boot including the time spent in suspend */
