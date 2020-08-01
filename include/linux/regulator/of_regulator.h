@@ -6,6 +6,8 @@
 #ifndef __LINUX_OF_REG_H
 #define __LINUX_OF_REG_H
 
+#include <linux/device.h>
+
 struct of_regulator_match {
 	const char *name;
 	void *driver_data;
