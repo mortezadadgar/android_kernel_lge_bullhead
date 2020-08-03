@@ -3194,7 +3194,7 @@ static unsigned long balance_pgdat(pg_data_t *pgdat, int order,
 		 * Compact if necessary and kswapd is reclaiming at least the
 		 * high watermark number of pages as requsted
 		 */
-		if (pgdat_needs_compaction && sc.nr_reclaimed >= nr_attempted)
+		if (pgdat_needs_compaction && sc.nr_reclaimed > nr_attempted)
 			compact_pgdat(pgdat, order);
 
 		/*
