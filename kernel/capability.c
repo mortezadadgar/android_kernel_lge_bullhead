@@ -46,7 +46,7 @@ static void warn_legacy_capability_use(void)
 	if (!warned) {
 		char name[sizeof(current->comm)];
 
-		printk(KERN_INFO "warning: `%s' uses 32-bit capabilities"
+		pr_debug("warning: `%s' uses 32-bit capabilities"
 		       " (legacy support in use)\n",
 		       get_task_comm(name, current));
 		warned = 1;
