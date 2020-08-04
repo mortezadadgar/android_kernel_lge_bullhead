@@ -1512,9 +1512,6 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	if (mfd->dcm_state == DCM_ENTER)
 		return -EPERM;
 
-	pr_info("%pS mode:%d\n", __builtin_return_address(0),
-		blank_mode);
-
 	snprintf(trace_buffer, sizeof(trace_buffer), "fb%d blank %d",
 		mfd->index, blank_mode);
 	ATRACE_BEGIN(trace_buffer);
