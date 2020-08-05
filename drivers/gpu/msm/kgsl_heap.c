@@ -67,7 +67,7 @@ struct kgsl_page_pool {
 	unsigned int reserve_count;
 	int count;
 	struct list_head items;
-	struct mutex mutex;
+	spinlock_t list_lock;
 	gfp_t gfp_mask;
 	unsigned int order;
 	struct plist_node list;
@@ -116,10 +116,10 @@ static void kgsl_page_pool_zero(struct kgsl_page_pool *pool, struct page *page)
 
 static int kgsl_page_pool_add(struct kgsl_page_pool *pool, struct page *page)
 {
-	mutex_lock(&pool->mutex);
+	spin_lock(&pool->list_lock);
 	list_add_tail(&page->lru, &pool->items);
 	pool->count++;
-	mutex_unlock(&pool->mutex);
+	spin_unlock(&pool->list_lock);
 	return 0;
 }
 
@@ -139,10 +139,10 @@ static struct page *kgsl_page_pool_alloc(struct kgsl_page_pool *pool)
 	struct page *page = NULL;
 	trace_kgsl_page_pool_alloc_begin(pool->order);
 	BUG_ON(!pool);
-	mutex_lock(&pool->mutex);
+	spin_lock(&pool->list_lock);
 	if (pool->count)
 		page = kgsl_page_pool_remove(pool);
-	mutex_unlock(&pool->mutex);
+	spin_unlock(&pool->list_lock);
 
 	if (!page && !pool->reserve_only) {
 		// allocate with GFP_ZERO, don't need to zero by hand
@@ -188,14 +188,14 @@ static int kgsl_page_pool_shrink(struct kgsl_page_pool *pool, gfp_t gfp_mask,
 	while (freed < nr_to_scan) {
 		struct page *page;
 
-		mutex_lock(&pool->mutex);
+		spin_lock(&pool->list_lock);
 		if (pool->count > pool->reserve_count) {
 			page = kgsl_page_pool_remove(pool);
 		} else {
-			mutex_unlock(&pool->mutex);
+			spin_unlock(&pool->list_lock);
 			break;
 		}
-		mutex_unlock(&pool->mutex);
+		spin_unlock(&pool->list_lock);
 		kgsl_page_pool_free_pages(pool, page);
 		freed += (1 << pool->order);
 	}
@@ -220,7 +220,7 @@ static struct kgsl_page_pool *kgsl_page_pool_create(gfp_t gfp_mask, unsigned int
 	pool->reserve_count = 0;
 	INIT_LIST_HEAD(&pool->items);
 	pool->order = order;
-	mutex_init(&pool->mutex);
+	spin_lock_init(&pool->list_lock);
 	plist_node_init(&pool->list, order);
 
 	if (reserve) {
