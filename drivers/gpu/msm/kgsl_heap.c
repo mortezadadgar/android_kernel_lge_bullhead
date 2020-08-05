@@ -48,7 +48,7 @@
 #define MODULE_PARAM_PREFIX "kgsl."
 
 static gfp_t high_order_gfp_flags = (__GFP_HIGHMEM | __GFP_ZERO | __GFP_NOWARN |
-				     __GFP_NORETRY) & ~__GFP_WAIT;
+				     __GFP_NORETRY | __GFP_COMP) & ~__GFP_WAIT;
 static gfp_t low_order_gfp_flags  = (__GFP_HIGHMEM | __GFP_ZERO | __GFP_NOWARN |
 				     GFP_KERNEL);
 
@@ -219,7 +219,6 @@ static struct kgsl_page_pool *kgsl_page_pool_create(gfp_t gfp_mask, unsigned int
 	pool->count = 0;
 	pool->reserve_count = 0;
 	INIT_LIST_HEAD(&pool->items);
-	pool->gfp_mask = gfp_mask | __GFP_COMP;
 	pool->order = order;
 	mutex_init(&pool->mutex);
 	plist_node_init(&pool->list, order);
