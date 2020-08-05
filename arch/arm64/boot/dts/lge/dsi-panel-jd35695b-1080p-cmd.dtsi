@@ -45,7 +45,6 @@
 		qcom,mdss-dsi-bpp = <24>;
 		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
 		qcom,mdss-dsi-underflow-color = <0x00>;
-		qcom,mdss-dsi-init-delay-us = <20000>;
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,ulps-enabled;
 		qcom,mdss-dsi-gamma-default = [
@@ -787,7 +786,7 @@
 			39 01 00 00 00 00 05 2A 00 00 04 37
 			39 01 00 00 00 00 05 2B 00 00 07 7F
 			23 01 00 00 00 00 02 FB 01
-			05 01 00 00 65 00 02 11 00
+			05 01 00 00 05 00 02 11 00
 			05 01 00 00 29 00 02 29 00];
 		qcom,mdss-dsi-off-command = [
 	        05 01 00 00 00 00 02 28 00
@@ -859,7 +858,6 @@
 		qcom,mdss-dsi-bpp = <24>;
 		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
 		qcom,mdss-dsi-underflow-color = <0x00>;
-		qcom,mdss-dsi-init-delay-us = <20000>;
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,ulps-enabled;
 		qcom,mdss-dsi-gamma-default = [
@@ -1601,7 +1599,7 @@
 			39 01 00 00 00 00 05 2A 00 00 04 37
 			39 01 00 00 00 00 05 2B 00 00 07 7F
 			23 01 00 00 00 00 02 FB 01
-			05 01 00 00 65 00 02 11 00
+			05 01 00 00 05 00 02 11 00
 			05 01 00 00 29 00 02 29 00];
 		qcom,mdss-dsi-off-command = [
 	        05 01 00 00 00 00 02 28 00
@@ -1673,7 +1671,6 @@
 		qcom,mdss-dsi-bpp = <24>;
 		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
 		qcom,mdss-dsi-underflow-color = <0x00>;
-		qcom,mdss-dsi-init-delay-us = <20000>;
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,ulps-enabled;
 		qcom,mdss-dsi-gamma-default = [
@@ -2415,7 +2412,7 @@
 			39 01 00 00 00 00 05 2A 00 00 04 37
 			39 01 00 00 00 00 05 2B 00 00 07 7F
 			23 01 00 00 00 00 02 FB 01
-			05 01 00 00 65 00 02 11 00
+			05 01 00 00 05 00 02 11 00
 			05 01 00 00 29 00 02 29 00];
 		qcom,mdss-dsi-off-command = [
 	        05 01 00 00 00 00 02 28 00
