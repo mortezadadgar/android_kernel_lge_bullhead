@@ -768,6 +768,11 @@ static int _ce_setup(struct qce_device *pce_dev, struct qce_req *q_req,
 	switch (q_req->alg) {
 	case CIPHER_ALG_DES:
 		if (q_req->mode !=  QCE_MODE_ECB) {
+			if (ivsize > MAX_IV_LENGTH) {
+				pr_err("%s: error: Invalid length parameter\n",
+					 __func__);
+				return -EINVAL;
+			}
 			_byte_stream_to_net_words(enciv32, q_req->iv, ivsize);
 			writel_relaxed(enciv32[0], pce_dev->iobase +
 						CRYPTO_CNTR0_IV0_REG);
