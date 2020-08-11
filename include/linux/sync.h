@@ -300,6 +300,14 @@ struct sync_fence *sync_fence_fdget(int fd);
 void sync_fence_put(struct sync_fence *fence);
 
 /**
+ * sync_fence_check() - checks if the fence has already signaled
+ * @fence:		fence to check
+ *
+ * Returns true if @fence has already signaled.
+ */
+bool sync_fence_check(struct sync_fence *fence);
+ 
+/**
  * sync_fence_install() - installs a fence into a file descriptor
  * @fence:	fence to instal
  * @fd:		file descriptor in which to install the fence
