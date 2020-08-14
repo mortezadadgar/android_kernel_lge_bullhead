@@ -1804,8 +1804,13 @@ static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 	if (IRQ_HANDLED == synaptics_filter_interrupt(data))
 		return IRQ_HANDLED;
 
+	/* prevent CPU from entering deep sleep */
+	pm_qos_update_request(&rmi4_data->pm_touch_req, 100);
+
 	if (synaptics_rmi4_sensor_report(rmi4_data) == -EIO)
 		queue_work(rmi4_data->det_workqueue, &rmi4_data->recovery_work);
+
+	pm_qos_update_request(&rmi4_data->pm_touch_req, PM_QOS_DEFAULT_VALUE);
 
 	return IRQ_HANDLED;
 }
@@ -3792,6 +3797,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	struct synaptics_rmi4_platform_data *platform_data =
 			client->dev.platform_data;
 	struct dentry *temp;
+	int cpu;
 
 	if (!i2c_check_functionality(client->adapter,
 			I2C_FUNC_SMBUS_BYTE_DATA)) {
@@ -4071,6 +4077,19 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	synaptics_rmi4_set_configuration(rmi4_data);
 
 	rmi4_data->irq = gpio_to_irq(platform_data->irq_gpio);
+
+	rmi4_data->pm_touch_req.type =
+		PM_QOS_REQ_AFFINE_CORES;
+	cpumask_empty(&rmi4_data->pm_touch_req.cpus_affine);
+	for_each_possible_cpu(cpu) {
+		if (cpumask_test_cpu(cpu, cpu_lp_mask))
+			cpumask_set_cpu(cpu,
+				&rmi4_data->pm_touch_req.cpus_affine);
+	}
+
+	pm_qos_add_request(&rmi4_data->pm_touch_req,
+		PM_QOS_CPU_DMA_LATENCY,
+		PM_QOS_DEFAULT_VALUE);
 
 	retval = request_threaded_irq(rmi4_data->irq, NULL,
 		synaptics_rmi4_irq, platform_data->irq_flags,
