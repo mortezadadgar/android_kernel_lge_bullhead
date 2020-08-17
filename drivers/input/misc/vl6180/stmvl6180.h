@@ -32,7 +32,7 @@
 #define RESULT_REG_COUNT	56
 
 #define vl6180_dbgmsg(str, args...) pr_debug("%s: " str, __func__, ##args)
-#define vl6180_errmsg(str, args...) pr_err("%s: " str, __func__, ##args)
+#define vl6180_errmsg(str, args...) pr_debug("%s: " str, __func__, ##args)
 
 #define VL6180_VDD_MIN      2600000
 #define VL6180_VDD_MAX      3000000

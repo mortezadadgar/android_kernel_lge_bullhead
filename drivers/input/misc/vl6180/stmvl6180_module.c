@@ -712,12 +712,12 @@ static int stmvl6180_init_client(struct stmvl6180_data *data)
 	vl6180_errmsg("STM VL6180 Module Version : %d.%d\n", module_major, module_minor);
 
 	/* Read Identification */
-	printk("STM VL6180 Serial Numbe: ");
+	pr_debug("STM VL6180 Serial Numbe: ");
 	for (i = 0; i <= (VL6180_FIRMWARE_REVISION_ID_REG - VL6180_REVISION_ID_REG); i++) {
 		VL6180x_RdByte(vl6180x_dev, (VL6180_REVISION_ID_REG + i), &val);
-		printk("0x%x-", val);
+		pr_debug("0x%x-", val);
 	}
-	printk("\n");
+	pr_debug("\n");
 
 
 	/* intialization */
