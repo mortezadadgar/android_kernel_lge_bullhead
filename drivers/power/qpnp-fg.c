@@ -5217,6 +5217,7 @@ static int fg_probe(struct spmi_device *spmi)
 	 */
 	chip->batt_psy_name = "battery";
 
+#ifdef CONFIG_DEBUG_FS
 	if (chip->mem_base) {
 		rc = fg_dfs_create(chip);
 		if (rc < 0) {
@@ -5224,6 +5225,7 @@ static int fg_probe(struct spmi_device *spmi)
 			goto power_supply_unregister;
 		}
 	}
+#endif
 
 	schedule_work(&chip->init_work);
 
@@ -5234,8 +5236,10 @@ static int fg_probe(struct spmi_device *spmi)
 
 	return rc;
 
+#ifdef CONFIG_DEBUG_FS
 power_supply_unregister:
 	power_supply_unregister(&chip->bms_psy);
+#endif
 cancel_work:
 	cancel_delayed_work_sync(&chip->update_jeita_setting);
 	cancel_delayed_work_sync(&chip->update_sram_data);
