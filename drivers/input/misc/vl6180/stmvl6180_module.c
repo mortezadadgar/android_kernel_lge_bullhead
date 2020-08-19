@@ -83,7 +83,7 @@ static struct stmvl6180_module_fn_t stmvl6180_module_func_tbl = {
 #define VL6180_IOCTL_GETDATAS		_IOR('p', 0x0b, VL6180x_RangeData_t)
 #define VL6180_IOCTL_REGISTER		_IOWR('p', 0x0c, struct stmvl6180_register)
 
-#define CALIBRATION_FILE 1
+#define CALIBRATION_FILE 0
 #ifdef CALIBRATION_FILE
 int8_t offset_calib;
 int16_t xtalk_calib;
