@@ -1142,6 +1142,7 @@ fail:
 
 static int __init setup_slub_debug(char *str)
 {
+	goto out;
 	slub_debug = DEBUG_DEFAULT_FLAGS;
 	if (*str++ != '=' || !*str)
 		/*
