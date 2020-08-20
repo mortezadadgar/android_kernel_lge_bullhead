@@ -139,7 +139,7 @@ static void print_address_description(struct kasan_access_info *info)
 				"kasan: bad access detected");
 			return;
 		}
-		dump_page(page, "kasan: bad access detected");
+		dump_page(page);
 	}
 
 	if (kernel_or_module_addr(addr)) {
