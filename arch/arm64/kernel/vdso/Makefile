@@ -25,6 +25,8 @@ CFLAGS_REMOVE_vgettimeofday.o = -pg -Os
 CFLAGS_vgettimeofday.o = -O2 -fPIC
 CFLAGS_vgettimeofday.o += -mcmodel=tiny
 
+KASAN_SANITIZE := n
+
 # Workaround for bare-metal (ELF) toolchains that neglect to pass -shared
 # down to collect2, resulting in silent corruption of the vDSO image.
 ccflags-y += -Wl,-shared
