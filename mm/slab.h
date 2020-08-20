@@ -4,6 +4,8 @@
  * Internal slab definitions
  */
 
+#include <linux/memcontrol.h>
+
 /*
  * State of the slab allocator.
  *
