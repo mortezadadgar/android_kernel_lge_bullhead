@@ -191,7 +191,7 @@ static inline int __msm_queue_find_command_ack_q(void *d1, void *d2)
 
 static inline void msm_pm_qos_add_request(void)
 {
-	pr_info("%s: add request", __func__);
+	pr_debug("%s: add request", __func__);
 	if (atomic_cmpxchg(&qos_add_request_done, 0, 1))
 		return;
 	pm_qos_add_request(&msm_v4l2_pm_qos_request, PM_QOS_CPU_DMA_LATENCY,
@@ -200,13 +200,13 @@ static inline void msm_pm_qos_add_request(void)
 
 static void msm_pm_qos_remove_request(void)
 {
-	pr_info("%s: remove request", __func__);
+	pr_debug("%s: remove request", __func__);
 	pm_qos_remove_request(&msm_v4l2_pm_qos_request);
 }
 
 void msm_pm_qos_update_request(int val)
 {
-	pr_info("%s: update request %d", __func__, val);
+	pr_debug("%s: update request %d", __func__, val);
 	msm_pm_qos_add_request();
 	pm_qos_update_request(&msm_v4l2_pm_qos_request, val);
 }
