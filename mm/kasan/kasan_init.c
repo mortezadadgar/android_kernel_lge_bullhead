@@ -28,6 +28,7 @@
  *     that allowed to access, but not handled by kasan (vmalloc/vmemmap ...).
  */
 unsigned char kasan_zero_page[PAGE_SIZE] __page_aligned_bss;
+#define CONFIG_ARM64_PGTABLE_LEVELS 3
 
 #if CONFIG_ARM64_PGTABLE_LEVELS > 3
 pud_t kasan_zero_pud[PTRS_PER_PUD] __page_aligned_bss;
