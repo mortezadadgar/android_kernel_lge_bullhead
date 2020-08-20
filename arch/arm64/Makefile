@@ -71,8 +71,8 @@ TEXT_OFFSET := 0x00080000
 # KASAN_SHADOW_OFFSET = VA_START + (1 << (VA_BITS - 3)) - (1 << 61)
 # in 32-bit arithmetic
 KASAN_SHADOW_OFFSET := $(shell printf "0x%08x00000000\n" $$(( \
-			(0xffffffff & (-1 << ($(CONFIG_ARM64_VA_BITS) - 32))) \
-			+ (1 << ($(CONFIG_ARM64_VA_BITS) - 32 - 3)) \
+			(0xffffffff & (-1 << (39 - 32))) \
+			+ (1 << (39 - 32 - 3)) \
 			- (1 << (64 - 32 - 3)) )) )
 
 export	TEXT_OFFSET GZFLAGS
