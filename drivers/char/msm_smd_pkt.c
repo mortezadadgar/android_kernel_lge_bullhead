@@ -47,7 +47,7 @@
 
 #define MODULE_NAME "msm_smdpkt"
 #define DEVICE_NAME "smdpkt"
-#define WAKEUPSOURCE_TIMEOUT (2000) /* two seconds */
+#define WAKEUPSOURCE_TIMEOUT (200) /* 200ms seconds */
 
 struct smd_pkt_dev {
 	struct list_head dev_list;
