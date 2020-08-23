@@ -270,11 +270,11 @@ typedef enum
 
 enum
 {
-	WLAN_HDD_RX_HANDLE_MIN       = 0,
+	WLAN_HDD_RX_HANDLE_MIN       = 1,
 	WLAN_HDD_RX_HANDLE_IRQ       = WLAN_HDD_RX_HANDLE_MIN,
 	WLAN_HDD_RX_HANDLE_RX_THREAD = 1,
 	WLAN_HDD_RX_HANDLE_RPS       = 2,
-	WLAN_HDD_RX_HANDLE_MAX       = WLAN_HDD_RX_HANDLE_RPS
+	WLAN_HDD_RX_HANDLE_MAX       = 1
 };
 
 #define CFG_DOT11_MODE_NAME                    "gDot11Mode"
