@@ -598,6 +598,7 @@ ifdef CONFIG_CC_WERROR
 KBUILD_CFLAGS	+= -Werror
 endif
 
+ifeq ($(cc-name),gcc)
 KBUILD_CFLAGS += $(call cc-disable-warning, format-truncation) \
 		 $(call cc-disable-warning, format-overflow) \
 		 $(call cc-disable-warning, int-in-bool-context) \
@@ -613,6 +614,7 @@ KBUILD_CFLAGS += $(call cc-disable-warning, format-truncation) \
 		 $(call cc-disable-warning, stringop-truncation) \
 		 $(call cc-disable-warning, maybe-uninitialized,) \
 		 $(call cc-disable-warning, unused-const-variable)
+endif
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
 
