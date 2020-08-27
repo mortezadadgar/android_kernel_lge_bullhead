@@ -29,7 +29,14 @@ if [ ! $? -eq 0 ]; then
 fi
 
 # making kernel
-make CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- -j ${cpus}
+#make CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- -j ${cpus}
+make -j ${cpus} \
+	CC=clang \
+	CROSS_COMPILE=aarch64-linux-gnu- \
+	CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+	OBJDUMP=llvm-objdump STRIP=llvm-strip \
+	AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy
+
 if [ ! $? -eq 0 ]; then
 	die "Kernel Compilation failed!"
 fi
