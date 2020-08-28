@@ -395,7 +395,7 @@ static void dwc3_otg_notify_host_mode(struct usb_otg *otg, int host_mode)
 
 static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 {
-	enum power_supply_property power_supply_type;
+	enum power_supply_type power_supply_type;
 	struct dwc3_otg *dotg = container_of(phy->otg, struct dwc3_otg, otg);
 
 	if (!dotg->psy || !dotg->charger) {
