@@ -18,7 +18,11 @@ GZFLAGS		:=-9
 KBUILD_DEFCONFIG := defconfig
 
 KBUILD_CFLAGS	+= -mgeneral-regs-only
-KBUILD_CFLAGS	+= -mcpu=cortex-a57.cortex-a53
+ifeq ($(cc-name),gcc)
+KBUILD_CFLAGS   += -mcpu=cortex-a57.cortex-a53
+else
+KBUILD_CFLAGS   += -mcpu=cortex-a53
+endif
 KBUILD_CFLAGS	+= -fno-asynchronous-unwind-tables
 
 ifeq ($(CONFIG_CPU_BIG_ENDIAN), y)
