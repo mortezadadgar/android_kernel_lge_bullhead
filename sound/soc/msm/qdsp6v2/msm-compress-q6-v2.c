@@ -523,7 +523,7 @@ static void compr_event_handler(uint32_t opcode,
 			 * WRITE_DONE(X)
 			 * RESUME
 			 */
-			if ((prtd->copied_total == prtd->bytes_sent)) {
+			if (prtd->copied_total == prtd->bytes_sent) {
 				if (atomic_read(&prtd->drain)) {
 					pr_debug("RUN ack, wake up & continue pending drain\n");
 
