@@ -431,12 +431,11 @@ static void venus_hfi_hal_sim_modify_msg_packet(u8 *packet,
 
 	fw_bias = device->hal_data->firmware_base;
 	sys_idle = (struct hfi_msg_sys_session_init_done_packet *)packet;
-	if (&device->session_lock) {
-		mutex_lock(&device->session_lock);
-		session = hfi_process_get_session(
-				&device->sess_head, sys_idle->session_id);
-		mutex_unlock(&device->session_lock);
-	}
+	mutex_lock(&device->session_lock);
+	session = hfi_process_get_session(
+			&device->sess_head, sys_idle->session_id);
+	mutex_unlock(&device->session_lock);
+
 	if (!session) {
 		dprintk(VIDC_DBG, "%s: Invalid session id : %x\n",
 				__func__, sys_idle->session_id);
