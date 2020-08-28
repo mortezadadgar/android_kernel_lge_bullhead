@@ -76,7 +76,7 @@ static int nal_type[] = {
 		HFI_NAL_FORMAT_FOUR_BYTE_LENGTH,
 };
 
-static inline int hal_to_hfi_type(int property, int hal_type)
+int hal_to_hfi_type(int property, int hal_type)
 {
 	if (hal_type && (roundup_pow_of_two(hal_type) != hal_type)) {
 		/* Not a power of 2, it's not going
@@ -324,7 +324,7 @@ int create_pkt_cmd_sys_ping(struct hfi_cmd_sys_ping_packet *pkt)
 	return rc;
 }
 
-inline int create_pkt_cmd_sys_session_init(
+static inline int create_pkt_cmd_sys_session_init(
 		struct hfi_cmd_sys_session_init_packet *pkt,
 		struct hal_session *session,
 		u32 session_domain, u32 session_codec)
