@@ -599,7 +599,7 @@ static int wwan_add_ul_flt_rule_to_ipa(void)
 	memset(&req, 0, sizeof(struct ipa_fltr_installed_notif_req_msg_v01));
 	req.source_pipe_index =
 		ipa_get_ep_mapping(IPA_CLIENT_APPS_LAN_WAN_PROD);
-	req.install_status = QMI_RESULT_SUCCESS_V01;
+	req.install_status = IPA_QMI_RESULT_SUCCESS_V01;
 	req.filter_index_list_len = num_q6_rule;
 	for (i = 0; i < num_q6_rule; i++) {
 		if (ipa_qmi_ctx->q6_ul_filter_rule[i].ip == IPA_IP_v4) {
