@@ -169,6 +169,7 @@ int __pci_read_base(struct pci_dev *dev, enum pci_bar_type type,
 			struct resource *res, unsigned int pos)
 {
 	u32 l, sz, mask;
+	u64 mask64;
 	u16 orig_cmd;
 	struct pci_bus_region region;
 	bool bar_too_big = false, bar_disabled = false;
@@ -227,7 +228,7 @@ int __pci_read_base(struct pci_dev *dev, enum pci_bar_type type,
 	if (res->flags & IORESOURCE_MEM_64) {
 		u64 l64 = l;
 		u64 sz64 = sz;
-		u64 mask64 = mask | (u64)~0 << 32;
+		mask64 = mask | (u64)~0 << 32;
 
 		pci_read_config_dword(dev, pos + 4, &l);
 		pci_write_config_dword(dev, pos + 4, ~0);
