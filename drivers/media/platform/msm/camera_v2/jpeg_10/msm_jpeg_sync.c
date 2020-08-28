@@ -115,7 +115,7 @@ struct msm_jpeg_hw_cmds32 {
 #endif
 
 
-inline void msm_jpeg_q_init(char const *name, struct msm_jpeg_q *q_p)
+static inline void msm_jpeg_q_init(char const *name, struct msm_jpeg_q *q_p)
 {
 	JPEG_DBG("%s:%d] %s\n", __func__, __LINE__, name);
 	q_p->name = name;
