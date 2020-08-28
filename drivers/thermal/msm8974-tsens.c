@@ -2967,7 +2967,7 @@ static int tsens_calib_mdm9640_sensors(void)
 		pr_debug("calib mode is %d\n", tsens_calibration_mode);
 	}
 
-	if ((tsens_calibration_mode == TSENS_TWO_POINT_CALIB)) {
+	if (tsens_calibration_mode == TSENS_TWO_POINT_CALIB) {
 		tsens_base0_data = (calib_data[0] & TSENS_BASE0_9640_MASK);
 		tsens_base1_data = (calib_data[0] & TSENS_BASE1_9640_MASK) >>
 						TSENS_BASE1_9640_SHIFT;
