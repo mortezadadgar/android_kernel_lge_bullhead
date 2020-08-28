@@ -778,25 +778,21 @@ static int tusb320_probe(struct i2c_client *client,
 	chip->client = client;
 	i2c_set_clientdata(client, chip);
 
-	if (&client->dev.of_node) {
-		struct tusb320_data *data = devm_kzalloc(cdev,
-				sizeof(struct tusb320_data), GFP_KERNEL);
+	struct tusb320_data *data = devm_kzalloc(cdev,
+			sizeof(struct tusb320_data), GFP_KERNEL);
 
-		if (!data) {
-			dev_err(cdev, "can't alloc tusb320_data\n");
-			ret = -ENOMEM;
-			goto err1;
-		}
+	if (!data) {
+		dev_err(cdev, "can't alloc tusb320_data\n");
+		ret = -ENOMEM;
+		goto err1;
+	}
 
-		chip->pdata = data;
+	chip->pdata = data;
 
-		ret = tusb320_parse_dt(cdev, data);
-		if (ret) {
-			dev_err(cdev, "can't parse dt\n");
-			goto err2;
-		}
-	} else {
-		chip->pdata = client->dev.platform_data;
+	ret = tusb320_parse_dt(cdev, data);
+	if (ret) {
+		dev_err(cdev, "can't parse dt\n");
+		goto err2;
 	}
 
 	ret = tusb320_init_gpio(chip);
@@ -863,8 +859,7 @@ err3:
 	wake_lock_destroy(&chip->wlock);
 	tusb320_free_gpio(chip);
 err2:
-	if (&client->dev.of_node)
-		devm_kfree(cdev, chip->pdata);
+	devm_kfree(cdev, chip->pdata);
 err1:
 	i2c_set_clientdata(client, NULL);
 	devm_kfree(cdev, chip);
@@ -889,8 +884,7 @@ static int tusb320_remove(struct i2c_client *client)
 	wake_lock_destroy(&chip->wlock);
 	tusb320_free_gpio(chip);
 
-	if (&client->dev.of_node)
-		devm_kfree(cdev, chip->pdata);
+	devm_kfree(cdev, chip->pdata);
 
 	i2c_set_clientdata(client, NULL);
 	devm_kfree(cdev, chip);
