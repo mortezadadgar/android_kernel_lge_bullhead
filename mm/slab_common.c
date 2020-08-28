@@ -175,7 +175,7 @@ kmem_cache_create_memcg(struct mem_cgroup *memcg, const char *name, size_t size,
 	get_online_cpus();
 	mutex_lock(&slab_mutex);
 
-	if (!kmem_cache_sanity_check(memcg, name, size) == 0)
+	if (kmem_cache_sanity_check(memcg, name, size) != 0)
 		goto out_locked;
 
 	/*
