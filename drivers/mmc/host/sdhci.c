@@ -1579,7 +1579,7 @@ static int sdhci_enable(struct mmc_host *mmc)
 		goto platform_bus_vote;
 
 	if (host->cpu_dma_latency_tbl_sz > 2)
-		host->pm_qos_index = host->power_policy;
+		host->pm_qos_index = SDHCI_BIG_CLUSTER;
 
 	sdhci_set_pmqos_req_type(host, true);
 	pm_qos_update_request(&host->pm_qos_req_dma,
@@ -1602,7 +1602,7 @@ static int sdhci_disable(struct mmc_host *mmc)
 		goto platform_bus_vote;
 
 	if (host->cpu_dma_latency_tbl_sz > 2)
-		host->pm_qos_index = host->power_policy;
+		host->pm_qos_index = SDHCI_BIG_CLUSTER;
 
 	sdhci_set_pmqos_req_type(host, false);
 	/*
