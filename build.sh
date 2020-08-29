@@ -31,7 +31,7 @@ fi
 # making kernel
 #make CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- -j ${cpus}
 make -j ${cpus} \
-	CC=clang \
+	CC='ccache clang' \
 	CROSS_COMPILE=aarch64-linux-gnu- \
 	CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
 	OBJDUMP=llvm-objdump STRIP=llvm-strip \
