@@ -23,7 +23,7 @@
 #define __BUG(__file, __line, __value)				\
 do {								\
 	asm volatile("1:\t" BUG_INSTR_TYPE #__value "\n"	\
-		".pushsection .rodata.str, \"aMS\", 1\n"	\
+		".pushsection .rodata.str, \"aMS\", @progbits,1\n"	\
 		"2:\t.asciz " #__file "\n"			\
 		".popsection\n"					\
 		".pushsection __bug_table,\"a\"\n"		\
