@@ -1048,6 +1048,9 @@ ssize_t elv_iosched_store(struct request_queue *q, const char *name,
 {
 	int ret;
 
+	if (!strncmp(current->comm, "init", sizeof("init")))
+		return count;
+
 	if (!q->elevator)
 		return count;
 
