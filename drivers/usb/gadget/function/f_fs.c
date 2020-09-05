@@ -35,7 +35,7 @@
 #include "u_fs.h"
 #include "u_f.h"
 #include "u_os_desc.h"
-#include "configfs.h"
+#include "../configfs.h"
 
 #define FUNCTIONFS_MAGIC	0xa647361 /* Chosen by a honest dice roll ;) */
 

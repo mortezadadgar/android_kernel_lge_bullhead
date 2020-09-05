@@ -220,7 +220,7 @@
 #include <linux/usb/composite.h>
 
 #include "gadget_chips.h"
-#include "configfs.h"
+#include "../configfs.h"
 
 
 /*------------------------------------------------------------------------*/
