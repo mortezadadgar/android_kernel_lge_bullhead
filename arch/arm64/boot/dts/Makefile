@@ -1,3 +1,4 @@
+dts-dirs += lge
 dts-dirs += altera
 dts-dirs += amd
 dts-dirs += apm

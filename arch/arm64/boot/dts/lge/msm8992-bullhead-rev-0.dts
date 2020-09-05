@@ -1,0 +1,128 @@
+/* Copyright (c) 2015, LGE Inc. All rights reserved.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "../qcom/msm8992.dtsi"
+#include "msm8992-bullhead.dtsi"
+
+/ {
+	model = "LGE MSM8992 BULLHEAD rev-0";
+	compatible = "qcom,msm8992";
+	qcom,board-id = <0x364 0>;
+};
+
+&i2c_5 {
+	tusb320@60 {
+		status = "ok";
+		compatible = "ti,tusb320";
+		reg = <0x60>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <57 0x2>;
+		tusb320,int-gpio = <&msm_gpio 57 0>;
+		tusb320,enb-gpio = <&msm_gpio 11 0>;
+		tusb320,select-mode = <0>;
+		tusb320,dfp-power = <0>;
+	};
+
+	fusb301@21 {
+		status = "disabled";
+	};
+};
+
+&i2c_2 {
+	synaptics@20 {
+		vcc_i2c-supply = <&pm8994_l10>;
+	};
+};
+
+&mdss_dsi0 {
+	tpio-supply = <&pm8994_l10>;    /* 1V8 */
+};
+
+&pm8994_l10 { /* Touch/LCD */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	/delete-property/ regulator-always-on;
+	status = "okay";
+};
+
+&cci {
+	qcom,eeprom@a0 {
+		cam_vio-supply = <&pm8994_l21>;
+	};
+
+	lge,camera1@6c {
+		cam_vio-supply = <&pm8994_l21>;
+	};
+};
+
+&pm8994_l21 { /* VT CAM */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	/delete-property/ regulator-always-on;
+	status = "okay";
+};
+
+&pm8994_l25 { /* FPS */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+	qcom,init-voltage = <1800000>;
+	status = "okay";
+};
+
+&soc {
+	qcom,cnss {
+		wlan-bootstrap-gpio = <&msm_gpio 112 0>;
+	};
+
+	gpio_keys {
+		vol_up {
+			linux,code = <115>;
+		};
+	};
+};
+
+&pmi8994_charger {
+	qcom,fastchg-current-ma = <2000>;
+};
+
+&spmi_bus {
+	qcom,pm8994@0 {
+		qcom,power-on@800 {
+			qcom,pon_2 {
+				linux,code = <114>;
+			};
+		};
+	};
+};
+
+&soc {
+	sound {
+		qcom,mbhc-btn-cal-low =
+			/bits/ 16 <(-50) 111 191 360 751 753 755 757>;
+		qcom,mbhc-btn-cal-high =
+			/bits/ 16 <110 190 359 750 752 754 756 758>;
+	};
+};
+
+&spmi_bus {
+	qcom,pmi8994@3 {
+		qcom,leds@d800 {
+			qcom,fs-curr-ua = <17500>;
+		};
+	};
+};
