@@ -1,0 +1,114 @@
+/* Copyright (c) 2015, LGE Inc. All rights reserved.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	earjack-debugger {
+		compatible = "serial,earjack-debugger";
+		status = "ok";
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <77 0x0>;
+		serial,irq-gpio = <&msm_gpio 77 0x00>;
+		pinctrl-names = "disable", "enable";
+		pinctrl-0 = <&uart_disable>;
+		pinctrl-1 = <&uart_enable>;
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		vol_up {
+			label = "volume_up";
+			gpios = <&pm8994_gpios 3 0x1>;
+			linux,input-type = <1>;
+			linux,code = <114>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+};
+
+&pmi8994_haptics {
+	status = "okay";
+	qcom,actuator-type = "lra";
+	qcom,vmax-mv = <1800>;
+	qcom,vmax-mv-ind = <2500>;
+	qcom,ilim-ma = <400>;
+	qcom,wave-play-rate-us = <4347>;
+	qcom,correct-lra-drive-freq;
+	qcom,en-brake;
+	qcom,brake-pattern = [03 03 03 03];
+	qcom,wave-shape = "sine";
+};
+
+&spi_fpc {
+	fpc@0 {
+		compatible = "fpc,fpc1020";
+		reg = <2>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <61 0x0>;
+		vdd_io-supply = <&pm8994_lvs2>;
+		vdd-supply = <&pm8994_l25>;
+
+		fpc,use_fpc2050 = <1>;
+		fpc,enable-on-boot;
+		/delete-property/ fpc,enable-wakeup;
+		fpc,event-type = <4>;
+		fpc,event-code = <4>;
+
+		spi-max-frequency = <1000000>;
+
+		qcom,spi-qup-id = <10>;
+
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup4_spi_apps_clk>;
+
+		pinctrl-names = "fpc1020_spi_active",
+			"fpc1020_reset_reset",
+			"fpc1020_reset_active",
+			"fpc1020_cs_low",
+			"fpc1020_cs_high",
+			"fpc1020_cs_active",
+			"fpc1020_irq_active";
+
+		pinctrl-0 = <&fpc_spi_active>;
+		pinctrl-1 = <&fpc_reset_reset>;
+		pinctrl-2 = <&fpc_reset_active>;
+		pinctrl-3 = <&fpc_cs_low>;
+		pinctrl-4 = <&fpc_cs_high>;
+		pinctrl-5 = <&fpc_cs_active>;
+		pinctrl-6 = <&fpc_irq_active>;
+
+		fpc,gpio_irq = <&msm_gpio 61 0x00>;
+		fpc,gpio_rst = <&msm_gpio 62 0x00>;
+		fpc,gpio_cs0 = <&msm_gpio 55 0x00>;
+	};
+};
+
+&i2c_5 {
+	fusb301@21 {
+		status = "ok";
+		compatible = "fc,fusb301";
+		reg = <0x21>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <57 0x2>;
+		fusb301,int-gpio = <&msm_gpio 57 0>;
+		fusb301,init-mode = /bits/ 8 <32>;
+		fusb301,drp-toggle-time = /bits/ 8 <0>;
+		fusb301,host-current = /bits/ 8 <1>;
+		fusb301,use-try-snk-emulation;
+		fusb301,ttry-timer-value = <250 600>;
+		fusb301,ccdebounce-timer-value = <20 200>;
+
+	};
+};

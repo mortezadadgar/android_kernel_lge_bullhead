@@ -1,0 +1,37 @@
+/* Copyright (c) 2015, LGE Inc. All rights reserved.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	sound {
+		qcom,mbhc-btn-cal-low =
+			/bits/ 16 <(-50) 211 291 460 851 853 855 857>;
+		qcom,mbhc-btn-cal-high =
+			/bits/ 16 <210 290 459 850 852 854 856 858>;
+		qcom,mbhc-micbias-enable-flags = <0x3>;
+	};
+};
+
+&slim_msm {
+        tomtom_codec {
+                cdc-vdd-spkdrv-supply = <&pmi8994_boost_pin_ctrl>;
+                qcom,cdc-vdd-spkdrv-voltage = <5000000 5000000>;
+                qcom,cdc-vdd-spkdrv-current = <600000>;
+
+                cdc-vdd-spkdrv-2-supply = <&pmi8994_boost_pin_ctrl>;
+                qcom,cdc-vdd-spkdrv-2-voltage = <5000000 5000000>;
+                qcom,cdc-vdd-spkdrv-2-current = <600000>;
+
+                qcom,cdc-on-demand-supplies = "cdc-vdd-spkdrv",
+                                              "cdc-vdd-spkdrv-2";
+        };
+};

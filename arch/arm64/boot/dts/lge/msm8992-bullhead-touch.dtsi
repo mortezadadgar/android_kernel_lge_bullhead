@@ -1,0 +1,43 @@
+/* Copyright (c) 2015, LGE Inc. All rights reserved.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+&i2c_2 {
+	qcom,clk-freq-out = <400000>;
+	qcom,disable-dma;
+	synaptics@20 {
+		status = "ok";
+		compatible = "synaptics,rmi4";
+		reg = <0x20>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <22 0x2008>;
+		vcc_i2c-supply = <&pm8994_l25>;
+		vdd-supply = <&pm8994_l22>;
+		synaptics,reset-gpio = <&msm_gpio 8 0x00>;
+		synaptics,irq-gpio = <&msm_gpio 22 0x2008>;
+		synaptics,i2c-pull-up;
+		synaptics,power-down;
+		synaptics,fw-image-name = "synaptics_fw.bin";
+		synaptics,check-build;
+		synaptics,pon-delay = <66>;
+		synaptics,disable-gpios;
+		synaptics,display-coords = <0 0 1079 1919>;
+		synaptics,num-of-tx = <28>;
+		synaptics,num-of-rx = <16>;
+		synaptics,num-of-fingers = <10>;
+
+		pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
+		pinctrl-0 = <&ts_reset_active &ts_int_active>;
+		pinctrl-1 = <&ts_reset_suspend &ts_int_suspend>;
+	};
+};

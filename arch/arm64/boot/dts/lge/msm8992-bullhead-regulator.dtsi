@@ -1,0 +1,101 @@
+/* Copyright (c) 2015, LGE Inc. All rights reserved.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&pm8994_l10 { /* VTCAM VDDIO */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	status = "okay";
+};
+
+&pm8994_l14 { /* VTCAM DVDD */
+	regulator-min-microvolt = <1200000>;
+	regulator-max-microvolt = <1200000>;
+	qcom,init-voltage = <1200000>;
+	status = "okay";
+};
+
+&pm8994_l18 { /* Sensor VDD */
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+	regulator-always-on;
+	qcom,init-voltage = <3000000>;
+	qcom,init-ldo-mode = <1>; /* NPM */
+	status = "okay";
+};
+
+&pm8994_l19 { /* Sensor Hub VDD */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+	qcom,init-voltage = <1800000>;
+	qcom,init-ldo-mode = <1>; /* NPM */
+	status = "okay";
+};
+
+&pm8994_lvs2 {
+	qcom,init-enable = <1>;
+	qcom,init-voltage = <1800000>;
+	regulator-always-on;
+	status = "okay";
+};
+
+&pm8994_l21 { /* FPS */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+	qcom,init-voltage = <1800000>;
+	status = "okay";
+};
+
+&pm8994_l22 { /* Touch VDD */
+	regulator-min-microvolt = <3100000>;
+	regulator-max-microvolt = <3100000>;
+	qcom,init-voltage = <3100000>;
+	status = "okay";
+};
+
+&pm8994_l25 { /* Touch/LCD VDDIO */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	status = "okay";
+};
+
+&i2c_5 {
+	dw8768@3e {
+		compatible = "dw,dw8768";
+		reg = <0x3e>;
+		regulators { /* LCD DSV */
+			avdd_reg: dw8768-dsv {
+				regulator-name = "avdd_reg";
+				regulator-min-microvolt = <5500000>;
+				regulator-max-microvolt = <5500000>;
+				dw,ena-gpio = <&msm_gpio 89 0>;
+				dw,enm-gpio = <&msm_gpio 90 0>;
+				dw,post-on-sleep-us = <3700>;
+				dw,post-off-sleep-us = <6000>;
+			};
+		};
+	};
+};
+
+&soc {
+	wlan_vreg: wlan_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "wlan_vreg";
+		startup-delay-us = <4000>;
+		enable-active-high;
+		gpio = <&pm8994_gpios 9 0>;
+	};
+};
