@@ -30,6 +30,12 @@ obj-$(CONFIG_ARCH_SDX20)	+= clock-gcc-9650.o
 # MDM9607
 obj-$(CONFIG_ARCH_MDM9607)	+=clock-gcc-mdm9607.o
 
+# MSM8992
+obj-$(CONFIG_ARCH_MSM8992)	+= clock-rpm-8992.o
+obj-$(CONFIG_ARCH_MSM8992)	+= clock-gcc-8992.o
+obj-$(CONFIG_ARCH_MSM8992)	+= clock-mmss-8992.o
+obj-$(CONFIG_ARCH_MSM8992)	+= clock-cpu-8994.o
+
 # MSM8909
 obj-$(CONFIG_ARCH_MSM8909)	+= clock-rpm-8909.o
 obj-$(CONFIG_ARCH_MSM8909)	+= clock-gcc-8909.o
