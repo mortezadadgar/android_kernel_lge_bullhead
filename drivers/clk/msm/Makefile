@@ -19,6 +19,22 @@ ifeq ($(CONFIG_COMMON_CLK_MSM), y)
 	obj-$(CONFIG_ARCH_MSM8996) += clock-cpu-8996.o
 endif
 
+# MSM8994
+ifeq ($(CONFIG_COMMON_CLK_MSM), y)
+	obj-$(CONFIG_ARCH_MSM8994)	+= clock-rpm-8994.o
+	obj-$(CONFIG_ARCH_MSM8994)	+= clock-gcc-8994.o
+	obj-$(CONFIG_ARCH_MSM8994)	+= clock-mmss-8994.o
+	obj-$(CONFIG_ARCH_MSM8994)	+= clock-cpu-8994.o
+endif
+
+# MSM8992
+ifeq ($(CONFIG_COMMON_CLK_MSM), y)
+	obj-$(CONFIG_ARCH_MSM8992)	+= clock-rpm-8992.o
+	obj-$(CONFIG_ARCH_MSM8992)	+= clock-gcc-8992.o
+	obj-$(CONFIG_ARCH_MSM8992)	+= clock-mmss-8992.o
+	obj-$(CONFIG_ARCH_MSM8992)	+= clock-cpu-8994.o
+endif
+
 # MSM 8998
 ifeq ($(CONFIG_COMMON_CLK_MSM), y)
 	obj-$(CONFIG_ARCH_MSM8998)	+= clock-gcc-8998.o
