@@ -1648,7 +1648,6 @@ static void init_v2_data(void)
 
 static int a57speedbin;
 static int a53speedbin;
-struct platform_device *cpu_clock_8994_dev;
 
 /* Low power mux code begins here */
 #define EVENT_WAIT_US 1
@@ -2123,7 +2122,8 @@ static int cpu_clock_8994_driver_probe(struct platform_device *pdev)
 
 	put_online_cpus();
 
-	cpu_clock_8994_dev = pdev;
+	populate_opp_table(pdev);
+
 	return 0;
 }
 
@@ -2142,15 +2142,6 @@ static struct platform_driver cpu_clock_8994_driver = {
 		.owner = THIS_MODULE,
 	},
 };
-
-/* CPU devices are not currently available in arch_initcall */
-static int __init cpu_clock_8994_init_opp(void)
-{
-	if (cpu_clock_8994_dev)
-		populate_opp_table(cpu_clock_8994_dev);
-	return 0;
-}
-module_init(cpu_clock_8994_init_opp);
 
 static int __init cpu_clock_8994_init(void)
 {
