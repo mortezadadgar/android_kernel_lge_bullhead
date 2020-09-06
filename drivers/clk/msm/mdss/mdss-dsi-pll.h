@@ -50,6 +50,45 @@ static inline struct dsi_pll_vco_clk *to_vco_clk(struct clk *clk)
 	return container_of(clk, struct dsi_pll_vco_clk, c);
 }
 
+static inline int dsi_pll_div_prepare(struct clk *c)
+{
+	struct div_clk *div = to_div_clk(c);
+	/* Restore the divider's value */
+	return div->ops->set_div(div, div->data.div);
+}
+
+static inline int dsi_pll_mux_prepare(struct clk *c)
+{
+	struct mux_clk *mux = to_mux_clk(c);
+	int i, rc, sel = 0;
+	struct mdss_pll_resources *dsi_pll_res = mux->priv;
+
+	rc = mdss_pll_resource_enable(dsi_pll_res, true);
+	if (rc) {
+		pr_err("Failed to enable mdss dsi pll resources\n");
+		return rc;
+	}
+
+	for (i = 0; i < mux->num_parents; i++)
+		if (mux->parents[i].src == c->parent) {
+			sel = mux->parents[i].sel;
+			break;
+		}
+
+	if (i == mux->num_parents) {
+		pr_err("Failed to select the parent clock\n");
+		rc = -EINVAL;
+		goto error;
+	}
+
+	/* Restore the mux source select value */
+	rc = mux->ops->set_mux_sel(mux, sel);
+
+error:
+	mdss_pll_resource_enable(dsi_pll_res, false);
+	return rc;
+}
+
 int dsi_pll_clock_register_hpm(struct platform_device *pdev,
 				struct mdss_pll_resources *pll_res);
 int dsi_pll_clock_register_20nm(struct platform_device *pdev,
@@ -63,7 +102,6 @@ int dsi_pll_clock_register_8998(struct platform_device *pdev,
 
 int set_byte_mux_sel(struct mux_clk *clk, int sel);
 int get_byte_mux_sel(struct mux_clk *clk);
-int dsi_pll_mux_prepare(struct clk *c);
 int fixed_4div_set_div(struct div_clk *clk, int div);
 int fixed_4div_get_div(struct div_clk *clk);
 int digital_set_div(struct div_clk *clk, int div);
