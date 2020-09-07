@@ -80,7 +80,7 @@ static int dw8768_regulator_enable(struct regulator_dev *rdev)
 	dw_info("enable, postponed:%d\n", reg_data->vol_set_postponed);
 
 	if (reg_data->pre_on_usleep)
-		usleep(reg_data->pre_on_usleep);
+		usleep_range(reg_data->pre_on_usleep, reg_data->pre_on_usleep);
 
 	if (gpio_is_valid(reg_data->ena_gpio)) {
 		gpio_set_value(reg_data->ena_gpio, 1);
@@ -117,7 +117,7 @@ static int dw8768_regulator_enable(struct regulator_dev *rdev)
 	}
 
 	if (reg_data->post_on_usleep)
-		usleep(reg_data->post_on_usleep);
+		usleep_range(reg_data->post_on_usleep, reg_data->post_on_usleep);
 	return rc;
 }
 
@@ -134,7 +134,7 @@ static int dw8768_regulator_disable(struct regulator_dev *rdev)
 	dw_info("disable, postponed:%d\n", reg_data->vol_set_postponed);
 
 	if (reg_data->pre_off_usleep)
-		usleep(reg_data->pre_off_usleep);
+		usleep_range(reg_data->pre_off_usleep, reg_data->pre_off_usleep);
 
 	if (gpio_is_valid(reg_data->ena_gpio)) {
 		if (gpio_is_valid(reg_data->enm_gpio)) {
@@ -153,7 +153,7 @@ static int dw8768_regulator_disable(struct regulator_dev *rdev)
 	}
 
 	if (reg_data->post_off_usleep)
-		usleep(reg_data->post_off_usleep);
+		usleep_range(reg_data->post_off_usleep, reg_data->post_off_usleep);
 	return rc;
 }
 
