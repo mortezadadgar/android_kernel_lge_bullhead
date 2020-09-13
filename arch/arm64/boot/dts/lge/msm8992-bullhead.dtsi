@@ -163,18 +163,6 @@
 	/delete-property/ pinctrl-1;
 };
 
-&tspp {
-	status = "disabled";
-	/delete-property/ pinctrl-names;
-	/delete-property/ pinctrl-0;
-	/delete-property/ pinctrl-1;
-	/delete-property/ pinctrl-2;
-	/delete-property/ pinctrl-3;
-	/delete-property/ pinctrl-4;
-	/delete-property/ pinctrl-5;
-	/delete-property/ pinctrl-6;
-};
-
 &cti6 {
 	/delete-property/ pinctrl-names;
 	/delete-property/ pinctrl-0;
