@@ -23,7 +23,7 @@
 	interrupt-parent = <&intc>;
 
 	chosen {
-		bootargs = "sched_enable_hmp=1 sched_enable_power_aware=1";
+		bootargs = "sched_enable_hmp=1 sched_enable_power_aware=1 earlycon=msm_serial_dm,0xf991e000 console=ttyMSM0,115200,n8";
 	};
 
 	aliases {
@@ -600,11 +600,11 @@
 	};
 
 	blsp1_uart2: serial@f991e000 {
-		compatible = "qcom,msm-lsuart-v14";
+		compatible = "qcom,msm-uartdm-v1.4", "qcom,msm-uartdm";
 		reg = <0xf991e000 0x1000>;
 		interrupts = <0 108 0>;
 		status = "disabled";
-		clock-names = "core_clk", "iface_clk";
+		clock-names = "core", "iface";
 		clocks = <&clock_gcc clk_gcc_blsp1_uart2_apps_clk>,
 			<&clock_gcc clk_gcc_blsp1_ahb_clk>;
 	};
