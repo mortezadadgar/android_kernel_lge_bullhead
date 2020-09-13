@@ -12,13 +12,14 @@
  */
 
 / {
-	memory {
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+
 		ramoops_mem: ramoops_region@1ff00000 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
+			compatible = "removed-dma-pool";
+			no-map;
 			reg = <0x0 0x1ff00000 0x0 0x40000>;
-			label = "ramoops_mem";
 		};
 	};
 };
@@ -26,15 +27,13 @@
 &soc {
 	ramoops {
 		compatible = "ramoops";
+		memory-region = <&ramoops_mem>;
 		status = "okay";
 
-		android,ramoops-buffer-start = <0x1ff00000>;
-		android,ramoops-buffer-size =  <0x40000>;
-		android,ramoops-console-size = <0x10000>;
-		android,ramoops-record-size = <0x10000>;
-		android,ramoops-pmsg-size = <0x20000>;
-		android,ramoops-dump-oops = <0x1>;
-		android,ramoops-ecc-info = <0 16 0 0>; /* < block_size, ecc_size, sym_size, poly >, only ecc_size will suffice to enable ecc */
+		console-size = <0x10000>;
+		record-size = <0x10000>;
+		pmsg-size = <0x20000>;
+		ecc-size = <0x10>;
 	};
 
 	qcom,wdt@f9017000 {
