@@ -1644,9 +1644,8 @@
 
 		qcom,bus-width = <8>;
 		qcom,wakeup-on-idle;
-		qcom,cpu-dma-latency-us = <301>;
-		qcom,cpu-affinity = "affine_cores";
-		qcom,cpu-affinity-mask = <0x0f>;
+		qcom,pm-qos-irq-latency = <301 301>;
+		qcom,pm-qos-irq-type = "affine_irq";
 
 		qcom,msm-bus,name = "sdhc1";
 		qcom,msm-bus,num-cases = <9>;
