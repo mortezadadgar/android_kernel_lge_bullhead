@@ -33,7 +33,7 @@
 		clock-rate = <0>;
 
 		/* Dynamic FPS data region */
-		linux,contiguous-region = <&dfps_data_mem>;
+		memory-region = <&dfps_data_mem>;
 
 		qcom,platform-supply-entries {
 			#address-cells = <1>;
