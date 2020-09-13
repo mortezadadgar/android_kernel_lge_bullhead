@@ -730,7 +730,7 @@ int ocmem_disable_dump(enum ocmem_client id, unsigned long offset,
 
 int ocmem_restore_sec_program(int sec_id)
 {
-	int rc, scm_ret = 0;
+	u64 rc, scm_ret = 0;
 
 	rc = scm_restore_sec_cfg(sec_id, 0, &scm_ret);
 	if (rc || scm_ret) {
