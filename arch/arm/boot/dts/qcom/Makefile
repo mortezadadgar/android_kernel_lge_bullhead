@@ -116,13 +116,6 @@ dtb-$(CONFIG_ARCH_MSM8996) += msm8996-v2-pmi8994-cdp.dtb \
 	apq8096-v3-pmi8996-dragonboard.dtb \
 	msm8996-auto-mizar.dtb
 
-dtb-$(CONFIG_ARCH_MSM8992) += msm8992-sim.dtb \
-	msm8992-rumi.dtb \
-	msm8992-cdp.dtb \
-	msm8992-mtp.dtb \
-	msm8992-pmi8994-pm8004-cdp.dtb \
-	msm8992-pmi8994-pm8004-mtp.dtb
-
 dtb-$(CONFIG_MSM_GVM_QUIN) += vplatform-lfv-msm8996-telematics.dtb \
 	vplatform-lfv-msm8996-ivi.dtb \
 	vplatform-lfv-msm8996-ivi_8GB.dtb \
