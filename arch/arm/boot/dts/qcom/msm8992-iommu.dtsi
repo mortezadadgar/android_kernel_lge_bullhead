@@ -10,11 +10,11 @@
  * GNU General Public License for more details.
  */
 
-#include "msm-iommu-v1.dtsi"
+#include "msm-iommu-v2.dtsi"
 
 &soc {
 	mdp_iommu_8992: qcom,iommu@fd9b4000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -100,7 +100,7 @@
 					0x0>;
 
 		qcom,iommu-ctx@fd9bc000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfd9bc000 0x1000>;
 			interrupts = <0 47 0>;
 			qcom,iommu-ctx-sids = <0>;
@@ -108,7 +108,7 @@
 		};
 
 		qcom,iommu-ctx@fd9bd000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfd9bd000 0x1000>;
 			interrupts = <0 47 0>, <0 46 0>;
 			qcom,iommu-ctx-sids = <1>;
@@ -117,7 +117,7 @@
 		};
 
 		qcom,iommu-ctx@fd9be000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfd9be000 0x1000>;
 			interrupts = <0 47 0>, <0 46 0>;
 			qcom,iommu-ctx-sids = <>;
@@ -187,7 +187,7 @@
 	};
 
 	venus_sec_pixel: qcom,iommu-ctx@fdc8f000 {
-		compatible = "qcom,msm-smmu-v1-ctx";
+		compatible = "qcom,msm-smmu-v2-ctx";
 		reg = <0xfdc8f000 0x1000>;
 		interrupts = <0 42 0>, <0 43 0>;
 		qcom,iommu-ctx-sids = <0x85>;
@@ -196,7 +196,7 @@
 	};
 
 	venus_sec_non_pixel: qcom,iommu-ctx@fdc90000 {
-		compatible = "qcom,msm-smmu-v1-ctx";
+		compatible = "qcom,msm-smmu-v2-ctx";
 		reg = <0xfdc90000 0x1000>;
 		interrupts = <0 42 0>, <0 43 0>;
 		qcom,iommu-ctx-sids = <0x87 0x89 0x8b 0xa0>;

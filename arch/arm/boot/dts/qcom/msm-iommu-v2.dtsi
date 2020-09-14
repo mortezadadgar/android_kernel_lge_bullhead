@@ -12,7 +12,7 @@
 
 &soc {
 	jpeg_iommu: qcom,iommu@fda64000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -87,7 +87,7 @@
 					0x0>;
 
 		qcom,iommu-ctx@fda6c000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfda6c000 0x1000>;
 			interrupts = <0 70 0>;
 			qcom,iommu-ctx-sids = <0>;
@@ -95,7 +95,7 @@
 		};
 
 		qcom,iommu-ctx@fda6d000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfda6d000 0x1000>;
 			interrupts = <0 70 0>;
 			qcom,iommu-ctx-sids = <1>;
@@ -103,7 +103,7 @@
 		};
 
 		qcom,iommu-ctx@fda6e000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfda6e000 0x1000>;
 			interrupts = <0 70 0>;
 			qcom,iommu-ctx-sids = <2>;
@@ -112,7 +112,7 @@
 	};
 
 	mdp_iommu: qcom,iommu@fd928000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -193,7 +193,7 @@
 					0x0>;
 
 		qcom,iommu-ctx@fd930000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfd930000 0x1000>;
 			interrupts = <0 47 0>;
 			qcom,iommu-ctx-sids = <0>;
@@ -201,7 +201,7 @@
 		};
 
 		qcom,iommu-ctx@fd931000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfd931000 0x1000>;
 			interrupts = <0 47 0>, <0 46 0>;
 			qcom,iommu-ctx-sids = <1>;
@@ -210,7 +210,7 @@
 		};
 
 		qcom,iommu-ctx@fd932000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfd932000 0x1000>;
 			interrupts = <0 47 0>, <0 46 0>;
 			qcom,iommu-ctx-sids = <>;
@@ -220,7 +220,7 @@
 	};
 
 	venus_iommu: qcom,iommu@fdc84000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -315,7 +315,7 @@
 					0x0>;
 
 		venus_ns: qcom,iommu-ctx@fdc8c000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfdc8c000 0x1000>;
 			interrupts = <0 42 0>;
 			qcom,iommu-ctx-sids = <0 1 2 3 4 5>;
@@ -323,7 +323,7 @@
 		};
 
 		venus_cp: qcom,iommu-ctx@fdc8d000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfdc8d000 0x1000>;
 			interrupts = <0 42 0>, <0 43 0>;
 			qcom,iommu-ctx-sids = <0x80 0x81 0x82 0x83 0x84 0x85>;
@@ -332,7 +332,7 @@
 		};
 
 		venus_fw: qcom,iommu-ctx@fdc8e000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfdc8e000 0x1000>;
 			interrupts = <0 42 0>, <0 43 0>;
 			qcom,iommu-ctx-sids = <0xc0 0xc6>;
@@ -342,7 +342,7 @@
 	};
 
 	kgsl_iommu: qcom,iommu@fdb10000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -410,7 +410,7 @@
 					0x0>;
 
 		qcom,iommu-ctx@fdb18000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfdb18000 0x1000>;
 			interrupts = <0 241 0>;
 			qcom,iommu-ctx-sids = <0>;
@@ -418,7 +418,7 @@
 		};
 
 		qcom,iommu-ctx@fdb19000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfdb19000 0x1000>;
 			interrupts = <0 241 0>;
 			qcom,iommu-ctx-sids = <1>;
@@ -426,7 +426,7 @@
 		};
 
 		qcom,iommu-ctx@fdb1a000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfdb1a000 0x1000>;
 			interrupts = <0 241 0>;
 			qcom,iommu-ctx-sids = <2>;
@@ -436,7 +436,7 @@
 	};
 
 	vfe_iommu: qcom,iommu@fda44000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -518,7 +518,7 @@
 					0x0>;
 
 		qcom,iommu-ctx@fda4c000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfda4c000 0x1000>;
 			interrupts = <0 65 0>;
 			qcom,iommu-ctx-sids = <0 1>;
@@ -526,7 +526,7 @@
 		};
 
 		qcom,iommu-ctx@fda4d000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfda4d000 0x1000>;
 			interrupts = <0 65 0>;
 			qcom,iommu-ctx-sids = <2>;
@@ -534,7 +534,7 @@
 		};
 
 		qcom,iommu-ctx@fda4e000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfda4e000 0x1000>;
 			interrupts = <0 65 0>, <0 64 0>;
 			qcom,iommu-ctx-sids = <>;
@@ -544,7 +544,7 @@
 	};
 
 	copss_iommu: qcom,iommu@f9bc4000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -645,7 +645,7 @@
 
 
 		copss_cb0: qcom,iommu-ctx@f9bcc000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xf9bcc000 0x1000>;
 			interrupts = <0 142 0>;
 			qcom,iommu-ctx-sids = <0>;
@@ -653,7 +653,7 @@
 		};
 
 		copss_cb1: qcom,iommu-ctx@f9bcd000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xf9bcd000 0x1000>;
 			interrupts = <0 142 0>;
 			qcom,iommu-ctx-sids = <1>;
@@ -661,7 +661,7 @@
 		};
 
 		copss_usb: qcom,iommu-ctx@f9bce000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xf9bce000 0x1000>;
 			interrupts = <0 142 0>;
 			qcom,iommu-ctx-sids = <2>;
@@ -669,7 +669,7 @@
 		};
 
 		copss_cb3: qcom,iommu-ctx@f9bcf000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xf9bcf000 0x1000>;
 			interrupts = <0 142 0>;
 			qcom,iommu-ctx-sids = <3>;
@@ -677,7 +677,7 @@
 		};
 
 		copss_cb4: qcom,iommu-ctx@f9bd0000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xf9bd0000 0x1000>;
 			interrupts = <0 142 0>;
 			qcom,iommu-ctx-sids = <4>;
@@ -685,7 +685,7 @@
 		};
 
 		copss_cb5: qcom,iommu-ctx@f9bd1000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xf9bd1000 0x1000>;
 			interrupts = <0 142 0>;
 			qcom,iommu-ctx-sids = <5>;
@@ -693,7 +693,7 @@
 		};
 
 		copss_cb6: qcom,iommu-ctx@f9bd2000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xf9bd2000 0x1000>;
 			interrupts = <0 142 0>;
 			qcom,iommu-ctx-sids = <6>;
@@ -701,7 +701,7 @@
 		};
 
 		copss_cb_7: qcom,iommu-ctx@f9bd3000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xf9bd3000 0x1000>;
 			interrupts = <0 142 0>;
 			qcom,iommu-ctx-sids = <7>;
@@ -710,7 +710,7 @@
 	};
 
 	vpu_iommu: qcom,iommu@fdee4000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -823,7 +823,7 @@
 
 
 		vpu_hlos: qcom,iommu-ctx@fdeec000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfdeec000 0x1000>;
 			interrupts = <0 145 0>;
 			qcom,iommu-ctx-sids = <0 1 3>;
@@ -831,7 +831,7 @@
 		};
 
 		vpu_cp: qcom,iommu-ctx@fdeed000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfdeed000 0x1000>;
 			interrupts =  <0 145 0>, <0 144 0>;
 			qcom,iommu-ctx-sids = <8 9>;
@@ -840,7 +840,7 @@
 		};
 
 		vpu_fw: qcom,iommu-ctx@fdeee000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfdeee000 0x1000>;
 			interrupts = <0 145 0>, <0 144 0>;
 			qcom,iommu-ctx-sids = <5 7 15>;
@@ -850,7 +850,7 @@
 	};
 
 	lpass_qdsp_iommu: qcom,iommu@fe054000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -945,7 +945,7 @@
 
 
 		lpass_q6_fw: qcom,iommu-ctx@fe05c000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfe05c000 0x1000>;
 			interrupts = <0 265 0>, <0 203 0>;
 			qcom,iommu-ctx-sids = <0 15>;
@@ -954,7 +954,7 @@
 		};
 
 		lpass_audio_shared: qcom,iommu-ctx@fe05d000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfe05d000 0x1000>;
 			interrupts = <0 265 0>;
 			qcom,iommu-ctx-sids = <1>;
@@ -962,7 +962,7 @@
 		};
 
 		lpass_q6_spare1: qcom,iommu-ctx@fe05e000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfe05e000 0x1000>;
 			interrupts = <0 265 0>;
 			qcom,iommu-ctx-sids = <2>;
@@ -970,7 +970,7 @@
 		};
 
 		lpass_q6_spare2: qcom,iommu-ctx@fe05f000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfe05f000 0x1000>;
 			interrupts = <0 265 0>;
 			qcom,iommu-ctx-sids = <3 4 5 6 7 8 9 10 11 12 13 14>;
@@ -979,7 +979,7 @@
 	};
 
 	lpass_core_iommu: qcom,iommu@fe064000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -1074,7 +1074,7 @@
 
 
 		lpass_core_image: qcom,iommu-ctx@fe06c000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfe06c000 0x1000>;
 			interrupts = <0 267 0>, <0 180 0>;
 			qcom,iommu-ctx-sids = <11>;
@@ -1083,7 +1083,7 @@
 		};
 
 		lpass_core_audio: qcom,iommu-ctx@fe06d000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfe06d000 0x1000>;
 			interrupts = <0 267 0>;
 			qcom,iommu-ctx-sids = <12>;
@@ -1091,7 +1091,7 @@
 		};
 
 		lpass_core_slimbus: qcom,iommu-ctx@fe06e000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfe06e000 0x1000>;
 			interrupts = <0 267 0>;
 			qcom,iommu-ctx-sids = <13>;
@@ -1100,7 +1100,7 @@
 	};
 
 	vcap_iommu: qcom,iommu@fdfb6000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -1175,7 +1175,7 @@
 					0x1555>;
 
 		qcom,iommu-ctx@fdfbe000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfdfbe000 0x1000>;
 			interrupts = <0 313 0>;
 			qcom,iommu-ctx-sids = <0>;
@@ -1183,7 +1183,7 @@
 		};
 
 		qcom,iommu-ctx@fdfbf000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfdfbf000 0x1000>;
 			interrupts = <0 313 0>;
 			qcom,iommu-ctx-sids = <1>;
@@ -1191,7 +1191,7 @@
 		};
 
 		qcom,iommu-ctx@fdfc0000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfdfc0000 0x1000>;
 			interrupts = <0 313 0>;
 			qcom,iommu-ctx-sids = <>;
@@ -1200,7 +1200,7 @@
 	};
 
 	bcast_iommu: qcom,iommu@fc734000{
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -1281,7 +1281,7 @@
 					0x1555>;
 
 		bcast_cb0_hlos: qcom,iommu-ctx@fc73c000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfc73c000 0x1000>;
 			interrupts = <0 276 0>;
 			qcom,iommu-ctx-sids = <0 1 2 3 4 5 6 7
@@ -1292,7 +1292,7 @@
 		};
 
 		bcast_cb1_cpz: qcom,iommu-ctx@fc73d000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfc73d000 0x1000>;
 			interrupts = <0 276 0>;
 			qcom,iommu-ctx-sids = <32 33 34 35 36 37 38 39
@@ -1304,7 +1304,7 @@
 		};
 
 		bcast_cb2_demod: qcom,iommu-ctx@fc73e000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfc73e000 0x1000>;
 			interrupts = <0 276 0>;
 			qcom,iommu-ctx-sids = <63>;
@@ -1313,7 +1313,7 @@
 		};
 
 		bcast_cb3_apz: qcom,iommu-ctx@fc73f000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfc73f000 0x1000>;
 			interrupts = <0 276 0>;
 			qcom,iommu-ctx-sids = <>;
@@ -1323,7 +1323,7 @@
 	};
 
 	fd_iommu: qcom,iommu@0xfd864000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -1391,7 +1391,7 @@
 					0x0>;
 
 		qcom,iommu-ctx@fd86c000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfd86c000 0x1000>;
 			interrupts = <0 318 0>;
 			qcom,iommu-ctx-sids = <0>;
@@ -1399,7 +1399,7 @@
 		};
 
 		qcom,iommu-ctx@fd86d000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfd86d000 0x1000>;
 			interrupts = <0 318 0>;
 			qcom,iommu-ctx-sids = <>;
@@ -1407,7 +1407,7 @@
 		};
 
 		qcom,iommu-ctx@fd86e000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfd86e000 0x1000>;
 			interrupts = <0 318 0>;
 			qcom,iommu-ctx-sids = <>;
@@ -1416,7 +1416,7 @@
 	};
 
 	cpp_iommu: qcom,iommu@0xfda84000 {
-		compatible = "qcom,msm-smmu-v1";
+		compatible = "qcom,msm-smmu-v2";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -1486,7 +1486,7 @@
 					0x0>;
 
 		qcom,iommu-ctx@fda8c000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfda8c000 0x1000>;
 			interrupts = <0 266 0>;
 			qcom,iommu-ctx-sids = <2>;
@@ -1494,7 +1494,7 @@
 		};
 
 		qcom,iommu-ctx@fda8d000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfda8d000 0x1000>;
 			interrupts = <0 266 0>;
 			qcom,iommu-ctx-sids = <>;
@@ -1502,7 +1502,7 @@
 		};
 
 		qcom,iommu-ctx@fda8e000 {
-			compatible = "qcom,msm-smmu-v1-ctx";
+			compatible = "qcom,msm-smmu-v2-ctx";
 			reg = <0xfda8e000 0x1000>;
 			interrupts = <0 266 0>;
 			qcom,iommu-ctx-sids = <>;
