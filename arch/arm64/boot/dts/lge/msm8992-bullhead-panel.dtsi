@@ -20,6 +20,10 @@
 	/delete-property/ qcom,mdss-ad-off;
 };
 
+&mdss_dsi {
+	hw-config = "single_dsi";
+};
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_jd35695b_1080p_cmd>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
