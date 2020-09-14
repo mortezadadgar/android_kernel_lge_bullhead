@@ -337,6 +337,8 @@
 		qcom,iommu-ctx-sids = <2>;
 		interrupts = <0 241 0>, <0 240 0>;
 		qcom,secure-context;
+		label = "gfx3d_secure";
+		memory-region = <&secure_mem>;
 	};
 };
 

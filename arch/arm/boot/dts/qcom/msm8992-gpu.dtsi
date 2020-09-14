@@ -20,6 +20,13 @@
                 compatible = "qcom,devbw";
                 governor = "bw_vbif";
                 qcom,src-dst-ports = <26 512>;
+		/*
+		 * active-only flag is used while registering the bus
+		 * governor.It helps release the bus vote when the CPU
+		 * subsystem is inactiv3
+		 */
+		qcom,active-only;
+
                 qcom,bw-tbl =
 			<     0 /*  off     */ >,
 			<   762 /*  100 MHz */ >,
@@ -62,6 +69,7 @@
 
 		/* Bus Scale Settings */
                 qcom,gpubw-dev = <&gpubw>;
+		qcom,bus-width = <16>;
 		qcom,bus-control;
                 /*
                  * qcom,msm-bus structures below define
@@ -82,6 +90,8 @@
 				<26 512 0 6216000>,  /*6 bus=777 */
 				<26 512 0 7448000>;  /*7 bus=931 */
 
+		/* GDSC regulator names */
+		regulator-names = "vddcx", "vdd";
 		/* GDSC oxili regulators */
 		vddcx-supply = <&gdsc_oxili_cx>;
 		vdd-supply = <&gdsc_oxili_gx>;
@@ -160,25 +170,5 @@
 				qcom,bus-max = <0>;
 			};
 		};
-
-                /*
-                 * qcom,ocmem-bus-client defines
-                 * ocmem msm client and its vote data for
-                 * each of available power levels -
-                 * the same levels that grp3d above uses
-                 */
-                qcom,ocmem-bus-client {
-                        qcom,msm-bus,name = "gpu-ocmem";
-                        qcom,msm-bus,num-cases = <7>;
-                        qcom,msm-bus,num-paths = <1>;
-                        qcom,msm-bus,vectors-KBps =
-				<89 662 0 9600000>,     /* gpu=600 */
-				<89 662 0 7840000>,     /* gpu=490 */
-				<89 662 0 7200000>,     /* gpu=450 */
-				<89 662 0 5872000>,     /* gpu=367 */
-				<89 662 0 4800000>,     /* gpu=300 */
-				<89 662 0 2880000>,     /* gpu=180 */
-                                <89 662 0 0>;
-                };
 	};
 };
