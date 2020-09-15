@@ -29,7 +29,6 @@
 #include <linux/pm.h>
 #include <linux/of_gpio.h>
 
-#include <linux/platform_data/qcom-serial_hs_lite.h>
 #define PINCTRL_UART_ENABLE "enable"
 #define PINCTRL_UART_DISABLE "disable"
 
@@ -40,7 +39,6 @@ struct earjack_debugger_device {
 	int gpio;
 	int irq;
 	int saved_detect;
-	void (*set_uart_console)(bool enable);
 };
 
 struct earjack_debugger_platform_data {
@@ -70,11 +68,9 @@ static irqreturn_t earjack_debugger_irq_handler(int irq, void *_dev)
 	if (detect) {
 		pr_debug("%s: in\n", __func__);
 		pinctrl_select_state(adev->pinctrl, adev->uart_enable);
-		adev->set_uart_console(true);
 	} else {
 		pr_debug("%s: out\n", __func__);
 		pinctrl_select_state(adev->pinctrl, adev->uart_disable);
-		adev->set_uart_console(false);
 	}
 
 	return IRQ_HANDLED;
@@ -156,7 +152,6 @@ static int earjack_debugger_probe(struct platform_device *pdev)
 
 	adev->gpio = pdata->gpio_trigger;
 	adev->irq = gpio_to_irq(pdata->gpio_trigger);
-	adev->set_uart_console = msm_console_set_enable;
 
 	platform_set_drvdata(pdev, adev);
 
@@ -188,10 +183,8 @@ static int earjack_debugger_probe(struct platform_device *pdev)
 
 	if (earjack_debugger_detected(adev)) {
 		pinctrl_select_state(adev->pinctrl, adev->uart_enable);
-		adev->set_uart_console(true);
 	} else {
 		pinctrl_select_state(adev->pinctrl, adev->uart_disable);
-		adev->set_uart_console(false);
 	}
 
 	pr_info("%s: earjack debugger probed\n", __func__);
