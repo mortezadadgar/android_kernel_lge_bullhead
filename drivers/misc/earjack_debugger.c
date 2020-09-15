@@ -50,6 +50,7 @@ struct earjack_debugger_platform_data {
 static int earjack_debugger_detected(void *dev)
 {
 	struct earjack_debugger_device *adev = dev;
+	return 1;
 
 	return !gpio_get_value(adev->gpio);
 }
