@@ -19,8 +19,8 @@
 		interrupts = <77 0x0>;
 		serial,irq-gpio = <&msm_gpio 77 0x00>;
 		pinctrl-names = "disable", "enable";
-		pinctrl-0 = <&uart_disable>;
-		pinctrl-1 = <&uart_enable>;
+		pinctrl-0 = <&uart_console_disable>;
+		pinctrl-1 = <&uart_console_disable>;
 	};
 
 	gpio_keys {
