@@ -29,7 +29,10 @@ int qcrypto_cipher_set_device(struct ablkcipher_request *req, unsigned int dev);
 int qcrypto_ahash_set_device(struct ahash_request *req, unsigned int dev);
 /*int qcrypto_aead_set_device(struct aead_request *req, unsigned int dev);*/
 
-int qcrypto_cipher_set_flag(struct ablkcipher_request *req, unsigned int flags);
+static inline int qcrypto_cipher_set_flag(struct ablkcipher_request *req, unsigned int flags)
+{
+	return 0;
+}
 int qcrypto_ahash_set_flag(struct ahash_request *req, unsigned int flags);
 /*int qcrypto_aead_set_flag(struct aead_request *req, unsigned int flags);*/
 
@@ -44,13 +47,30 @@ struct crypto_engine_entry {
 	int shared;
 };
 
+#if 0
+
 int qcrypto_get_num_engines(void);
 void qcrypto_get_engine_list(size_t num_engines,
 				struct crypto_engine_entry *arr);
 int qcrypto_cipher_set_device_hw(struct ablkcipher_request *req,
 				unsigned int fde_pfe,
 				unsigned int hw_inst);
-
+#else
+static inline int qcrypto_get_num_engines(void)
+{
+	return 0;
+}
+static inline void qcrypto_get_engine_list(size_t num_engines,
+				struct crypto_engine_entry *arr)
+{
+}
+static inline int qcrypto_cipher_set_device_hw(struct ablkcipher_request *req,
+				unsigned int fde_pfe,
+				unsigned int hw_inst)
+{
+	return 0;
+}
+#endif
 
 struct qcrypto_func_set {
 	int (*cipher_set)(struct ablkcipher_request *req,
