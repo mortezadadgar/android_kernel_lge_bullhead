@@ -1002,6 +1002,8 @@
 		qcom,ep-latency = <10>;
 		qcom,vbg-opt;
 
+		qcom,common-phy;
+
 		qcom,ep-wakeirq;
 
 		qcom,msi-gicm-addr = <0xf9006040>;
