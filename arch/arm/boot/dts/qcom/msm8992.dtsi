@@ -2051,7 +2051,7 @@
 			<0xfc428000 0x4000>,
 			<0xfe805ff0 0x10>;
 		reg-names = "smem", "irq-reg-base", "aux-mem1",
-			"smem_targ_info_imem";
+			"smem_targ_info_reg";
 		qcom,mpu-enabled;
 
 		qcom,smd-modem {
