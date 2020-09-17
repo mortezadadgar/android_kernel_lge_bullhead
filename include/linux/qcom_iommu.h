@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#if defined(CONFIG_ARCH_MSM8916) && defined(CONFIG_QCOM_IOMMU_V1)
+#if defined(CONFIG_QCOM_IOMMU_V1)
 #include <../drivers/iommu/qcom/qcom_iommu.h>
 #else
 
@@ -434,4 +434,4 @@ static inline void msm_iommu_register_notify(struct notifier_block *nb)
 
 #endif
 
-#endif /* ARCH_MSM8916 */
+#endif
