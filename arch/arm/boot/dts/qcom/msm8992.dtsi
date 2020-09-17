@@ -1633,7 +1633,7 @@
 		interrupt-names = "hc_irq", "pwr_irq";
 
 		qcom,bus-width = <8>;
-
+		qcom,devfreq,freq-table = <20000000 200000000>;
 		qcom,wakeup-on-idle;
 
 		qcom,pm-qos-irq-type = "affine_irq";
