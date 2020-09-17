@@ -27,7 +27,7 @@
 	};
 
 	spi_fpc: spi_fpc@f9966000{
-		status = "ok";
+		status = "disabled";
 		compatible = "qcom,spi-qup-v2";
 
 		#address-cells = <1>;
@@ -59,7 +59,7 @@
 	};
 
 	spi_7: spi@f9963000 {
-		status = "ok";
+		status = "disabled";
 		compatible = "qcom,spi-qup-v2";
 
 		#address-cells = <1>;
