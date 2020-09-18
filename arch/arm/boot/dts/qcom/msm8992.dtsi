@@ -2400,6 +2400,9 @@
 	qcom_tzlog: tz-log@fe80f720 {
 		compatible = "qcom,tz-log";
 		reg = <0xfe80f720 0x2000>;
+		qcom,hyplog-enabled;
+		hyplog-address-offset = <0x410>; /* 0x066BFB30 */
+		hyplog-size-offset = <0x414>;    /* 0x066BFB34 */
 	};
 
 	qcom: qcrypto@fd440000 {
