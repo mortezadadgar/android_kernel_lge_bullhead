@@ -662,10 +662,12 @@ static int msm_iommu_probe(struct platform_device *pdev)
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 					   "smmu_local_base");
-	drvdata->smmu_local_base = devm_ioremap_resource(dev, res);
-	if (IS_ERR(drvdata->smmu_local_base) &&
-	    PTR_ERR(drvdata->smmu_local_base) != -EPROBE_DEFER)
-		drvdata->smmu_local_base = NULL;
+	if (res) {
+		drvdata->smmu_local_base = devm_ioremap_resource(dev, res);
+		if (IS_ERR(drvdata->smmu_local_base) &&
+		    PTR_ERR(drvdata->smmu_local_base) != -EPROBE_DEFER)
+			drvdata->smmu_local_base = NULL;
+	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 					   "clk_base");
