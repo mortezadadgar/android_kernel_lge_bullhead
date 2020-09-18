@@ -121,6 +121,7 @@
 	mdss_hdmi_pll: qcom,mdss_hdmi_pll@0xfd9a0600 {
 		compatible = "qcom,mdss_hdmi_pll_8992";
 		label = "MDSS HDMI PLL";
+		cell-index = <0>;
 		#clock-cells = <1>;
 
 		reg = <0xfd9a0600 0xac4>,
