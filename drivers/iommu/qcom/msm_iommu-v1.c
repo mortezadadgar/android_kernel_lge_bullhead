@@ -82,7 +82,9 @@ static int apply_bus_vote(struct msm_iommu_drvdata *drvdata, unsigned int vote)
 
 int __enable_clocks(struct msm_iommu_drvdata *drvdata)
 {
+	unsigned int value;
 	int ret;
+
 
 	ret = clk_enable(drvdata->iface);
 	if (ret)
@@ -102,6 +104,14 @@ int __enable_clocks(struct msm_iommu_drvdata *drvdata)
 		ret = clk_enable(drvdata->aiclk);
 		if (ret)
 			goto aiclk_fail;
+	}
+
+	if (drvdata->clk_reg_virt) {
+		value = readl_relaxed(drvdata->clk_reg_virt);
+		value &= ~0x1;
+		writel_relaxed(value, drvdata->clk_reg_virt);
+		/* Ensure clock is on before continuing */
+		mb();
 	}
 
 	return 0;

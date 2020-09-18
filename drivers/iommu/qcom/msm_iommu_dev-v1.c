@@ -667,6 +667,15 @@ static int msm_iommu_probe(struct platform_device *pdev)
 	    PTR_ERR(drvdata->smmu_local_base) != -EPROBE_DEFER)
 		drvdata->smmu_local_base = NULL;
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+					   "clk_base");
+	if (res) {
+		drvdata->clk_reg_virt = devm_ioremap_resource(dev, res);
+		if (IS_ERR(drvdata->clk_reg_virt) &&
+		    PTR_ERR(drvdata->clk_reg_virt) != -EPROBE_DEFER)
+			drvdata->clk_reg_virt = NULL;
+	}
+
 	if (of_device_is_compatible(np, "qcom,msm-mmu-500"))
 		drvdata->model = MMU_500;
 

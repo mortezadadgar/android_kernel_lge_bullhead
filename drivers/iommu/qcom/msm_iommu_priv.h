@@ -167,6 +167,7 @@ struct msm_iommu_bfb_settings {
  * @halt_enabled: Set to 1 if IOMMU halt is supported in the IOMMU, 0 otherwise.
  * @ctx_attach_count: Count of how many context are attached.
  * @bus_client  : Bus client needed to vote for bus bandwidth.
+ * @clk_reg_virt: Optional clock register virtual address.
  *
  * A msm_iommu_drvdata holds the global driver data about a single piece
  * of an IOMMU hardware instance.
@@ -193,6 +194,7 @@ struct msm_iommu_drvdata {
 	unsigned int model;
 	struct idr asid_idr;
 	struct list_head masters;
+	void __iomem *clk_reg_virt;
 };
 
 /**
