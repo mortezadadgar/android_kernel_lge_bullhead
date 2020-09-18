@@ -157,7 +157,8 @@ struct msm_iommu_bfb_settings {
  * @phys_base:  IOMMU physical base address.
  * @ncb		The number of contexts on this IOMMU
  * @irq:	Interrupt number
- * @core:	The bus clock for this IOMMU hardware instance
+ * @aclk:	Alternate core clock for this IOMMU core, if any
+ * @aiclk:	Alternate interface clock for this IOMMU core, if any
  * @iface:	The clock for the IOMMU bus interconnect
  * @name:	Human-readable name of this IOMMU device
  * @bfb_settings: Optional BFB performance tuning parameters
@@ -179,6 +180,8 @@ struct msm_iommu_drvdata {
 	int ncb;
 	struct clk *core;
 	struct clk *iface;
+	struct clk *aclk;
+	struct clk *aiclk;
 	const char *name;
 	struct msm_iommu_bfb_settings *bfb_settings;
 	int sec_id;

@@ -90,17 +90,38 @@ int __enable_clocks(struct msm_iommu_drvdata *drvdata)
 
 	ret = clk_enable(drvdata->core);
 	if (ret)
-		goto err;
+		goto core_fail;
+
+	if (drvdata->aclk) {
+		ret = clk_enable(drvdata->aclk);
+		if (ret)
+			goto aclk_fail;
+	}
+
+	if (drvdata->aiclk) {
+		ret = clk_enable(drvdata->aiclk);
+		if (ret)
+			goto aiclk_fail;
+	}
 
 	return 0;
 
-err:
+aiclk_fail:
+	if (drvdata->aiclk)
+		clk_disable(drvdata->aclk);
+aclk_fail:
+	clk_disable(drvdata->core);
+core_fail:
 	clk_disable(drvdata->iface);
 	return ret;
 }
 
 void __disable_clocks(struct msm_iommu_drvdata *drvdata)
 {
+	if (drvdata->aiclk)
+		clk_disable(drvdata->aiclk);
+	if (drvdata->aclk)
+		clk_disable(drvdata->aclk);
 	clk_disable(drvdata->core);
 	clk_disable(drvdata->iface);
 }

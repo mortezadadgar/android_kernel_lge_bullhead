@@ -641,10 +641,10 @@ static int msm_iommu_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct msm_iommu_drvdata *drvdata;
 	struct resource *res;
-	int ret;
+	int ret, needs_alt_core_clk, needs_alt_iface_clk;
 	int global_cfg_irq, global_client_irq;
 	u32 temp;
-	unsigned long rate;
+	unsigned long rate, arate, airate;
 
 	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
 	if (!drvdata)
@@ -688,6 +688,37 @@ static int msm_iommu_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	needs_alt_core_clk = of_property_read_bool(pdev->dev.of_node,
+						   "qcom,needs-alt-core-clk");
+	if (needs_alt_core_clk) {
+		drvdata->aclk = devm_clk_get(dev, "alt_core_clk");
+		if (IS_ERR(drvdata->aclk)) {
+			clk_unprepare(drvdata->iface);
+			clk_unprepare(drvdata->core);
+			return PTR_ERR(drvdata->aclk);
+		}
+	}
+
+	ret = clk_prepare(drvdata->aclk);
+	if (ret)
+		return ret;
+
+	needs_alt_iface_clk = of_property_read_bool(pdev->dev.of_node,
+						   "qcom,needs-alt-iface-clk");
+	if (needs_alt_iface_clk) {
+		drvdata->aiclk = devm_clk_get(dev, "alt_iface_clk");
+		if (IS_ERR(drvdata->aclk)) {
+			clk_unprepare(drvdata->iface);
+			clk_unprepare(drvdata->core);
+			clk_unprepare(drvdata->aclk);
+			return PTR_ERR(drvdata->aiclk);
+		}
+	}
+
+	ret = clk_prepare(drvdata->aiclk);
+	if (ret)
+		return ret;
+
 	if (!of_property_read_u32(np, "qcom,cb-base-offset", &temp))
 		drvdata->cb_base = drvdata->base + temp;
 	else
@@ -699,8 +730,23 @@ static int msm_iommu_probe(struct platform_device *pdev)
 		clk_set_rate(drvdata->core, rate);
 	}
 
-	dev_info(&pdev->dev, "iface: %lu, core: %lu\n",
-		 clk_get_rate(drvdata->iface), clk_get_rate(drvdata->core));
+	arate = clk_get_rate(drvdata->aclk);
+	if (drvdata->aclk && !arate) {
+		arate = clk_round_rate(drvdata->aclk, 1000);
+		clk_set_rate(drvdata->aclk, arate);
+	}
+
+	arate = clk_get_rate(drvdata->aiclk);
+	if (drvdata->aiclk && !airate) {
+		arate = clk_round_rate(drvdata->aiclk, 1000);
+		clk_set_rate(drvdata->aiclk, airate);
+	}
+
+	dev_info(&pdev->dev, "iface: %lu, core: %lu, aclk: %lu, aiclk: %lu\n",
+		 clk_get_rate(drvdata->iface),
+		 clk_get_rate(drvdata->core),
+		 clk_get_rate(drvdata->aclk),
+		 clk_get_rate(drvdata->aiclk));
 
 	ret = msm_iommu_parse_dt(pdev, drvdata);
 	if (ret)
@@ -779,6 +825,8 @@ static int msm_iommu_remove(struct platform_device *pdev)
 		__put_bus_vote_client(drv);
 		clk_unprepare(drv->iface);
 		clk_unprepare(drv->core);
+		clk_unprepare(drv->aclk);
+		clk_unprepare(drv->aiclk);
 		msm_iommu_remove_drv(drv);
 		platform_set_drvdata(pdev, NULL);
 	}
