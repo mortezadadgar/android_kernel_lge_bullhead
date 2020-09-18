@@ -332,8 +332,10 @@ struct dentry *msm_bus_dbg_create(const char *name, mode_t mode,
 		MSM_BUS_DBG("debugfs not ready yet\n");
 		return NULL;
 	}
+#if 0
 	return debugfs_create_file(name, mode, dent, (void *)(uintptr_t)clid,
 		&client_data_fops);
+#endif
 }
 
 int msm_bus_dbg_add_client(const struct msm_bus_client_handle *pdata)
