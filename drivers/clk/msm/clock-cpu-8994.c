@@ -2125,6 +2125,8 @@ static int cpu_clock_8994_driver_probe(struct platform_device *pdev)
 
 	cpu_clock_8994_dev = pdev;
 
+	dev_info(&pdev->dev, "Registerd CPU clocks!");
+
 	return 0;
 }
 
