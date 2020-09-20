@@ -930,8 +930,9 @@
 		      <0xfc4cb000 0x1000>,
 		      <0xfc4ca000 0x1000>;
 		interrupts = <0 190 0>; /* ee0_krait_hlos_spmi_periph_irq */
-		qcom,pmic-arb-channel = <0>;
-		qcom,pmic-arb-ee = <0>;
+		interrupt-names = "periph_irq";
+		qcom,ee = <0>;
+		qcom,channel = <0>;
 		#interrupt-cells = <3>;
 		interrupt-controller;
 		#address-cells = <1>;
