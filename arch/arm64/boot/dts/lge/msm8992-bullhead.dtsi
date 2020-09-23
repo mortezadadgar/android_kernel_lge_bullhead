@@ -19,6 +19,24 @@
 		spi7 = &spi_7;
 		i2c9 = &i2c_9;
 	};
+
+ 	firmware: firmware {
+		android {
+			compatible = "android,firmware";
+			fstab {
+				compatible = "android,fstab";
+				vendor {
+					compatible = "android,vendor";
+					dev = "/dev/block/platform/soc/f9824900.sdhci/by-name/vendor";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,inode_readahead_blks=8";
+					fsmgr_flags = "wait";
+					status = "ok";
+				};
+			};
+		};
+	};
+
 };
 
 &soc {
