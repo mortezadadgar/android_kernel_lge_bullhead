@@ -23,7 +23,7 @@
 	interrupt-parent = <&intc>;
 
 	chosen {
-		bootargs = "sched_enable_hmp=1 sched_enable_power_aware=1";
+		bootargs = "sched_enable_hmp=1 sched_enable_power_aware=1 earlycon=msm_hsl_uart,0xf991e000";
 	};
 
 	aliases {
@@ -600,7 +600,7 @@
 	};
 
 	blsp1_uart2: serial@f991e000 {
-		compatible = "qcom,msm-lsuart-v14";
+		compatible = "qcom,msm-lsuart-v14", "qcom,msm-hsl-uart";
 		reg = <0xf991e000 0x1000>;
 		interrupts = <0 108 0>;
 		status = "disabled";
