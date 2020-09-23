@@ -907,5 +907,12 @@ config REGULATOR_KRYO
 	  Say yes to support management of LDO and BHS modes for the clusters in the
 	  CPU subsystem.
 
+config REGULATOR_DW8768
+	bool "DONGWOON DW8768 regulator driver"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This driver supports DW8768 voltage regulator. DW8768 is a power
+	  supply IC to support general positive/negative driven LCDs.
 endif
 
