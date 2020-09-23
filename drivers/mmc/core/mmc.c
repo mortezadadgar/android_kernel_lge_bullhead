@@ -669,7 +669,9 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		 * 8 but some eMMC devices can support it with rev 7. So handle
 		 * Enhance Strobe here.
 		 */
+#ifndef CONFIG_ARCH_MSM8992
 		card->ext_csd.strobe_support = ext_csd[EXT_CSD_STROBE_SUPPORT];
+#endif
 		card->ext_csd.cmdq_support = ext_csd[EXT_CSD_CMDQ_SUPPORT];
 		card->ext_csd.fw_version = ext_csd[EXT_CSD_FW_VERSION];
 		pr_info("%s: eMMC FW version: 0x%02x\n",
