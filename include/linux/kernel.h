@@ -591,6 +591,7 @@ do {									\
  * let gcc optimize the rest.
  */
 
+#if 0
 #define trace_printk(fmt, ...)				\
 do {							\
 	char _______STR[] = __stringify((__VA_ARGS__));	\
@@ -599,6 +600,9 @@ do {							\
 	else						\
 		trace_puts(fmt);			\
 } while (0)
+#else
+#define trace_printk(fmt, ...) do { } while(0);
+#endif
 
 #define do_trace_printk(fmt, args...)					\
 do {									\
