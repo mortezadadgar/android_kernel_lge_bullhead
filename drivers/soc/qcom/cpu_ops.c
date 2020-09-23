@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  * Copyright (c) 2013 ARM Ltd.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -126,72 +126,19 @@ static int __init msm_cpu_prepare(unsigned int cpu)
 	return 0;
 }
 
-static int msm8953_cpu_boot(unsigned int cpu)
-{
-	int ret = 0;
 
-	if (per_cpu(cold_boot_done, cpu) == false) {
-		ret = msm8953_unclamp_secondary_arm_cpu(cpu);
+static int __init msm8994_cpu_prepare(unsigned int cpu)
+{
+	int ret;
+
+	if (per_cpu(cold_boot_done, 0) == false) {
+		ret = msm8994_cpu_ldo_config(0);
 		if (ret)
 			return ret;
-
-		per_cpu(cold_boot_done, cpu) = true;
 	}
-	return secondary_pen_release(cpu);
+
+	return msm_cpu_prepare(cpu);
 }
-
-#ifdef CONFIG_HOTPLUG_CPU
-static void msm8953_wfi_cpu_die(unsigned int cpu)
-{
-	if (unlikely(cpu != smp_processor_id())) {
-		pr_crit("%s: running on %u, should be %u\n",
-			__func__, smp_processor_id(), cpu);
-		BUG();
-	}
-	for (;;) {
-		wfi();
-		if (secondary_holding_pen_release == cpu_logical_map(cpu))
-			break;	/*Proper wake up */
-
-		pr_debug("CPU%u: spurious wakeup call\n", cpu);
-		BUG();
-	}
-}
-#endif
-
-static int msm8937_cpu_boot(unsigned int cpu)
-{
-	int ret = 0;
-
-	if (per_cpu(cold_boot_done, cpu) == false) {
-		ret = msm8937_unclamp_secondary_arm_cpu(cpu);
-		if (ret)
-			return ret;
-
-		per_cpu(cold_boot_done, cpu) = true;
-	}
-	return secondary_pen_release(cpu);
-}
-
-#ifdef CONFIG_HOTPLUG_CPU
-static void msm8937_wfi_cpu_die(unsigned int cpu)
-{
-	if (unlikely(cpu != smp_processor_id())) {
-		pr_crit("%s: running on %u, should be %u\n",
-			__func__, smp_processor_id(), cpu);
-		BUG();
-	}
-	for (;;) {
-		wfi();
-		if (secondary_holding_pen_release == cpu_logical_map(cpu)) {
-			/*Proper wake up */
-			break;
-		}
-		pr_debug("CPU%u: spurious wakeup call\n", cpu);
-		BUG();
-	}
-}
-#endif
 
 static int msm_cpu_boot(unsigned int cpu)
 {
@@ -207,6 +154,55 @@ static int msm_cpu_boot(unsigned int cpu)
 			if (ret)
 				return ret;
 		}
+		per_cpu(cold_boot_done, cpu) = true;
+	}
+	return secondary_pen_release(cpu);
+}
+
+static int msm8994_cpu_boot(unsigned int cpu)
+{
+	int ret = 0;
+
+	if (per_cpu(cold_boot_done, cpu) == false) {
+		if (of_board_is_sim()) {
+			ret = msm_unclamp_secondary_arm_cpu_sim(cpu);
+			if (ret)
+				return ret;
+		} else {
+			ret = msm8994_unclamp_secondary_arm_cpu(cpu);
+			if (ret)
+				return ret;
+		}
+		ret = msm8994_cpu_ldo_config(cpu);
+		if (ret)
+			return ret;
+		per_cpu(cold_boot_done, cpu) = true;
+	}
+	return secondary_pen_release(cpu);
+}
+
+static int __init msm8996_cpu_prepare(unsigned int cpu)
+{
+	int ret;
+
+	if (per_cpu(cold_boot_done, 0) == false) {
+		ret = msm8996_cpuss_pm_init(0);
+		if (ret)
+			return ret;
+	}
+
+	return msm_cpu_prepare(cpu);
+}
+
+static int msm8996_cpu_boot(unsigned int cpu)
+{
+	int ret = 0;
+
+	if (per_cpu(cold_boot_done, cpu) == false) {
+		ret = msm8996_unclamp_secondary_arm_cpu(cpu);
+		if (ret)
+			return ret;
+
 		per_cpu(cold_boot_done, cpu) = true;
 	}
 	return secondary_pen_release(cpu);
@@ -247,6 +243,11 @@ static void msm_wfi_cpu_die(unsigned int cpu)
 		BUG();
 	}
 }
+
+static int msm_cpu_kill(unsigned int cpu)
+{
+	return msm_pm_wait_cpu_shutdown(cpu) ? 0 : 1;
+}
 #endif
 
 static struct cpu_operations msm_cortex_a_ops = {
@@ -263,34 +264,31 @@ static struct cpu_operations msm_cortex_a_ops = {
 CPU_METHOD_OF_DECLARE(msm_cortex_a_ops,
 		"qcom,arm-cortex-acc", &msm_cortex_a_ops);
 
-static struct cpu_operations msm8953_cortex_a_ops = {
-	.name		= "qcom,8953-arm-cortex-acc",
+static struct cpu_operations msm8994_cortex_a_ops = {
+	.name		= "qcom,8994-arm-cortex-acc",
 	.cpu_init	= msm_cpu_init,
-	.cpu_prepare	= msm_cpu_prepare,
-	.cpu_boot	= msm8953_cpu_boot,
+	.cpu_prepare	= msm8994_cpu_prepare,
+	.cpu_boot	= msm8994_cpu_boot,
 	.cpu_postboot	= msm_cpu_postboot,
 #ifdef CONFIG_HOTPLUG_CPU
-	.cpu_die        = msm8953_wfi_cpu_die,
+	.cpu_die        = msm_wfi_cpu_die,
 #endif
-#ifdef CONFIG_ARM64_CPU_SUSPEND
 	.cpu_suspend       = msm_pm_collapse,
-#endif
 };
-CPU_METHOD_OF_DECLARE(msm8953_cortex_a_ops,
-	"qcom,8953-arm-cortex-acc", &msm8953_cortex_a_ops);
+CPU_METHOD_OF_DECLARE(msm8994_cortex_a_ops,
+		"qcom,8994-arm-cortex-acc", &msm8994_cortex_a_ops);
 
-static struct cpu_operations msm8937_cortex_a_ops = {
-	.name		= "qcom,8937-arm-cortex-acc",
+static struct cpu_operations msm8996_ops = {
+	.name		= "qcom,msm8996-acc",
 	.cpu_init	= msm_cpu_init,
-	.cpu_prepare	= msm_cpu_prepare,
-	.cpu_boot	= msm8937_cpu_boot,
+	.cpu_prepare	= msm8996_cpu_prepare,
+	.cpu_boot	= msm8996_cpu_boot,
 	.cpu_postboot	= msm_cpu_postboot,
 #ifdef CONFIG_HOTPLUG_CPU
-	.cpu_die        = msm8937_wfi_cpu_die,
+	.cpu_die        = msm_wfi_cpu_die,
+	.cpu_kill	= msm_cpu_kill,
 #endif
-#ifdef CONFIG_ARM64_CPU_SUSPEND
 	.cpu_suspend       = msm_pm_collapse,
-#endif
 };
-CPU_METHOD_OF_DECLARE(msm8937_cortex_a_ops,
-	"qcom,8937-arm-cortex-acc", &msm8937_cortex_a_ops);
+CPU_METHOD_OF_DECLARE(msm8996_ops,
+		"qcom,msm8996-acc", &msm8996_ops);
