@@ -81,6 +81,7 @@
 #define HVDCP_EN_BIT			BIT(3)
 
 #define CFG_11_REG			0x11
+#define APSD_DISABLE_BIT		BIT(0)
 #define PRIORITY_BIT			BIT(7)
 #define AUTO_SRC_DET_EN_BIT			BIT(0)
 
@@ -164,6 +165,12 @@
 #define OTG_CNFG_PIN_CTRL		0x04
 #define OTG_CNFG_COMMAND_CTRL		0x08
 #define OTG_CNFG_AUTO_CTRL		0x0C
+
+#define USBIN_AICL_REG			0x0D
+#define AICL_BIT_EN			BIT(2)
+
+#define BATT_REG			0x13
+#define VBATT_LOW_MASK			SMB135X_MASK(3,0)
 
 /* Command Registers */
 #define CMD_I2C_REG			0x40
@@ -1779,6 +1786,45 @@ static enum power_supply_property smb135x_parallel_properties[] = {
 	POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED,
 };
 
+static int smb135x_parallel_hw_init(struct smb135x_chg *chip)
+{
+	int rc;
+
+	/* disable auto source detection */
+	rc = smb135x_masked_write(chip, CFG_11_REG,
+			APSD_DISABLE_BIT, 0);
+	if (rc < 0) {
+		dev_err(chip->dev,
+				"Couldn't disable APSD. rc=%d\n", rc);
+		return rc;
+	}
+
+	/* disable JEITA */
+	rc = smb135x_write(chip, CFG_1A_REG, 0);
+	if (rc < 0) {
+		dev_err(chip->dev,
+				"Couldn't disable jeita func. rc=%d\n", rc);
+		return rc;
+	}
+
+	/* disable vbatt low threshold */
+	rc = smb135x_masked_write(chip, BATT_REG, VBATT_LOW_MASK, 0);
+	if (rc < 0) {
+		dev_err(chip->dev,
+				"Couldn't disable vbatt low. rc=%d\n", rc);
+		return rc;
+	}
+
+	/* disable AICL */
+	rc = smb135x_masked_write(chip, USBIN_AICL_REG, AICL_BIT_EN, 0);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set aicl rc=%d\n", rc);
+		return rc;
+	}
+
+	return 0;
+}
+
 static bool smb135x_is_input_current_limited(struct smb135x_chg *chip)
 {
 	int rc;
@@ -1881,6 +1927,13 @@ static int smb135x_parallel_set_chg_present(struct smb135x_chg *chip,
 			USBIN_SUSPEND_VIA_COMMAND_BIT);
 		if (rc < 0) {
 			dev_err(chip->dev, "Couldn't set cfg rc=%d\n", rc);
+			return rc;
+		}
+
+		rc = smb135x_parallel_hw_init(chip);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Unable to intialize hardware rc = %d\n", rc);
 			return rc;
 		}
 

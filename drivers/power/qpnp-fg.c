@@ -565,6 +565,8 @@ struct fg_chip {
 	int			status;
 	int			prev_status;
 	int			health;
+	int			fcc_ma;
+	int			fcc_down_ma;
 	enum fg_batt_aging_mode	batt_aging_mode;
 	struct alarm		hard_jeita_alarm;
 	/* capacity learning */
@@ -4012,6 +4014,33 @@ static int set_prop_enable_charging(struct fg_chip *chip, bool enable)
 	return rc;
 }
 
+static int fg_set_fast_chg_current(struct fg_chip *chip, int ma)
+{
+	union power_supply_propval pval = {0, };
+	int ret = 0;
+
+	if (!is_charger_available(chip)) {
+		pr_err("Charger not available yet!\n");
+		return -EINVAL;
+	}
+
+	/* change it to uA */
+	pval.intval = ma * 1000;
+
+	ret = chip->batt_psy->set_property(chip->batt_psy,
+			POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
+			&pval);
+	if (ret) {
+		pr_err("couldn't configure batt chg %d\n", ret);
+		return ret;
+	}
+
+	if (fg_debug_mask & FG_POWER_SUPPLY)
+		pr_info("set fcc to %dmA\n", ma);
+
+	return 0;
+}
+
 #define MAX_BATTERY_CC_SOC_CAPACITY		150
 static void status_change_work(struct work_struct *work)
 {
@@ -4062,6 +4091,7 @@ static void status_change_work(struct work_struct *work)
 		if (!!(chip->wa_flag & PULSE_REQUEST_WA) && capacity == 100)
 			fg_configure_soc(chip);
 	} else if (chip->status == POWER_SUPPLY_STATUS_DISCHARGING) {
+		fg_set_fast_chg_current(chip, chip->fcc_ma);
 		if (chip->vbat_low_irq_enabled &&
 				!chip->use_vbat_low_empty_soc) {
 			disable_irq_wake(chip->batt_irq[VBATT_LOW].irq);
@@ -4782,7 +4812,8 @@ static int fg_power_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_DONE:
 		chip->charge_done = val->intval;
-		if (!chip->resume_soc_lowered) {
+		if (!chip->resume_soc_lowered ||
+				chip->health != POWER_SUPPLY_HEALTH_GOOD) {
 			fg_stay_awake(&chip->resume_soc_wakeup_source);
 			schedule_work(&chip->set_resume_soc_work);
 		}
@@ -5281,6 +5312,11 @@ static irqreturn_t fg_vbatt_low_handler(int irq, void *_chip)
 			disable_irq_nosync(chip->batt_irq[VBATT_LOW].irq);
 			chip->vbat_low_irq_enabled = false;
 		}
+
+		if (vbatt_low_sts)
+			fg_set_fast_chg_current(chip, chip->fcc_ma);
+		else
+			fg_set_fast_chg_current(chip, chip->fcc_down_ma);
 	}
 	if (chip->power_supply_registered)
 		power_supply_changed(&chip->bms_psy);
@@ -5506,7 +5542,8 @@ static void set_resume_soc_work(struct work_struct *work)
 				set_resume_soc_work);
 	int rc, resume_soc_raw;
 
-	if (is_input_present(chip) && !chip->resume_soc_lowered) {
+	if (is_input_present(chip) && (!chip->resume_soc_lowered
+			|| chip->health != POWER_SUPPLY_HEALTH_GOOD)) {
 		if (!chip->charge_done)
 			goto done;
 		resume_soc_raw = get_monotonic_soc_raw(chip)
@@ -6406,6 +6443,8 @@ wait:
 
 	if (rc)
 		pr_warn("couldn't find battery max voltage\n");
+	else
+		chip->cc_cv_threshold_mv = chip->batt_max_voltage_uv/1000 - 10;
 
 	/*
 	 * Only configure from profile if fg-cc-cv-threshold-mv is not
@@ -7013,6 +7052,7 @@ static int fg_of_init(struct fg_chip *chip)
 	int rc = 0, sense_type, len = 0;
 	const char *data;
 	struct device_node *node = chip->spmi->dev.of_node;
+	struct device_node *charger_node;
 	u32 temp[2] = {0};
 
 	OF_READ_SETTING(FG_MEM_SOFT_HOT, "warm-bat-decidegc", rc, 1);
@@ -7219,6 +7259,19 @@ static int fg_of_init(struct fg_chip *chip)
 		pr_info("restore: %d validate_by_ocv: %d range_pct: %d\n",
 			chip->batt_info_restore, fg_batt_valid_ocv,
 			fg_batt_range_pct);
+
+	charger_node = of_parse_phandle(node, "qcom,charger", 0);
+	if (!charger_node) {
+		pr_err("Missing qcom,charger property\n");
+		return -EINVAL;
+	}
+
+	rc = of_property_read_u32(node, "qcom,fastchg-current-ma",
+						&chip->fcc_ma);
+	rc |= of_property_read_u32(charger_node, "qcom,fastchg-down-current-ma",
+						&chip->fcc_down_ma);
+	if (rc)
+		pr_err("failed to get charger prop\n");
 
 	return rc;
 }
@@ -7430,11 +7483,13 @@ static int fg_init_irqs(struct fg_chip *chip)
 				rc = -EINVAL;
 				return rc;
 			}
-			rc = devm_request_irq(chip->dev,
+			rc = devm_request_threaded_irq(chip->dev,
 					chip->batt_irq[VBATT_LOW].irq,
+					NULL,
 					fg_vbatt_low_handler,
 					IRQF_TRIGGER_RISING |
-					IRQF_TRIGGER_FALLING,
+					IRQF_TRIGGER_FALLING |
+					IRQF_ONESHOT,
 					"vbatt-low", chip);
 			if (rc < 0) {
 				pr_err("Can't request %d vbatt-low: %d\n",
