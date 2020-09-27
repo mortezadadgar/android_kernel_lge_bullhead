@@ -103,7 +103,7 @@
 		qcom,mdss-has-rotator-downscale;
 		qcom,mdss-wfd-mode = "intf";
 		qcom,mdss-has-source-split;
-		qcom,mdss-has-dst-split;
+		qcom,mdss-has-pingpong-split;
 		qcom,mdss-highest-bank-bit = <0x3>;
 		qcom,mdss-has-bwc;
 
