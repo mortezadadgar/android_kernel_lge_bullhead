@@ -52,6 +52,7 @@ struct synaptics_rmi4_capacitance_button_map {
  * @panel_minx: touch panel minimum values on the x
  * @panel_miny: touch panel minimum values on the y
  * @reset_delay: reset delay
+ * @pon_delay: power on delay
  * @gpio_config: pointer to gpio configuration function
  * @capacitance_button_map: pointer to 0d button map
  */
@@ -77,6 +78,10 @@ struct synaptics_rmi4_platform_data {
 	unsigned disp_maxx;
 	unsigned disp_maxy;
 	unsigned reset_delay;
+	unsigned pon_delay;
+	unsigned num_of_tx;
+	unsigned num_of_rx;
+	unsigned num_of_fingers;
 	const char *fw_image_name;
 	unsigned int package_id;
 	int (*gpio_config)(unsigned gpio, bool configure);

@@ -224,6 +224,7 @@ struct synaptics_rmi4_data {
 	struct mutex rmi4_io_ctrl_mutex;
 	struct delayed_work det_work;
 	struct workqueue_struct *det_workqueue;
+	struct work_struct init_work;
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 #endif
@@ -287,6 +288,7 @@ struct synaptics_rmi4_data {
 	struct clk *core_clk;
 	struct clk *iface_clk;
 #endif
+	ktime_t timestamp;
 };
 
 enum exp_fn {
