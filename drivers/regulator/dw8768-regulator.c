@@ -371,18 +371,18 @@ static int dw8768_regulator_probe(struct i2c_client *client,
 
 	rc = dw8768_parse_dt(reg_data, client);
 	if (rc) {
-		pr_err("Failed to parse device tree. rc=%d\n", rc);
+		pr_err("%s: Failed to parse device tree. rc=%d\n", __func__, rc);
 		goto error;
 	}
 
 	if (!gpio_is_valid(reg_data->ena_gpio)) {
-		pr_err("Invalid gpio ena\n");
+		pr_err("%s: Invalid gpio ena\n", __func__);
 		goto error;
 	}
 	rc = gpio_request_one(reg_data->ena_gpio,
 				GPIOF_OUT_INIT_HIGH, "dw8768_ena");
 	if (rc) {
-		pr_err("Failed to request gpio ena. rc=%d\n", rc);
+		pr_err("%s: Failed to request gpio ena. rc=%d\n", __func__, rc);
 		goto error;
 	}
 
@@ -390,7 +390,7 @@ static int dw8768_regulator_probe(struct i2c_client *client,
 		rc = gpio_request_one(reg_data->enm_gpio,
 				GPIOF_OUT_INIT_HIGH, "dw8768_enm");
 		if (rc) {
-			pr_err("Failed to request gpio enm. rc=%d\n", rc);
+			pr_err("%s:Failed to request gpio enm. rc=%d\n", __func__, rc);
 			goto error_enm;
 		}
 	}
@@ -399,7 +399,7 @@ static int dw8768_regulator_probe(struct i2c_client *client,
 						&dw8768_i2c_regmap);
 	if (IS_ERR(reg_data->i2c_regmap)) {
 		rc = PTR_ERR(reg_data->i2c_regmap);
-		pr_err("Failed to init i2c. rc=%d\n", rc);
+		pr_err("%s: Failed to init i2c. rc=%d\n", __func__, rc);
 		goto error_i2c;
 	}
 
@@ -423,9 +423,12 @@ static int dw8768_regulator_probe(struct i2c_client *client,
 	reg_data->rdev = regulator_register(rdesc, &config);
 	if (IS_ERR(reg_data->rdev)) {
 		rc = PTR_ERR(reg_data->rdev);
-		pr_err("Failed to register regulator. rc=%d\n", rc);
+		pr_err("%s: Failed to register regulator. rc=%d\n", __func__, rc);
 		goto error_i2c;
 	}
+
+	if (!rc)
+		pr_info("Registered DW8768 successfully!\n");
 
 	return rc;
 
