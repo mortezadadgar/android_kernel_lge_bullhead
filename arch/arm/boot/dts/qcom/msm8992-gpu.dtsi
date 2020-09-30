@@ -82,6 +82,8 @@
 				<26 512 0 6216000>,  /*6 bus=777 */
 				<26 512 0 7448000>;  /*7 bus=931 */
 
+		/* GDSC regulator names */
+		regulator-names = "vddcx", "vdd";
 		/* GDSC oxili regulators */
 		vddcx-supply = <&gdsc_oxili_cx>;
 		vdd-supply = <&gdsc_oxili_gx>;
@@ -180,5 +182,21 @@
 				<89 662 0 2880000>,     /* gpu=180 */
                                 <89 662 0 0>;
                 };
+	};
+
+	kgsl_msm_iommu: qcom,kgsl-iommu {
+		compatible = "qcom,kgsl-smmu-v2";
+
+		reg = <0xfdb40000 0x10000>;
+		qcom,protect = <0x48000 0x1000>;
+
+		clocks = <&clock_mmss clk_oxilicx_ahb_clk>,
+			 <&clock_rpm clk_gcc_mmss_bimc_gfx_m_clk>;
+		clock-names = "gpu_ahb_clk", "gcc_bimc_gfx_clk";
+
+		gfx3d_user: gfx3d_user {
+			compatible = "qcom,smmu-kgsl-cb";
+			qcom,gpu-offset = <0x48000>;
+		};
 	};
 };
