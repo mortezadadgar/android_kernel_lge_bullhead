@@ -250,8 +250,6 @@
 			"ext_byte0_clk", "ext_byte1_clk",
 			"ext_pixel0_clk", "ext_pixel1_clk";
 
-		qcom,timing-db-mode;
-
 		qcom,core-supply-entries {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -315,6 +313,7 @@
 			reg-names = "dsi_ctrl", "dsi_phy",
 				"dsi_phy_regulator", "mmss_misc_phys";
 
+			qcom,timing-db-mode;
 			vdd-supply = <&pm8994_l14>;
 			lab-supply = <&lab_regulator>;
 			ibb-supply = <&ibb_regulator>;
@@ -359,6 +358,7 @@
 			reg-names = "dsi_ctrl", "dsi_phy",
 				"dsi_phy_regulator", "mmss_misc_phys";
 
+			qcom,timing-db-mode;
 			vdd-supply = <&pm8994_l14>;
 			lab-supply = <&lab_regulator>;
 			ibb-supply = <&ibb_regulator>;
