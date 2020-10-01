@@ -109,7 +109,6 @@ enum device_status {
 #define MAX_F11_TOUCH_WIDTH 15
 
 #define RMI4_COORDS_ARR_SIZE 4
-#define INTERRUPT_MASK_FLASH 1
 
 #define F11_MAX_X		4096
 #define F11_MAX_Y		4096
@@ -1713,30 +1712,8 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 	struct synaptics_rmi4_fn *fhandler;
 	struct synaptics_rmi4_exp_fn *exp_fhandler;
 	struct synaptics_rmi4_device_info *rmi;
-	struct synaptics_rmi4_f01_device_status device_status;
 
 	rmi = &(rmi4_data->rmi4_mod_info);
-
-	/* Check device status */
-	retval = synaptics_rmi4_i2c_read(rmi4_data,
-			rmi4_data->f01_data_base_addr,
-			device_status.data,
-			sizeof(device_status.data));
-	if (retval < 0)
-		return retval;
-
-	if ((device_status.status_code & STATUS_DEVICE_FAILURE)
-						== STATUS_DEVICE_FAILURE) {
-		dev_err(&rmi4_data->i2c_client->dev,
-				"ESD damage occurred. Reset Touch IC\n");
-		return -EIO;
-	}
-
-	if (device_status.unconfigured) {
-		dev_err(&rmi4_data->i2c_client->dev,
-			"Touch IC resetted internally. Reconfigure...\n");
-		return -EIO;
-	}
 
 	/*
 	 * Get interrupt status information from F01 Data1 register to
@@ -1748,11 +1725,6 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 			rmi4_data->num_of_intr_regs);
 	if (retval < 0)
 		return retval;
-	/* Checking ESD damage */
-	if (intr[0] & INTERRUPT_MASK_FLASH) {
-		dev_err(&rmi4_data->i2c_client->dev,"Impossible interrupt\n");
-		return -EIO;
-	}
 
 	/*
 	 * Traverse the function handler list and service the source(s)
@@ -1804,8 +1776,7 @@ static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 	if (IRQ_HANDLED == synaptics_filter_interrupt(data))
 		return IRQ_HANDLED;
 
-	if (synaptics_rmi4_sensor_report(rmi4_data) == -EIO)
-		queue_work(rmi4_data->det_workqueue, &rmi4_data->recovery_work);
+	synaptics_rmi4_sensor_report(rmi4_data);
 
 	return IRQ_HANDLED;
 }
@@ -3271,20 +3242,6 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 	return 0;
 }
 
-/*
- * Recover touch IC
- */
-static void synaptics_rmi4_recover_work(struct work_struct *work)
-{
-	struct synaptics_rmi4_data *rmi4_data =
-		container_of(work, struct synaptics_rmi4_data, recovery_work);
-
-	synaptics_rmi4_irq_enable(rmi4_data, false);
-	synaptics_rmi4_release_all(rmi4_data);
-	synaptics_rmi4_reset_device(rmi4_data);
-	synaptics_rmi4_irq_enable(rmi4_data, true);
-}
-
 /**
 * synaptics_rmi4_detection_work()
 *
@@ -4034,7 +3991,6 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 			&rmi4_data->det_work,
 			msecs_to_jiffies(EXP_FN_DET_INTERVAL));
 
-	INIT_WORK(&rmi4_data->recovery_work, synaptics_rmi4_recover_work);
 	INIT_WORK(&rmi4_data->init_work, synaptics_rmi4_init_work);
 
 	rmi4_data->dir = debugfs_create_dir(DEBUGFS_DIR_NAME, NULL);
