@@ -7266,7 +7266,7 @@ static int fg_of_init(struct fg_chip *chip)
 		return -EINVAL;
 	}
 
-	rc = of_property_read_u32(node, "qcom,fastchg-current-ma",
+	rc = of_property_read_u32(charger_node, "qcom,fastchg-current-ma",
 						&chip->fcc_ma);
 	rc |= of_property_read_u32(charger_node, "qcom,fastchg-down-current-ma",
 						&chip->fcc_down_ma);
