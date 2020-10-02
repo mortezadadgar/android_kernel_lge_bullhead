@@ -974,9 +974,6 @@ static void mdss_dsi_phy_power_off(
 {
 	struct mdss_panel_info *pinfo;
 
-	if (ctrl->phy_power_off)
-		return;
-
 	pinfo = &ctrl->panel_data.panel_info;
 
 	if ((ctrl->shared_data->phy_rev != DSI_PHY_REV_20) ||
@@ -989,8 +986,6 @@ static void mdss_dsi_phy_power_off(
 
 	/* supported for phy rev 2.0 and if panel allows it*/
 	mdss_dsi_8996_phy_power_off(ctrl);
-
-	ctrl->phy_power_off = true;
 }
 
 static void mdss_dsi_8996_phy_power_on(
@@ -1029,13 +1024,11 @@ static void mdss_dsi_8996_phy_power_on(
 static void mdss_dsi_phy_power_on(
 	struct mdss_dsi_ctrl_pdata *ctrl, bool mmss_clamp)
 {
-	if (mmss_clamp && !ctrl->phy_power_off)
+	if (mmss_clamp)
 		mdss_dsi_phy_init(ctrl);
 	else if ((ctrl->shared_data->phy_rev == DSI_PHY_REV_20) &&
 	    ctrl->phy_power_off)
 		mdss_dsi_8996_phy_power_on(ctrl);
-
-	ctrl->phy_power_off = false;
 }
 
 static void mdss_dsi_8996_phy_config(struct mdss_dsi_ctrl_pdata *ctrl)
@@ -2292,7 +2285,7 @@ int mdss_dsi_post_clkon_cb(void *priv,
 		 * Phy setup is needed if coming out of idle
 		 * power collapse with clamps enabled.
 		 */
-		if (ctrl->phy_power_off || mmss_clamp)
+		if (mmss_clamp)
 			mdss_dsi_phy_power_on(ctrl, mmss_clamp);
 	}
 	if (clk & MDSS_DSI_LINK_CLK) {
