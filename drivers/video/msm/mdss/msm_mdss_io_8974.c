@@ -536,6 +536,8 @@ void mdss_dsi_phy_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl)
 			pr_warn("%s: unable to get slave ctrl\n", __func__);
 	}
 
+	sdata->hw_rev = MDSS_DSI_HW_REV_103;
+
 	/* All other quirks go here */
 	if ((sdata->hw_rev == MDSS_DSI_HW_REV_103) &&
 		!mdss_dsi_is_hw_config_dual(sdata) &&
@@ -644,6 +646,7 @@ static void mdss_dsi_28nm_phy_regulator_enable(
 		/* Regulator ctrl 4 */
 		MIPI_OUTP((ctrl_pdata->phy_regulator_io.base)
 				+ 0x10, pd->regulator[4]);
+
 		/* LDO ctrl */
 		if ((ctrl_pdata->shared_data->hw_rev ==
 			MDSS_DSI_HW_REV_103_1)
@@ -692,6 +695,8 @@ static void mdss_dsi_28nm_phy_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	}
 
 	pd = &(((ctrl_pdata->panel_data).panel_info.mipi).dsi_phy_db);
+
+	ctrl_pdata->shared_data->hw_rev = MDSS_DSI_HW_REV_103;
 
 	/* Strength ctrl 0 for 28nm PHY*/
 	if ((ctrl_pdata->shared_data->hw_rev <= MDSS_DSI_HW_REV_104_2) &&
@@ -1149,6 +1154,7 @@ static void mdss_dsi_phy_regulator_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 	ctrl->shared_data->phy_rev = DSI_PHY_REV_10;
 #endif
 
+	ctrl->shared_data->hw_rev = MDSS_DSI_HW_REV_103;
 	mutex_lock(&sdata->phy_reg_lock);
 	if (enable) {
 		if (ctrl->shared_data->phy_rev == DSI_PHY_REV_20) {
@@ -1201,6 +1207,8 @@ static void mdss_dsi_phy_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, bool enable)
 #ifdef CONFIG_ARCH_MSM8992
 	ctrl->shared_data->phy_rev = DSI_PHY_REV_10;
 #endif
+
+	ctrl->shared_data->hw_rev = MDSS_DSI_HW_REV_103;
 
 	if (enable) {
 
