@@ -544,7 +544,7 @@ void pll_20nm_config_powerdown(void __iomem *pll_base)
 
 static int dsi_pll_enable(struct clk *c)
 {
-	int i, rc;
+	int i, rc = 0;
 	struct dsi_pll_vco_clk *vco = to_vco_clk(c);
 	struct mdss_pll_resources *dsi_pll_res = vco->priv;
 

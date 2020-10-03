@@ -825,7 +825,7 @@ error:
 int dsi_pll_clock_register_20nm(struct platform_device *pdev,
 				struct mdss_pll_resources *pll_res)
 {
-	int rc;
+	int rc = 0;
 	struct dss_vreg *pll_reg;
 
 	if (!pdev || !pdev->dev.of_node) {
