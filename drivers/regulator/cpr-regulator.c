@@ -5207,7 +5207,7 @@ static int cpr_check_tsens(struct cpr_regulator *cpr_vreg)
 
 static int cpr_thermal_init(struct cpr_regulator *cpr_vreg)
 {
-	int rc;
+	int rc = 0;
 	struct device_node *of_node = cpr_vreg->dev->of_node;
 
 	if (!of_find_property(of_node, "qcom,cpr-thermal-sensor-id", NULL))

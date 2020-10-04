@@ -695,7 +695,7 @@ static struct mdss_rot_hw_resource *mdss_rotator_hw_alloc(
 	struct mdss_rot_hw_resource *hw;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	u32 pipe_ndx, offset = mdss_mdp_get_wb_ctl_support(mdata, true);
-	int ret;
+	int ret = 0;
 
 	hw = devm_kzalloc(&mgr->pdev->dev, sizeof(struct mdss_rot_hw_resource),
 		GFP_KERNEL);
@@ -2699,7 +2699,7 @@ static int mdss_rotator_get_dt_vreg_data(struct device *dev,
 	struct device_node *of_node = NULL;
 	int dt_vreg_total = 0;
 	int i;
-	int rc;
+	int rc = 0;
 
 	if (!dev || !mp) {
 		DEV_ERR("%s: invalid input\n", __func__);

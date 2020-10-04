@@ -196,6 +196,7 @@ static int mmc_bus_resume(struct device *dev)
 
 	if (mmc_bus_manual_resume(host)) {
 		host->bus_resume_flags |= MMC_BUSRESUME_NEEDS_RESUME;
+		ret = 0;
 		goto skip_full_resume;
 	}
 

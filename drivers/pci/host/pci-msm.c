@@ -2445,7 +2445,7 @@ int msm_pcie_debug_info(struct pci_dev *dev, u32 option, u32 base,
 			u32 offset, u32 mask, u32 value)
 {
 	int ret = 0;
-	struct msm_pcie_dev_t *pdev;
+	struct msm_pcie_dev_t *pdev = NULL;
 
 	if (!dev) {
 		pr_err("PCIe: the input pci dev is NULL.\n");

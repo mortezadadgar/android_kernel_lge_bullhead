@@ -568,7 +568,7 @@ int rmnet_vnd_create_dev(int id, struct net_device **new_device,
 {
 	struct net_device *dev;
 	char dev_prefix[IFNAMSIZ];
-	int p, rc = 0;
+	int p = 0, rc = 0;
 
 	if (id < 0 || id >= RMNET_DATA_MAX_VND) {
 		*new_device = 0;
