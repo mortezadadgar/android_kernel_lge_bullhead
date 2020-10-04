@@ -458,10 +458,6 @@ static void mdss_dsi_phy_sw_reset_sub(struct mdss_dsi_ctrl_pdata *ctrl)
 	sdata = ctrl->shared_data;
 	octrl = mdss_dsi_get_other_ctrl(ctrl);
 
-#ifdef CONFIG_ARCH_MSM8992
-	ctrl->shared_data->phy_rev = DSI_PHY_REV_10;
-#endif
-
 	if (ctrl->shared_data->phy_rev == DSI_PHY_REV_20) {
 		if (mdss_dsi_is_ctrl_clk_master(ctrl))
 			sctrl = mdss_dsi_get_ctrl_clk_slave();
@@ -536,8 +532,6 @@ void mdss_dsi_phy_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl)
 			pr_warn("%s: unable to get slave ctrl\n", __func__);
 	}
 
-	sdata->hw_rev = MDSS_DSI_HW_REV_103;
-
 	/* All other quirks go here */
 	if ((sdata->hw_rev == MDSS_DSI_HW_REV_103) &&
 		!mdss_dsi_is_hw_config_dual(sdata) &&
@@ -564,10 +558,9 @@ static void mdss_dsi_phy_regulator_disable(struct mdss_dsi_ctrl_pdata *ctrl)
 		return;
 	}
 
-#ifndef CONFIG_ARCH_MSM8992
 	if (ctrl->shared_data->phy_rev == DSI_PHY_REV_20)
 		return;
-#endif
+
 	MIPI_OUTP(ctrl->phy_regulator_io.base + 0x018, 0x000);
 }
 
@@ -577,10 +570,6 @@ static void mdss_dsi_phy_shutdown(struct mdss_dsi_ctrl_pdata *ctrl)
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
 	}
-
-#ifdef CONFIG_ARCH_MSM8992
-	ctrl->shared_data->phy_rev = DSI_PHY_REV_10;
-#endif
 
 	if (ctrl->shared_data->phy_rev == DSI_PHY_REV_20) {
 		MIPI_OUTP(ctrl->phy_io.base + DSIPHY_PLL_CLKBUFLR_EN, 0);
@@ -606,10 +595,10 @@ void mdss_dsi_lp_cd_rx(struct mdss_dsi_ctrl_pdata *ctrl)
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
 	}
-#ifndef CONFIG_ARCH_MSM8992
+
 	if (ctrl->shared_data->phy_rev == DSI_PHY_REV_20)
 		return;
-#endif
+
 	pd = &(((ctrl->panel_data).panel_info.mipi).dsi_phy_db);
 
 	/* Strength ctrl 1, LP Rx + CD Rxcontention detection */
@@ -646,7 +635,6 @@ static void mdss_dsi_28nm_phy_regulator_enable(
 		/* Regulator ctrl 4 */
 		MIPI_OUTP((ctrl_pdata->phy_regulator_io.base)
 				+ 0x10, pd->regulator[4]);
-
 		/* LDO ctrl */
 		if ((ctrl_pdata->shared_data->hw_rev ==
 			MDSS_DSI_HW_REV_103_1)
@@ -695,8 +683,6 @@ static void mdss_dsi_28nm_phy_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	}
 
 	pd = &(((ctrl_pdata->panel_data).panel_info.mipi).dsi_phy_db);
-
-	ctrl_pdata->shared_data->hw_rev = MDSS_DSI_HW_REV_103;
 
 	/* Strength ctrl 0 for 28nm PHY*/
 	if ((ctrl_pdata->shared_data->hw_rev <= MDSS_DSI_HW_REV_104_2) &&
@@ -979,6 +965,9 @@ static void mdss_dsi_phy_power_off(
 {
 	struct mdss_panel_info *pinfo;
 
+	if (ctrl->phy_power_off)
+		return;
+
 	pinfo = &ctrl->panel_data.panel_info;
 
 	if ((ctrl->shared_data->phy_rev != DSI_PHY_REV_20) ||
@@ -991,6 +980,8 @@ static void mdss_dsi_phy_power_off(
 
 	/* supported for phy rev 2.0 and if panel allows it*/
 	mdss_dsi_8996_phy_power_off(ctrl);
+
+	ctrl->phy_power_off = true;
 }
 
 static void mdss_dsi_8996_phy_power_on(
@@ -1029,11 +1020,13 @@ static void mdss_dsi_8996_phy_power_on(
 static void mdss_dsi_phy_power_on(
 	struct mdss_dsi_ctrl_pdata *ctrl, bool mmss_clamp)
 {
-	if (mmss_clamp)
+	if (mmss_clamp && !ctrl->phy_power_off)
 		mdss_dsi_phy_init(ctrl);
 	else if ((ctrl->shared_data->phy_rev == DSI_PHY_REV_20) &&
 	    ctrl->phy_power_off)
 		mdss_dsi_8996_phy_power_on(ctrl);
+
+	ctrl->phy_power_off = false;
 }
 
 static void mdss_dsi_8996_phy_config(struct mdss_dsi_ctrl_pdata *ctrl)
@@ -1155,11 +1148,6 @@ static void mdss_dsi_phy_regulator_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 	pdata = &ctrl->panel_data;
 	pinfo = &pdata->panel_info;
 
-#ifdef CONFIG_ARCH_MSM8992
-	ctrl->shared_data->phy_rev = DSI_PHY_REV_10;
-#endif
-
-	ctrl->shared_data->hw_rev = MDSS_DSI_HW_REV_103;
 	mutex_lock(&sdata->phy_reg_lock);
 	if (enable) {
 		if (ctrl->shared_data->phy_rev == DSI_PHY_REV_20) {
@@ -1210,12 +1198,6 @@ static void mdss_dsi_phy_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, bool enable)
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
 	}
-
-#ifdef CONFIG_ARCH_MSM8992
-	ctrl->shared_data->phy_rev = DSI_PHY_REV_10;
-#endif
-
-	ctrl->shared_data->hw_rev = MDSS_DSI_HW_REV_103;
 
 	if (enable) {
 
@@ -2300,7 +2282,7 @@ int mdss_dsi_post_clkon_cb(void *priv,
 		 * Phy setup is needed if coming out of idle
 		 * power collapse with clamps enabled.
 		 */
-		if (mmss_clamp)
+		if (ctrl->phy_power_off || mmss_clamp)
 			mdss_dsi_phy_power_on(ctrl, mmss_clamp);
 	}
 	if (clk & MDSS_DSI_LINK_CLK) {
