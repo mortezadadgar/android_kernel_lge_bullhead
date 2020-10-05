@@ -623,8 +623,8 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 		}
 	}
 
-	writel_relaxed(0x03, phy->base + phy->phy_reg[USB3_PHY_START]);
 	writel_relaxed(0x00, phy->base + phy->phy_reg[USB3_PHY_SW_RESET]);
+	writel_relaxed(0x03, phy->base + phy->phy_reg[USB3_PHY_START]);
 
 	/* Make sure above write completed to bring PHY out of reset */
 	mb();
@@ -660,6 +660,7 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
         if (phy->switch_pipe_clk_src)
 		clk_set_rate(phy->pipe_clk, 125000000);
 
+	dev_err(uphy->dev, "QMP PHY initialized!\n");
 	return 0;
 }
 
