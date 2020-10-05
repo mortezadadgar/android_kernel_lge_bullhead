@@ -345,7 +345,6 @@ struct msm_ssphy_qmp {
 	int			core_voltage_levels[3];
 	struct clk		*ref_clk_src;
 	struct clk		*ref_clk;
-	struct clk		*ldo_clk;
 	struct clk		*aux_clk;
 	struct clk		*cfg_ahb_clk;
 	struct clk		*pipe_clk;
@@ -548,8 +547,6 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 			clk_prepare_enable(phy->ref_clk_src);
 		if (phy->ref_clk)
 			clk_prepare_enable(phy->ref_clk);
-		if (phy->ref_clk)
-			clk_prepare_enable(phy->ldo_clk);
 		clk_prepare_enable(phy->aux_clk);
 		clk_prepare_enable(phy->cfg_ahb_clk);
 		phy->clk_enabled = true;
@@ -809,8 +806,6 @@ static int msm_ssphy_qmp_set_suspend(struct usb_phy *uphy, int suspend)
 			clk_disable_unprepare(phy->ref_clk);
 		if (phy->ref_clk_src)
 			clk_disable_unprepare(phy->ref_clk_src);
-		if (phy->ref_clk)
-			clk_disable_unprepare(phy->ldo_clk);
 		phy->clk_enabled = false;
 		phy->in_suspend = true;
 		msm_ssphy_power_enable(phy, 0);
@@ -823,8 +818,6 @@ static int msm_ssphy_qmp_set_suspend(struct usb_phy *uphy, int suspend)
 				clk_prepare_enable(phy->ref_clk_src);
 			if (phy->ref_clk)
 				clk_prepare_enable(phy->ref_clk);
-			if (phy->ref_clk)
-				clk_prepare_enable(phy->ldo_clk);
 			clk_prepare_enable(phy->aux_clk);
 			clk_prepare_enable(phy->cfg_ahb_clk);
 			phy->clk_enabled = true;
@@ -1102,9 +1095,6 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 	phy->ref_clk = devm_clk_get(dev, "ref_clk");
 	if (IS_ERR(phy->ref_clk))
 		phy->ref_clk = NULL;
-	phy->ldo_clk = devm_clk_get(dev, "ldo_clk");
-	if (IS_ERR(phy->ldo_clk))
-		phy->ref_clk = NULL;
 
 	platform_set_drvdata(pdev, phy);
 
@@ -1162,8 +1152,6 @@ static int msm_ssphy_qmp_remove(struct platform_device *pdev)
 		clk_disable_unprepare(phy->ref_clk);
 	if (phy->ref_clk_src)
 		clk_disable_unprepare(phy->ref_clk_src);
-	if (phy->ldo_clk)
-		clk_disable_unprepare(phy->ldo_clk);
 	msm_ssusb_qmp_ldo_enable(phy, 0);
 	regulator_disable(phy->vdd);
 	msm_ssusb_qmp_config_vdd(phy, 0);
