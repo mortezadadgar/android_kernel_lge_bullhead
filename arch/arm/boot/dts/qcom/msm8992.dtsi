@@ -1640,8 +1640,9 @@
 		qcom,devfreq,freq-table = <20000000 200000000>;
 		qcom,wakeup-on-idle;
 
-		qcom,pm-qos-irq-type = "affine_irq";
-		qcom,pm-qos-irq-latency = <301 301>;
+		qcom,pm-qos-irq-type = "affine_cores";
+		qcom,pm-qos-irq-cpu = <0>;
+		qcom,pm-qos-irq-latency = <51 301>;
 
 		qcom,msm-bus,name = "sdhc1";
 		qcom,msm-bus,num-cases = <9>;
