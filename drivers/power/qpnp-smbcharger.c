@@ -7436,7 +7436,8 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	}
 
 	/* set the fast charge current compensation */
-	if (chip->fastchg_current_comp != -EINVAL) {
+	if (!chip->customized_jeita &&
+			chip->fastchg_current_comp != -EINVAL) {
 		rc = smbchg_fastchg_current_comp_set(chip,
 			chip->fastchg_current_comp);
 		if (rc < 0) {
