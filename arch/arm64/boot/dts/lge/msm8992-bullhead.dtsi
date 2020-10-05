@@ -33,6 +33,14 @@
 					fsmgr_flags = "wait";
 					status = "ok";
 				};
+				system {
+					compatible = "android,system";
+					dev = "/dev/block/platform/soc/f9824900.sdhci/by-name/system";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,inode_readahead_blks=8";
+					fsmgr_flags = "wait";
+					status = "ok";
+				};
 			};
 		};
 	};
