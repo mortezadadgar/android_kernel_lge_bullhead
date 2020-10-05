@@ -121,7 +121,7 @@ config SND_SOC_APQ8084
 
 config SND_SOC_MSM8994
 	tristate "SoC Machine driver for MSM8994 boards"
-	depends on ARCH_MSM8994
+	depends on ARCH_MSM8994 || ARCH_MSM8992
 	select SND_SOC_QDSP6V2
 	select SND_SOC_MSM_STUB
 	select SND_SOC_MSM_HOSTLESS_PCM
