@@ -737,7 +737,7 @@
 			wcd_intr_default: wcd_intr_default {
 				mux {
 					pins = "gpio72";
-					function = "spkr_i2s";
+					function = "function";
 				};
 
 				config {
