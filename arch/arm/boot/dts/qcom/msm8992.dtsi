@@ -1137,8 +1137,7 @@
 		interrupt-controller;
 		#interrupt-cells = <1>;
 		interrupt-parent = <&msm_gpio>;
-		interrupts = <72 0>;
-		interrupt-names = "cdc-int";
+		qcom,gpio-connect = <&msm_gpio 72 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&wcd_intr_default>;
 	};
