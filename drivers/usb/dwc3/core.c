@@ -886,6 +886,8 @@ static int dwc3_probe(struct platform_device *pdev)
 
 		dwc->needs_fifo_resize = of_property_read_bool(node,
 				"tx-fifo-resize");
+		dwc->no_set_vbus_power = of_property_read_bool(node,
+				"no-set-vbus-power");
 		dwc->dr_mode = of_usb_get_dr_mode(node);
 		dwc->nominal_elastic_buffer = of_property_read_bool(node,
 				"snps,nominal-elastic-buffer");

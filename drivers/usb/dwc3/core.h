@@ -997,6 +997,8 @@ struct dwc3 {
 	wait_queue_head_t	wait_linkstate;
 	void			*dwc_ipc_log_ctxt;
 	int			last_fifo_depth;
+
+	bool			no_set_vbus_power;
 };
 
 /* -------------------------------------------------------------------------- */
