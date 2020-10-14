@@ -53,11 +53,6 @@
 		qcom,initial-pwrlevel = <4>;
 
 		qcom,idle-timeout = <80>; //msec
-		/*
-		 * Timeout to enter deeper power saving state
-		 * from NAP.
-		 */
-		qcom,deep-nap-timeout = <20>; //msec
 		qcom,strtstp-sleepwake;
 
 		/*
