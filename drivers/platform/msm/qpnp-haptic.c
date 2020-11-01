@@ -153,11 +153,6 @@
 int lra_play_rate_code[LRA_POS_FREQ_COUNT];
 
 #define CALL_ALARM_TIME_THRESHOLD   450
-#define FREQUENCY_CALC_CONST        200000
-#define FREQEUNCY_NORMAL_MIN        220
-#define FREQUENCY_NORMAL_MAX        240
-#define FREQUENCY_CALC_MARGIN       8
-#define FREQUENCY_UPDATE_MARGIN     20
 
 /* haptic debug register set */
 static u8 qpnp_hap_dbg_regs[] = {
@@ -298,7 +293,6 @@ struct qpnp_hap {
 	struct qpnp_pwm_info pwm_info;
 	struct mutex lock;
 	struct mutex wf_lock;
-	struct mutex set_lock;
 	spinlock_t td_lock;
 	struct work_struct td_work;
 	struct completion completion;
@@ -1402,14 +1396,8 @@ static void calculate_lra_code(struct qpnp_hap *hap)
 
 	lra_init_freq = 200000 / play_rate_code;
 
-	if (lra_init_freq < FREQEUNCY_NORMAL_MIN+FREQUENCY_CALC_MARGIN
-			|| lra_init_freq > FREQUENCY_NORMAL_MAX-FREQUENCY_CALC_MARGIN) {
-		play_rate_code = hap->wave_play_rate_us / QPNP_HAP_RATE_CFG_STEP_US;
-		lra_init_freq = FREQUENCY_CALC_CONST / play_rate_code;
-	}
-
 	while (start_variation >= AUTO_RES_ERR_CAPTURE_RES) {
-		freq_variation = (lra_init_freq * start_variation) / 1000;
+		freq_variation = (lra_init_freq * start_variation) / 100;
 		lra_play_rate_code[neg_idx++] = 200000 / (lra_init_freq -
 					freq_variation);
 		lra_play_rate_code[pos_idx--] = 200000 / (lra_init_freq +
@@ -1445,11 +1433,9 @@ static int qpnp_hap_auto_res_enable(struct qpnp_hap *hap, int enable)
 	return 0;
 }
 
-static int update_lra_frequency(struct qpnp_hap *hap)
+static void update_lra_frequency(struct qpnp_hap *hap)
 {
 	u8 lra_auto_res_lo = 0, lra_auto_res_hi = 0;
-	unsigned int freq_cur;
-	unsigned int play_rate_code;
 
 	qpnp_hap_read_reg(hap, &lra_auto_res_lo,
 				QPNP_HAP_LRA_AUTO_RES_LO(hap->base));
@@ -1464,15 +1450,6 @@ static int update_lra_frequency(struct qpnp_hap *hap)
 		qpnp_hap_write_reg(hap, &lra_auto_res_hi,
 				QPNP_HAP_RATE_CFG2_REG(hap->base));
 	}
-
-	play_rate_code = (lra_auto_res_hi << 8) | (lra_auto_res_lo & 0xff);
-	freq_cur = FREQUENCY_CALC_CONST / play_rate_code;
-
-	if (freq_cur < FREQEUNCY_NORMAL_MIN - FREQUENCY_UPDATE_MARGIN
-			|| freq_cur > FREQUENCY_NORMAL_MAX + FREQUENCY_UPDATE_MARGIN)
-		return -EAGAIN;
-
-	return 0;
 }
 
 static enum hrtimer_restart detect_auto_res_error(struct hrtimer *timer)
@@ -1481,7 +1458,6 @@ static enum hrtimer_restart detect_auto_res_error(struct hrtimer *timer)
 					auto_res_err_poll_timer);
 	u8 val;
 	ktime_t currtime;
-	int ret;
 
 	qpnp_hap_read_reg(hap, &val, QPNP_HAP_STATUS(hap->base));
 
@@ -1489,13 +1465,7 @@ static enum hrtimer_restart detect_auto_res_error(struct hrtimer *timer)
 		schedule_work(&hap->auto_res_err_work);
 		return HRTIMER_NORESTART;
 	} else {
-		ret = update_lra_frequency(hap);
-		if (ret < 0) {
-			dev_err(&hap->spmi->dev,
-				"Trigger auto resonance. Vib is running under 100Hz.\n");
-			schedule_work(&hap->auto_res_err_work);
-			return HRTIMER_NORESTART;
-		}
+		update_lra_frequency(hap);
 	}
 
 	currtime  = ktime_get();
@@ -1555,8 +1525,6 @@ static int qpnp_hap_set(struct qpnp_hap *hap, int on)
 	u8 val = 0;
 	unsigned long timeout_ns = POLL_TIME_AUTO_RES_ERR_NS;
 
-	mutex_lock(&hap->set_lock);
-
 	if (hap->play_mode == QPNP_HAP_PWM) {
 		if (on)
 			rc = pwm_enable(hap->pwm_info.pwm_dev);
@@ -1570,10 +1538,8 @@ static int qpnp_hap_set(struct qpnp_hap *hap, int on)
 				qpnp_hap_auto_res_enable(hap, 0);
 
 			rc = qpnp_hap_mod_enable(hap, on);
-			if (rc < 0) {
-				mutex_unlock(&hap->set_lock);
+			if (rc < 0)
 				return rc;
-			}
 
 			rc = qpnp_hap_play(hap, on);
 
@@ -1583,10 +1549,8 @@ static int qpnp_hap_set(struct qpnp_hap *hap, int on)
 					(AUTO_RES_ENABLE_TIMEOUT + 1));
 
 				rc = qpnp_hap_auto_res_enable(hap, 1);
-				if (rc < 0) {
-					mutex_unlock(&hap->set_lock);
+				if (rc < 0)
 					return rc;
-				}
 			}
 			if (hap->correct_lra_drive_freq) {
 				/*
@@ -1600,10 +1564,8 @@ static int qpnp_hap_set(struct qpnp_hap *hap, int on)
 			}
 		} else {
 			rc = qpnp_hap_play(hap, on);
-			if (rc < 0) {
-				mutex_unlock(&hap->set_lock);
+			if (rc < 0)
 				return rc;
-			}
 
 			if (hap->correct_lra_drive_freq) {
 				rc = qpnp_hap_read_reg(hap, &val,
@@ -1620,7 +1582,6 @@ static int qpnp_hap_set(struct qpnp_hap *hap, int on)
 		}
 	}
 
-	mutex_unlock(&hap->set_lock);
 	return rc;
 }
 
@@ -1666,8 +1627,6 @@ static void qpnp_timed_enable_worker(struct work_struct *work)
 	if (value && atomic_read(&hap->disable_haptics_refcnt) > 0)
 		return;
 
-	flush_work(&hap->work);
-
 	mutex_lock(&hap->lock);
 	hrtimer_cancel(&hap->hap_timer);
 
@@ -1698,10 +1657,7 @@ static void qpnp_timed_enable_worker(struct work_struct *work)
 	}
 	mutex_unlock(&hap->lock);
 
-	if (hap->play_mode == QPNP_HAP_DIRECT)
-		qpnp_hap_set(hap, hap->state);
-	else
-		schedule_work(&hap->work);
+	schedule_work(&hap->work);
 
 	if (value)
 		hrtimer_start(&hap->hap_timer,
@@ -2370,7 +2326,6 @@ static int qpnp_haptic_probe(struct spmi_device *spmi)
 
 	mutex_init(&hap->lock);
 	mutex_init(&hap->wf_lock);
-	mutex_init(&hap->set_lock);
 	spin_lock_init(&hap->td_lock);
 	INIT_WORK(&hap->work, qpnp_hap_worker);
 	INIT_DELAYED_WORK(&hap->sc_work, qpnp_handle_sc_irq);
