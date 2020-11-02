@@ -127,9 +127,9 @@ limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
 
     // Extract timer
     vos_mem_copy( (tANI_U8 *) (&pBssDescription->scansystimensec),
-                               pBuf, sizeof(v_TIME_t));
-    pBuf += sizeof(v_TIME_t);
-    len  -= sizeof(v_TIME_t);
+                               pBuf, sizeof(pBssDescription->scansystimensec));
+    pBuf += sizeof(pBssDescription->scansystimensec);
+    len  -= sizeof(pBssDescription->scansystimensec);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
