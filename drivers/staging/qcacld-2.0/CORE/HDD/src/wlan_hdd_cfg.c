@@ -485,7 +485,9 @@ REG_TABLE_ENTRY g_registry_table[] =
    REG_VARIABLE( CFG_ENABLE_LOGP_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, fIsLogpEnabled,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
-                 0 , 0, 0),
+                 CFG_ENABLE_LOGP_DEFAULT,
+                 CFG_ENABLE_LOGP_MIN,
+                 CFG_ENABLE_LOGP_MAX ),
 
    REG_VARIABLE( CFG_ENABLE_IMPS_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, fIsImpsEnabled,
@@ -3566,7 +3568,9 @@ REG_TABLE_ENTRY g_registry_table[] =
    REG_VARIABLE( CFG_ENABLE_FW_DEBUG_LOG_LEVEL, WLAN_PARAM_Integer,
                 hdd_config_t, enableFwLogLevel,
                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
-                0, 0, 0),
+                CFG_ENABLE_FW_DEBUG_LOG_LEVEL_DEFAULT,
+                CFG_ENABLE_FW_DEBUG_LOG_LEVEL_MIN,
+                CFG_ENABLE_FW_DEBUG_LOG_LEVEL_MAX ),
 
    REG_VARIABLE( CFG_ENABLE_FW_RTS_PROFILE, WLAN_PARAM_Integer,
                 hdd_config_t, rts_profile,
@@ -3578,7 +3582,7 @@ REG_TABLE_ENTRY g_registry_table[] =
    REG_VARIABLE_STRING( CFG_ENABLE_FW_MODULE_LOG_LEVEL, WLAN_PARAM_String,
                 hdd_config_t, enableFwModuleLogLevel,
                 VAR_FLAGS_OPTIONAL,
-                0),
+                (void *) CFG_ENABLE_FW_MODULE_LOG_DEFAULT),
 
 
 
