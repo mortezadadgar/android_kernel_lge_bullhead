@@ -507,10 +507,12 @@ int __hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 * The TX packets might be dropped for UDP case in the iperf testing.
 * So need to be protected by follow control.
 */
-#ifdef QCA_LL_TX_FLOW_CT
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(3,19,0))
+#ifdef QCA_LL_TX_FLOW_CT
       if (pAdapter->tx_flow_low_watermark > 0) {
+#endif
           skb_orphan(skb);
+#ifdef QCA_LL_TX_FLOW_CT
       }
 #endif
 #endif
