@@ -120,17 +120,21 @@ static void print_mem_entry(struct seq_file *s, struct kgsl_mem_entry *entry)
 	flags[2] = get_alignflag(m);
 	flags[3] = get_cacheflag(m);
 	flags[4] = kgsl_memdesc_use_cpu_map(m) ? 'p' : '-';
-	flags[5] = (m->useraddr) ? 'Y' : 'N';
+	/*
+	 * Show Y if at least one vma has this entry
+	 * mapped (could be multiple)
+	 */
+	flags[5] = atomic_read(&entry->map_count) ? 'Y' : 'N';
 	flags[6] = '\0';
 
 	kgsl_get_memory_usage(usage, sizeof(usage), m->flags);
 
-	seq_printf(s, "%pK %pK %8zd %5d %6s %10s %16s %5d %16llu\n",
+	seq_printf(s, "%pK %d %8zd %5d %6s %10s %16s %5d %16d\n",
 			(unsigned long *)(uintptr_t) m->gpuaddr,
-			(unsigned long *) m->useraddr,
-			m->size, entry->id, flags,
+			0, m->size, entry->id, flags,
 			memtype_str(kgsl_memdesc_usermem_type(m)),
-			usage, m->sglen, m->mapsize);
+			usage, m->sglen,
+			atomic_read(&entry->map_count));
 }
 
 static int process_mem_print(struct seq_file *s, void *unused)
@@ -142,7 +146,7 @@ static int process_mem_print(struct seq_file *s, void *unused)
 
 	seq_printf(s, "%16s %16s %16s %5s %8s %10s %16s %5s %16s\n",
 		   "gpuaddr", "useraddr", "size", "id", "flags", "type",
-		   "usage", "sglen", "mapsize");
+		   "usage", "sglen", "mapcount");
 
 	/* print all entries with a GPU address */
 	spin_lock(&private->mem_lock);

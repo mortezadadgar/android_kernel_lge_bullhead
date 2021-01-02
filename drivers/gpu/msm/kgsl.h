@@ -142,11 +142,9 @@ struct kgsl_memdesc {
 	struct kgsl_pagetable *pagetable;
 	void *hostptr; /* kernel virtual address */
 	unsigned int hostptr_count; /* number of threads using hostptr */
-	unsigned long useraddr; /* userspace address */
 	unsigned int gpuaddr;
 	phys_addr_t physaddr;
 	size_t size;
-	uint64_t mapsize;
 	unsigned int priv; /* Internal flags and settings */
 	struct scatterlist *sg;
 	unsigned int sglen; /* Active entries in the sglist */
@@ -198,6 +196,11 @@ struct kgsl_mem_entry {
 	unsigned int id;
 	struct kgsl_process_private *priv;
 	int pending_free;
+	/*
+	 * @map_count: Count how many vmas this object is mapped in - used for
+	 * debugfs accounting
+	 */
+	atomic_t map_count;
 };
 
 struct kgsl_device_private;
