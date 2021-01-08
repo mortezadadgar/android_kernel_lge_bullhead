@@ -4216,6 +4216,10 @@ static int kgsl_check_gpu_addr_collision(
 	int ret = -EAGAIN;
 	struct kgsl_mem_entry *collision_entry = NULL;
 	spin_lock(&private->mem_lock);
+	if (entry->memdesc.gpuaddr) {
+		spin_unlock(&private->mem_lock);
+		return -EBUSY;
+	}
 	if (kgsl_sharedmem_region_empty(private, addr, len, &collision_entry)) {
 		/*
 		 * We found a free memory map, claim it here with
