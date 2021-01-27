@@ -40,3 +40,5 @@ cd "$HOME"/bullhead/AnyKernel || die "cd to anykernel dir failed"
 echo "$spaces| ${Blue}Zipping!${Color_Off} |"
 zip "$version".zip -r ./* -x \*.zip
 echo "$spaces| ${Blue}Done! -> ""$version"".zip${Color_Off} |"
+
+notify-send "Kernel" "Compilation is done!"
