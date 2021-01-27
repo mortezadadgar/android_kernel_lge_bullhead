@@ -69,3 +69,4 @@ obj-$(CONFIG_QCOM_LIQUID_DOCK)	+= qcom_liquid_dock.o
 obj-y				+= qcom/
 obj-$(CONFIG_EARJACK_DEBUGGER) += earjack_debugger.o
 obj-$(CONFIG_UID_CPUTIME) += uid_cputime.o
+CFLAGS_lkdtm.o += -DCONFIG_DEBUG_FS

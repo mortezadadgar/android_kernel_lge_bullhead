@@ -1194,7 +1194,6 @@ config DEBUG_PER_CPU_MAPS
 
 config LKDTM
 	tristate "Linux Kernel Dump Test Tool Module"
-	depends on DEBUG_FS
 	depends on BLOCK
 	default n
 	help
