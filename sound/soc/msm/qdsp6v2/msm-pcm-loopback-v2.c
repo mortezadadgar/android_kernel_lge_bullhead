@@ -358,10 +358,11 @@ static int msm_pcm_volume_ctl_put(struct snd_kcontrol *kcontrol,
 	int rc = 0;
 	struct snd_pcm_volume *vol = kcontrol->private_data;
 	struct snd_pcm_substream *substream = vol->pcm->streams[0].substream;
-	mutex_lock(&loopback_session_lock);
-	struct msm_pcm_loopback *prtd = substream->runtime->private_data;
+	struct msm_pcm_loopback *prtd;
 	int volume = ucontrol->value.integer.value[0];
 
+	mutex_lock(&loopback_session_lock);
+	prtd = substream->runtime->private_data;
 	rc = pcm_loopback_set_volume(prtd, volume);
 	mutex_unlock(&loopback_session_lock);
 	return rc;
