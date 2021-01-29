@@ -365,7 +365,6 @@ static struct heap_types_info {
 	MAKE_HEAP_TYPE_MAPPING(CHUNK),
 	MAKE_HEAP_TYPE_MAPPING(DMA),
 	MAKE_HEAP_TYPE_MAPPING(SECURE_DMA),
-	MAKE_HEAP_TYPE_MAPPING(REMOVED),
 };
 
 static int msm_ion_get_heap_type_from_dt_node(struct device_node *node,
@@ -906,10 +905,6 @@ static struct ion_heap *msm_ion_heap_create(struct ion_platform_heap *heap_data)
 		heap = ion_secure_cma_heap_create(heap_data);
 		break;
 #endif
-	case ION_HEAP_TYPE_REMOVED:
-		heap = ion_removed_heap_create(heap_data);
-		break;
-
 	default:
 		heap = ion_heap_create(heap_data);
 	}
