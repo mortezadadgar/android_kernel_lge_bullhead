@@ -156,6 +156,7 @@
 #define clk_pcie_0_pipe_clk_src 0xba5b3b52
 #define clk_pdm2_clk_src 0x31e494fd
 #define clk_sdcc1_apps_clk_src 0xd4975db2
+#define clk_sdcc1_ice_core_clk_src	0xfd6a4301
 #define clk_sdcc2_apps_clk_src 0xfc46c821
 #define clk_sdcc3_apps_clk_src 0xea34c7f4
 #define clk_sdcc4_apps_clk_src 0x7aaaaa0c
@@ -224,6 +225,7 @@
 #define clk_gcc_prng_ahb_clk 0x397e7eaa
 #define clk_gcc_sdcc1_ahb_clk 0x691e0caa
 #define clk_gcc_sdcc1_apps_clk 0x9ad6fb96
+#define clk_gcc_sdcc1_ice_core_clk	0x0fd5680a
 #define clk_gcc_sdcc2_ahb_clk 0x23d5727f
 #define clk_gcc_sdcc2_apps_clk 0x861b20ac
 #define clk_gcc_sdcc3_ahb_clk 0x565b2c03

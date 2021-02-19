@@ -37,6 +37,7 @@ static void __iomem *virt_dbgbase;
 #define gpll0_out_main_source_val 1
 #define gpll4_out_main_source_val 5
 #define pcie_pipe_source_val 2
+#define gpll0_out_main_source_val 1
 
 #define FIXDIV(div) (div ? (2 * (div) - 1) : (0))
 
@@ -88,6 +89,8 @@ static DEFINE_VDD_REGULATORS(vdd_dig, VDD_DIG_NUM, 1, vdd_corner, NULL);
 #define SDCC1_APPS_CMD_RCGR                              (0x04D0)
 #define SDCC1_APPS_CBCR                                  (0x04C4)
 #define SDCC1_AHB_CBCR                                   (0x04C8)
+#define SDCC1_ICE_CORE_CMD_RCGR							 (0x058c)
+#define SDCC1_ICE_CORE_CBCR								 (0x0590)
 #define SDCC2_APPS_CMD_RCGR                              (0x0510)
 #define SDCC2_APPS_CBCR                                  (0x0504)
 #define SDCC2_AHB_CBCR                                   (0x0508)
@@ -248,6 +251,7 @@ static struct pll_vote_clk gpll0_ao = {
 };
 
 DEFINE_EXT_CLK(gpll0_out_main, &gpll0.c);
+DEFINE_EXT_CLK(gpll0_out_main_clk_src, &gpll0.c);
 
 static struct pll_vote_clk gpll4 = {
 	.en_reg = (void __iomem *)APCS_GPLL_ENA_VOTE,
@@ -1095,6 +1099,26 @@ static struct rcg_clk pdm2_clk_src = {
 	},
 };
 
+static struct clk_freq_tbl ftbl_gcc_sdcc1_ice_core_clk[] = {
+	F( 100000000,	gpll0_out_main,	8,	0,	0),
+	F( 200000000,	gpll0_out_main,	4,	0,	0),
+	F_END
+};
+
+static struct rcg_clk sdcc1_ice_core_clk_src = {
+	.cmd_rcgr_reg =  SDCC1_ICE_CORE_CMD_RCGR,
+	.set_rate = set_rate_mnd,
+	.freq_tbl = ftbl_gcc_sdcc1_ice_core_clk,
+	.current_freq = &rcg_dummy_freq,
+	.base = &virt_base,
+	.c = {
+		.dbg_name = "sdcc1_ice_core_clk_src",
+		.ops = &clk_ops_rcg_mnd,
+		VDD_DIG_FMAX_MAP2(LOWER, 100000000, NOMINAL, 200000000),
+		CLK_INIT(sdcc1_ice_core_clk_src.c),
+	},
+};
+
 static struct clk_freq_tbl ftbl_sdcc1_apps_clk_src[] = {
 	F(    144000,         gcc_xo,   16,    3,    25),
 	F(    400000,         gcc_xo,   12,    1,     4),
@@ -1105,6 +1129,18 @@ static struct clk_freq_tbl ftbl_sdcc1_apps_clk_src[] = {
 	F( 172000000, gpll4_out_main,    2,    0,     0),
 	F( 344000000, gpll4_out_main,    1,    0,     0),
 	F_END
+};
+
+static struct branch_clk gcc_sdcc1_ice_core_clk = {
+	.cbcr_reg = SDCC1_ICE_CORE_CBCR,
+	.has_sibling = 0,
+	.base = &virt_base,
+	.c = {
+		.dbg_name = "gcc_sdcc1_ice_core_clk",
+		.parent = &sdcc1_ice_core_clk_src.c,
+		.ops = &clk_ops_branch,
+		CLK_INIT(gcc_sdcc1_ice_core_clk.c),
+	}
 };
 
 static struct rcg_clk sdcc1_apps_clk_src = {
@@ -2249,6 +2285,7 @@ static struct mux_clk gcc_debug_mux = {
 		{ &gcc_usb_phy_cfg_ahb2phy_clk.c, 0x0064 },
 		{ &gcc_sdcc1_apps_clk.c, 0x0068 },
 		{ &gcc_sdcc1_ahb_clk.c, 0x0069 },
+		{ &gcc_sdcc1_ice_core_clk.c, 0x006a },
 		{ &gcc_sdcc2_apps_clk.c, 0x0070 },
 		{ &gcc_sdcc2_ahb_clk.c, 0x0071 },
 		{ &gcc_sdcc3_apps_clk.c, 0x0078 },
@@ -2431,6 +2468,8 @@ static struct clk_lookup msm_clocks_gcc_8992[] = {
 	CLK_LIST(gcc_pdm_ahb_clk),
 	CLK_LIST(gcc_prng_ahb_clk),
 	CLK_LIST(gcc_sdcc1_ahb_clk),
+	CLK_LIST(sdcc1_ice_core_clk_src),
+	CLK_LIST(gcc_sdcc1_ice_core_clk),
 	CLK_LIST(gcc_sdcc1_apps_clk),
 	CLK_LIST(gcc_sdcc2_ahb_clk),
 	CLK_LIST(gcc_sdcc2_apps_clk),
