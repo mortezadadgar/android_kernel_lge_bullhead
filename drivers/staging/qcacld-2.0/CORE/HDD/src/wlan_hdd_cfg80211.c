@@ -3842,11 +3842,6 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 			total_channels++;
 		}
 
-		if (j != pReqMsg->buckets[bktIndex].numChannels) {
-			hddLog(LOG1, FL("Input parameters didn't match"));
-			return -EINVAL;
-		}
-
 		hdd_extscan_update_dwell_time_limits(
 					pReqMsg, bktIndex,
 					min_dwell_time_active_bucket,
@@ -17757,12 +17752,6 @@ int wlan_hdd_cfg80211_set_ie(hdd_adapter_t *pAdapter,
                 }
                 break;
             case DOT11F_EID_RSN:
-				if (eLen > (MAX_WPA_RSN_IE_LEN - 2)) {
-					hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Invalid WPA RSN IE length[%d], exceeds %d bytes",
-							__func__, eLen, MAX_WPA_RSN_IE_LEN - 2);
-					VOS_ASSERT(0);
-					return -EINVAL;
-				}
                 hddLog (VOS_TRACE_LEVEL_INFO, "%s Set RSN IE(len %d)",__func__, eLen + 2);
                 memset( pWextState->WPARSNIE, 0, MAX_WPA_RSN_IE_LEN );
                 memcpy( pWextState->WPARSNIE, genie - 2, (eLen + 2)/*ie_len*/);
@@ -23673,9 +23662,7 @@ wlan_hdd_cfg80211_extscan_signif_wifi_change_results_ind(
         for (j = 0; j < ap_info->numOfRssi; j++)
             hddLog(LOG1, "Rssi %d", *rssi++);
 
-        ap_info = (tSirWifiSignificantChange *)((char *)ap_info +
-                    ap_info->numOfRssi * sizeof(*rssi) +
-                    sizeof(*ap_info));
+        ap_info += ap_info->numOfRssi * sizeof(*rssi);
     }
 
     if (nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_REQUEST_ID,
@@ -23718,9 +23705,7 @@ wlan_hdd_cfg80211_extscan_signif_wifi_change_results_ind(
 
               nla_nest_end(skb, ap);
 
-            ap_info = (tSirWifiSignificantChange *)((char *)ap_info +
-                      ap_info->numOfRssi * sizeof(*rssi) +
-                      sizeof(*ap_info));
+            ap_info += ap_info->numOfRssi * sizeof(*rssi);
         }
         nla_nest_end(skb, aps);
 

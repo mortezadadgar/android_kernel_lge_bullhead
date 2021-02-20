@@ -7840,11 +7840,11 @@ eHalStatus sme_updateP2pIe(tHalHandle hHal, void *p2pIe, tANI_U32 p2pIeLength)
         {
             pMac->p2pContext.probeRspIeLength = p2pIeLength;
 
-            vos_mem_copy((tANI_U8 *)pMac->p2pContext.probeRspIe, p2pIe,
-                         p2pIeLength);
             sirDumpBuf( pMac, SIR_LIM_MODULE_ID, LOG2,
                         pMac->p2pContext.probeRspIe,
                         pMac->p2pContext.probeRspIeLength );
+            vos_mem_copy((tANI_U8 *)pMac->p2pContext.probeRspIe, p2pIe,
+                         p2pIeLength);
         }
 
         //release the lock for the sme object
@@ -12811,6 +12811,30 @@ eHalStatus sme_LPHBConfigReq
     return(status);
 }
 #endif /* FEATURE_WLAN_LPHB */
+/*--------------------------------------------------------------------------
+  \brief sme_enable_disable_split_scan() - a wrapper function to set the split
+                                          scan parameter.
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen
+  \return NONE.
+  \sa
+  --------------------------------------------------------------------------*/
+void sme_enable_disable_split_scan (tHalHandle hHal, tANI_U8 nNumStaChan,
+                                          tANI_U8 nNumP2PChan)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+    pMac->roam.configParam.nNumStaChanCombinedConc = nNumStaChan;
+    pMac->roam.configParam.nNumP2PChanCombinedConc = nNumP2PChan;
+
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                 "%s: SCAN nNumStaChanCombinedConc : %d,"
+                           "nNumP2PChanCombinedConc : %d ",
+                 __func__, nNumStaChan, nNumP2PChan);
+
+    return;
+
+}
 
 /**
  * sme_AddPeriodicTxPtrn() - Add Periodic TX Pattern

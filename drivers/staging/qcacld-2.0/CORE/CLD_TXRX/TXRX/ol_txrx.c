@@ -288,15 +288,6 @@ ol_txrx_update_tx_queue_groups(
     u_int32_t group_vdev_bit_mask, vdev_bit_mask, group_vdev_id_mask;
     u_int32_t membership;
     struct ol_txrx_vdev_t *vdev;
-
-    if (group_id >= OL_TX_MAX_TXQ_GROUPS) {
-        TXRX_PRINT(TXRX_PRINT_LEVEL_WARN,
-            "%s: invalid group_id=%u, ignore update.\n",
-            __func__,
-            group_id);
-        return;
-    }
-
     group = &pdev->txq_grps[group_id];
 
     membership = OL_TXQ_GROUP_MEMBERSHIP_GET(vdev_id_mask,ac_mask);
@@ -915,7 +906,7 @@ ol_txrx_pdev_detach(ol_txrx_pdev_handle pdev, int force)
 {
     int i = 0;
     unsigned int page_idx;
-    struct ol_txrx_stats_req_internal *req, *temp_req;
+    struct ol_txrx_stats_req_internal *req;
 
     /*checking to ensure txrx pdev structure is not NULL */
     if (!pdev) {
@@ -934,7 +925,7 @@ ol_txrx_pdev_detach(ol_txrx_pdev_handle pdev, int force)
             "Warning: the txrx req list is not empty, depth=%d\n",
             pdev->req_list_depth
             );
-    TAILQ_FOREACH_SAFE(req, &pdev->req_list, req_list_elem, temp_req) {
+    TAILQ_FOREACH(req, &pdev->req_list, req_list_elem) {
         TAILQ_REMOVE(&pdev->req_list, req, req_list_elem);
         pdev->req_list_depth--;
         TXRX_PRINT(TXRX_PRINT_LEVEL_ERR,
@@ -2875,3 +2866,4 @@ void ol_txrx_clear_stats(struct ol_txrx_pdev_t *pdev, uint16_t value)
             break;
     }
 }
+

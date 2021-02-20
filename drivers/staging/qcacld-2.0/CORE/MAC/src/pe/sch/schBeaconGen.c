@@ -807,12 +807,6 @@ void writeBeaconToMemory(tpAniSirGlobal pMac, tANI_U16 size, tANI_U16 length, tp
     // copy end of beacon only if length > 0
     if (length > 0)
     {
-        if (size + psessionEntry->schBeaconOffsetEnd > SCH_MAX_BEACON_SIZE) {
-            schLog(pMac, LOGE,
-                   FL("beacon template fail size %d BeaconOffsetEnd %d"),
-                   size, psessionEntry->schBeaconOffsetEnd);
-            return;
-        }
         for (i=0; i < psessionEntry->schBeaconOffsetEnd; i++)
             psessionEntry->pSchBeaconFrameBegin[size++] = psessionEntry->pSchBeaconFrameEnd[i];
     }
