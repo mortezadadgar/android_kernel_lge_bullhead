@@ -369,7 +369,7 @@ int __ref cpu_down(unsigned int cpu)
 	int err;
 
 	/* kthreads require one little-cluster CPU to stay online */
-	if (unlikely(!cpu))
+	if (!cpu)
 		return -EINVAL;
 
 	cpu_maps_update_begin();
