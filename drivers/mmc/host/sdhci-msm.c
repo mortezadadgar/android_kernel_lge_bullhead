@@ -1446,11 +1446,11 @@ static void sdhci_msm_populate_affinity(struct device *dev,
 /* Parse platform data */
 static
 struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
-						struct sdhci_msm_host *msm_host)
+						struct sdhci_msm_host *msm_host, struct sdhci_host *host)
 {
 	struct sdhci_msm_pltfm_data *pdata = NULL;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
-	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+	struct sdhci_msm_host *msm_host_priv = pltfm_host->priv;
 	struct device_node *np = dev->of_node;
 	u32 bus_width = 0;
 	u32 prop_val = 0;
@@ -1540,7 +1540,7 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 	pdata->sup_clk_table = clk_table;
 	pdata->sup_clk_cnt = clk_table_len;
 
-	if (msm_host->ice.pdev) {
+	if (msm_host_priv->ice.pdev) {
 		if (sdhci_msm_dt_get_array(dev, "qcom,ice-clk-rates",
 				&ice_clk_table, &ice_clk_table_len, 0)) {
 			dev_err(dev, "failed parsing supported ice clock rates\n");
@@ -3285,7 +3285,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		}
 
 		msm_host->pdata = sdhci_msm_populate_pdata(&pdev->dev,
-							   msm_host);
+							   msm_host, host);
 		if (!msm_host->pdata) {
 			dev_err(&pdev->dev, "DT parsing error\n");
 			goto pltfm_free;
