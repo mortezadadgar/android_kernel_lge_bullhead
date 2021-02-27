@@ -799,11 +799,18 @@ static unsigned int adreno_iommu_set_pt_ib(struct adreno_ringbuffer *rb,
 int _set_pagetable_gpu(struct adreno_ringbuffer *rb,
 			struct kgsl_pagetable *new_pt)
 {
-	unsigned int link[PAGE_SIZE / sizeof(unsigned int)];
-	unsigned int *cmds = link;
+	unsigned int *link = NULL, *cmds;
 	struct kgsl_device *device = rb->device;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	int result;
+
+	link = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (link == NULL) {
+		result = -ENOMEM;
+		goto done;
+	}
+
+	cmds = link;
 
 	kgsl_mmu_enable_clk(&device->mmu, KGSL_IOMMU_MAX_UNITS);
 
@@ -842,6 +849,8 @@ int _set_pagetable_gpu(struct adreno_ringbuffer *rb,
 						rb->timestamp,
 						KGSL_IOMMU_MAX_UNITS);
 
+done:
+	kfree(link);
 	return result;
 }
 

@@ -52,15 +52,13 @@ static gfp_t high_order_gfp_flags = (__GFP_HIGHMEM | __GFP_ZERO | __GFP_NOWARN |
 static gfp_t low_order_gfp_flags  = (__GFP_HIGHMEM | __GFP_ZERO | __GFP_NOWARN |
 				     GFP_KERNEL);
 
-#ifndef CONFIG_ALLOC_BUFFERS_IN_4K_CHUNKS
+// orders for each pool
 static const unsigned int orders[] = {8, 4, 1, 0};
+// number of pages of each order reserved
 static const unsigned int orders_reserved[] = {32, 256, 1024, 2048};
+// don't try to allocate additional pages from this pool if false
+// only use what it is reserved initially
 static const bool reserve_only[] = {true, true, false, false};
-#else
-static const unsigned int orders[] = {0};
-static const unsigned int orders_reserved[] = {2048};
-static const bool reserve_only[] = {false};
-#endif
 
 static const int num_orders = ARRAY_SIZE(orders);
 

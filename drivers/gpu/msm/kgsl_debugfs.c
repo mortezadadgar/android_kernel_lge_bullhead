@@ -208,42 +208,48 @@ static const struct file_operations process_mem_fops = {
  * kgsl_process_init_debugfs() - Initialize debugfs for a process
  * @private: Pointer to process private structure created for the process
  *
+ * @returns: 0 on success, error code otherwise
+ *
  * kgsl_process_init_debugfs() is called at the time of creating the
  * process struct when a process opens kgsl device for the first time.
- * This function is not fatal - all we do is print a warning message if
- * the files can't be created
+ * The function creates the debugfs files for the process. If debugfs is
+ * disabled in the kernel, we ignore that error and return as successful.
  */
-void kgsl_process_init_debugfs(struct kgsl_process_private *private)
+int
+kgsl_process_init_debugfs(struct kgsl_process_private *private)
 {
 	unsigned char name[16];
+	int ret = 0;
 	struct dentry *dentry;
 
-	snprintf(name, sizeof(name), "%d", pid_nr(private->pid));
+	snprintf(name, sizeof(name), "%d", private->pid);
 
 	private->debug_root = debugfs_create_dir(name, proc_d_debugfs);
 
-	/*
-	 * Both debugfs_create_dir() and debugfs_create_file() return
-	 * ERR_PTR(-ENODEV) if debugfs is disabled in the kernel but return
-	 * NULL on error when it is enabled. For both usages we need to check
-	 * for ERROR or NULL and only print a warning on an actual failure
-	 * (i.e. - when the return value is NULL)
-	 */
+	if (!private->debug_root)
+		return -EINVAL;
 
-	if (IS_ERR_OR_NULL(private->debug_root)) {
-		WARN((private->debug_root == NULL),
-			"Unable to create debugfs dir for %s\n", name);
-		private->debug_root = NULL;
-		return;
+	/*
+	 * debugfs_create_dir() and debugfs_create_file() both
+	 * return -ENODEV if debugfs is disabled in the kernel.
+	 * We make a distinction between these two functions
+	 * failing and debugfs being disabled in the kernel.
+	 * In the first case, we abort process private struct
+	 * creation, in the second we continue without any changes.
+	 * So if debugfs is disabled in kernel, return as
+	 * success.
+	 */
+	dentry = debugfs_create_file("mem", 0444, private->debug_root,
+		(void *) ((unsigned long) private->pid), &process_mem_fops);
+
+	if (IS_ERR(dentry)) {
+		ret = PTR_ERR(dentry);
+
+		if (ret == -ENODEV)
+			ret = 0;
 	}
 
-	dentry = debugfs_create_file("mem", 0444, private->debug_root,
-		(void *) ((unsigned long) pid_nr(private->pid)),
-		&process_mem_fops);
-
-	if (IS_ERR_OR_NULL(dentry))
-		WARN((dentry == NULL),
-			"Unable to create 'mem' file for %s\n", name);
+	return ret;
 }
 
 void kgsl_core_debugfs_init(void)

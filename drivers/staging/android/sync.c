@@ -264,9 +264,7 @@ static struct sync_fence *sync_fence_alloc(const char *name)
 		goto err;
 
 	kref_init(&fence->kref);
-#ifdef CONFIG_SYNC_DEBUG
 	strlcpy(fence->name, name, sizeof(fence->name));
-#endif
 
 	INIT_LIST_HEAD(&fence->pt_list_head);
 	INIT_LIST_HEAD(&fence->waiter_list_head);
@@ -633,10 +631,8 @@ void _sync_fence_log(struct sync_fence *fence, bool pt_callback)
 	struct list_head *pos;
 	unsigned long flags;
 
-#ifdef CONFIG_SYNC_DEBUG
 	pr_info("[%p] %s: %s\n", fence, fence->name,
 		sync_status_str(fence->status));
-#endif
 
 	pr_info("waiters:\n");
 
@@ -851,8 +847,7 @@ static int sync_fill_pt_info(struct sync_pt *pt, void *data, int size)
 static long sync_fence_ioctl_fence_info(struct sync_fence *fence,
 					unsigned long arg)
 {
-	u8 data_buf[4096] __aligned(sizeof(long));
-	struct sync_fence_info_data *data = (typeof(data))data_buf;
+	struct sync_fence_info_data *data;
 	struct list_head *pos;
 	__u32 size;
 	__u32 len = 0;
@@ -867,10 +862,11 @@ static long sync_fence_ioctl_fence_info(struct sync_fence *fence,
 	if (size > 4096)
 		size = 4096;
 
-	memset(data, 0, size);
-#ifdef CONFIG_SYNC_DEBUG
+	data = kzalloc(size, GFP_KERNEL);
+	if (data == NULL)
+		return -ENOMEM;
+
 	strlcpy(data->name, fence->name, sizeof(data->name));
-#endif
 	data->status = fence->status;
 	len = sizeof(struct sync_fence_info_data);
 
@@ -894,6 +890,7 @@ static long sync_fence_ioctl_fence_info(struct sync_fence *fence,
 		ret = 0;
 
 out:
+	kfree(data);
 
 	return ret;
 }
@@ -980,10 +977,8 @@ static void sync_print_fence(struct seq_file *s, struct sync_fence *fence)
 	struct list_head *pos;
 	unsigned long flags;
 
-#ifdef CONFIG_SYNC_DEBUG
 	seq_printf(s, "[%pK] %s: %s\n", fence, fence->name,
 		   sync_status_str(fence->status));
-#endif
 
 	list_for_each(pos, &fence->pt_list_head) {
 		struct sync_pt *pt =

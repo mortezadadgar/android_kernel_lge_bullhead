@@ -193,7 +193,7 @@ static void _prev_entry(struct kgsl_process_private *priv,
 			ret->flags = entry->memdesc.flags;
 			ret->priv = entry->memdesc.priv;
 			ret->pending_free = entry->pending_free;
-			ret->pid = pid_nr(priv->pid);
+			ret->pid = priv->pid;
 		}
 
 		node = rb_next(&entry->node);
@@ -228,7 +228,7 @@ static void _next_entry(struct kgsl_process_private *priv,
 			ret->flags = entry->memdesc.flags;
 			ret->priv = entry->memdesc.priv;
 			ret->pending_free = entry->pending_free;
-			ret->pid = pid_nr(priv->pid);
+			ret->pid = priv->pid;
 		}
 
 		node = rb_prev(&entry->node);
@@ -239,7 +239,7 @@ static void _find_mem_entries(struct kgsl_mmu *mmu, unsigned int faultaddr,
 	unsigned int ptbase, struct _mem_entry *preventry,
 	struct _mem_entry *nextentry)
 {
-	struct kgsl_process_private *private = NULL, *p;
+	struct kgsl_process_private *private;
 	int id = kgsl_mmu_get_ptname_from_ptbase(mmu, ptbase);
 
 	memset(preventry, 0, sizeof(*preventry));
@@ -249,23 +249,19 @@ static void _find_mem_entries(struct kgsl_mmu *mmu, unsigned int faultaddr,
 	nextentry->gpuaddr = 0xFFFFFFFF;
 
 	mutex_lock(&kgsl_driver.process_mutex);
-	list_for_each_entry(p, &kgsl_driver.process_list, list) {
-		if (p->pagetable && (p->pagetable->name == id)) {
-			if (kgsl_process_private_get(p))
-				private = p;
-			break;
-		}
-	}
-	mutex_unlock(&kgsl_driver.process_mutex);
 
-	if (private != NULL) {
+	list_for_each_entry(private, &kgsl_driver.process_list, list) {
+
+		if (private->pagetable && (private->pagetable->name != id))
+			continue;
+
 		spin_lock(&private->mem_lock);
 		_prev_entry(private, faultaddr, preventry);
 		_next_entry(private, faultaddr, nextentry);
 		spin_unlock(&private->mem_lock);
-
-		kgsl_process_private_put(private);
 	}
+
+	mutex_unlock(&kgsl_driver.process_mutex);
 }
 
 static void _print_entry(struct kgsl_device *device, struct _mem_entry *entry)

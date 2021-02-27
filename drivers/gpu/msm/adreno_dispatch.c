@@ -1271,7 +1271,7 @@ static inline const char *_kgsl_context_comm(struct kgsl_context *context)
 #define pr_fault(_d, _c, fmt, args...) \
 		dev_err((_d)->dev, "%s[%d]: " fmt, \
 		_kgsl_context_comm((_c)->context), \
-		pid_nr((_c)->context->proc_priv->pid), ##args)
+		(_c)->context->proc_priv->pid, ##args)
 
 
 static void adreno_fault_header(struct kgsl_device *device,
@@ -1927,11 +1927,16 @@ static void adreno_dispatcher_work(struct kthread_work *work)
 		&(adreno_dev->cur_rb->dispatch_q),
 		adreno_dev->long_ib_detect);
 
-	kgsl_process_event_groups(device);
-
 	/* Check if gpu fault occurred */
 	if (dispatcher_do_fault(device))
 		goto done;
+
+	/*
+	 * If inflight went to 0, queue back up the event processor to catch
+	 * stragglers
+	 */
+	if (dispatcher->inflight == 0 && count)
+		queue_work(device->work_queue, &device->event_work);
 
 	/* Try to dispatch new commands */
 	_adreno_dispatcher_issuecmds(adreno_dev);

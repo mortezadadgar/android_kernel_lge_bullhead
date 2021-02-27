@@ -33,9 +33,7 @@ struct kgsl_sync_pt {
 struct kgsl_sync_fence_waiter {
 	struct sync_fence_waiter waiter;
 	struct sync_fence *fence;
-#ifdef CONFIG_SYNC_DEBUG
 	char name[32];
-#endif
 	void (*func)(void *priv);
 	void *priv;
 };
@@ -103,8 +101,6 @@ long kgsl_ioctl_syncsource_signal_fence(struct kgsl_device_private *dev_priv,
 					unsigned int cmd, void *data);
 
 void kgsl_syncsource_put(struct kgsl_syncsource *syncsource);
-
-void __init kgsl_sync_init(void);
 
 #else
 static inline long
