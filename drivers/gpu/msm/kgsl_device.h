@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2015,2017 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2015,2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,7 +17,6 @@
 #include <linux/idr.h>
 #include <linux/pm_qos.h>
 #include <linux/sched.h>
-#include <linux/workqueue.h>
 
 #include "kgsl.h"
 #include "kgsl_mmu.h"
@@ -25,12 +24,16 @@
 #include "kgsl_log.h"
 #include "kgsl_pwrscale.h"
 #include "kgsl_snapshot.h"
+#include "kgsl_sharedmem.h"
+#include "kgsl_cmdbatch.h"
 
 #include <linux/sync.h>
 
 #define KGSL_TIMEOUT_NONE           0
 #define KGSL_TIMEOUT_DEFAULT        0xFFFFFFFF
 #define KGSL_TIMEOUT_PART           50 /* 50 msec */
+
+#define FIRST_TIMEOUT (HZ / 2)
 
 #define KGSL_IOCTL_FUNC(_cmd, _func) \
 	[_IOC_NR((_cmd))] = \
@@ -87,17 +90,8 @@ enum kgsl_event_results {
 	{ KGSL_CONTEXT_PER_CONTEXT_TS, "PER_CONTEXT_TS" }, \
 	{ KGSL_CONTEXT_USER_GENERATED_TS, "USER_TS" }, \
 	{ KGSL_CONTEXT_NO_FAULT_TOLERANCE, "NO_FT" }, \
-	{ KGSL_CONTEXT_INVALIDATE_ON_FAULT, "INVALIDATE_ON_FAULT" }, \
 	{ KGSL_CONTEXT_PWR_CONSTRAINT, "PWR" }, \
 	{ KGSL_CONTEXT_SAVE_GMEM, "SAVE_GMEM" }
-
-#define KGSL_CMDBATCH_FLAGS \
-	{ KGSL_CMDBATCH_MARKER, "MARKER" }, \
-	{ KGSL_CMDBATCH_CTX_SWITCH, "CTX_SWITCH" }, \
-	{ KGSL_CMDBATCH_SYNC, "SYNC" }, \
-	{ KGSL_CMDBATCH_END_OF_FRAME, "EOF" }, \
-	{ KGSL_CMDBATCH_PWR_CONSTRAINT, "PWR_CONSTRAINT" }, \
-	{ KGSL_CMDBATCH_SUBMIT_IB_LIST, "IB_LIST" }
 
 #define KGSL_CONTEXT_TYPES \
 	{ KGSL_CONTEXT_TYPE_ANY, "ANY" }, \
@@ -118,7 +112,6 @@ struct kgsl_device_private;
 struct kgsl_context;
 struct kgsl_power_stats;
 struct kgsl_event;
-struct kgsl_cmdbatch;
 struct kgsl_snapshot;
 
 struct kgsl_functable {
@@ -137,10 +130,10 @@ struct kgsl_functable {
 	int (*start) (struct kgsl_device *device, int priority);
 	int (*stop) (struct kgsl_device *device);
 	int (*getproperty) (struct kgsl_device *device,
-		enum kgsl_property_type type, void __user *value,
+		unsigned int type, void __user *value,
 		size_t sizebytes);
 	int (*getproperty_compat) (struct kgsl_device *device,
-		enum kgsl_property_type type, void __user *value,
+		unsigned int type, void __user *value,
 		size_t sizebytes);
 	int (*waittimestamp) (struct kgsl_device *device,
 		struct kgsl_context *context, unsigned int timestamp,
@@ -167,36 +160,32 @@ struct kgsl_functable {
 	void (*drawctxt_dump) (struct kgsl_device *device,
 		struct kgsl_context *context);
 	long (*ioctl) (struct kgsl_device_private *dev_priv,
-		unsigned int cmd, void *data);
+		unsigned int cmd, unsigned long arg);
 	long (*compat_ioctl) (struct kgsl_device_private *dev_priv,
-		unsigned int cmd, void *data);
+		unsigned int cmd, unsigned long arg);
 	int (*setproperty) (struct kgsl_device_private *dev_priv,
-		enum kgsl_property_type type, void __user *value,
+		unsigned int type, void __user *value,
 		unsigned int sizebytes);
 	int (*setproperty_compat) (struct kgsl_device_private *dev_priv,
-		enum kgsl_property_type type, void __user *value,
+		unsigned int type, void __user *value,
 		unsigned int sizebytes);
 	void (*drawctxt_sched)(struct kgsl_device *device,
 		struct kgsl_context *context);
 	void (*resume)(struct kgsl_device *device);
-	void (*regulator_enable)(struct kgsl_device *);
+	int (*regulator_enable)(struct kgsl_device *);
 	bool (*is_hw_collapsible)(struct kgsl_device *);
 	void (*regulator_disable)(struct kgsl_device *);
 	void (*pwrlevel_change_settings)(struct kgsl_device *device,
-		bool mask_throttle);
+		unsigned int prelevel, unsigned int postlevel, bool post);
 };
-
-typedef long (*kgsl_ioctl_func_t)(struct kgsl_device_private *,
-	unsigned int, void *);
 
 struct kgsl_ioctl {
 	unsigned int cmd;
-	kgsl_ioctl_func_t func;
+	long (*func)(struct kgsl_device_private *, unsigned int, void *);
 };
 
-long kgsl_ioctl_helper(struct file *filep, unsigned int cmd,
-			const struct kgsl_ioctl *ioctl_funcs,
-			unsigned int array_size, unsigned long arg);
+long kgsl_ioctl_helper(struct file *filep, unsigned int cmd, unsigned long arg,
+		const struct kgsl_ioctl *cmds, int len);
 
 /* Flag to mark the memobj_node as a preamble */
 #define MEMOBJ_PREAMBLE BIT(0)
@@ -206,110 +195,20 @@ long kgsl_ioctl_helper(struct file *filep, unsigned int cmd,
 /**
  * struct kgsl_memobj_node - Memory object descriptor
  * @node: Local list node for the cmdbatch
- * @cmdbatch: Cmdbatch the node belongs to
- * @addr: memory start address
- * @sizedwords: size of memory @addr
- * @flags: any special case flags
+ * @id: GPU memory ID for the object
+ * offset: Offset within the object
+ * @gpuaddr: GPU address for the object
+ * @flags: External flags passed by the user
+ * @priv: Internal flags set by the driver
  */
 struct kgsl_memobj_node {
 	struct list_head node;
-	unsigned long gpuaddr;
-	size_t sizedwords;
+	unsigned int id;
+	uint64_t offset;
+	uint64_t gpuaddr;
+	uint64_t size;
+	unsigned long flags;
 	unsigned long priv;
-};
-
-/**
- * struct kgsl_cmdbatch - KGSl command descriptor
- * @device: KGSL GPU device that the command was created for
- * @context: KGSL context that created the command
- * @timestamp: Timestamp assigned to the command
- * @flags: flags
- * @priv: Internal flags
- * @fault_policy: Internal policy describing how to handle this command in case
- * of a fault
- * @fault_recovery: recovery actions actually tried for this batch
- * @expires: Point in time when the cmdbatch is considered to be hung
- * @refcount: kref structure to maintain the reference count
- * @cmdlist: List of IBs to issue
- * @memlist: List of all memory used in this command batch
- * @synclist: List of context/timestamp tuples to wait for before issuing
- * @timer: a timer used to track possible sync timeouts for this cmdbatch
- * @marker_timestamp: For markers, the timestamp of the last "real" command that
- * was queued
- * @profiling_buf_entry: Mem entry containing the profiling buffer
- * @profiling_buffer_gpuaddr: GPU virt address of the profile buffer added here
- * for easy access
- * @profile_index: Index to store the start/stop ticks in the kernel profiling
- * buffer
- * @submit_ticks: Variable to hold ticks at the time of cmdbatch submit.
- * This structure defines an atomic batch of command buffers issued from
- * userspace.
- * @timeout_jiffies: For a syncpoint cmdbatch the jiffies at which the
- * timer will expire
- */
-struct kgsl_cmdbatch {
-	struct kgsl_device *device;
-	struct kgsl_context *context;
-	spinlock_t lock;
-	uint32_t timestamp;
-	uint32_t flags;
-	unsigned long priv;
-	unsigned long fault_policy;
-	unsigned long fault_recovery;
-	unsigned long expires;
-	struct kref refcount;
-	struct list_head cmdlist;
-	struct list_head memlist;
-	struct list_head synclist;
-	struct timer_list timer;
-	unsigned int marker_timestamp;
-	struct kgsl_mem_entry *profiling_buf_entry;
-	unsigned long profiling_buffer_gpuaddr;
-	unsigned int profile_index;
-	uint64_t submit_ticks;
-	unsigned int global_ts;
-	unsigned long timeout_jiffies;
-};
-
-/**
- * struct kgsl_cmdbatch_sync_event
- * @type: Syncpoint type
- * @node: Local list node for the cmdbatch sync point list
- * @cmdbatch: Pointer to the cmdbatch that owns the sync event
- * @context: Pointer to the KGSL context that owns the cmdbatch
- * @timestamp: Pending timestamp for the event
- * @handle: Pointer to a sync fence handle
- * @device: Pointer to the KGSL device
- * @refcount: Allow event to be destroyed asynchronously
- */
-struct kgsl_cmdbatch_sync_event {
-	int type;
-	struct list_head node;
-	struct kgsl_cmdbatch *cmdbatch;
-	struct kgsl_context *context;
-	unsigned int timestamp;
-	struct kgsl_sync_fence_waiter *handle;
-	struct kgsl_device *device;
-	struct kref refcount;
-};
-
-/**
- * enum kgsl_cmdbatch_priv - Internal cmdbatch flags
- * @CMDBATCH_FLAG_SKIP - skip the entire command batch
- * @CMDBATCH_FLAG_FORCE_PREAMBLE - Force the preamble on for the cmdbatch
- * @CMDBATCH_FLAG_WFI - Force wait-for-idle for the submission
- * @CMDBATCH_FLAG_PROFILE - store the start / retire ticks for the command batch
- * in the profiling buffer
- * @CMDBATCH_FLAG_FENCE_LOG - Set if the cmdbatch is dumping fence logs via the
- * cmdbatch timer - this is used to avoid recursion
- */
-
-enum kgsl_cmdbatch_priv {
-	CMDBATCH_FLAG_SKIP = 0,
-	CMDBATCH_FLAG_FORCE_PREAMBLE,
-	CMDBATCH_FLAG_WFI,
-	CMDBATCH_FLAG_PROFILE,
-	CMDBATCH_FLAG_FENCE_LOG,
 };
 
 struct kgsl_device {
@@ -324,13 +223,13 @@ struct kgsl_device {
 	unsigned long reg_phys;
 
 	/* Starting Kernel virtual address for GPU registers */
-	void *reg_virt;
+	void __iomem *reg_virt;
 
 	/* Total memory size for all GPU registers */
 	unsigned int reg_len;
 
 	/* Kernel virtual address for GPU shader memory */
-	void *shader_mem_virt;
+	void __iomem *shader_mem_virt;
 
 	/* Starting physical address for GPU shader memory */
 	unsigned long shader_mem_phys;
@@ -474,11 +373,24 @@ struct kgsl_context {
 	unsigned long fault_time;
 };
 
+#define _context_comm(_c) \
+	(((_c) && (_c)->proc_priv) ? (_c)->proc_priv->comm : "unknown")
+
+/*
+ * Print log messages with the context process name/pid:
+ * [...] kgsl kgsl-3d0: kgsl-api-test[22182]:
+ */
+
+#define pr_context(_d, _c, fmt, args...) \
+		dev_err((_d)->dev, "%s[%d]: " fmt, \
+		_context_comm((_c)), \
+		pid_nr((_c)->proc_priv->pid), ##args)
+
 /**
  * struct kgsl_process_private -  Private structure for a KGSL process (across
  * all devices)
  * @priv: Internal flags, use KGSL_PROCESS_* values
- * @pid: ID for the task owner of the process
+ * @pid: Identification structure for the task owner of the process
  * @comm: task name of the process
  * @mem_lock: Spinlock to protect the process memory lists
  * @refcount: kref object for reference counting the process
@@ -494,7 +406,7 @@ struct kgsl_context {
  */
 struct kgsl_process_private {
 	unsigned long priv;
-	pid_t pid;
+	struct pid *pid;
 	char comm[TASK_COMM_LEN];
 	spinlock_t mem_lock;
 	struct kref refcount;
@@ -505,8 +417,8 @@ struct kgsl_process_private {
 	struct kobject kobj;
 	struct dentry *debug_root;
 	struct {
-		unsigned int cur;
-		unsigned int max;
+		uint64_t cur;
+		uint64_t max;
 	} stats[KGSL_MEM_ENTRY_MAX];
 	struct idr syncsource_idr;
 	spinlock_t syncsource_lock;
@@ -566,9 +478,9 @@ struct kgsl_snapshot {
  * @node: node for kgsl_snapshot.obj_list
  */
 struct kgsl_snapshot_object {
-	unsigned int gpuaddr;
-	unsigned int size;
-	unsigned int offset;
+	uint64_t gpuaddr;
+	uint64_t size;
+	uint64_t offset;
 	int type;
 	struct kgsl_mem_entry *entry;
 	struct list_head node;
@@ -587,7 +499,7 @@ struct kgsl_protected_registers {
 struct kgsl_device *kgsl_get_device(int dev_idx);
 
 static inline void kgsl_process_add_stats(struct kgsl_process_private *priv,
-	unsigned int type, size_t size)
+	unsigned int type, uint64_t size)
 {
 	priv->stats[type].cur += size;
 	if (priv->stats[type].max < priv->stats[type].cur)
@@ -636,12 +548,6 @@ static inline void kgsl_remove_device_sysfs_files(struct device *root,
 		device_remove_file(root, list[i]);
 }
 
-static inline struct kgsl_mmu *
-kgsl_get_mmu(struct kgsl_device *device)
-{
-	return (struct kgsl_mmu *) (device ? &device->mmu : NULL);
-}
-
 static inline struct kgsl_device *kgsl_device_from_dev(struct device *dev)
 {
 	int i;
@@ -652,18 +558,6 @@ static inline struct kgsl_device *kgsl_device_from_dev(struct device *dev)
 	}
 
 	return NULL;
-}
-
-static inline int kgsl_create_device_workqueue(struct kgsl_device *device)
-{
-	device->work_queue = create_singlethread_workqueue(device->name);
-	if (!device->work_queue) {
-		KGSL_DRV_ERR(device,
-			     "create_singlethread_workqueue(%s) failed\n",
-			     device->name);
-		return -EINVAL;
-	}
-	return 0;
 }
 
 static inline int kgsl_state_is_awake(struct kgsl_device *device)
@@ -727,8 +621,19 @@ int kgsl_context_init(struct kgsl_device_private *, struct kgsl_context
 
 void kgsl_context_dump(struct kgsl_context *context);
 
-int kgsl_memfree_find_entry(pid_t pid, unsigned long *gpuaddr,
-	unsigned long *size, unsigned int *flags);
+int kgsl_memfree_find_entry(pid_t pid, uint64_t *gpuaddr,
+	uint64_t *size, uint64_t *flags);
+
+long kgsl_ioctl(struct file *filep, unsigned int cmd, unsigned long arg);
+
+long kgsl_ioctl_copy_in(unsigned int kernel_cmd, unsigned int user_cmd,
+		unsigned long arg, unsigned char *ptr);
+
+long kgsl_ioctl_copy_out(unsigned int kernel_cmd, unsigned int user_cmd,
+		unsigned long, unsigned char *ptr);
+
+int kgsl_mem_entry_attach_process(struct kgsl_mem_entry *entry,
+				   struct kgsl_device_private *dev_priv);
 
 /**
  * kgsl_context_put() - Release context reference count
@@ -818,16 +723,8 @@ static inline int _kgsl_context_get(struct kgsl_context *context)
 {
 	int ret = 0;
 
-	if (context) {
+	if (context)
 		ret = kref_get_unless_zero(&context->refcount);
-		/*
-		 * We shouldn't realistically fail kref_get_unless_zero unless
-		 * we did something really dumb so make the failure both public
-		 * and painful
-		 */
-
-		WARN_ON(!ret);
-	}
 
 	return ret;
 }
@@ -860,13 +757,6 @@ static inline struct kgsl_context *kgsl_context_get_owner(
 	return context;
 }
 
-void kgsl_dump_syncpoints(struct kgsl_device *device,
-	struct kgsl_cmdbatch *cmdbatch);
-
-void kgsl_cmdbatch_destroy(struct kgsl_cmdbatch *cmdbatch);
-
-void kgsl_cmdbatch_destroy_object(struct kref *kref);
-
 /**
 * kgsl_process_private_get() - increment the refcount on a kgsl_process_private
 *   struct
@@ -887,16 +777,6 @@ void kgsl_process_private_put(struct kgsl_process_private *private);
 
 
 struct kgsl_process_private *kgsl_process_private_find(pid_t pid);
-
-/**
- * kgsl_cmdbatch_put() - Decrement the refcount for a command batch object
- * @cmdbatch: Pointer to the command batch object
- */
-static inline void kgsl_cmdbatch_put(struct kgsl_cmdbatch *cmdbatch)
-{
-	if (cmdbatch)
-		kref_put(&cmdbatch->refcount, kgsl_cmdbatch_destroy_object);
-}
 
 /**
  * kgsl_property_read_u32() - Read a u32 property from the device tree
@@ -969,12 +849,12 @@ void kgsl_snapshot_indexed_registers(struct kgsl_device *device,
 	unsigned int data, unsigned int start, unsigned int count);
 
 int kgsl_snapshot_get_object(struct kgsl_snapshot *snapshot,
-	struct kgsl_process_private *process, unsigned int gpuaddr,
-	unsigned int size, unsigned int type);
+	struct kgsl_process_private *process, uint64_t gpuaddr,
+	uint64_t size, unsigned int type);
 
 int kgsl_snapshot_have_object(struct kgsl_snapshot *snapshot,
 	struct kgsl_process_private *process,
-	unsigned int gpuaddr, unsigned int size);
+	uint64_t gpuaddr, uint64_t size);
 
 struct adreno_ib_object_list;
 
@@ -990,6 +870,16 @@ void kgsl_snapshot_add_section(struct kgsl_device *device, u16 id,
 	void *priv);
 
 /**
+ * kgsl_device_max_memsize() - Return the maximum GPU address allowable on this
+ * device
+ * @device: Pointer to a kgsl_device struct
+ */
+static inline uint64_t kgsl_device_max_gpuaddr(struct kgsl_device *device)
+{
+	return (uint64_t) UINT_MAX;
+}
+
+/**
  * struct kgsl_pwr_limit - limit structure for each client
  * @node: Local list node for the limits list
  * @level: requested power level
@@ -1000,6 +890,5 @@ struct kgsl_pwr_limit {
 	unsigned int level;
 	struct kgsl_device *device;
 };
-
 
 #endif  /* __KGSL_DEVICE_H */

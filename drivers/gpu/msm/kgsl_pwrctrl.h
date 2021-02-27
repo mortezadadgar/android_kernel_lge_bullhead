@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,7 +25,10 @@
 
 #define KGSL_PWR_ON	0xFFFF
 
-#define KGSL_MAX_CLKS 9
+#define KGSL_MAX_CLKS 11
+
+#define KGSL_MAX_REGULATORS 2
+#define KGSL_MAX_REGULATOR_NAME_LEN 8
 
 /* Only two supported levels, min & max */
 #define KGSL_CONSTRAINT_PWR_MAXLEVELS 2
@@ -93,18 +96,22 @@ struct kgsl_pwr_constraint {
  * @num_pwrlevels - number of available power levels
  * @interval_timeout - timeout in jiffies to be idle before a power event
  * @strtstp_sleepwake - true if the device supports low latency GPU start/stop
- * @gpu_reg - pointer to the regulator structure for gpu_reg
- * @gpu_cx - pointer to the regulator structure for gpu_cx
+ * @gpu_reg - array of pointers to the regulator structures
+ * @gpu_reg_name - array of pointers to the regulator names
  * @pcl - bus scale identifier
  * @ocmem - ocmem bus scale identifier
  * @irq_name - resource name for the IRQ
  * @clk_stats - structure of clock statistics
+ * @l2pc_cpus_mask - mask to avoid L2PC on masked CPUs
+ * @l2pc_cpus_qos - qos structure to avoid L2PC on CPUs
  * @pm_qos_req_dma - the power management quality of service structure
  * @pm_qos_active_latency - allowed CPU latency in microseconds when active
  * @pm_qos_wakeup_latency - allowed CPU latency in microseconds during wakeup
  * @bus_control - true if the bus calculation is independent
  * @bus_mod - modifier from the current power level for the bus vote
  * @bus_percent_ab - current percent of total possible bus usage
+ * @bus_width - target specific bus width in number of bytes
+ * @bus_ab_mbytes - AB vote in Mbytes for current bus usage
  * @bus_index - default bus index into the bus_ib table
  * @bus_ib - the set of unique ib requests needed for the bus calculation
  * @constraint - currently active power constraint
@@ -137,21 +144,25 @@ struct kgsl_pwrctrl {
 	unsigned int num_pwrlevels;
 	unsigned long interval_timeout;
 	bool strtstp_sleepwake;
-	struct regulator *gpu_reg;
-	struct regulator *gpu_cx;
+	struct regulator *gpu_reg[KGSL_MAX_REGULATORS];
+	char gpu_reg_name[KGSL_MAX_REGULATORS][KGSL_MAX_REGULATOR_NAME_LEN];
 	uint32_t pcl;
 	uint32_t ocmem_pcl;
 	const char *irq_name;
 	struct kgsl_clk_stats clk_stats;
+	unsigned int l2pc_cpus_mask;
+	struct pm_qos_request l2pc_cpus_qos;
 	struct pm_qos_request pm_qos_req_dma;
 	unsigned int pm_qos_active_latency;
 	unsigned int pm_qos_wakeup_latency;
 	bool bus_control;
 	int bus_mod;
 	unsigned int bus_percent_ab;
+	unsigned int bus_width;
+	unsigned long bus_ab_mbytes;
 	struct device *devbw;
 	unsigned int bus_index[KGSL_MAX_PWRLEVELS];
-	uint64_t bus_ib[KGSL_MAX_PWRLEVELS];
+	uint64_t *bus_ib;
 	struct kgsl_pwr_constraint constraint;
 	bool superfast;
 	struct work_struct thermal_cycle_ws;
@@ -200,4 +211,5 @@ int kgsl_active_count_wait(struct kgsl_device *device, int count);
 void kgsl_pwrctrl_busy_time(struct kgsl_device *device, u64 time, u64 busy);
 void kgsl_pwrctrl_set_constraint(struct kgsl_device *device,
 			struct kgsl_pwr_constraint *pwrc, uint32_t id);
+void kgsl_pwrctrl_update_l2pc(struct kgsl_device *device);
 #endif /* __KGSL_PWRCTRL_H */

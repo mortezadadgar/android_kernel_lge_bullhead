@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -32,7 +32,7 @@ static inline void signal_event(struct kgsl_device *device,
 {
 	list_del(&event->node);
 	event->result = result;
-	queue_kthread_work(&kgsl_driver.worker, &event->work);
+	queue_work(device->events_wq, &event->work);
 }
 
 /**
@@ -42,7 +42,7 @@ static inline void signal_event(struct kgsl_device *device,
  * Each event callback has its own work struct and is run on a event specific
  * workqeuue.  This is the worker that queues up the event callback function.
  */
-static void _kgsl_event_worker(struct kthread_work *work)
+static void _kgsl_event_worker(struct work_struct *work)
 {
 	struct kgsl_event *event = container_of(work, struct kgsl_event, work);
 	int id = KGSL_CONTEXT_ID(event->context);
@@ -68,7 +68,12 @@ static void _process_event_group(struct kgsl_device *device,
 
 	context = group->context;
 
-	_kgsl_context_get(context);
+	/*
+	 * Sanity check to be sure that we we aren't racing with the context
+	 * getting destroyed
+	 */
+	if (context != NULL && !_kgsl_context_get(context))
+		BUG();
 
 	spin_lock(&group->lock);
 
@@ -251,7 +256,10 @@ int kgsl_add_event(struct kgsl_device *device, struct kgsl_event_group *group,
 		return -ENOMEM;
 
 	/* Get a reference to the context while the event is active */
-	_kgsl_context_get(context);
+	if (context != NULL && !_kgsl_context_get(context)) {
+		kmem_cache_free(events_cache, event);
+		return -ENOENT;
+	}
 
 	event->device = device;
 	event->context = context;
@@ -261,7 +269,7 @@ int kgsl_add_event(struct kgsl_device *device, struct kgsl_event_group *group,
 	event->created = jiffies;
 	event->group = group;
 
-	init_kthread_work(&event->work, _kgsl_event_worker);
+	INIT_WORK(&event->work, _kgsl_event_worker);
 
 	trace_kgsl_register_event(KGSL_CONTEXT_ID(context), timestamp, func);
 
@@ -276,7 +284,7 @@ int kgsl_add_event(struct kgsl_device *device, struct kgsl_event_group *group,
 
 	if (timestamp_cmp(retired, timestamp) >= 0) {
 		event->result = KGSL_EVENT_RETIRED;
-		queue_kthread_work(&kgsl_driver.worker, &event->work);
+		queue_work(device->events_wq, &event->work);
 		spin_unlock(&group->lock);
 		return 0;
 	}

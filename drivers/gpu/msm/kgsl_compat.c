@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,8 +20,6 @@
 #include "kgsl_compat.h"
 #include "kgsl_device.h"
 #include "kgsl_sync.h"
-
-#include "adreno.h"
 
 static long
 kgsl_ioctl_device_getproperty_compat(struct kgsl_device_private *dev_priv,
@@ -170,7 +168,7 @@ kgsl_ioctl_gpumem_sync_cache_bulk_compat(struct kgsl_device_private *dev_priv,
 	struct kgsl_gpumem_sync_cache_bulk_compat *param32 = data;
 	struct kgsl_gpumem_sync_cache_bulk param;
 
-	param.id_list = (unsigned int __user *)(uintptr_t)param32->id_list;
+	param.id_list = to_user_ptr(param32->id_list);
 	param.count = param32->count;
 	param.op = param32->op;
 
@@ -201,6 +199,13 @@ kgsl_ioctl_gpumem_alloc_compat(struct kgsl_device_private *dev_priv,
 	param.size = (size_t)param32->size;
 	param.flags = param32->flags;
 
+	/*
+	 * Since this is a 32 bit application the page aligned size is expected
+	 * to fit inside of 32 bits - check for overflow and return error if so
+	 */
+	if (PAGE_ALIGN(param.size) >= UINT_MAX)
+		return -EINVAL;
+
 	result = kgsl_ioctl_gpumem_alloc(dev_priv, cmd, &param);
 
 	param32->gpuaddr = gpuaddr_to_compat(param.gpuaddr);
@@ -223,6 +228,13 @@ kgsl_ioctl_gpumem_alloc_id_compat(struct kgsl_device_private *dev_priv,
 	param.size = (size_t)param32->size;
 	param.mmapsize = (size_t)param32->mmapsize;
 	param.gpuaddr = (unsigned long)param32->gpuaddr;
+
+	/*
+	 * Since this is a 32 bit application the page aligned size is expected
+	 * to fit inside of 32 bits - check for overflow and return error if so
+	 */
+	if (PAGE_ALIGN(param.size) >= UINT_MAX)
+		return -EINVAL;
 
 	result = kgsl_ioctl_gpumem_alloc_id(dev_priv, cmd, &param);
 
@@ -344,89 +356,41 @@ static const struct kgsl_ioctl kgsl_compat_ioctl_funcs[] = {
 			kgsl_ioctl_syncsource_create_fence),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_SYNCSOURCE_SIGNAL_FENCE,
 			kgsl_ioctl_syncsource_signal_fence),
+	KGSL_IOCTL_FUNC(IOCTL_KGSL_CFF_SYNC_GPUOBJ,
+			kgsl_ioctl_cff_sync_gpuobj),
+	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUOBJ_ALLOC,
+			kgsl_ioctl_gpuobj_alloc),
+	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUOBJ_FREE,
+			kgsl_ioctl_gpuobj_free),
+	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUOBJ_INFO,
+			kgsl_ioctl_gpuobj_info),
+	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUOBJ_IMPORT,
+			kgsl_ioctl_gpuobj_import),
+	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUOBJ_SYNC,
+			kgsl_ioctl_gpuobj_sync),
+	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPU_COMMAND,
+			kgsl_ioctl_gpu_command),
 };
 
-long kgsl_compat_ioctl(struct file *filep, unsigned int cmd,
-				unsigned long arg)
+long kgsl_compat_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 {
-	return kgsl_ioctl_helper(filep, cmd, kgsl_compat_ioctl_funcs,
-				ARRAY_SIZE(kgsl_compat_ioctl_funcs), arg);
-}
+	struct kgsl_device_private *dev_priv = filep->private_data;
+	struct kgsl_device *device = dev_priv->device;
 
-/**
- * kgsl_cmdbatch_create_compat() - Compat helper to _kgsl_cmdbatch_create()
- * @device: Pointer to the KGSL device struct for the GPU
- * @flags: Flags passed in from the user command
- * @cmdlist: Pointer to the list of commands from the user. Should point to a
- * kgsl_ibdesc_compat struct
- * @numcmds: Number of commands in the list
- * @synclist: Pointer to the list of syncpoints from the user. Should point to
- * a kgsl_cmd_syncpoint_compat struct
- * @numsyncs: Number of syncpoints in the list
- *
- * This function is called from _kgsl_cmdbatch_create(), if the user process
- * submitting cmds is 32 bit, instead of executing rest of the function.
- * It is needed since we do multiple copy_from_user() calls which would
- * otherwise be copying user data into the wrongly sized/structured struct.
- */
-int kgsl_cmdbatch_create_compat(struct kgsl_device *device, unsigned int flags,
-			struct kgsl_cmdbatch *cmdbatch, void __user *cmdlist,
-			unsigned int numcmds, void __user *synclist,
-			unsigned int numsyncs)
-{
-	int ret = 0, i;
+	long ret = kgsl_ioctl_helper(filep, cmd, arg, kgsl_compat_ioctl_funcs,
+		ARRAY_SIZE(kgsl_compat_ioctl_funcs));
 
-	if (!(flags & (KGSL_CMDBATCH_SYNC | KGSL_CMDBATCH_MARKER))) {
-		struct kgsl_ibdesc_compat ibdesc32;
-		struct kgsl_ibdesc ibdesc;
-		void __user *uptr = cmdlist;
+	/*
+	 * If the command was unrecognized in the generic core, try the device
+	 * specific function
+	 */
 
-		for (i = 0; i < numcmds; i++) {
-			memset(&ibdesc32, 0, sizeof(ibdesc32));
+	if (ret == -ENOIOCTLCMD) {
+		if (device->ftbl->compat_ioctl != NULL)
+			return device->ftbl->compat_ioctl(dev_priv, cmd, arg);
 
-			if (copy_from_user(&ibdesc32, uptr, sizeof(ibdesc32))) {
-				ret = -EFAULT;
-				goto done;
-			}
-
-			ibdesc.gpuaddr = (unsigned long)ibdesc32.gpuaddr;
-			ibdesc.sizedwords = (size_t)ibdesc32.sizedwords;
-			ibdesc.ctrl = (unsigned int)ibdesc32.ctrl;
-
-			ret = kgsl_cmdbatch_add_memobj(cmdbatch, &ibdesc);
-			if (ret)
-				goto done;
-
-			uptr += sizeof(ibdesc32);
-		}
-
-		if (cmdbatch->profiling_buf_entry == NULL)
-			cmdbatch->flags &= ~KGSL_CMDBATCH_PROFILING;
-
-	}
-	if (synclist && numsyncs) {
-
-		struct kgsl_cmd_syncpoint_compat sync32;
-		struct kgsl_cmd_syncpoint sync;
-		void __user *uptr = synclist;
-
-		for (i = 0; i < numsyncs; i++) {
-			memset(&sync32, 0, sizeof(sync32));
-
-			if (copy_from_user(&sync32, uptr, sizeof(sync32)))
-				return -EFAULT;
-
-			sync.type = sync32.type;
-			sync.priv = compat_ptr(sync32.priv);
-			sync.size = (size_t)sync32.size;
-
-			ret = kgsl_cmdbatch_add_sync(device, cmdbatch, &sync);
-			if (ret)
-				return ret;
-			uptr += sizeof(sync32);
-		}
+		KGSL_DRV_INFO(device, "invalid ioctl code 0x%08X\n", cmd);
 	}
 
-done:
 	return ret;
 }

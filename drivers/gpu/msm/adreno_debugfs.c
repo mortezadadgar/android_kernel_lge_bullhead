@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2008-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2008-2016,2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -21,6 +21,41 @@
 #include "adreno.h"
 #include "kgsl_cffdump.h"
 #include "kgsl_sync.h"
+
+static int _isdb_set(void *data, u64 val)
+{
+	struct kgsl_device *device = data;
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+
+	/* Once ISDB goes enabled it stays enabled */
+	if (test_bit(ADRENO_DEVICE_ISDB_ENABLED, &adreno_dev->priv))
+		return 0;
+
+	mutex_lock(&device->mutex);
+
+	/*
+	 * Bring down the GPU so we can bring it back up with the correct power
+	 * and clock settings
+	 */
+	kgsl_pwrctrl_change_state(device, KGSL_STATE_SUSPEND);
+	set_bit(ADRENO_DEVICE_ISDB_ENABLED, &adreno_dev->priv);
+	kgsl_pwrctrl_change_state(device, KGSL_STATE_SLUMBER);
+
+	mutex_unlock(&device->mutex);
+
+	return 0;
+}
+
+static int _isdb_get(void *data, u64 *val)
+{
+	struct kgsl_device *device = data;
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+
+	*val = (u64) test_bit(ADRENO_DEVICE_ISDB_ENABLED, &adreno_dev->priv);
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(_isdb_fops, _isdb_get, _isdb_set, "%llu\n");
 
 static int _active_count_get(void *data, u64 *val)
 {
@@ -175,7 +210,7 @@ static int ctx_print(struct seq_file *s, void *unused)
 		   ctx_type_str(drawctxt->type),
 		   drawctxt->base.priority,
 		   drawctxt->base.proc_priv->comm,
-		   drawctxt->base.proc_priv->pid,
+		   pid_nr(drawctxt->base.proc_priv->pid),
 		   drawctxt->base.tid);
 
 	seq_puts(s, "flags: ");
@@ -274,12 +309,12 @@ void adreno_debugfs_init(struct adreno_device *adreno_dev)
 
 	kgsl_cffdump_debugfs_create(device);
 
-	debugfs_create_u32("wait_timeout", 0644, device->d_debugfs,
-		&adreno_dev->wait_timeout);
-	debugfs_create_u32("ib_check", 0644, device->d_debugfs,
-			   &adreno_dev->ib_check_level);
 	debugfs_create_file("active_cnt", 0444, device->d_debugfs, device,
 			    &_active_count_fops);
 	adreno_dev->ctx_d_debugfs = debugfs_create_dir("ctx",
 							device->d_debugfs);
+
+	if (adreno_is_a5xx(adreno_dev))
+		debugfs_create_file("isdb", 0644, device->d_debugfs,
+			device, &_isdb_fops);
 }

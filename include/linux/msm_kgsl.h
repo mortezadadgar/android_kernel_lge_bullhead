@@ -14,6 +14,8 @@
 #define KGSL_CLK_RBBMTIMER	0x00000080
 #define KGSL_CLK_GFX_GTCU   0x00000100
 #define KGSL_CLK_GFX_GTBU   0x00000200
+#define KGSL_CLK_AON	0x00000400
+#define KGSL_CLK_GFX_GTBU1   0x00000800
 
 #define KGSL_MAX_PWRLEVELS 10
 
@@ -45,6 +47,7 @@ struct kgsl_pwrlevel {
  * @idle_timeout:	Timeout for GPU to turn its resources off
  * @strtstp_sleepwake:  Flag to decide b/w SLEEP and SLUMBER
  * @bus_control:	Flag if independent bus voting is supported
+ * @popp_enable:	Flag to enable POPP feature
  * @clk_map:		Clocks map per platform
  * @bus_scale_table:	Bus table with different b/w votes
  * @iommu_data:		Struct holding iommu context data
@@ -62,6 +65,7 @@ struct kgsl_device_platform_data {
 	unsigned int idle_timeout;
 	bool strtstp_sleepwake;
 	bool bus_control;
+	bool popp_enable;
 	unsigned int clk_map;
 	unsigned int step_mul;
 	struct msm_bus_scale_pdata *bus_scale_table;

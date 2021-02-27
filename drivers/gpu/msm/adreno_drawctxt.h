@@ -13,8 +13,6 @@
 #ifndef __ADRENO_DRAWCTXT_H
 #define __ADRENO_DRAWCTXT_H
 
-#include "adreno_pm4types.h"
-
 struct adreno_context_type {
 	unsigned int type;
 	const char *str;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015,2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -53,6 +53,7 @@ struct kgsl_snapshot_section_header {
 #define KGSL_SNAPSHOT_SECTION_DEBUGBUS     0x0A01
 #define KGSL_SNAPSHOT_SECTION_GPU_OBJECT   0x0B01
 #define KGSL_SNAPSHOT_SECTION_MEMLIST      0x0E01
+#define KGSL_SNAPSHOT_SECTION_SHADER       0x1201
 
 #define KGSL_SNAPSHOT_SECTION_END          0xFFFF
 
@@ -170,6 +171,12 @@ struct kgsl_snapshot_debugbus {
 	int count; /* Number of dwords in the dump */
 } __packed;
 
+struct kgsl_snapshot_shader {
+	int type;  /* SP/TP statetype */
+	int index; /* SP/TP index */
+	int size;  /* Number of dwords in the dump */
+} __packed;
+
 #define SNAPSHOT_GPU_OBJECT_SHADER  1
 #define SNAPSHOT_GPU_OBJECT_IB      2
 #define SNAPSHOT_GPU_OBJECT_GENERIC 3
@@ -183,4 +190,6 @@ struct kgsl_snapshot_gpu_object {
 	int size;    /* Size of the object (in dwords) */
 };
 
+void kgsl_snapshot_push_object(struct kgsl_process_private *process,
+	uint64_t gpuaddr, uint64_t dwords);
 #endif
