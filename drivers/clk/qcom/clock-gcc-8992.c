@@ -1100,8 +1100,8 @@ static struct rcg_clk pdm2_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_gcc_sdcc1_ice_core_clk[] = {
-	F( 100000000,	gpll0_out_main,	8,	0,	0),
-	F( 200000000,	gpll0_out_main,	4,	0,	0),
+	F( 100000000,	gpll0_out_main,	6,	0,	0),
+	F( 200000000,	gpll0_out_main,	3,	0,	0),
 	F_END
 };
 
