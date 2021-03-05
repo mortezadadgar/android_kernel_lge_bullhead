@@ -21,7 +21,6 @@
 #include <linux/rcupdate.h>
 #include <linux/pid_namespace.h>
 #include <linux/user_namespace.h>
-#include <linux/shmem_fs.h>
 
 #include <asm/poll.h>
 #include <asm/siginfo.h>
@@ -326,10 +325,6 @@ static long do_fcntl(int fd, unsigned int cmd, unsigned long arg,
 	case F_SETPIPE_SZ:
 	case F_GETPIPE_SZ:
 		err = pipe_fcntl(filp, cmd, arg);
-		break;
-	case F_ADD_SEALS:
-	case F_GET_SEALS:
-		err = shmem_fcntl(filp, cmd, arg);
 		break;
 	default:
 		break;
@@ -734,14 +729,14 @@ static int __init fcntl_init(void)
 	 * Exceptions: O_NONBLOCK is a two bit define on parisc; O_NDELAY
 	 * is defined as O_NONBLOCK on some platforms and not on others.
 	 */
-	BUILD_BUG_ON(20 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
+	BUILD_BUG_ON(19 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
 		O_RDONLY	| O_WRONLY	| O_RDWR	|
 		O_CREAT		| O_EXCL	| O_NOCTTY	|
 		O_TRUNC		| O_APPEND	| /* O_NONBLOCK	| */
 		__O_SYNC	| O_DSYNC	| FASYNC	|
 		O_DIRECT	| O_LARGEFILE	| O_DIRECTORY	|
 		O_NOFOLLOW	| O_NOATIME	| O_CLOEXEC	|
-		__FMODE_EXEC	| O_PATH	| __O_TMPFILE
+		__FMODE_EXEC	| O_PATH
 		));
 
 	fasync_cache = kmem_cache_create("fasync_cache",
