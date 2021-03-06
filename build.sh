@@ -3,10 +3,10 @@
 # Variables
 branch_name=$(git rev-parse --abbrev-ref HEAD)
 last_commit=$(git rev-parse --verify --short=8 HEAD)
-export LOCALVERSION="-Shadow-Kernel-${branch_name}/${last_commit}"
+export LOCALVERSION="${branch_name}/${last_commit}"
 cpus=$(nproc --all)
 color_Off='\033[0m'
-defconfig="shadow_defconfig"
+defconfig="bullhead_defconfig"
 spaces="  "
 cross_compile="aarch64-linux-gnu-"
 ccache="$(which ccache)"
