@@ -27,7 +27,7 @@ fi
 # make kernel
 if ! make -j "${cpus}" \
 	CROSS_COMPILE="$cross_compile" \
-	CC="ccache clang"
+	CC="ccache clang" \
 	OBJDUMP=llvm-objdump STRIP=llvm-strip \
 	AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy; then
 	die "Kernel Compilation failed!"
