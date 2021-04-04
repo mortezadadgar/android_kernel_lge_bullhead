@@ -25,7 +25,7 @@ if ! make -s "$defconfig"; then
 fi
 
 # make kernel
-if ! sudo make -j "${cpus}" \
+if ! sudo make CONFIG_NO_ERROR_ON_MISMATCH=y -j "${cpus}" \
 	CROSS_COMPILE="$cross_compile" \
 	CC="ccache clang" \
 	OBJDUMP=llvm-objdump STRIP=llvm-strip \
