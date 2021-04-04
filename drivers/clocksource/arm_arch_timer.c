@@ -268,7 +268,7 @@ static int arch_timer_set_next_event_phys_mem(unsigned long evt,
 	return 0;
 }
 
-static void __cpuinit __arch_timer_setup(unsigned type,
+static void __arch_timer_setup(unsigned type,
 				       struct clock_event_device *clk)
 {
 	clk->features = CLOCK_EVT_FEAT_ONESHOT;
