@@ -2725,9 +2725,9 @@ static int prepend_unreachable(char **buffer, int *buflen)
  *
  * "buflen" should be positive.
  */
-char *d_path(const struct path *path, char *buf, int buflen)
+char *d_path_outlen(const struct path *path, char *buf, int *buflen)
 {
-	char *res = buf + buflen;
+	char *res = buf + *buflen;
 	struct path root;
 	int error;
 
@@ -2744,18 +2744,23 @@ char *d_path(const struct path *path, char *buf, int buflen)
 	 */
 	if (path->dentry->d_op && path->dentry->d_op->d_dname &&
 	    (!IS_ROOT(path->dentry) || path->dentry != path->mnt->mnt_root))
-		return path->dentry->d_op->d_dname(path->dentry, buf, buflen);
+		return path->dentry->d_op->d_dname(path->dentry, buf, *buflen);
 
 	get_fs_root(current->fs, &root);
 	br_read_lock(&vfsmount_lock);
 	write_seqlock(&rename_lock);
-	error = path_with_deleted(path, &root, &res, &buflen);
+	error = path_with_deleted(path, &root, &res, buflen);
 	write_sequnlock(&rename_lock);
 	br_read_unlock(&vfsmount_lock);
 	if (error < 0)
 		res = ERR_PTR(error);
 	path_put(&root);
 	return res;
+}
+
+char *d_path(const struct path *path, char *buf, int buflen)
+{
+	return d_path_outlen(path, buf, &buflen);
 }
 EXPORT_SYMBOL(d_path);
 
