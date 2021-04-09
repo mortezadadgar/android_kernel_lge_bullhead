@@ -315,7 +315,7 @@ static int gen_bug(const char *val, struct kernel_param *kp)
 	return 0;
 }
 module_param_call(gen_bug, gen_bug, param_get_bool, &dummy_arg,
-		S_IWUSR | S_IRUGO);
+		S_IRUSR);
 
 static int gen_panic(const char *val, struct kernel_param *kp)
 {
@@ -323,7 +323,7 @@ static int gen_panic(const char *val, struct kernel_param *kp)
 	return 0;
 }
 module_param_call(gen_panic, gen_panic, param_get_bool, &dummy_arg,
-		S_IWUSR | S_IRUGO);
+		S_IRUSR);
 
 static int gen_adsp_panic(const char *val, struct kernel_param *kp)
 {
@@ -331,7 +331,7 @@ static int gen_adsp_panic(const char *val, struct kernel_param *kp)
 	return 0;
 }
 module_param_call(gen_adsp_panic, gen_adsp_panic, param_get_bool,
-		&dummy_arg, S_IWUSR | S_IRUGO);
+		&dummy_arg, S_IRUSR);
 
 static int gen_mba_panic(const char *val, struct kernel_param *kp)
 {
@@ -339,7 +339,7 @@ static int gen_mba_panic(const char *val, struct kernel_param *kp)
 	return 0;
 }
 module_param_call(gen_mba_panic, gen_mba_panic, param_get_bool,
-		&dummy_arg, S_IWUSR | S_IRUGO);
+		&dummy_arg, S_IRUSR);
 
 static int gen_venus_panic(const char *val, struct kernel_param *kp)
 {
@@ -347,7 +347,7 @@ static int gen_venus_panic(const char *val, struct kernel_param *kp)
 	return 0;
 }
 module_param_call(gen_venus_panic, gen_venus_panic, param_get_bool,
-		&dummy_arg, S_IWUSR | S_IRUGO);
+		&dummy_arg, S_IRUSR);
 
 static int gen_ar6320_panic(const char *val, struct kernel_param *kp)
 {
@@ -355,7 +355,7 @@ static int gen_ar6320_panic(const char *val, struct kernel_param *kp)
 	return 0;
 }
 module_param_call(gen_ar6320_panic, gen_ar6320_panic, param_get_bool,
-		&dummy_arg, S_IWUSR | S_IRUGO);
+		&dummy_arg, S_IRUSR);
 
 int lge_get_modem_panic(void)
 {
@@ -383,7 +383,7 @@ static int gen_modem_panic(const char *val, struct kernel_param *kp)
 	return 0;
 }
 module_param_call(gen_modem_panic, gen_modem_panic, param_get_bool,
-		&gen_modem_panic_type, S_IWUSR | S_IRUGO);
+		&gen_modem_panic_type, S_IRUSR);
 
 static int gen_wcnss_panic(const char *val, struct kernel_param *kp)
 {
@@ -391,7 +391,7 @@ static int gen_wcnss_panic(const char *val, struct kernel_param *kp)
 	return 0;
 }
 module_param_call(gen_wcnss_panic, gen_wcnss_panic, param_get_bool,
-		&dummy_arg, S_IWUSR | S_IRUGO);
+		&dummy_arg, S_IRUSR);
 
 #define WDT0_RST        0x04
 #define WDT0_EN         0x08
@@ -419,7 +419,7 @@ static int gen_wdt_bark(const char *val, struct kernel_param *kp)
 	return -EIO;
 }
 module_param_call(gen_wdt_bark, gen_wdt_bark, param_get_bool,
-		&dummy_arg, S_IWUSR | S_IRUGO);
+		&dummy_arg, S_IRUSR);
 
 static int gen_wdt_bite(const char *val, struct kernel_param *kp)
 {
@@ -440,7 +440,7 @@ static int gen_wdt_bite(const char *val, struct kernel_param *kp)
 	return -EIO;
 }
 module_param_call(gen_wdt_bite, gen_wdt_bite, param_get_bool,
-		&dummy_arg, S_IWUSR | S_IRUGO);
+		&dummy_arg, S_IRUSR);
 
 #define REG_MPM2_WDOG_BASE             0xFC4AA000
 #define REG_OFFSET_MPM2_WDOG_RESET     0x0
@@ -473,7 +473,7 @@ static int gen_sec_wdt_bite(const char *val, struct kernel_param *kp)
 	return -EIO;
 }
 module_param_call(gen_sec_wdt_bite, gen_sec_wdt_bite, param_get_bool,
-		&dummy_arg, S_IWUSR | S_IRUGO);
+		&dummy_arg, S_IRUSR);
 
 #define SCM_SVC_SEC_WDOG_TRIG  0x08
 
@@ -492,7 +492,7 @@ static int gen_sec_wdt_scm(const char *val, struct kernel_param *kp)
 	return -EIO;
 }
 module_param_call(gen_sec_wdt_scm, gen_sec_wdt_scm, param_get_bool,
-		&dummy_arg, S_IWUSR | S_IRUGO);
+		&dummy_arg, S_IRUSR);
 
 #define MPM2_TSENS_Sn_MIN_MAX_STATUS_CTRL  0xFC4A800C
 
@@ -529,7 +529,7 @@ static int gen_tsense_reset(const char *val, struct kernel_param *kp)
 	return -EIO;
 }
 module_param_call(gen_tsense_reset, gen_tsense_reset, param_get_bool,
-		&dummy_arg, S_IWUSR | S_IRUGO);
+		&dummy_arg, S_IRUSR);
 
 #define SCM_SVC_SEC_WDOG_DIS  0x07
 
@@ -570,7 +570,7 @@ static int gen_bus_hang(const char *val, struct kernel_param *kp)
 	return -EIO;
 }
 module_param_call(gen_bus_hang, gen_bus_hang, param_get_bool,
-		&dummy_arg, S_IWUSR | S_IRUGO);
+		&dummy_arg, S_IRUSR);
 
 static int gen_unknown_reset(const char *val, struct kernel_param *kp)
 {
@@ -579,7 +579,7 @@ static int gen_unknown_reset(const char *val, struct kernel_param *kp)
 	return 0;
 }
 module_param_call(gen_unknown_reset, gen_unknown_reset, param_get_bool,
-		&dummy_arg, S_IWUSR | S_IRUGO);
+		&dummy_arg, S_IRUSR);
 
 void lge_disable_watchdog(void)
 {
