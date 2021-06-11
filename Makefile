@@ -591,7 +591,8 @@ KBUILD_CFLAGS += $(call cc-disable-warning, format-truncation) \
 		 $(call cc-disable-warning, packed-not-aligned) \
 		 $(call cc-disable-warning, stringop-truncation) \
 		 $(call cc-disable-warning, maybe-uninitialized,) \
-		 $(call cc-disable-warning, unused-const-variable)
+		 $(call cc-disable-warning, unused-const-variable) \
+		 $(call cc-disable-warning, misleading-indentation)
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
 
