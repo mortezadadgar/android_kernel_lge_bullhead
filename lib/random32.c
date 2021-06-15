@@ -105,7 +105,7 @@ static void prandom_warmup(struct rnd_state *state)
 	prandom_u32_state(state);
 }
 
-static void prandom_seed_full_state(struct rnd_state __percpu *pcpu_state)
+static void __maybe_unused prandom_seed_full_state(struct rnd_state __percpu *pcpu_state)
 {
 	int i;
 
