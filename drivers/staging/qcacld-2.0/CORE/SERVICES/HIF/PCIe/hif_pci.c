@@ -1475,6 +1475,7 @@ HIFDiagWriteAccess(HIF_DEVICE *hif_device, A_UINT32 address, A_UINT32 data)
  */
 void hif_dump_pipe_debug_count(HIF_DEVICE *hif_device)
 {
+#if 0
 	struct HIF_CE_state *hif_state;
 	struct hif_pci_softc *sc;
 	int pipe_num;
@@ -1503,6 +1504,7 @@ void hif_dump_pipe_debug_count(HIF_DEVICE *hif_device)
 		pipe_info->nbuf_dma_err_count,
 		pipe_info->nbuf_ce_enqueue_err_count));
 	}
+#endif
 }
 
 static int
