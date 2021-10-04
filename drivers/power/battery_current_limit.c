@@ -213,6 +213,7 @@ static void bcl_update_online_mask(void)
 #ifdef CONFIG_SMP
 static void __ref bcl_handle_hotplug(struct work_struct *work)
 {
+	return;
 	int ret = 0, _cpu = 0;
 
 	mutex_lock(&bcl_hotplug_mutex);
